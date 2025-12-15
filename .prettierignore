@@ -1,0 +1,13 @@
+node_modules
+
+dist
+target
+
+.next
+.turbo
+
+pkg
+
+postgres-data
+
+.playwright-mcp
