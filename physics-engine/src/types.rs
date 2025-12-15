@@ -130,6 +130,28 @@ pub enum TireCompound {
     Intermediate,
 }
 
+/// Per-wheel tire wear data (0.0 to 1.0 for each wheel)
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct PerWheelWear {
+    pub front_left: f32,
+    pub front_right: f32,
+    pub rear_left: f32,
+    pub rear_right: f32,
+}
+
+impl PerWheelWear {
+    pub fn average(&self) -> f32 {
+        (self.front_left + self.front_right + self.rear_left + self.rear_right) / 4.0
+    }
+
+    pub fn reset(&mut self) {
+        self.front_left = 0.0;
+        self.front_right = 0.0;
+        self.rear_left = 0.0;
+        self.rear_right = 0.0;
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct TireConfig {
     pub grip_multiplier: f32,
@@ -202,6 +224,8 @@ pub struct CarPhysicsOutput {
     pub lateral_g: f32,
     pub longitudinal_g: f32,
     pub skid_intensity: f32,
+    pub tire_wear: PerWheelWear,
+    pub steer_angle: f32,
 }
 
 // ============================================================================
@@ -230,6 +254,46 @@ impl Default for TrackBounds {
             max_x: 500.0,
             min_z: -500.0,
             max_z: 500.0,
+        }
+    }
+}
+
+// ============================================================================
+// Tire Degradation Types
+// ============================================================================
+
+/// Modifiers applied based on tire wear level
+#[derive(Clone, Copy, Debug)]
+pub struct TireDegradationModifiers {
+    /// Grip multiplier (1.0 → 0.30 at 100% wear)
+    pub grip_multiplier: f32,
+    /// Brake efficiency (1.0 → 0.40 at 100% wear)
+    pub brake_efficiency: f32,
+    /// Maximum steering angle multiplier (1.0 → 0.70 at 100% wear)
+    pub max_steer_multiplier: f32,
+    /// Steering instability/wobble (0.0 → 0.15 at 100% wear)
+    pub steer_instability: f32,
+    /// Drift entry threshold multiplier (1.0 → 0.50 at 100% wear, lower = easier to drift)
+    pub drift_entry_multiplier: f32,
+    /// Drift exit threshold multiplier (1.0 → 0.60 at 100% wear, lower = harder to recover)
+    pub drift_exit_multiplier: f32,
+    /// Maximum speed multiplier (1.0 → 0.85 at 100% wear)
+    pub max_speed_multiplier: f32,
+    /// Lateral correction penalty (1.0 → 0.70 at 100% wear, more sliding)
+    pub lateral_correction_penalty: f32,
+}
+
+impl Default for TireDegradationModifiers {
+    fn default() -> Self {
+        Self {
+            grip_multiplier: 1.0,
+            brake_efficiency: 1.0,
+            max_steer_multiplier: 1.0,
+            steer_instability: 0.0,
+            drift_entry_multiplier: 1.0,
+            drift_exit_multiplier: 1.0,
+            max_speed_multiplier: 1.0,
+            lateral_correction_penalty: 1.0,
         }
     }
 }

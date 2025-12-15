@@ -103,6 +103,12 @@ impl PhysicsEngine {
         self.inner.get_effective_grip()
     }
 
+    /// Get per-wheel tire wear as JavaScript object
+    #[wasm_bindgen]
+    pub fn get_tire_wear_per_wheel(&self) -> JsValue {
+        to_value(&self.inner.get_tire_wear_per_wheel()).unwrap_or(JsValue::NULL)
+    }
+
     // ========================================================================
     // Curb API
     // ========================================================================

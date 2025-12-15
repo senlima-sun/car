@@ -4,7 +4,7 @@ pub mod steering;
 pub mod tire_model;
 pub mod weight_transfer;
 
-use crate::types::{CarInput, CarPhysicsOutput, WeatherModifiers};
+use crate::types::{CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers};
 use crate::utils::{lerp, sanitize, Quat, Vec3};
 
 // ============================================================================
@@ -87,7 +87,7 @@ impl CarPhysicsState {
         current_linvel: Vec3,
         current_angvel: Vec3,
         weather_modifiers: &WeatherModifiers,
-        tire_grip_multiplier: f32,
+        tire_degradation: &TireDegradationModifiers,
         curb_grip_bonus: f32,
         is_on_curb: bool,
         curb_speed_multiplier: f32,
@@ -107,10 +107,10 @@ impl CarPhysicsState {
         // Calculate gear
         self.gear = self.calculate_gear(self.speed_kmh);
 
-        // Calculate effective grip
+        // Calculate effective grip (tire_degradation.grip_multiplier already includes compound and weather)
         let grip_coefficient = BASE_TIRE_GRIP_COEFFICIENT
             * weather_modifiers.friction_slip_multiplier
-            * tire_grip_multiplier
+            * tire_degradation.grip_multiplier
             * curb_grip_bonus;
         self.effective_grip = grip_coefficient;
 
@@ -122,21 +122,26 @@ impl CarPhysicsState {
         };
         self.slip_angle_smoothed = lerp(self.slip_angle_smoothed, slip_angle, dt * 10.0);
 
-        // Update drift state
+        // Update drift state with tire degradation effects
         self.drift.update(
             self.slip_angle_smoothed.abs(),
             self.speed_kmh,
             weather_modifiers.drift_entry_slip_angle_multiplier,
+            tire_degradation.drift_entry_multiplier,
+            tire_degradation.drift_exit_multiplier,
         );
 
-        // Update steering
-        let max_steer = steering::get_max_steer_angle(self.speed_kmh)
-            * weather_modifiers.max_steer_angle_multiplier;
+        // Update steering with tire degradation effects
+        let max_steer = steering::get_max_steer_angle(
+            self.speed_kmh,
+            tire_degradation.max_steer_multiplier,
+            tire_degradation.steer_instability,
+        ) * weather_modifiers.max_steer_angle_multiplier;
         let steer_input = if input.left { -1.0 } else if input.right { 1.0 } else { 0.0 };
         let target_steer = steer_input * max_steer.to_radians();
 
-        let steer_speed = 1.8 * weather_modifiers.steer_response_multiplier;
-        let center_speed = 3.0 + self.speed_ms * 0.02;
+        let steer_speed = 4.5 * weather_modifiers.steer_response_multiplier;
+        let center_speed = 5.0 + self.speed_ms * 0.04;
 
         if steer_input.abs() > 0.01 {
             self.steer_angle = lerp(self.steer_angle, target_steer, dt * steer_speed);
@@ -154,9 +159,11 @@ impl CarPhysicsState {
             longitudinal_force += engine_force;
         }
 
-        // Braking
+        // Braking with tire degradation effects
         if input.backward || input.brake {
-            let brake_force = BASE_BRAKE_FORCE * weather_modifiers.brake_efficiency_multiplier;
+            let brake_force = BASE_BRAKE_FORCE
+                * weather_modifiers.brake_efficiency_multiplier
+                * tire_degradation.brake_efficiency;
             let handbrake_mult = if input.handbrake { 1.2 } else { 1.0 };
             longitudinal_force -= brake_force * handbrake_mult * forward_speed.signum();
         }
@@ -183,9 +190,12 @@ impl CarPhysicsState {
         let total_load = CAR_MASS * 9.81 + downforce;
         let downforce_grip_bonus = 1.0 + (downforce / (CAR_MASS * 9.81)) * 0.3;
 
-        // Weight transfer
-        let long_g = (forward_speed - self.prev_forward_speed) / dt / 9.81;
-        let lat_g = (lateral_speed - self.prev_lateral_speed) / dt / 9.81;
+        // Weight transfer (use safe_dt to prevent division by very small numbers)
+        let safe_dt = dt.max(0.001); // Minimum 1ms to prevent NaN
+        let long_g = ((forward_speed - self.prev_forward_speed) / safe_dt / 9.81)
+            .clamp(-10.0, 10.0); // Clamp to reasonable G-force values
+        let lat_g = ((lateral_speed - self.prev_lateral_speed) / safe_dt / 9.81)
+            .clamp(-10.0, 10.0);
 
         let weight_transfer = weight_transfer::calculate_weight_transfer(
             sanitize(long_g, 0.0),
@@ -217,7 +227,7 @@ impl CarPhysicsState {
         };
 
         // Smooth angular velocity
-        let response_rate = if self.drift.is_drifting() { 25.0 } else { 18.0 };
+        let response_rate = if self.drift.is_drifting() { 25.0 } else { 28.0 };
         self.target_angular_velocity = lerp(
             self.target_angular_velocity,
             angular_velocity,
@@ -231,19 +241,22 @@ impl CarPhysicsState {
             0.0
         };
 
-        // Calculate lateral correction
+        // Calculate lateral correction with tire degradation effects
         let lateral_correction = self.drift.get_lateral_correction(
             combined_grip,
             weather_modifiers.drift_lateral_correction_multiplier,
             if is_on_curb { 1.1 } else { 1.0 },
+            tire_degradation.lateral_correction_penalty,
         );
 
         // Calculate new velocities
         let new_forward_speed = forward_speed + (longitudinal_force / CAR_MASS) * dt;
         let new_lateral_speed = lateral_speed * lateral_correction;
 
-        // Clamp speeds
-        let max_speed = BASE_MAX_SPEED * weather_modifiers.max_speed_multiplier;
+        // Clamp speeds with tire degradation effects
+        let max_speed = BASE_MAX_SPEED
+            * weather_modifiers.max_speed_multiplier
+            * tire_degradation.max_speed_multiplier;
         let clamped_forward = new_forward_speed.clamp(-40.0 / 3.6, max_speed);
         let clamped_lateral = new_lateral_speed.clamp(-30.0, 30.0);
 
@@ -251,7 +264,7 @@ impl CarPhysicsState {
         let new_velocity = forward_dir.scale(clamped_forward).add(right_dir.scale(clamped_lateral));
 
         // Cap angular velocity
-        let max_ang_vel = if self.drift.is_drifting() { 2.8 } else { 1.2 };
+        let max_ang_vel = if self.drift.is_drifting() { 2.8 } else { 1.8 };
         let final_ang_vel = (self.target_angular_velocity + drift_rotation).clamp(-max_ang_vel, max_ang_vel);
 
         // Update previous values
@@ -286,6 +299,8 @@ impl CarPhysicsState {
             lateral_g: sanitize(lat_g, 0.0),
             longitudinal_g: sanitize(long_g, 0.0),
             skid_intensity,
+            tire_wear: Default::default(), // Will be filled in by engine
+            steer_angle: self.steer_angle,
         }
     }
 
@@ -315,5 +330,9 @@ impl CarPhysicsState {
 
     pub fn is_drifting(&self) -> bool {
         self.drift.is_drifting()
+    }
+
+    pub fn get_steer_angle(&self) -> f32 {
+        self.steer_angle
     }
 }
