@@ -8,6 +8,7 @@ interface RoadSegmentProps {
   startPoint?: [number, number, number]
   endPoint?: [number, number, number]
   isGhost?: boolean
+  isSelectedForCurb?: boolean
 }
 
 const config = OBJECT_CONFIGS.road
@@ -18,6 +19,7 @@ export default function RoadSegment({
   startPoint,
   endPoint,
   isGhost = false,
+  isSelectedForCurb = false,
 }: RoadSegmentProps) {
   const { width, height } = config.defaultSize
 
@@ -90,6 +92,14 @@ export default function RoadSegment({
           />
         </mesh>
       ))}
+
+      {/* Selection highlight for auto curb mode */}
+      {isSelectedForCurb && (
+        <mesh position={[0, height / 2 + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[width + 0.5, length + 0.5]} />
+          <meshBasicMaterial color='#22c55e' transparent opacity={0.3} depthWrite={false} />
+        </mesh>
+      )}
     </group>
   )
 }

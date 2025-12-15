@@ -16,6 +16,7 @@ interface TrackObjectWrapperProps {
   enablePhysics?: boolean
   isGhost?: boolean
   isSelected?: boolean
+  isSelectedForCurb?: boolean
 }
 
 export default function TrackObjectWrapper({
@@ -23,6 +24,7 @@ export default function TrackObjectWrapper({
   enablePhysics = true,
   isGhost = false,
   isSelected = false,
+  isSelectedForCurb = false,
 }: TrackObjectWrapperProps) {
   // Get placedObjects for finding parent roads (used by curbs)
   const placedObjects = useCustomizationStore(s => s.placedObjects)
@@ -74,9 +76,11 @@ export default function TrackObjectWrapper({
     case 'road':
       // Check if it's a curved road
       if (object.trackMode === 'curve' && object.controlPoint) {
-        component = <CurvedRoadSegment {...(curvedProps as any)} />
+        component = (
+          <CurvedRoadSegment {...(curvedProps as any)} isSelectedForCurb={isSelectedForCurb} />
+        )
       } else {
-        component = <RoadSegment {...linearProps} />
+        component = <RoadSegment {...linearProps} isSelectedForCurb={isSelectedForCurb} />
       }
       break
     case 'curb':

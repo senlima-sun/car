@@ -8,6 +8,7 @@ interface CurvedRoadSegmentProps {
   controlPoint: [number, number, number]
   endPoint: [number, number, number]
   isGhost?: boolean
+  isSelectedForCurb?: boolean
   // Edge positions of connected road at start/end for seamless alignment
   startLeftEdge?: [number, number, number]
   startRightEdge?: [number, number, number]
@@ -23,6 +24,7 @@ export default function CurvedRoadSegment({
   controlPoint,
   endPoint,
   isGhost = false,
+  isSelectedForCurb = false,
   startLeftEdge,
   startRightEdge,
   endLeftEdge,
@@ -32,7 +34,8 @@ export default function CurvedRoadSegment({
   const halfWidth = width / 2
 
   // Generate the road surface geometry as a continuous mesh
-  const { roadGeometry, leftEdgeGeometry, rightEdgeGeometry, centerLineDashes } = useMemo(() => {
+  const { roadGeometry, leftEdgeGeometry, rightEdgeGeometry, centerLineDashes, selectionGeometry } =
+    useMemo(() => {
     const start = new Vector3(...startPoint)
     const control = new Vector3(...controlPoint)
     const end = new Vector3(...endPoint)
@@ -203,11 +206,50 @@ export default function CurvedRoadSegment({
       dashes.push({ position: pos, rotation })
     }
 
+    // Create selection highlight geometry (slightly larger than road)
+    const selectionVertices: number[] = []
+    const selectionIndices: number[] = []
+    const selectionExpand = 0.5 // How much bigger than road
+
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i]
+      let tangent: Vector3
+      if (i === 0) {
+        tangent = new Vector3().subVectors(points[1], points[0]).normalize()
+      } else if (i === points.length - 1) {
+        tangent = new Vector3().subVectors(points[i], points[i - 1]).normalize()
+      } else {
+        tangent = new Vector3().subVectors(points[i + 1], points[i - 1]).normalize()
+      }
+      const perpendicular = new Vector3(-tangent.z, 0, tangent.x)
+      const leftPoint = new Vector3()
+        .copy(p)
+        .addScaledVector(perpendicular, halfWidth + selectionExpand)
+      const rightPoint = new Vector3()
+        .copy(p)
+        .addScaledVector(perpendicular, -(halfWidth + selectionExpand))
+
+      selectionVertices.push(leftPoint.x, 0.05, leftPoint.z)
+      selectionVertices.push(rightPoint.x, 0.05, rightPoint.z)
+
+      if (i > 0) {
+        const baseIdx = (i - 1) * 2
+        selectionIndices.push(baseIdx, baseIdx + 1, baseIdx + 2)
+        selectionIndices.push(baseIdx + 1, baseIdx + 3, baseIdx + 2)
+      }
+    }
+
+    const selectionGeo = new BufferGeometry()
+    selectionGeo.setAttribute('position', new Float32BufferAttribute(selectionVertices, 3))
+    selectionGeo.setIndex(selectionIndices)
+    selectionGeo.computeVertexNormals()
+
     return {
       roadGeometry: roadGeo,
       leftEdgeGeometry: leftGeo,
       rightEdgeGeometry: rightGeo,
       centerLineDashes: dashes,
+      selectionGeometry: selectionGeo,
     }
   }, [
     startPoint,
@@ -271,6 +313,13 @@ export default function CurvedRoadSegment({
           />
         </mesh>
       ))}
+
+      {/* Selection highlight for auto curb mode */}
+      {isSelectedForCurb && (
+        <mesh geometry={selectionGeometry}>
+          <meshBasicMaterial color='#22c55e' transparent opacity={0.3} depthWrite={false} side={2} />
+        </mesh>
+      )}
     </group>
   )
 }

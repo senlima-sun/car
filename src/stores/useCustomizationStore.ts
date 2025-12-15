@@ -73,6 +73,9 @@ interface CustomizationState {
   partialDeleteState: PartialDeleteState | null
   partialDeletePreviewT: number | null
   partialDeletePreviewPosition: [number, number, number] | null
+  // Auto curb generation state
+  autoCurbMode: boolean
+  selectedRoadIds: string[]
 
   // Actions
   selectObjectType: (type: ObjectType | null) => void
@@ -124,6 +127,11 @@ interface CustomizationState {
   updatePartialDeletePreview: (t: number, position: [number, number, number]) => void
   confirmPartialDelete: () => void
   cancelPartialDelete: () => void
+  // Auto curb generation actions
+  setAutoCurbMode: (enabled: boolean) => void
+  toggleRoadSelection: (roadId: string) => void
+  clearRoadSelection: () => void
+  addGeneratedCurbs: (curbs: PlacedObject[]) => void
 }
 
 const STORAGE_KEY = 'car-racing-track'
@@ -856,6 +864,8 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
   partialDeleteState: null,
   partialDeletePreviewT: null,
   partialDeletePreviewPosition: null,
+  autoCurbMode: false,
+  selectedRoadIds: [],
 
   selectObjectType: type => {
     if (type === null) {
@@ -1276,4 +1286,32 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
       partialDeletePreviewT: null,
       partialDeletePreviewPosition: null,
     }),
+
+  // Auto curb generation actions
+  setAutoCurbMode: enabled =>
+    set({
+      autoCurbMode: enabled,
+      selectedRoadIds: enabled ? get().selectedRoadIds : [],
+      // Clear other modes when enabling auto curb mode
+      deleteMode: false,
+      partialDeleteMode: false,
+      selectedObjectType: null,
+      placementState: 'idle',
+    }),
+
+  toggleRoadSelection: roadId =>
+    set(state => ({
+      selectedRoadIds: state.selectedRoadIds.includes(roadId)
+        ? state.selectedRoadIds.filter(id => id !== roadId)
+        : [...state.selectedRoadIds, roadId],
+    })),
+
+  clearRoadSelection: () => set({ selectedRoadIds: [] }),
+
+  addGeneratedCurbs: curbs => {
+    set(state => ({
+      placedObjects: [...state.placedObjects, ...curbs],
+    }))
+    setTimeout(() => get().saveToStorage(), 0)
+  },
 }))

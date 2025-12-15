@@ -8,6 +8,7 @@ import { usePitStore } from '../../../stores/usePitStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import { OBJECT_TYPES } from '../../../constants/trackObjects'
 import { generatePitLane } from '../../../utils/pitLaneGenerator'
+import { generateCurbsForRoads } from '../../../utils/autoCurbGenerator'
 import ObjectButton from './ObjectButton'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -181,6 +182,12 @@ export default function CustomizationPanel() {
   const partialDeleteState = useCustomizationStore(s => s.partialDeleteState)
   const setPartialDeleteMode = useCustomizationStore(s => s.setPartialDeleteMode)
   const cancelPartialDelete = useCustomizationStore(s => s.cancelPartialDelete)
+  // Auto curb state
+  const autoCurbMode = useCustomizationStore(s => s.autoCurbMode)
+  const selectedRoadIds = useCustomizationStore(s => s.selectedRoadIds)
+  const setAutoCurbMode = useCustomizationStore(s => s.setAutoCurbMode)
+  const clearRoadSelection = useCustomizationStore(s => s.clearRoadSelection)
+  const addGeneratedCurbs = useCustomizationStore(s => s.addGeneratedCurbs)
 
   // Track store
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
@@ -284,6 +291,30 @@ export default function CustomizationPanel() {
   const handleDeleteSelected = () => {
     if (selectedObjectId) {
       removeObject(selectedObjectId)
+    }
+  }
+
+  // Handle auto curb generation
+  const handleToggleAutoCurbMode = () => {
+    if (autoCurbMode) {
+      clearRoadSelection()
+      setAutoCurbMode(false)
+    } else {
+      // Clear other modes
+      if (deleteMode) setDeleteMode(false)
+      if (partialDeleteMode) setPartialDeleteMode(false)
+      selectObjectType(null)
+      setAutoCurbMode(true)
+    }
+  }
+
+  const handleGenerateCurbs = () => {
+    if (selectedRoadIds.length === 0) return
+    const curbs = generateCurbsForRoads(selectedRoadIds, placedObjects)
+    if (curbs.length > 0) {
+      addGeneratedCurbs(curbs)
+      clearRoadSelection()
+      setAutoCurbMode(false)
     }
   }
 
@@ -500,6 +531,49 @@ export default function CustomizationPanel() {
               </div>
             )}
           </>
+        )}
+      </div>
+
+      {/* Auto Curb Generation Section */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Auto Curbs</div>
+        <button
+          style={{
+            ...styles.deleteButton,
+            ...(autoCurbMode
+              ? {
+                  background: 'rgba(34, 197, 94, 0.3)',
+                  borderColor: '#22c55e',
+                  color: '#4ade80',
+                }
+              : styles.deleteButtonInactive),
+          }}
+          onClick={handleToggleAutoCurbMode}
+        >
+          {autoCurbMode ? 'Cancel Selection' : 'Select Roads for Curbs'}
+        </button>
+
+        {autoCurbMode && (
+          <div style={styles.placementHint}>
+            {selectedRoadIds.length > 0
+              ? `${selectedRoadIds.length} road(s) selected - click Generate to add curbs`
+              : 'Click on roads to select them for auto-curb generation'}
+          </div>
+        )}
+
+        {autoCurbMode && selectedRoadIds.length > 0 && (
+          <button
+            style={{
+              ...styles.actionButton,
+              background: '#22c55e',
+              color: '#fff',
+              width: '100%',
+              marginTop: 8,
+            }}
+            onClick={handleGenerateCurbs}
+          >
+            Generate Curbs
+          </button>
         )}
       </div>
 
