@@ -1,5 +1,9 @@
 import { useMemo } from 'react'
+import { BufferGeometry, Float32BufferAttribute } from 'three'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { GHOST_OPACITY } from '../../../constants/trackObjects'
+import { CURB_PROFILE, CURB_WIDTH, CURB_PEAK_HEIGHT } from '../../../constants/curb'
+import { useCurbStore } from '../../../stores/useCurbStore'
 import { PlacedObject, getRoadEdgePositionAt } from '../../../stores/useCustomizationStore'
 
 interface CurbSegmentProps {
@@ -8,14 +12,61 @@ interface CurbSegmentProps {
   isGhost?: boolean
 }
 
-const CURB_WIDTH = 2 // Width of the curb perpendicular to road
-const CURB_HEIGHT = 0.05 // Slight elevation
+// Generate 3D curb geometry with rounded slope profile
+function createCurbGeometry(length: number, stripeCount: number): BufferGeometry {
+  const vertices: number[] = []
+  const indices: number[] = []
+  const colors: number[] = []
+
+  const profilePoints = CURB_PROFILE.length
+  const lengthSegments = Math.max(2, Math.ceil(length / 2)) // Segment every ~2 units
+
+  // Generate vertices along the length with profile cross-section
+  for (let i = 0; i <= lengthSegments; i++) {
+    const z = (i / lengthSegments - 0.5) * length
+
+    for (let j = 0; j < profilePoints; j++) {
+      const profile = CURB_PROFILE[j]
+      vertices.push(profile.x - CURB_WIDTH / 2, profile.y, z)
+
+      // Determine stripe color based on position along length
+      const stripeIndex = Math.floor((i / lengthSegments) * stripeCount)
+      const isRed = stripeIndex % 2 === 0
+      colors.push(isRed ? 1 : 1, isRed ? 0 : 1, isRed ? 0 : 1) // Red or white
+    }
+  }
+
+  // Generate indices for triangles
+  for (let i = 0; i < lengthSegments; i++) {
+    for (let j = 0; j < profilePoints - 1; j++) {
+      const a = i * profilePoints + j
+      const b = i * profilePoints + j + 1
+      const c = (i + 1) * profilePoints + j
+      const d = (i + 1) * profilePoints + j + 1
+
+      // Two triangles per quad
+      indices.push(a, c, b)
+      indices.push(b, c, d)
+    }
+  }
+
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3))
+  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3))
+  geometry.setIndex(indices)
+  geometry.computeVertexNormals()
+
+  return geometry
+}
 
 export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbSegmentProps) {
-  const { stripes, rotation, midpoint, curbLength } = useMemo(() => {
+  const enterCurb = useCurbStore(state => state.enterCurb)
+  const exitCurb = useCurbStore(state => state.exitCurb)
+
+  const { geometry, rotation, midpoint, curbLength } = useMemo(() => {
     if (!curb.startT || !curb.endT || !curb.edgeSide) {
       return {
-        stripes: [],
+        geometry: null,
         rotation: 0,
         midpoint: [0, 0, 0] as [number, number, number],
         curbLength: 0,
@@ -36,7 +87,7 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
 
     if (length === 0) {
       return {
-        stripes: [],
+        geometry: null,
         rotation: 0,
         midpoint: [0, 0, 0] as [number, number, number],
         curbLength: 0,
@@ -49,50 +100,70 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
     // Midpoint for positioning
     const mid: [number, number, number] = [
       (startPos[0] + endPos[0]) / 2,
-      CURB_HEIGHT,
+      0, // Geometry handles height
       (startPos[2] + endPos[2]) / 2,
     ]
 
-    // Calculate stripes (approximately 2 units per stripe)
-    const stripeLength = 2
-    const stripeCount = Math.max(2, Math.ceil(length / stripeLength))
-    const actualStripeLength = length / stripeCount
+    // Calculate stripe count (approximately 2 units per stripe)
+    const stripes = Math.max(2, Math.ceil(length / 2))
 
-    const stripeData: { offset: number; color: string }[] = []
-    for (let i = 0; i < stripeCount; i++) {
-      stripeData.push({
-        offset: -length / 2 + (i + 0.5) * actualStripeLength,
-        color: i % 2 === 0 ? '#ff0000' : '#ffffff',
-      })
-    }
+    // Create 3D geometry
+    const geo = createCurbGeometry(length, stripes)
 
-    return { stripes: stripeData, rotation: rot, midpoint: mid, curbLength: length }
+    return { geometry: geo, rotation: rot, midpoint: mid, curbLength: length }
   }, [curb, parentRoad])
 
-  if (stripes.length === 0) return null
+  if (!geometry || curbLength === 0) return null
 
   // Calculate perpendicular offset direction for curb width positioning
   // The curb should extend outward from the road edge
   const perpOffset = curb.edgeSide === 'left' ? CURB_WIDTH / 2 : -CURB_WIDTH / 2
 
-  return (
-    <group position={midpoint} rotation={[0, rotation, 0]}>
-      {stripes.map((stripe, i) => (
-        <mesh
-          key={i}
-          position={[perpOffset, 0, stripe.offset]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          receiveShadow={!isGhost}
-        >
-          <planeGeometry args={[CURB_WIDTH, (curbLength / stripes.length) * 0.98]} />
+  const handleEnter = () => {
+    if (!isGhost && curb.edgeSide) {
+      enterCurb(curb.edgeSide)
+    }
+  }
+
+  const handleExit = () => {
+    if (!isGhost) {
+      exitCurb()
+    }
+  }
+
+  // Ghost mode - visual only, no physics
+  if (isGhost) {
+    return (
+      <group position={midpoint} rotation={[0, rotation, 0]}>
+        <mesh position={[perpOffset, 0, 0]} geometry={geometry} receiveShadow={false}>
           <meshStandardMaterial
-            color={stripe.color}
-            transparent={isGhost}
-            opacity={isGhost ? GHOST_OPACITY : 1}
-            depthWrite={!isGhost}
+            vertexColors
+            transparent
+            opacity={GHOST_OPACITY}
+            depthWrite={false}
           />
         </mesh>
-      ))}
+      </group>
+    )
+  }
+
+  // Normal mode - with physics
+  return (
+    <group position={midpoint} rotation={[0, rotation, 0]}>
+      <RigidBody type="fixed" colliders={false} position={[perpOffset, 0, 0]}>
+        {/* Sensor collider for detecting car */}
+        <CuboidCollider
+          args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT, curbLength / 2]}
+          sensor
+          onIntersectionEnter={handleEnter}
+          onIntersectionExit={handleExit}
+        />
+
+        {/* Visual mesh with 3D profile */}
+        <mesh geometry={geometry} receiveShadow castShadow>
+          <meshStandardMaterial vertexColors />
+        </mesh>
+      </RigidBody>
     </group>
   )
 }
@@ -111,14 +182,14 @@ export function CurbPreview({
   edge,
   isGhost = true,
 }: CurbPreviewProps) {
-  const { stripes, rotation, midpoint, curbLength } = useMemo(() => {
+  const { geometry, rotation, midpoint, curbLength } = useMemo(() => {
     const dx = endPosition[0] - startPosition[0]
     const dz = endPosition[2] - startPosition[2]
     const length = Math.sqrt(dx * dx + dz * dz)
 
     if (length < 0.1) {
       return {
-        stripes: [],
+        geometry: null,
         rotation: 0,
         midpoint: [0, 0, 0] as [number, number, number],
         curbLength: 0,
@@ -128,42 +199,30 @@ export function CurbPreview({
     const rot = Math.atan2(dx, dz)
     const mid: [number, number, number] = [
       (startPosition[0] + endPosition[0]) / 2,
-      CURB_HEIGHT,
+      0,
       (startPosition[2] + endPosition[2]) / 2,
     ]
 
-    const stripeLength = 2
-    const stripeCount = Math.max(2, Math.ceil(length / stripeLength))
-    const actualStripeLength = length / stripeCount
+    const stripeCount = Math.max(2, Math.ceil(length / 2))
+    const geo = createCurbGeometry(length, stripeCount)
 
-    const stripeData: { offset: number; color: string }[] = []
-    for (let i = 0; i < stripeCount; i++) {
-      stripeData.push({
-        offset: -length / 2 + (i + 0.5) * actualStripeLength,
-        color: i % 2 === 0 ? '#ff0000' : '#ffffff',
-      })
-    }
-
-    return { stripes: stripeData, rotation: rot, midpoint: mid, curbLength: length }
+    return { geometry: geo, rotation: rot, midpoint: mid, curbLength: length }
   }, [startPosition, endPosition])
 
-  if (stripes.length === 0) return null
+  if (!geometry || curbLength === 0) return null
 
   const perpOffset = edge === 'left' ? CURB_WIDTH / 2 : -CURB_WIDTH / 2
 
   return (
     <group position={midpoint} rotation={[0, rotation, 0]}>
-      {stripes.map((stripe, i) => (
-        <mesh key={i} position={[perpOffset, 0, stripe.offset]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[CURB_WIDTH, (curbLength / stripes.length) * 0.98]} />
-          <meshStandardMaterial
-            color={stripe.color}
-            transparent={isGhost}
-            opacity={isGhost ? GHOST_OPACITY : 1}
-            depthWrite={!isGhost}
-          />
-        </mesh>
-      ))}
+      <mesh position={[perpOffset, 0, 0]} geometry={geometry}>
+        <meshStandardMaterial
+          vertexColors
+          transparent={isGhost}
+          opacity={isGhost ? GHOST_OPACITY : 1}
+          depthWrite={!isGhost}
+        />
+      </mesh>
     </group>
   )
 }

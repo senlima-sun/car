@@ -9,7 +9,9 @@ import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useWeatherStore } from '../../../stores/useWeatherStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
 import { useTireStore } from '../../../stores/useTireStore'
+import { useCurbStore } from '../../../stores/useCurbStore'
 import { MS_TO_KMH, DRIFT_CONFIG, DRS_CONFIG } from '../../../constants/physics'
+import { CURB_PHYSICS } from '../../../constants/curb'
 import CarBody from './CarBody'
 import CarSprayEffect from './CarSprayEffect'
 
@@ -215,6 +217,10 @@ const Car = forwardRef<Group>((_, ref) => {
   const updateTireWear = useTireStore(state => state.updateWear)
   const updateTireWeather = useTireStore(state => state.updateWeather)
 
+  // Curb system
+  const isOnCurb = useCurbStore(state => state.isOnCurb)
+  const curbModifiers = useCurbStore(state => state.currentModifiers)
+
   // Track temperature system
   const updateCarPosition = useTrackTemperatureStore(state => state.updateCarPosition)
 
@@ -297,8 +303,10 @@ const Car = forwardRef<Group>((_, ref) => {
 
     // Calculate weather-modified physics values
     // Apply both weather modifier and tire compound modifier
+    // Also apply curb grip modifier when on curb
+    const curbGripBonus = isOnCurb ? curbModifiers.gripMultiplier : 1.0
     const TIRE_GRIP_COEFFICIENT =
-      BASE_TIRE_GRIP_COEFFICIENT * weatherModifiers.frictionSlipMultiplier * tireGripMultiplier
+      BASE_TIRE_GRIP_COEFFICIENT * weatherModifiers.frictionSlipMultiplier * tireGripMultiplier * curbGripBonus
     const DRAG_COEFFICIENT = BASE_DRAG_COEFFICIENT * weatherModifiers.dragMultiplier
     const DOWNFORCE_COEFFICIENT = BASE_DOWNFORCE_COEFFICIENT * weatherModifiers.downforceMultiplier
     const BRAKE_FORCE = BASE_BRAKE_FORCE * weatherModifiers.brakeEfficiencyMultiplier
@@ -549,6 +557,14 @@ const Car = forwardRef<Group>((_, ref) => {
       longitudinalForce = -BRAKE_FORCE * 1.2 * Math.sign(currentSpeed)
     }
 
+    // === CURB SPEED REDUCTION ===
+    // Apply light drag when on curb (5-10% speed reduction)
+    if (isOnCurb && absSpeed > CURB_PHYSICS.minSpeedForEffect) {
+      // Apply additional drag force proportional to speed
+      const curbDrag = absSpeed * CAR_MASS * (1 - curbModifiers.speedMultiplier) * 0.5
+      longitudinalForce -= curbDrag * Math.sign(currentSpeed)
+    }
+
     // Calculate acceleration (F = ma)
     const longitudinalAccel = longitudinalForce / CAR_MASS
 
@@ -653,6 +669,13 @@ const Car = forwardRef<Group>((_, ref) => {
       )
       lateralCorrection = baseCorrection * weatherModifiers.driftLateralCorrectionMultiplier
     }
+
+    // === CURB LATERAL STABILITY ===
+    // Increase lateral correction when on curb (more grip, less sliding)
+    if (isOnCurb) {
+      lateralCorrection = Math.min(1.0, lateralCorrection * curbModifiers.lateralStability)
+    }
+
     // Sanitize to prevent NaN propagation
     lateralCorrection = sanitizeNumber(lateralCorrection, 0.9)
 
