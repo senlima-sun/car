@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { BufferGeometry, Float32BufferAttribute } from 'three'
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { CuboidCollider } from '@react-three/rapier'
 import { GHOST_OPACITY } from '../../../constants/trackObjects'
 import { CURB_PROFILE, CURB_WIDTH, CURB_PEAK_HEIGHT } from '../../../constants/curb'
 import { useCurbStore } from '../../../stores/useCurbStore'
@@ -11,6 +11,7 @@ interface CurbSegmentProps {
   parentRoad: PlacedObject
   isGhost?: boolean
 }
+
 
 // Generate 3D curb geometry with rounded slope profile
 function createCurbGeometry(length: number, stripeCount: number): BufferGeometry {
@@ -107,7 +108,7 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
     // Calculate stripe count (approximately 2 units per stripe)
     const stripes = Math.max(2, Math.ceil(length / 2))
 
-    // Create 3D geometry
+    // Create 3D geometry for visuals only
     const geo = createCurbGeometry(length, stripes)
 
     return { geometry: geo, rotation: rot, midpoint: mid, curbLength: length }
@@ -147,23 +148,24 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
     )
   }
 
-  // Normal mode - with physics
+  // Normal mode - sensor only (no hard collision)
+  // Curbs should be driveable, only affecting grip/speed via the sensor
   return (
     <group position={midpoint} rotation={[0, rotation, 0]}>
-      <RigidBody type="fixed" colliders={false} position={[perpOffset, 0, 0]}>
-        {/* Sensor collider for detecting car */}
+      <group position={[perpOffset, 0, 0]}>
+        {/* Sensor collider for detecting car entry/exit - no physics collision */}
         <CuboidCollider
-          args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT, curbLength / 2]}
+          args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT * 2, curbLength / 2]}
+          position={[0, CURB_PEAK_HEIGHT, 0]}
           sensor
           onIntersectionEnter={handleEnter}
           onIntersectionExit={handleExit}
         />
-
         {/* Visual mesh with 3D profile */}
         <mesh geometry={geometry} receiveShadow castShadow>
           <meshStandardMaterial vertexColors />
         </mesh>
-      </RigidBody>
+      </group>
     </group>
   )
 }

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { CuboidCollider } from '@react-three/rapier'
 import { GHOST_OPACITY } from '../../../constants/trackObjects'
 import { CURB_PROFILE, CURB_WIDTH, CURB_PEAK_HEIGHT } from '../../../constants/curb'
 import { useCurbStore } from '../../../stores/useCurbStore'
@@ -39,7 +39,7 @@ export default function CurvedCurbSegment({
   const enterCurb = useCurbStore(state => state.enterCurb)
   const exitCurb = useCurbStore(state => state.exitCurb)
 
-  const { stripeGeometries, colliderData } = useMemo(() => {
+  const { stripeGeometries, sensorData } = useMemo(() => {
     if (
       !curb.startT ||
       !curb.endT ||
@@ -48,7 +48,7 @@ export default function CurvedCurbSegment({
       !parentRoad.endPoint ||
       !parentRoad.controlPoint
     ) {
-      return { stripeGeometries: [], colliderData: null }
+      return { stripeGeometries: [], sensorData: null }
     }
 
     const start = new Vector3(...parentRoad.startPoint)
@@ -128,23 +128,22 @@ export default function CurvedCurbSegment({
       })
     }
 
-    // Calculate collider position (center of curb segment)
+    // Calculate sensor position (center of curb segment)
     const midT = (tStart + tEnd) / 2
     const midPos = curve.getPoint(midT)
     const midTangent = curve.getTangent(midT)
     const midPerp = new Vector3(-midTangent.z, 0, midTangent.x).normalize()
-    const colliderOffset = (ROAD_HALF_WIDTH + CURB_WIDTH / 2) * edgeSign
+    const sensorOffset = (ROAD_HALF_WIDTH + CURB_WIDTH / 2) * edgeSign
 
     return {
       stripeGeometries: stripes,
-      colliderData: {
+      sensorData: {
         position: [
-          midPos.x + midPerp.x * colliderOffset,
+          midPos.x + midPerp.x * sensorOffset,
           CURB_PEAK_HEIGHT / 2,
-          midPos.z + midPerp.z * colliderOffset,
+          midPos.z + midPerp.z * sensorOffset,
         ] as [number, number, number],
         length: curveLength,
-        rotation: Math.atan2(midTangent.x, midTangent.z),
       },
     }
   }, [curb, parentRoad])
@@ -182,21 +181,20 @@ export default function CurvedCurbSegment({
     )
   }
 
-  // Normal mode - with physics
+  // Normal mode - sensor only (no hard collision)
+  // Curbs should be driveable, only affecting grip/speed via the sensor
   return (
     <group>
-      {/* Physics collider */}
-      {colliderData && (
-        <RigidBody type="fixed" colliders={false} position={colliderData.position}>
-          <CuboidCollider
-            args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT, colliderData.length / 2]}
-            sensor
-            onIntersectionEnter={handleEnter}
-            onIntersectionExit={handleExit}
-          />
-        </RigidBody>
+      {/* Sensor collider for detecting car entry/exit - no physics collision */}
+      {sensorData && (
+        <CuboidCollider
+          position={[sensorData.position[0], CURB_PEAK_HEIGHT, sensorData.position[2]]}
+          args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT * 2, sensorData.length / 2]}
+          sensor
+          onIntersectionEnter={handleEnter}
+          onIntersectionExit={handleExit}
+        />
       )}
-
       {/* Visual meshes */}
       {stripeGeometries.map((stripe, i) => (
         <mesh key={i} geometry={stripe.geometry} receiveShadow castShadow>

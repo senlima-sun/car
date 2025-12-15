@@ -626,11 +626,11 @@ const Car = forwardRef<Group>((_, ref) => {
     // Apply to physics with minimal additional smoothing
     const newAngVelY = lerp(angvel.y, smoothedAngVelRef.current, Math.min(1, dt * 30))
 
-    // Dampen other rotations (roll/pitch stability)
+    // Dampen other rotations (roll/pitch stability) - lighter damping for terrain response
     // Sanitize and cap angular velocity to prevent NaN corruption
-    const safeAngVelX = sanitizeNumber(angvel.x * 0.85, 0)
+    const safeAngVelX = sanitizeNumber(angvel.x * 0.95, 0)
     const safeAngVelY = sanitizeNumber(newAngVelY, 0)
-    const safeAngVelZ = sanitizeNumber(angvel.z * 0.85, 0)
+    const safeAngVelZ = sanitizeNumber(angvel.z * 0.95, 0)
     const MAX_ANG_VEL = 5 // rad/s - reasonable cap
     const clampedAngVelY = Math.max(-MAX_ANG_VEL, Math.min(MAX_ANG_VEL, safeAngVelY))
 
@@ -826,10 +826,10 @@ const Car = forwardRef<Group>((_, ref) => {
         colliders='cuboid'
         mass={600}
         linearDamping={0.01}
-        angularDamping={0.6}
+        angularDamping={1.5}
         type='dynamic'
         canSleep={false}
-        enabledRotations={[false, true, false]} // Only yaw rotation
+        enabledRotations={[true, true, true]} // Allow pitch, yaw, roll for terrain response
         ccd={true}
       >
         <group ref={groupRef}>

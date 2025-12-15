@@ -5,17 +5,17 @@
 // y = height at that point
 export const CURB_PROFILE = [
   { x: 0, y: 0 }, // Road edge (flush with road)
-  { x: 0.4, y: 0.08 }, // Start of rise
-  { x: 0.8, y: 0.14 }, // Approaching peak
-  { x: 1.0, y: 0.15 }, // Peak height
-  { x: 1.2, y: 0.14 }, // Start descending
-  { x: 1.6, y: 0.08 }, // Descending
-  { x: 2.0, y: 0.02 }, // Outer edge (slight lip)
+  { x: 0.4, y: 0.13 }, // Start of rise
+  { x: 0.8, y: 0.22 }, // Approaching peak
+  { x: 1.0, y: 0.25 }, // Peak height
+  { x: 1.2, y: 0.22 }, // Start descending
+  { x: 1.6, y: 0.13 }, // Descending
+  { x: 2.0, y: 0.04 }, // Outer edge (slight lip)
 ]
 
 // Curb dimensions
 export const CURB_WIDTH = 2 // Width perpendicular to road (meters)
-export const CURB_PEAK_HEIGHT = 0.15 // Maximum height at center (meters)
+export const CURB_PEAK_HEIGHT = 0.25 // Maximum height at center (meters)
 
 // Physics modifiers when car is on curb
 export const CURB_PHYSICS = {

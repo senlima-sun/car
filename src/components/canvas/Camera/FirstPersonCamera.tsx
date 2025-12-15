@@ -16,8 +16,8 @@ interface FirstPersonCameraProps {
 export default function FirstPersonCamera({ target }: FirstPersonCameraProps) {
   const cameraRef = useRef<ThreePerspectiveCamera>(null)
 
-  // Fixed driver head position in car's local space
-  const driverOffset = useRef(new Vector3(-0.35, 0.85, -0.05))
+  // Fixed driver head position in car's local space (centered)
+  const driverOffset = useRef(new Vector3(0, 0.85, -0.15))
 
   // 180 degree rotation to flip camera forward
   const flipRotation = useRef(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI))
