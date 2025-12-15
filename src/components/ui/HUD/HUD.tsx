@@ -8,6 +8,8 @@ import { useGameStore } from '../../../stores/useGameStore'
 import { usePitStore } from '../../../stores/usePitStore'
 import { CustomizationPanel, ModeToggle } from '../CustomizationPanel'
 import { TrackSelector } from '../TrackSelector'
+import { MobileControls, MobileSpeedGear } from '../MobileControls'
+import { useMobileDetection } from '../../../utils/isMobile'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -37,6 +39,7 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 export default function HUD() {
+  const isMobile = useMobileDetection()
   const status = useGameStore(state => state.status)
   const isInPitBox = usePitStore(state => state.isInPitBox)
   const isCustomizeMode = status === 'customize'
@@ -46,8 +49,8 @@ export default function HUD() {
       {/* Controls modal trigger - always visible */}
       <ControlsModal />
 
-      {/* Mode toggle - always visible */}
-      <ModeToggle />
+      {/* Mode toggle - hide on mobile */}
+      {!isMobile && <ModeToggle />}
 
       {isCustomizeMode ? (
         /* Customize mode UI */
@@ -63,12 +66,17 @@ export default function HUD() {
           {/* Status bar - top left with weather, FPS, tire, camera, lap times */}
           <StatusBar />
 
-          {/* Speed, gear, and tires */}
-          <div style={styles.bottomLeft}>
-            <Speedometer />
-            <GearIndicator />
-            <TireIndicator />
-          </div>
+          {/* Mobile: Centered compact speed/gear display */}
+          {isMobile && <MobileSpeedGear />}
+
+          {/* Desktop: Bottom-left speed, gear, and tires */}
+          {!isMobile && (
+            <div style={styles.bottomLeft}>
+              <Speedometer />
+              <GearIndicator />
+              <TireIndicator />
+            </div>
+          )}
 
           {/* Pit box hint when in pit */}
           {isInPitBox && (
@@ -80,19 +88,22 @@ export default function HUD() {
                 transform: 'translate(-50%, -50%)',
                 background: 'rgba(255, 102, 0, 0.9)',
                 color: '#fff',
-                padding: '12px 24px',
+                padding: isMobile ? '8px 16px' : '12px 24px',
                 borderRadius: 8,
                 fontWeight: 'bold',
-                fontSize: 16,
+                fontSize: isMobile ? 14 : 16,
                 pointerEvents: 'none',
               }}
             >
-              Press P to open tire selection
+              {isMobile ? 'Tap P for tires' : 'Press P to open tire selection'}
             </div>
           )}
 
           {/* Pit stop UI overlay */}
           <PitStopUI />
+
+          {/* Mobile touch controls */}
+          {isMobile && <MobileControls />}
         </>
       )}
     </div>

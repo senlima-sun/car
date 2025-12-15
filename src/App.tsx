@@ -8,6 +8,7 @@ import { useGameStore } from './stores/useGameStore'
 import { useWeatherStore } from './stores/useWeatherStore'
 import { usePitStore } from './stores/usePitStore'
 import { useLapTimeStore } from './stores/useLapTimeStore'
+import { useMobileDetection } from './utils/isMobile'
 
 // Define control keys
 const keyboardMap = [
@@ -23,17 +24,19 @@ const keyboardMap = [
 
 function ModeToggleHandler() {
   const toggleCustomizeMode = useGameStore(s => s.toggleCustomizeMode)
+  const isMobile = useMobileDetection()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'KeyT') {
+      // Disable customize mode toggle on mobile
+      if (e.code === 'KeyT' && !isMobile) {
         toggleCustomizeMode()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [toggleCustomizeMode])
+  }, [toggleCustomizeMode, isMobile])
 
   return null
 }

@@ -1,7 +1,7 @@
 import { forwardRef, useRef, useEffect, useMemo, useState } from 'react'
 import { Group, Vector3, Quaternion } from 'three'
 import { useFrame } from '@react-three/fiber'
-import { useKeyboardControls } from '@react-three/drei'
+import { useControls } from '../../../hooks/useControls'
 import { RigidBody, RapierRigidBody } from '@react-three/rapier'
 import { useCarStore, calculateGear } from '../../../stores/useCarStore'
 import { useGameStore } from '../../../stores/useGameStore'
@@ -266,7 +266,7 @@ const Car = forwardRef<Group>((_, ref) => {
     }
   }, [placedObjects])
 
-  const [, getKeys] = useKeyboardControls()
+  const getKeys = useControls()
 
   // Physics state refs
   const currentSteerRef = useRef(0)

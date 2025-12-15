@@ -6,6 +6,7 @@ import { useGameStore } from '../../../stores/useGameStore'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { WEATHER_CONFIG } from '../../../constants/weather'
 import { TIRE_CONFIG } from '../../../constants/tires'
+import { useMobileDetection } from '../../../utils/isMobile'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -88,6 +89,46 @@ const styles: Record<string, React.CSSProperties> = {
   },
 }
 
+// Mobile-specific styles
+const mobileStyles: Record<string, React.CSSProperties> = {
+  container: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    background: 'rgba(0, 0, 0, 0.75)',
+    padding: '6px 10px',
+    borderRadius: 6,
+    color: '#fff',
+    fontSize: 11,
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  item: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  separator: {
+    opacity: 0.3,
+    userSelect: 'none',
+  },
+  lapTime: {
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+    fontSize: 11,
+  },
+  recordingDot: {
+    width: 5,
+    height: 5,
+    borderRadius: '50%',
+    background: '#ff4444',
+    animation: 'pulse 1s infinite',
+  },
+}
+
 function getFPSColor(fps: number): string {
   if (fps >= 50) return '#4ade80' // green
   if (fps >= 30) return '#facc15' // yellow
@@ -103,6 +144,7 @@ function formatTime(ms: number | null): string {
 }
 
 export default function StatusBar() {
+  const isMobile = useMobileDetection()
   const fps = useFPSStore(state => state.fps)
   const currentWeather = useWeatherStore(state => state.currentWeather)
   const isTransitioning = useWeatherStore(state => state.isTransitioning)
@@ -140,6 +182,61 @@ export default function StatusBar() {
   const fpsColor = getFPSColor(fps)
   const hasLapStarted = currentLapStart !== null
 
+  // Mobile: Condensed icons-only layout
+  if (isMobile) {
+    return (
+      <div style={mobileStyles.container}>
+        <style>
+          {`
+            @keyframes pulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.3; }
+            }
+          `}
+        </style>
+
+        {/* Weather icon only */}
+        <span title={weatherConfig.displayName}>{weatherConfig.icon}</span>
+
+        <span style={mobileStyles.separator}>|</span>
+
+        {/* FPS with color */}
+        <span style={{ color: fpsColor, fontWeight: 'bold' }}>{fps}</span>
+
+        <span style={mobileStyles.separator}>|</span>
+
+        {/* Tire icon with color */}
+        <span
+          style={{
+            color: tireConfig.color,
+            textShadow: tireConfig.color === '#ffffff' ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
+          }}
+        >
+          {tireConfig.icon}
+        </span>
+
+        <span style={mobileStyles.separator}>|</span>
+
+        {/* Camera abbreviated */}
+        <span style={{ fontWeight: 'bold' }}>{cameraMode === 'third-person' ? '3P' : '1P'}</span>
+
+        {/* Lap time (if recording) - show only current */}
+        {isLapActive && isRecording && (
+          <>
+            <span style={mobileStyles.separator}>|</span>
+            <div style={mobileStyles.item}>
+              <div style={mobileStyles.recordingDot} />
+              <span style={{ ...mobileStyles.lapTime, color: '#00ff88' }}>
+                {hasLapStarted ? formatTime(currentLapTime) : '...'}
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // Desktop: Full layout
   return (
     <div style={styles.container}>
       <div style={styles.row}>
