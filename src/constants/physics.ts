@@ -41,10 +41,6 @@ export const VEHICLE_CONFIG = {
   },
 }
 
-// Speed conversion
-export const MS_TO_KMH = 3.6
-export const KMH_TO_MS = 1 / 3.6
-
 // Control keys
 export const CONTROLS = {
   forward: 'KeyW',
@@ -55,44 +51,4 @@ export const CONTROLS = {
   brake: 'Space',
   handbrake: 'Shift',
   drs: 'KeyE',
-} as const
-
-// DRS (Drag Reduction System) configuration
-export const DRS_CONFIG = {
-  // Minimum speed to activate DRS (km/h)
-  activationSpeed: 200,
-  // Drag reduction when DRS active (0.4 = 60% less drag)
-  dragMultiplier: 0.4,
-  // Extra engine force boost in DRS zone (200-300 km/h)
-  engineBoostLow: 4000, // Extra N at 200 km/h
-  engineBoostHigh: 8000, // Extra N at 300 km/h (more boost needed against drag)
-  // Speed range for boost scaling
-  boostStartSpeed: 200, // km/h
-  boostEndSpeed: 300, // km/h
-  // Downforce reduction (less downforce = less drag, but less grip)
-  downforceMultiplier: 0.6,
-} as const
-
-// Drift physics configuration
-export const DRIFT_CONFIG = {
-  // Handbrake reduces rear grip to this multiplier (0.2 = 20% grip)
-  handbrakeRearGripMultiplier: 0.2,
-  // Slip angle threshold to enter drift state (degrees)
-  driftEntrySlipAngle: 15,
-  // Slip angle to exit drift state (degrees)
-  driftExitSlipAngle: 8,
-  // Lateral correction during drift (lower = more slide)
-  driftLateralCorrection: 0.55,
-  // Normal lateral correction
-  normalLateralCorrection: 0.92,
-  // Max angular velocity during drift (rad/s)
-  driftMaxAngularVelocity: 2.8,
-  // Normal max angular velocity (rad/s)
-  normalMaxAngularVelocity: 1.2,
-  // Throttle oversteer factor (how much throttle breaks rear grip in turns)
-  throttleOversteerFactor: 0.35,
-  // Minimum speed for drifting (km/h)
-  minDriftSpeed: 30,
-  // Countersteer assistance strength
-  countersteerAssist: 0.3,
 } as const

@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run build:wasm && tsc -b && vite build",
     "preview": "vite preview",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build:wasm": "cd physics-engine && wasm-pack build --target web --out-dir ../src/wasm/pkg",
+    "build:wasm:release": "cd physics-engine && wasm-pack build --target web --out-dir ../src/wasm/pkg --release",
+    "test:wasm": "cd physics-engine && cargo test"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

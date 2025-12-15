@@ -9,6 +9,7 @@ import { useWeatherStore } from './stores/useWeatherStore'
 import { usePitStore } from './stores/usePitStore'
 import { useLapTimeStore } from './stores/useLapTimeStore'
 import { useMobileDetection } from './utils/isMobile'
+import { PhysicsProvider } from './wasm'
 
 // Define control keys
 const keyboardMap = [
@@ -100,27 +101,49 @@ function LapTimeHandler() {
   return null
 }
 
+function LoadingFallback() {
+  return (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#1a1a2e',
+      color: '#eee',
+      fontFamily: 'system-ui, sans-serif',
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '24px', marginBottom: '10px' }}>Loading Physics Engine...</div>
+        <div style={{ fontSize: '14px', opacity: 0.7 }}>Initializing WASM module</div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   return (
-    <KeyboardControls map={keyboardMap}>
-      <ModeToggleHandler />
-      <WeatherHandler />
-      <PitStopHandler />
-      <LapTimeHandler />
-      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-        <Canvas
-          shadows
-          camera={{ position: [0, 5, 10], fov: 75 }}
-          style={{ background: '#b5d3e7' }}
-        >
-          <Suspense fallback={null}>
-            <Physics gravity={[0, -9.81, 0]}>
-              <Scene />
-            </Physics>
-          </Suspense>
-        </Canvas>
-        <HUD />
-      </div>
-    </KeyboardControls>
+    <PhysicsProvider fallback={<LoadingFallback />}>
+      <KeyboardControls map={keyboardMap}>
+        <ModeToggleHandler />
+        <WeatherHandler />
+        <PitStopHandler />
+        <LapTimeHandler />
+        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+          <Canvas
+            shadows
+            camera={{ position: [0, 5, 10], fov: 75 }}
+            style={{ background: '#b5d3e7' }}
+          >
+            <Suspense fallback={null}>
+              <Physics gravity={[0, -9.81, 0]}>
+                <Scene />
+              </Physics>
+            </Suspense>
+          </Canvas>
+          <HUD />
+        </div>
+      </KeyboardControls>
+    </PhysicsProvider>
   )
 }

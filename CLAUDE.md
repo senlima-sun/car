@@ -9,7 +9,9 @@ A 3D car racing game built with React, Three.js, and Rapier physics. Features re
 ## Commands
 
 - **Development**: `npm run dev` - Start Vite dev server
-- **Build**: `npm run build` - TypeScript check + Vite production build
+- **Build**: `npm run build` - Build WASM + TypeScript check + Vite production build
+- **Build WASM**: `npm run build:wasm` - Compile Rust physics engine to WASM
+- **Test WASM**: `npm run test:wasm` - Run Rust unit tests
 - **Preview**: `npm run preview` - Preview production build
 
 ## Architecture
@@ -19,56 +21,80 @@ A 3D car racing game built with React, Three.js, and Rapier physics. Features re
 - **React 19** with TypeScript
 - **Three.js** via `@react-three/fiber` (React renderer for Three.js)
 - **@react-three/drei** - Three.js helpers and abstractions
-- **@react-three/rapier** - Rapier physics engine integration
+- **@react-three/rapier** - Rapier physics engine (collision detection, rigid body dynamics)
+- **Rust/WASM** - Custom physics engine for car dynamics, weather, tires, track temperature
 - **Zustand** - State management
-- **Vite** - Build tool (with WASM support for Rapier)
+- **Vite** - Build tool with WASM support
 
 ### Project Structure
 
 ```
-src/
-├── App.tsx                 # Root - KeyboardControls, Canvas, Physics setup
-├── main.tsx               # React entry point
-├── components/
-│   ├── canvas/            # 3D scene components (rendered inside Canvas)
-│   │   ├── Car/           # Vehicle with physics (Car.tsx has full physics model)
-│   │   ├── Camera/        # Third-person, first-person, isometric cameras
-│   │   ├── Track/         # Race track and temperature overlay
-│   │   ├── TrackObjects/  # Placeable objects (cone, ramp, barrier, road, checkpoint, curb)
-│   │   ├── Weather/       # Dynamic sky, clouds, lighting, rain/spray effects
-│   │   └── Customization/ # Track editor (object placer, preview, placed objects)
-│   └── ui/                # HTML overlay components
-│       ├── HUD/           # Speedometer, gear, tire wear, status bar, lap timer
-│       ├── CustomizationPanel/ # Track editor UI
-│       └── TrackSelector/ # Pre-made track selection
-├── stores/                # Zustand state stores
-│   ├── useCarStore.ts     # Speed, gear, position, telemetry
-│   ├── useGameStore.ts    # Game status (racing/customize), camera mode
-│   ├── useWeatherStore.ts # Weather system with physics modifiers
-│   ├── useTireStore.ts    # Tire compounds, wear, grip modifiers
-│   ├── useCustomizationStore.ts # Track editor state, placed objects
-│   ├── usePitStore.ts     # Pit lane and pit stop management
-│   └── useLapTimeStore.ts # Lap timing and recording
-├── constants/             # Physics configs, tire specs, weather params
-├── shaders/               # GLSL shaders (track surface)
-├── types/                 # TypeScript type definitions
-└── utils/                 # Helper functions
+car/
+├── physics-engine/        # Rust/WASM physics engine crate
+│   ├── Cargo.toml
+│   └── src/
+│       ├── lib.rs         # WASM bindings
+│       ├── engine.rs      # Main physics state machine
+│       ├── weather.rs     # Weather system & modifiers
+│       ├── tires.rs       # Tire compounds, wear, grip
+│       ├── track_temperature.rs  # Temperature grid
+│       ├── curb.rs        # Curb physics modifiers
+│       └── car_physics/   # Vehicle dynamics modules
+│           ├── aerodynamics.rs
+│           ├── tire_model.rs
+│           ├── weight_transfer.rs
+│           ├── steering.rs
+│           └── drift.rs
+├── src/
+│   ├── App.tsx            # Root - PhysicsProvider, KeyboardControls, Canvas
+│   ├── main.tsx           # React entry point
+│   ├── wasm/              # WASM bridge layer
+│   │   ├── index.ts       # Public exports
+│   │   ├── PhysicsBridge.ts    # TypeScript bindings to WASM
+│   │   ├── PhysicsProvider.tsx # React context for WASM engine
+│   │   └── pkg/           # Generated WASM package (gitignored)
+│   ├── components/
+│   │   ├── canvas/        # 3D scene components
+│   │   │   ├── Car/       # Vehicle (uses WASM physics via usePhysics hook)
+│   │   │   ├── Camera/    # Third-person, first-person, isometric cameras
+│   │   │   ├── Track/     # Race track and temperature overlay
+│   │   │   ├── TrackObjects/  # Placeable objects
+│   │   │   ├── Weather/   # Dynamic sky, clouds, lighting, rain/spray effects
+│   │   │   └── Customization/ # Track editor
+│   │   └── ui/            # HTML overlay components
+│   │       ├── HUD/       # Speedometer, gear, tire wear, status bar, lap timer
+│   │       ├── CustomizationPanel/
+│   │       └── TrackSelector/
+│   ├── stores/            # Zustand state stores (UI state, sync to WASM)
+│   ├── constants/         # UI configs (physics constants now in Rust)
+│   ├── shaders/           # GLSL shaders (track surface)
+│   ├── types/             # TypeScript type definitions
+│   └── utils/             # Helper functions
 ```
 
 ### Key Systems
 
-**Car Physics** (`src/components/canvas/Car/Car.tsx`):
+**WASM Physics Engine** (`physics-engine/`):
 
-- Detailed physics: engine power curves, aerodynamic drag/downforce, tire grip model (Pacejka-inspired), weight transfer, drift mechanics
-- DRS system for top speed boost
-- Weather modifies all physics parameters (grip, braking, steering)
-- Tire compound affects grip multiplier
+All core physics calculations run in Rust/WASM for performance:
+- Vehicle dynamics: aerodynamics (drag, downforce), Pacejka tire model, weight transfer, Ackerman steering, drift state machine
+- Weather system: 4 conditions with 10 physics modifiers, smoothstep transitions
+- Tire system: 5 compounds (soft/medium/hard/wet/intermediate), wear degradation, weather compatibility
+- Track temperature: sparse grid with heat gain/decay, wetness tracking
+- Curb physics: grip/stability modifiers based on turn direction
+
+**Car Component** (`src/components/canvas/Car/Car.tsx`):
+
+- Uses `usePhysics()` hook to access WASM engine
+- Rapier handles collision detection and rigid body integration
+- Each frame: reads Rapier state -> calls `physics.stepPhysics()` -> applies returned velocities to Rapier
+- Syncs weather/tire compound changes to WASM via useEffect
 
 **Weather System** (`src/stores/useWeatherStore.ts`):
 
-- Four conditions: sunny, cloudy, rainy, cold
-- Modifies physics via `currentModifiers`: friction, braking, steering, max speed, drift behavior
-- Smooth transitions between weather states
+- Four conditions: dry, hot, rain, cold
+- UI state for weather transitions and display
+- Physics modifiers computed in WASM, store provides UI metadata (icon, description)
 
 **Track Customization** (`src/stores/useCustomizationStore.ts`):
 

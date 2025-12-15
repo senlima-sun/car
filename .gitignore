@@ -1,5 +1,14 @@
 .envrc
 node_modules
 .claude/settings.local.json
-
 .env
+
+# Build artifacts
+dist/
+tsconfig.tsbuildinfo
+
+# Rust build
+physics-engine/target/
+
+# WASM pkg is generated but should be committed for easier setup
+# src/wasm/pkg/
