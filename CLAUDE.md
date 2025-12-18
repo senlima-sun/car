@@ -118,7 +118,8 @@ All core physics calculations run in Rust/WASM for performance:
 | A/D or Arrows | Steer                              |
 | Space         | Handbrake                          |
 | Shift         | Handbrake                          |
-| E             | DRS (above 200 km/h)               |
+| V             | Toggle Aero Mode (Corner/Straight) |
+| B             | Cycle ERS Mode                     |
 | C             | Toggle camera (third/first person) |
 | T             | Toggle customize mode              |
 | Q             | Cycle weather                      |
