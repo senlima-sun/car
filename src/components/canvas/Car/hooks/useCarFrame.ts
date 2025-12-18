@@ -64,6 +64,7 @@ export function useCarFrame({
   const toggleFreeCamera = useGameStore(state => state.toggleFreeCamera)
   const cameraMode = useGameStore(state => state.cameraMode)
   const gameStatus = useGameStore(state => state.status)
+  const isTestingMode = useGameStore(state => state.isTestingMode)
 
   // View toggles
   const toggleThermalView = useThermalViewStore(state => state.toggle)
@@ -164,22 +165,22 @@ export function useCarFrame({
       lastCameraToggle.current = state.clock.elapsedTime
     }
 
-    // Temperature visualization toggle with debounce (H key)
-    if (heatmap && state.clock.elapsedTime - lastHeatmapToggle.current > 0.3) {
+    // Temperature visualization toggle with debounce (H key) - testing mode only
+    if (isTestingMode && heatmap && state.clock.elapsedTime - lastHeatmapToggle.current > 0.3) {
       toggleHeatmap()
       toggleThermalView()
       toggleWindView()
       lastHeatmapToggle.current = state.clock.elapsedTime
     }
 
-    // Distance grid toggle with debounce (Option/Alt key)
-    if (distanceGrid && state.clock.elapsedTime - lastGridToggle.current > 0.3) {
+    // Distance grid toggle with debounce (Option/Alt key) - testing mode only
+    if (isTestingMode && distanceGrid && state.clock.elapsedTime - lastGridToggle.current > 0.3) {
       toggleDistanceGrid()
       lastGridToggle.current = state.clock.elapsedTime
     }
 
-    // Free camera toggle with debounce (F key)
-    if (freeCamera && state.clock.elapsedTime - lastFreeCamToggle.current > 0.3) {
+    // Free camera toggle with debounce (F key) - testing mode only
+    if (isTestingMode && freeCamera && state.clock.elapsedTime - lastFreeCamToggle.current > 0.3) {
       toggleFreeCamera()
       lastFreeCamToggle.current = state.clock.elapsedTime
     }

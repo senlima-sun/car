@@ -8,6 +8,7 @@ interface GameState {
   status: GameStatus
   cameraMode: CameraMode
   previousCameraMode: CameraMode
+  isTestingMode: boolean
 
   startGame: () => void
   pauseGame: () => void
@@ -20,6 +21,7 @@ interface GameState {
   enterCustomizeMode: () => void
   exitCustomizeMode: () => void
   toggleCustomizeMode: () => void
+  toggleTestingMode: () => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -28,6 +30,7 @@ export const useGameStore = create<GameState>()(
       status: 'racing',
       cameraMode: 'third-person',
       previousCameraMode: 'third-person',
+      isTestingMode: false,
 
       startGame: () => set({ status: 'countdown' }),
       pauseGame: () => set({ status: 'paused' }),
@@ -52,6 +55,7 @@ export const useGameStore = create<GameState>()(
         set(state => ({
           status: state.status === 'customize' ? 'racing' : 'customize',
         })),
+      toggleTestingMode: () => set(state => ({ isTestingMode: !state.isTestingMode })),
     }),
     {
       name: 'game-settings',

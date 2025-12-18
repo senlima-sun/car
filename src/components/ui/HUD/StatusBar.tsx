@@ -127,6 +127,7 @@ export default function StatusBar() {
   const fps = useFPSStore(state => state.fps)
   const currentCompound = useTireStore(state => state.currentCompound)
   const cameraMode = useGameStore(state => state.cameraMode)
+  const isTestingMode = useGameStore(state => state.isTestingMode)
 
   // Lap timer state
   const isLapActive = useLapTimeStore(state => state.isActive)
@@ -189,6 +190,18 @@ export default function StatusBar() {
         {/* Camera abbreviated */}
         <span style={{ fontWeight: 'bold' }}>{cameraMode === 'third-person' ? '3P' : '1P'}</span>
 
+        <span style={mobileStyles.separator}>|</span>
+
+        {/* Mode indicator */}
+        <span
+          style={{
+            fontWeight: 'bold',
+            color: isTestingMode ? '#ef4444' : '#4ade80',
+          }}
+        >
+          {isTestingMode ? 'TST' : 'RCE'}
+        </span>
+
         {/* Lap time (if recording) - show only current */}
         {isLapActive && isRecording && (
           <>
@@ -237,6 +250,21 @@ export default function StatusBar() {
         <div style={styles.item}>
           <span style={styles.label}>Cam:</span>
           <span style={styles.value}>{cameraMode === 'third-person' ? 'Chase' : 'Cockpit'}</span>
+        </div>
+
+        <span style={styles.separator}>|</span>
+
+        {/* Mode */}
+        <div style={styles.item}>
+          <span style={styles.label}>Mode:</span>
+          <span
+            style={{
+              ...styles.value,
+              color: isTestingMode ? '#ef4444' : '#4ade80',
+            }}
+          >
+            {isTestingMode ? 'TEST' : 'RACE'}
+          </span>
         </div>
       </div>
 
