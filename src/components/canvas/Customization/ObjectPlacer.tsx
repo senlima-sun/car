@@ -14,6 +14,7 @@ import {
   RoadSurfaceHitResult,
 } from '../../../stores/useCustomizationStore'
 import { MIN_SEGMENT_LENGTH } from '../../../constants/trackObjects'
+import { calculateSnappedPosition } from '../../../utils/roadSnapping'
 import GhostPreview from './GhostPreview'
 
 export default function ObjectPlacer() {
@@ -55,6 +56,11 @@ export default function ObjectPlacer() {
   const updatePartialDeletePreview = useCustomizationStore(s => s.updatePartialDeletePreview)
   const confirmPartialDelete = useCustomizationStore(s => s.confirmPartialDelete)
   const cancelPartialDelete = useCustomizationStore(s => s.cancelPartialDelete)
+  // Snap settings
+  const snapSettings = useCustomizationStore(s => s.snapSettings)
+  const connectedTangent = useCustomizationStore(s => s.connectedTangent)
+  const setConnectedTangent = useCustomizationStore(s => s.setConnectedTangent)
+  const setSnappedAngle = useCustomizationStore(s => s.setSnappedAngle)
 
   // Get snap points from existing road/barrier segments
   const snapPoints = getSnapPoints(placedObjects)
@@ -100,6 +106,11 @@ export default function ObjectPlacer() {
         if (snappedPoint) {
           clickPos = snappedPoint.position
           snapEdges = { left: snappedPoint.leftEdge, right: snappedPoint.rightEdge }
+          // Store connected tangent for G1 continuity
+          setConnectedTangent(snappedPoint.tangent)
+        } else {
+          // No snap point - clear connected tangent
+          setConnectedTangent(null)
         }
       }
 
@@ -349,16 +360,35 @@ export default function ObjectPlacer() {
     if (intersectPoint) {
       let previewPos: [number, number, number] = [intersectPoint.x, 0, intersectPoint.z]
 
-      // Apply snapping for linear objects (start point in selecting, end point in dragging/placingControlPoint)
-      if (
-        isLinearObject(selectedObjectType) &&
-        (placementState === 'selecting' ||
-          placementState === 'dragging' ||
-          placementState === 'placingControlPoint')
-      ) {
-        const snappedPoint = findNearestSnapPoint(previewPos, snapPoints)
-        if (snappedPoint) {
-          previewPos = snappedPoint.position
+      // Apply snapping for linear objects
+      if (isLinearObject(selectedObjectType)) {
+        if (placementState === 'selecting') {
+          // Selecting start point - only endpoint snapping
+          const snappedPoint = findNearestSnapPoint(previewPos, snapPoints)
+          if (snappedPoint) {
+            previewPos = snappedPoint.position
+          }
+        } else if (
+          (placementState === 'dragging' || placementState === 'placingControlPoint') &&
+          dragStartPoint
+        ) {
+          // Dragging to place end point - apply angle and tangent snapping
+          // First check for endpoint snapping (highest priority)
+          const snappedPoint = findNearestSnapPoint(previewPos, snapPoints)
+          if (snappedPoint) {
+            previewPos = snappedPoint.position
+            setSnappedAngle(null) // Clear angle snap when endpoint snapping
+          } else {
+            // Apply angle and tangent snapping
+            const snapResult = calculateSnappedPosition(
+              previewPos,
+              dragStartPoint,
+              connectedTangent,
+              snapSettings,
+            )
+            previewPos = snapResult.position
+            setSnappedAngle(snapResult.snappedAngle)
+          }
         }
       }
 

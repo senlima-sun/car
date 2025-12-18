@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   useCustomizationStore,
   type ObjectType,
+  type SnapSettings,
   isLinearObject,
 } from '../../../stores/useCustomizationStore'
 import { usePitStore } from '../../../stores/usePitStore'
@@ -163,6 +164,36 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 6,
     textAlign: 'center' as const,
   },
+  snapToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '6px 8px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 4,
+    marginBottom: 6,
+    cursor: 'pointer',
+  },
+  snapToggleLabel: {
+    color: '#aaa',
+    fontSize: 11,
+  },
+  snapToggleSwitch: {
+    width: 36,
+    height: 18,
+    borderRadius: 9,
+    position: 'relative' as const,
+    transition: 'background 0.2s ease',
+  },
+  snapToggleKnob: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    background: '#fff',
+    position: 'absolute' as const,
+    top: 2,
+    transition: 'left 0.2s ease',
+  },
 }
 
 export default function CustomizationPanel() {
@@ -188,6 +219,9 @@ export default function CustomizationPanel() {
   const setAutoCurbMode = useCustomizationStore(s => s.setAutoCurbMode)
   const clearRoadSelection = useCustomizationStore(s => s.clearRoadSelection)
   const addGeneratedCurbs = useCustomizationStore(s => s.addGeneratedCurbs)
+  // Snap settings
+  const snapSettings = useCustomizationStore(s => s.snapSettings)
+  const setSnapSettings = useCustomizationStore(s => s.setSnapSettings)
 
   // Track store
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
@@ -461,6 +495,56 @@ export default function CustomizationPanel() {
             </button>
           </div>
           {placementHint && <div style={styles.placementHint}>{placementHint}</div>}
+        </div>
+      )}
+
+      {/* Snap Settings - only show for linear objects */}
+      {showTrackModeToggle && (
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>Snap Settings</div>
+          {/* Angle Snap Toggle */}
+          <div
+            style={styles.snapToggle}
+            onClick={() => setSnapSettings({ angleSnap: !snapSettings.angleSnap })}
+          >
+            <span style={styles.snapToggleLabel}>Angle Snap (15°/30°/45°/90°)</span>
+            <div
+              style={{
+                ...styles.snapToggleSwitch,
+                background: snapSettings.angleSnap ? '#22c55e' : '#444',
+              }}
+            >
+              <div
+                style={{
+                  ...styles.snapToggleKnob,
+                  left: snapSettings.angleSnap ? 20 : 2,
+                }}
+              />
+            </div>
+          </div>
+          {/* Tangent Continuation Toggle */}
+          <div
+            style={styles.snapToggle}
+            onClick={() => setSnapSettings({ tangentSnap: !snapSettings.tangentSnap })}
+          >
+            <span style={styles.snapToggleLabel}>Tangent Continuation</span>
+            <div
+              style={{
+                ...styles.snapToggleSwitch,
+                background: snapSettings.tangentSnap ? '#22c55e' : '#444',
+              }}
+            >
+              <div
+                style={{
+                  ...styles.snapToggleKnob,
+                  left: snapSettings.tangentSnap ? 20 : 2,
+                }}
+              />
+            </div>
+          </div>
+          <div style={{ ...styles.placementHint, marginTop: 4 }}>
+            Angle snap aligns roads to grid angles. Tangent continuation creates smooth curves when connecting to existing roads.
+          </div>
         </div>
       )}
 

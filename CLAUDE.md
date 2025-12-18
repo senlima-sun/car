@@ -8,11 +8,11 @@ A 3D car racing game built with React, Three.js, and Rapier physics. Features re
 
 ## Commands
 
-- **Development**: `npm run dev` - Start Vite dev server
-- **Build**: `npm run build` - Build WASM + TypeScript check + Vite production build
-- **Build WASM**: `npm run build:wasm` - Compile Rust physics engine to WASM
-- **Test WASM**: `npm run test:wasm` - Run Rust unit tests
-- **Preview**: `npm run preview` - Preview production build
+- **Development**: `bun run dev` - Start dev server with auto-rebuild (port 3000)
+- **Build**: `bun run build` - Build WASM + Bun production bundle
+- **Build WASM**: `bun run build:wasm` - Compile Rust physics engine to WASM
+- **Test WASM**: `bun run test:wasm` - Run Rust unit tests
+- **Preview**: `bun run preview` - Preview production build (port 4173)
 
 ## Architecture
 
@@ -24,7 +24,7 @@ A 3D car racing game built with React, Three.js, and Rapier physics. Features re
 - **@react-three/rapier** - Rapier physics engine (collision detection, rigid body dynamics)
 - **Rust/WASM** - Custom physics engine for car dynamics, weather, tires, track temperature
 - **Zustand** - State management
-- **Vite** - Build tool with WASM support
+- **Bun** - Runtime, bundler, and package manager
 
 ### Project Structure
 
@@ -123,6 +123,7 @@ All core physics calculations run in Rust/WASM for performance:
 | Q             | Cycle weather                      |
 | R             | Toggle lap recording               |
 | P             | Pit stop menu (when in pit box)    |
+| H             | Toggle surface condition heatmap   |
 
 ### Path Aliases
 

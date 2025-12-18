@@ -1,10 +1,19 @@
 use crate::types::{CurbModifiers, CurbSide};
 
+// Curb bump parameters - pitch-based for realistic front-to-back motion
+const BUMP_FREQUENCY: f32 = 18.0; // Hz - rumble strip frequency
+const PITCH_AMPLITUDE: f32 = 0.15; // rad/s - pitch angular velocity amplitude
+const ENTRY_PITCH_STRENGTH: f32 = 0.4; // rad/s - initial pitch when entering curb (nose up)
+const ENTRY_PITCH_DURATION: f32 = 0.1; // seconds
+
 #[derive(Debug, Default)]
 pub struct CurbState {
     is_on_curb: bool,
+    was_on_curb: bool, // Track previous frame state for entry detection
     side: Option<CurbSide>,
     modifiers: CurbModifiers,
+    time_on_curb: f32, // Time spent on curb for oscillation
+    entry_bump_timer: f32, // Timer for entry bump
 }
 
 impl CurbState {
@@ -13,12 +22,48 @@ impl CurbState {
     }
 
     pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<CurbSide>) {
+        self.was_on_curb = self.is_on_curb;
         self.is_on_curb = is_on_curb;
         self.side = side;
 
         if is_on_curb {
             self.modifiers = CurbModifiers::default();
+            // Detect entry - trigger entry bump
+            if !self.was_on_curb {
+                self.entry_bump_timer = ENTRY_PITCH_DURATION;
+                self.time_on_curb = 0.0;
+            }
+        } else {
+            self.time_on_curb = 0.0;
+            self.entry_bump_timer = 0.0;
         }
+    }
+
+    /// Update curb timers and return pitch angular velocity for realistic bump effect
+    /// Positive = nose up, negative = nose down
+    pub fn update(&mut self, dt: f32, speed_ms: f32) -> f32 {
+        if !self.is_on_curb {
+            return 0.0;
+        }
+
+        self.time_on_curb += dt;
+
+        // Entry pitch - nose lifts up when front wheels hit curb
+        if self.entry_bump_timer > 0.0 {
+            self.entry_bump_timer -= dt;
+            // Start with nose up, then transition to nose down (rear wheels hitting)
+            let progress = 1.0 - (self.entry_bump_timer / ENTRY_PITCH_DURATION);
+            // Sine curve: 0->1 gives nose up then down
+            let pitch_curve = (progress * std::f32::consts::PI).sin();
+            let speed_factor = (speed_ms / 40.0).min(1.0);
+            return ENTRY_PITCH_STRENGTH * pitch_curve * speed_factor;
+        }
+
+        // Continuous rumble - pitch oscillation simulating rumble strips
+        let speed_factor = (speed_ms / 50.0).min(0.8).max(0.15);
+        let oscillation = (self.time_on_curb * BUMP_FREQUENCY * std::f32::consts::TAU).sin();
+
+        PITCH_AMPLITUDE * oscillation * speed_factor
     }
 
     pub fn is_on_curb(&self) -> bool {

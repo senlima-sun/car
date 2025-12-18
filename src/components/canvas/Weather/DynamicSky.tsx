@@ -20,9 +20,6 @@ function lerpAtmosphere(from: AtmosphereConfig, to: AtmosphereConfig, t: number)
       lerp(from.sunPosition[1], to.sunPosition[1], t),
       lerp(from.sunPosition[2], to.sunPosition[2], t),
     ],
-    cloudOpacity: lerp(from.cloudOpacity, to.cloudOpacity, t),
-    cloudCount: Math.round(lerp(from.cloudCount, to.cloudCount, t)),
-    cloudColor: to.cloudColor, // Use target color
     ambientIntensity: lerp(from.ambientIntensity, to.ambientIntensity, t),
     sunIntensity: lerp(from.sunIntensity, to.sunIntensity, t),
     sunColor: to.sunColor,

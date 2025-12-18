@@ -1,83 +1,108 @@
-import { useRef, useEffect } from 'react'
-import { Group } from 'three'
-import { Environment } from '@react-three/drei'
-import { useGameStore } from '../../stores/useGameStore'
-import { usePitStore } from '../../stores/usePitStore'
-import { useLapTimeStore } from '../../stores/useLapTimeStore'
-import { useCustomizationStore } from '../../stores/useCustomizationStore'
+import { useRef } from 'react'
+import { Group, DirectionalLight, Vector3 } from 'three'
+import { useFrame } from '@react-three/fiber'
+import { RigidBody } from '@react-three/rapier'
 import Car from './Car/Car'
-import RaceTrack from './Track/RaceTrack'
 import CameraController from './Camera/CameraController'
-import IsometricCamera from './Camera/IsometricCamera'
-import { ObjectPlacer, PlacedObjectsRenderer } from './Customization'
-import WeatherEffects from './Weather/WeatherEffects'
-import DynamicSky from './Weather/DynamicSky'
-import DynamicClouds from './Weather/DynamicClouds'
-import DynamicLighting from './Weather/DynamicLighting'
 import TrackTemperatureOverlay from './Track/TrackTemperatureOverlay'
-import PitLane from './TrackObjects/PitLane'
-import FPSMonitor from './FPSMonitor'
+import DistanceGridOverlay from './Track/DistanceGridOverlay'
+import WindVisualization from './Weather/WindVisualization'
+import WeatherEffects from './Weather/WeatherEffects'
+import WindshieldRain from './Weather/WindshieldRain'
+import LightningEffect from './Weather/LightningEffect'
+import { ObjectPlacer, GhostPreview, PlacedObjectsRenderer } from './Customization'
+import { useGameStore } from '@/stores/useGameStore'
+
+function Ground() {
+  return (
+    <RigidBody type='fixed' colliders='cuboid' friction={1}>
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+        <planeGeometry args={[1000, 1000]} />
+        <meshStandardMaterial color='#808080' roughness={0.3} metalness={0} />
+      </mesh>
+    </RigidBody>
+  )
+}
+
+function FollowingSun({ target }: { target: React.RefObject<Group> }) {
+  const lightRef = useRef<DirectionalLight>(null)
+  const worldPos = useRef(new Vector3())
+
+  useFrame(() => {
+    if (!lightRef.current || !target.current) return
+
+    // Get world position of the car
+    target.current.getWorldPosition(worldPos.current)
+    const carPos = worldPos.current
+
+    // Light at 10-11 o'clock angle (offset to left-front)
+    lightRef.current.position.set(carPos.x - 30, 50, carPos.z + 15)
+    // Light target follows car
+    lightRef.current.target.position.set(carPos.x, 0, carPos.z)
+    lightRef.current.target.updateMatrixWorld()
+  })
+
+  return (
+    <directionalLight
+      ref={lightRef}
+      position={[0, 50, 0]}
+      intensity={3}
+      castShadow
+      shadow-mapSize={[4096, 4096]}
+      shadow-camera-left={-30}
+      shadow-camera-right={30}
+      shadow-camera-top={30}
+      shadow-camera-bottom={-30}
+      shadow-camera-near={0.5}
+      shadow-camera-far={100}
+      shadow-bias={-0.0005}
+    />
+  )
+}
 
 export default function Scene() {
   const carRef = useRef<Group>(null)
-  const status = useGameStore(s => s.status)
-  const pitLaneData = usePitStore(s => s.pitLaneData)
+  const status = useGameStore(state => state.status)
   const isCustomizeMode = status === 'customize'
-
-  // Lap time activation based on checkpoint existence
-  const placedObjects = useCustomizationStore(s => s.placedObjects)
-  const setLapTimeActive = useLapTimeStore(s => s.setActive)
-
-  useEffect(() => {
-    const hasCheckpoint = placedObjects.some(obj => obj.type === 'checkpoint')
-    setLapTimeActive(hasCheckpoint)
-  }, [placedObjects, setLapTimeActive])
 
   return (
     <>
-      {/* FPS Monitor - updates FPS store */}
-      <FPSMonitor />
+      {/* Sun that follows car */}
+      <FollowingSun target={carRef} />
 
-      {/* Environment map for reflections on metallic surfaces */}
-      <Environment preset='city' />
+      {/* Ground */}
+      <Ground />
 
-      {/* Dynamic procedural sky - responds to weather */}
-      <DynamicSky />
+      {/* Placed objects (roads, barriers, etc.) - always visible */}
+      <PlacedObjectsRenderer />
 
-      {/* Dynamic clouds - count and opacity change with weather */}
-      <DynamicClouds />
-
-      {/* Dynamic lighting - intensity and colors change with weather */}
-      <DynamicLighting />
-
-      {/* Weather effects (includes dynamic fog, surface effects) */}
-      <WeatherEffects />
-
-      {/* Track temperature overlay (tire traces, heat visualization) */}
-      <TrackTemperatureOverlay />
-
-      {/* Track */}
-      <RaceTrack />
-
-      {/* Placed objects - always rendered */}
-      <PlacedObjectsRenderer enablePhysics={!isCustomizeMode} />
-
-      {/* Pit Lane - render when generated */}
-      {pitLaneData && <PitLane data={pitLaneData} isGhost={isCustomizeMode} />}
-
-      {isCustomizeMode ? (
+      {/* Customization components - only in edit mode */}
+      {isCustomizeMode && (
         <>
-          {/* Customize mode: isometric camera + object placer */}
-          <IsometricCamera />
           <ObjectPlacer />
-        </>
-      ) : (
-        <>
-          {/* Race mode: car + chase camera */}
-          <Car ref={carRef} />
-          <CameraController target={carRef} />
+          <GhostPreview />
         </>
       )}
+
+      {/* Track temperature overlay (press H to toggle) */}
+      <TrackTemperatureOverlay />
+
+      {/* Distance grid overlay (press Option/Alt to toggle) */}
+      <DistanceGridOverlay />
+
+      {/* Wind visualization (press H to toggle) */}
+      <WindVisualization />
+
+      {/* Weather effects (rain, snow, fog, puddles) */}
+      <WeatherEffects />
+
+      {/* First-person rain effects */}
+      <WindshieldRain />
+      <LightningEffect />
+
+      {/* Car + camera */}
+      <Car ref={carRef} />
+      <CameraController target={carRef} />
     </>
   )
 }

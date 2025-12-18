@@ -37,6 +37,9 @@ export default function Checkpoint({
     }
   }, [isGhost, crossCheckpoint])
 
+  // Height offset to render above road surface (road is at Y=0.2)
+  const CHECKPOINT_Y_OFFSET = 0.25
+
   // Calculate stroke geometry from start/end points
   const { length, calculatedRotation, midpoint } = useMemo(() => {
     if (startPoint && endPoint) {
@@ -45,15 +48,16 @@ export default function Checkpoint({
       const direction = end.clone().sub(start)
       const len = direction.length()
       const rot = Math.atan2(direction.x, direction.z)
-      const mid: [number, number, number] = [(start.x + end.x) / 2, 0, (start.z + end.z) / 2]
+      const mid: [number, number, number] = [(start.x + end.x) / 2, CHECKPOINT_Y_OFFSET, (start.z + end.z) / 2]
       return { length: len, calculatedRotation: rot, midpoint: mid }
     }
     // Fallback for legacy/preview without start/end points
-    return { length: config.defaultSize.width, calculatedRotation: rotation, midpoint: position }
+    return { length: config.defaultSize.width, calculatedRotation: rotation, midpoint: [position[0], CHECKPOINT_Y_OFFSET, position[2]] as [number, number, number] }
   }, [startPoint, endPoint, rotation, position])
 
   const finalRotation = startPoint && endPoint ? calculatedRotation : rotation
-  const finalPosition = startPoint && endPoint ? midpoint : position
+  // Always use midpoint which has the correct Y offset applied
+  const finalPosition = midpoint
 
   // Number of checkered segments
   const numSegments = Math.max(4, Math.floor(length / 2))

@@ -1,22 +1,30 @@
 use crate::car_physics::weight_transfer::calculate_weight_transfer;
 use crate::car_physics::CarPhysicsState;
 use crate::curb::CurbState;
-use crate::tires::{TireState, WearInput};
+use crate::engine_temp::EngineTemperatureState;
+use crate::surface::SurfaceState;
+use crate::tires::{TempInput, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
-    CarInput, CarPhysicsOutput, CurbSide, PerWheelWear, TireCompound, TrackBounds,
-    WeatherCondition, WeatherModifiers,
+    AmbientConditions, AquaplaningState, CarInput, CarPhysicsOutput, CurbSide, PerWheelWear,
+    SurfaceModifiers, SurfaceType, TemperatureOutput, TireCompound, TireThermalShock, TrackBounds,
+    WeatherCondition, WeatherModifiers, WindModifiers, WindState,
 };
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
+use crate::wind;
 
 /// Main physics engine that orchestrates all physics systems
 #[derive(Debug)]
 pub struct PhysicsEngine {
     weather: WeatherState,
+    wind: WindState,
     tires: TireState,
+    tire_temperature: TireTemperatureState,
+    engine_temperature: EngineTemperatureState,
     track_temperature: TrackTemperatureGrid,
     curb: CurbState,
+    surface: SurfaceState,
     car: CarPhysicsState,
 }
 
@@ -30,9 +38,13 @@ impl PhysicsEngine {
     pub fn new() -> Self {
         Self {
             weather: WeatherState::new(),
+            wind: WindState::default(),
             tires: TireState::new(),
+            tire_temperature: TireTemperatureState::new(),
+            engine_temperature: EngineTemperatureState::new(),
             track_temperature: TrackTemperatureGrid::default(),
             curb: CurbState::new(),
+            surface: SurfaceState::new(),
             car: CarPhysicsState::new(),
         }
     }
@@ -59,6 +71,50 @@ impl PhysicsEngine {
 
     pub fn is_weather_transitioning(&self) -> bool {
         self.weather.is_transitioning()
+    }
+
+    pub fn get_ambient_conditions(&self) -> AmbientConditions {
+        self.weather.get_ambient_conditions()
+    }
+
+    pub fn set_custom_weather(&mut self, celsius: f32, humidity: f32, rain_intensity: f32) {
+        self.weather.set_custom_ambient(celsius, humidity, rain_intensity);
+    }
+
+    pub fn is_custom_weather_mode(&self) -> bool {
+        self.weather.is_custom_mode()
+    }
+
+    pub fn get_rain_intensity(&self) -> f32 {
+        self.weather.get_rain_intensity()
+    }
+
+    pub fn exit_custom_weather_mode(&mut self) {
+        self.weather.exit_custom_mode();
+    }
+
+    // ========================================================================
+    // Wind API
+    // ========================================================================
+
+    pub fn set_wind(&mut self, direction: f32, speed: f32) {
+        self.wind.set_wind(direction, speed);
+    }
+
+    pub fn set_wind_enabled(&mut self, enabled: bool) {
+        self.wind.set_enabled(enabled);
+    }
+
+    pub fn is_wind_enabled(&self) -> bool {
+        self.wind.enabled
+    }
+
+    pub fn get_wind_state(&self) -> WindState {
+        self.wind
+    }
+
+    pub fn get_wind_modifiers(&self, car_heading: f32, car_speed: f32) -> WindModifiers {
+        self.wind.calculate_modifiers(car_heading, car_speed)
     }
 
     // ========================================================================
@@ -103,6 +159,30 @@ impl PhysicsEngine {
     }
 
     // ========================================================================
+    // Surface API
+    // ========================================================================
+
+    pub fn set_surface(&mut self, surface: SurfaceType) {
+        self.surface.set_surface(surface);
+    }
+
+    pub fn get_surface(&self) -> SurfaceType {
+        self.surface.get_surface()
+    }
+
+    pub fn is_on_road(&self) -> bool {
+        self.surface.is_on_road()
+    }
+
+    pub fn is_off_track(&self) -> bool {
+        self.surface.is_off_track()
+    }
+
+    pub fn get_surface_modifiers(&self) -> SurfaceModifiers {
+        *self.surface.get_modifiers()
+    }
+
+    // ========================================================================
     // Track Temperature API
     // ========================================================================
 
@@ -116,6 +196,75 @@ impl PhysicsEngine {
 
     pub fn get_track_cell_count(&self) -> usize {
         self.track_temperature.get_cell_count()
+    }
+
+    /// Update track temperature from normal driving (heat generation, road drying)
+    pub fn update_car_driving(&mut self, x: f32, z: f32, speed_ms: f32, delta: f32) {
+        self.track_temperature.update_car_driving(x, z, speed_ms, delta);
+    }
+
+    /// Get water depth at position
+    pub fn get_water_depth(&self, x: f32, z: f32) -> f32 {
+        self.track_temperature.get_water_depth_at(x, z)
+    }
+
+    /// Set rain exposure for a cell (0.0 = sheltered, 1.0 = open sky)
+    pub fn set_rain_exposure(&mut self, x: f32, z: f32, exposure: f32) {
+        self.track_temperature.set_rain_exposure(x, z, exposure);
+    }
+
+    /// Set drainage rate for a cell (slope-based)
+    pub fn set_drainage_rate(&mut self, x: f32, z: f32, rate: f32) {
+        self.track_temperature.set_drainage_rate(x, z, rate);
+    }
+
+    /// Mark a cell as road surface (roads retain heat better)
+    pub fn set_road_cell(&mut self, x: f32, z: f32, is_road: bool) {
+        self.track_temperature.set_road_cell(x, z, is_road);
+    }
+
+    /// Mark a rectangular region as road surface
+    pub fn set_road_region(&mut self, min_x: f32, min_z: f32, max_x: f32, max_z: f32, is_road: bool) {
+        self.track_temperature.set_road_region(min_x, min_z, max_x, max_z, is_road);
+    }
+
+    /// Check for aquaplaning at position
+    pub fn check_aquaplaning(&self, x: f32, z: f32, speed_ms: f32) -> AquaplaningState {
+        self.track_temperature.check_aquaplaning(x, z, speed_ms)
+    }
+
+    /// Check if tires are in thermal shock
+    pub fn is_tire_thermal_shock(&self) -> bool {
+        self.tire_temperature.is_in_thermal_shock()
+    }
+
+    /// Get thermal shock state
+    pub fn get_thermal_shock_state(&self) -> TireThermalShock {
+        self.tire_temperature.get_thermal_shock_state()
+    }
+
+    /// Update rubber deposits from per-wheel positions (for tire marks)
+    pub fn update_rubber_deposits(
+        &mut self,
+        wheel_positions: &[[f32; 2]; 4],
+        wheel_intensities: &[f32; 4],
+        delta_seconds: f32,
+    ) {
+        self.track_temperature.update_rubber_per_wheel(
+            wheel_positions,
+            wheel_intensities,
+            delta_seconds,
+        );
+    }
+
+    /// Get track wetness at position (for rubber intensity calculation)
+    pub fn get_track_wetness(&self, x: f32, z: f32) -> f32 {
+        self.track_temperature.get_wetness_at(x, z)
+    }
+
+    /// Get tire compound rubber deposit multiplier
+    pub fn get_rubber_deposit_multiplier(&self) -> f32 {
+        self.tires.get_rubber_deposit_multiplier()
     }
 
     // ========================================================================
@@ -137,28 +286,136 @@ impl PhysicsEngine {
         // Update weather transition
         self.weather.update(dt);
 
-        // Update track temperature
+        // Update wind (gusts)
+        self.wind.update(dt);
+
+        // Calculate car heading from quaternion (yaw angle)
+        // car_rotation is [x, y, z, w] quaternion
+        let quat = Quat::from_array(car_rotation);
+        let car_heading = quat.yaw();
+
+        // Calculate car speed for wind modifiers
+        let speed_ms = (current_linvel[0].powi(2) + current_linvel[2].powi(2)).sqrt();
+
+        // Get wind modifiers based on car heading and speed
+        let wind_modifiers = self.wind.calculate_modifiers(car_heading, speed_ms);
+
+        // Update track temperature with ambient conditions and wind cooling
         self.track_temperature.update_time(dt);
+        let ambient = self.weather.get_ambient_conditions();
         self.track_temperature
-            .update_weather(self.weather.get_current_weather(), dt);
+            .update_weather_with_wind(
+                self.weather.get_current_weather(),
+                ambient,
+                wind_modifiers.cooling_multiplier,
+                dt,
+            );
 
         // Get modifiers
         let weather_modifiers = self.weather.get_modifiers();
         let tire_degradation = self
             .tires
             .calculate_degradation_modifiers(self.weather.get_current_weather());
-        let curb_grip = if self.curb.is_on_curb() {
+
+        // Get surface modifiers (grass, road, curb)
+        let surface_modifiers = self.surface.get_modifiers();
+
+        // Surface grip is the primary grip modifier
+        // Curb turn-specific grip stacks on top when on curb
+        let curb_turn_grip = if self.curb.is_on_curb() {
             self.curb.get_modifiers().grip_multiplier
         } else {
             1.0
         };
-        let curb_speed = if self.curb.is_on_curb() {
-            self.curb.get_modifiers().speed_multiplier
+
+        // Get track temperature at car position
+        let track_temp = self
+            .track_temperature
+            .get_temperature_at(car_position[0], car_position[2])
+            .unwrap_or(0.5);
+
+        // Get water depth at car position
+        let water_depth = self.track_temperature.get_water_depth_at(
+            car_position[0],
+            car_position[2],
+        );
+
+        // Check for aquaplaning conditions
+        let aquaplaning = self.track_temperature.check_aquaplaning(
+            car_position[0],
+            car_position[2],
+            speed_ms,
+        );
+
+        // Update engine temperature
+        self.engine_temperature
+            .update(dt, input.forward, speed_ms, &ambient);
+
+        // Update tire temperatures (use default weight transfer for now, will be refined after car step)
+        let temp_input = TempInput {
+            delta_seconds: dt,
+            speed_ms,
+            steer_angle: self.car.get_steer_angle(),
+            is_braking: input.backward || input.brake,
+            is_throttle: input.forward && !input.brake,
+            is_drifting: self.car.is_drifting(),
+            lateral_g: 0.0,
+            longitudinal_g: 0.0,
+            weight_transfer: Default::default(),
+            ambient,
+            track_temperature: track_temp,
+            wind_cooling_multiplier: wind_modifiers.cooling_multiplier,
+        };
+        self.tire_temperature.update(&temp_input);
+
+        // Bidirectional heat exchange between tires and track
+        // Always active - even when stationary, hot tires transfer heat to track
+        let tire_avg_temp = self.tire_temperature.get_average_temperature();
+        let tire_heat_delta = self.track_temperature.update_tire_track_exchange(
+            car_position[0],
+            car_position[2],
+            tire_avg_temp,
+            ambient.temperature,
+            dt,
+        );
+        // Apply the heat change to tires
+        self.tire_temperature.apply_external_heat(tire_heat_delta);
+
+        // Apply puddle cooling effect (can trigger thermal shock)
+        self.tire_temperature.apply_puddle_cooling(water_depth, speed_ms, dt);
+
+        // Update thermal shock recovery
+        self.tire_temperature.update_thermal_shock(dt);
+
+        // Get temperature-based grip multiplier
+        let temp_window = self.tires.get_temp_window();
+        let avg_temp_grip = self.tire_temperature.get_average_temp_grip(&temp_window);
+
+        // Calculate aquaplaning grip penalty (0.1-0.5x grip during aquaplaning)
+        let aquaplaning_grip = if aquaplaning.is_aquaplaning {
+            0.1 + (1.0 - aquaplaning.intensity) * 0.4
         } else {
             1.0
         };
 
-        // Run car physics with tire degradation effects
+        // Calculate thermal shock grip penalty
+        let thermal_shock_penalty = self.tire_temperature.get_thermal_shock_penalty();
+        let thermal_shock_grip = 1.0 - thermal_shock_penalty;
+
+        // Combined grip: surface * curb turn bonus * tire temperature * aquaplaning * thermal shock
+        let combined_grip = surface_modifiers.grip_multiplier
+            * curb_turn_grip
+            * avg_temp_grip
+            * aquaplaning_grip
+            * thermal_shock_grip;
+
+        // Speed modifier from surface
+        let surface_speed = surface_modifiers.speed_multiplier;
+
+        // Update curb and get pitch angular velocity for bump effect
+        let curb_pitch = self.curb.update(dt, speed_ms);
+
+        // Run car physics with surface, tire degradation, and wind effects
         let mut output = self.car.step(
             dt,
             &input,
@@ -168,19 +425,30 @@ impl PhysicsEngine {
             Vec3::from_array(current_angvel),
             weather_modifiers,
             &tire_degradation,
-            curb_grip,
+            &wind_modifiers,
+            combined_grip,
             self.curb.is_on_curb(),
-            curb_speed,
+            surface_speed,
         );
 
-        // Get track temperature at car position
-        let track_temp = self
-            .track_temperature
-            .get_temperature_at(car_position[0], car_position[2])
-            .unwrap_or(0.5);
+        // Apply curb bump as pitch rotation (X axis = pitch in Three.js)
+        // Positive pitch = nose up
+        if curb_pitch.abs() > 0.01 {
+            output.angular_velocity[0] += curb_pitch;
+        }
 
-        // Calculate weight transfer for tire wear
-        let weight_transfer = calculate_weight_transfer(output.longitudinal_g, output.lateral_g);
+        // Calculate weight transfer for tire wear (use actual G-forces from output)
+        let weight_transfer_wear =
+            calculate_weight_transfer(output.longitudinal_g, output.lateral_g);
+
+        // Get per-wheel tire temperatures for wear calculation
+        let tire_temps = self.tire_temperature.get_temperatures();
+        let tire_temp_array = [
+            (tire_temps.front_left_inner + tire_temps.front_left_outer) / 2.0,
+            (tire_temps.front_right_inner + tire_temps.front_right_outer) / 2.0,
+            (tire_temps.rear_left_inner + tire_temps.rear_left_outer) / 2.0,
+            (tire_temps.rear_right_inner + tire_temps.rear_right_outer) / 2.0,
+        ];
 
         // Update per-wheel tire wear
         let wear_input = WearInput {
@@ -193,12 +461,29 @@ impl PhysicsEngine {
             is_handbrake: input.handbrake,
             weather: self.weather.get_current_weather(),
             track_temperature: track_temp,
-            weight_transfer,
+            weight_transfer: weight_transfer_wear,
+            lateral_g: output.lateral_g,
+            longitudinal_g: output.longitudinal_g,
+            tire_temperatures: tire_temp_array,
         };
         self.tires.update_wear_per_wheel(&wear_input);
 
         // Fill in tire wear in output
         output.tire_wear = self.tires.get_per_wheel_wear();
+
+        // Fill in temperature output
+        output.temperature = TemperatureOutput {
+            engine: self.engine_temperature.get_state(),
+            tires: self.tire_temperature.get_temperatures(),
+            tire_temp_grip: self.tire_temperature.calculate_temp_grip(&temp_window),
+            tire_in_window: self.tire_temperature.check_in_window(&temp_window),
+        };
+
+        // Fill in aquaplaning state
+        output.aquaplaning = aquaplaning;
+
+        // Fill in thermal shock state
+        output.tire_thermal_shock = self.tire_temperature.get_thermal_shock_state();
 
         // Update track temperature with skid marks
         if output.skid_intensity > 0.01 {
@@ -226,6 +511,8 @@ impl PhysicsEngine {
             tire_wear_per_wheel: self.tires.get_per_wheel_wear(),
             effective_grip: self.get_effective_grip(),
             is_on_curb: self.curb.is_on_curb(),
+            surface: self.surface.get_surface(),
+            surface_grip: self.surface.get_grip_modifier(),
             track_cells: self.track_temperature.get_cell_count(),
             speed_kmh: self.car.get_speed_kmh(),
             is_drifting: self.car.is_drifting(),
@@ -242,6 +529,8 @@ pub struct DebugInfo {
     pub tire_wear_per_wheel: PerWheelWear,
     pub effective_grip: f32,
     pub is_on_curb: bool,
+    pub surface: SurfaceType,
+    pub surface_grip: f32,
     pub track_cells: usize,
     pub speed_kmh: f32,
     pub is_drifting: bool,

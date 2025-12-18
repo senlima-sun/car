@@ -2,28 +2,33 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useWeatherStore } from '../../../stores/useWeatherStore'
+import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import {
   useTrackTemperatureStore,
   TRACK_TEMP_CONFIG,
 } from '../../../stores/useTrackTemperatureStore'
 
-const MAX_PUDDLES = 100
+const MAX_PUDDLES = 150
 const MAX_ICE_PATCHES = 100
-const PUDDLE_THRESHOLD = 0.5 // Minimum wetness to show puddle
+const WATER_DEPTH_THRESHOLD = 0.2 // Minimum water depth to show puddle
 const ICE_THRESHOLD = 0.3 // Maximum temperature to show ice
 
-// Puddle patches - appear in rain weather
+// Puddle patches - appear in rain weather based on water depth
 function PuddlePatches() {
   const meshRef = useRef<THREE.InstancedMesh>(null)
+  const colorRef = useRef<THREE.InstancedBufferAttribute | null>(null)
   const dummyRef = useRef(new THREE.Object3D())
   const currentWeather = useWeatherStore(s => s.currentWeather)
   const cells = useTrackTemperatureStore(s => s.cells)
 
-  // Only render in rain
+  // Only render in rain or shortly after (puddles persist)
   const isRaining = currentWeather === 'rain'
 
+  // Create color attribute for per-instance colors
+  const colorArray = useMemo(() => new Float32Array(MAX_PUDDLES * 3), [])
+
   useFrame(() => {
-    if (!meshRef.current || !isRaining) return
+    if (!meshRef.current) return
 
     const dummy = dummyRef.current
     const { gridSize } = TRACK_TEMP_CONFIG
@@ -31,48 +36,85 @@ function PuddlePatches() {
 
     // Reset all instances to invisible first
     for (let i = 0; i < MAX_PUDDLES; i++) {
-      dummy.position.set(0, -100, 0) // Move off-screen
+      dummy.position.set(0, -100, 0)
       dummy.scale.setScalar(0)
       dummy.updateMatrix()
       meshRef.current.setMatrixAt(i, dummy.matrix)
     }
 
-    // Place puddles at wet cells
+    // Place puddles at cells with water depth
     cells.forEach((cell, key) => {
       if (instanceIndex >= MAX_PUDDLES) return
-      if (cell.wetness < PUDDLE_THRESHOLD) return
+
+      // Use water_depth if available, fallback to wetness for compatibility
+      const waterDepth = cell.waterDepth ?? cell.wetness
+      if (waterDepth < WATER_DEPTH_THRESHOLD) return
 
       const [cellX, cellZ] = key.split(',').map(Number)
       const worldX = cellX * gridSize + gridSize / 2
       const worldZ = cellZ * gridSize + gridSize / 2
 
-      dummy.position.set(worldX, 0.015, worldZ)
-      // Scale based on wetness level
-      const scale = gridSize * 0.4 * (0.5 + cell.wetness * 0.5)
-      dummy.scale.setScalar(scale)
+      // Y position rises slightly with water depth (deeper = higher water level)
+      const yPos = 0.01 + waterDepth * 0.03
+      dummy.position.set(worldX, yPos, worldZ)
+
+      // Scale based on water depth (deeper puddles are larger)
+      const baseScale = gridSize * 0.5
+      const depthScale = 0.5 + waterDepth * 0.8 // 0.5 to 1.3 multiplier
+      dummy.scale.setScalar(baseScale * depthScale)
+
       // Use cell position for stable rotation
       dummy.rotation.set(-Math.PI / 2, 0, (cellX * 13 + cellZ * 29) % (Math.PI * 2))
       dummy.updateMatrix()
 
       meshRef.current!.setMatrixAt(instanceIndex, dummy.matrix)
+
+      // Color varies by depth - deeper puddles are darker
+      // Shallow: light blue (#5080a0), Deep: dark blue (#203850)
+      const depthFactor = waterDepth
+      colorArray[instanceIndex * 3] = 0.31 - depthFactor * 0.19 // R: 0.31 -> 0.12
+      colorArray[instanceIndex * 3 + 1] = 0.5 - depthFactor * 0.28 // G: 0.5 -> 0.22
+      colorArray[instanceIndex * 3 + 2] = 0.63 - depthFactor * 0.31 // B: 0.63 -> 0.31
+
       instanceIndex++
     })
 
     meshRef.current.instanceMatrix.needsUpdate = true
     meshRef.current.count = instanceIndex
+
+    // Update instance colors
+    if (colorRef.current) {
+      colorRef.current.needsUpdate = true
+    }
   })
 
-  if (!isRaining) return null
+  // Don't render if no rain and no cells have water
+  const hasWater = useMemo(() => {
+    for (const cell of cells.values()) {
+      const waterDepth = cell.waterDepth ?? cell.wetness
+      if (waterDepth >= WATER_DEPTH_THRESHOLD) return true
+    }
+    return false
+  }, [cells])
+
+  if (!isRaining && !hasWater) return null
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_PUDDLES]}>
-      <circleGeometry args={[1, 16]} />
+      <circleGeometry args={[1, 16]}>
+        <instancedBufferAttribute
+          ref={colorRef}
+          attach='attributes-color'
+          args={[colorArray, 3]}
+        />
+      </circleGeometry>
       <meshStandardMaterial
-        color='#3a5a7a'
+        vertexColors
         transparent
-        opacity={0.5}
-        metalness={0.9}
-        roughness={0.1}
+        opacity={0.7}
+        metalness={0.95}
+        roughness={0.02}
+        envMapIntensity={2.5}
         depthWrite={false}
       />
     </instancedMesh>
@@ -280,10 +322,65 @@ function SnowAccumulation() {
   )
 }
 
+// Wet road overlay - large reflective plane during rain for water layer effect
+function WetRoadOverlay() {
+  const currentWeather = useWeatherStore(s => s.currentWeather)
+  const transitionProgress = useWeatherStore(s => s.transitionProgress)
+  const isTransitioning = useWeatherStore(s => s.isTransitioning)
+  const previousWeather = useWeatherStore(s => s.previousWeather)
+  const customRainIntensity = useEnvironmentStore(s => s.rainIntensity)
+
+  const isRaining = currentWeather === 'rain'
+  const wasNotRaining = previousWeather !== 'rain'
+  const hasCustomRain = customRainIntensity > 0.01
+
+  // Calculate opacity based on weather state with smooth transitions
+  const waterOpacity = useMemo(() => {
+    // Custom rain intensity takes priority
+    if (hasCustomRain) {
+      return customRainIntensity * 0.25
+    }
+
+    if (!isTransitioning) {
+      return isRaining ? 0.2 : 0
+    }
+
+    // Transitioning TO rain - fade in
+    if (isRaining && wasNotRaining) {
+      return transitionProgress * 0.2
+    }
+
+    // Transitioning FROM rain - fade out
+    if (!isRaining && previousWeather === 'rain') {
+      return (1 - transitionProgress) * 0.2
+    }
+
+    return isRaining ? 0.2 : 0
+  }, [isRaining, isTransitioning, transitionProgress, wasNotRaining, previousWeather, hasCustomRain, customRainIntensity])
+
+  if (waterOpacity <= 0) return null
+
+  return (
+    <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[1000, 1000]} />
+      <meshStandardMaterial
+        color='#2a4050'
+        transparent
+        opacity={waterOpacity}
+        metalness={0.95}
+        roughness={0.05}
+        envMapIntensity={1.5}
+        depthWrite={false}
+      />
+    </mesh>
+  )
+}
+
 // Main surface effects component
 export default function SurfaceEffects() {
   return (
     <>
+      <WetRoadOverlay />
       <PuddlePatches />
       <IcePatches />
       <SnowAccumulation />

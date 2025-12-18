@@ -1,6 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useCallback, useEffect } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
+import { useSurfaceStore } from '../../../stores/useSurfaceStore'
+import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
+import { usePhysicsOptional } from '../../../wasm'
 
 interface CurvedRoadSegmentProps {
   position: [number, number, number]
@@ -18,6 +22,7 @@ interface CurvedRoadSegmentProps {
 
 const config = OBJECT_CONFIGS.road
 const CURVE_SEGMENTS = 48
+const ROAD_THICKNESS = 0.02 // 2cm - visible but car drives on ground
 
 export default function CurvedRoadSegment({
   startPoint,
@@ -32,9 +37,22 @@ export default function CurvedRoadSegment({
 }: CurvedRoadSegmentProps) {
   const { width } = config.defaultSize
   const halfWidth = width / 2
+  const enterSurface = useSurfaceStore(s => s.enterSurface)
+  const exitSurface = useSurfaceStore(s => s.exitSurface)
+  const physics = usePhysicsOptional()
+  const setRoadRegionTS = useTrackTemperatureStore(s => s.setRoadRegion)
+
+  // Surface detection callbacks
+  const handleEnterRoad = useCallback(() => {
+    enterSurface('road')
+  }, [enterSurface])
+
+  const handleExitRoad = useCallback(() => {
+    exitSurface('road')
+  }, [exitSurface])
 
   // Generate the road surface geometry as a continuous mesh
-  const { roadGeometry, leftEdgeGeometry, rightEdgeGeometry, centerLineDashes, selectionGeometry } =
+  const { roadGeometry, leftEdgeGeometry, rightEdgeGeometry, centerLineDashes, selectionGeometry, sensorColliders, roadBounds } =
     useMemo(() => {
     const start = new Vector3(...startPoint)
     const control = new Vector3(...controlPoint)
@@ -90,8 +108,9 @@ export default function CurvedRoadSegment({
         rightPoint = new Vector3().copy(p).addScaledVector(perpendicular, -halfWidth)
       }
 
-      roadVertices.push(leftPoint.x, 0.02, leftPoint.z)
-      roadVertices.push(rightPoint.x, 0.02, rightPoint.z)
+      // Road surface with thickness - top surface
+      roadVertices.push(leftPoint.x, ROAD_THICKNESS, leftPoint.z)
+      roadVertices.push(rightPoint.x, ROAD_THICKNESS, rightPoint.z)
 
       const t = i / (points.length - 1)
       roadUvs.push(0, t)
@@ -155,8 +174,8 @@ export default function CurvedRoadSegment({
           .addScaledVector(perpendicular, -(edgeOffset - edgeWidth / 2))
       }
 
-      leftEdgeVertices.push(leftEdgeOuter.x, 0.025, leftEdgeOuter.z)
-      leftEdgeVertices.push(leftEdgeInner.x, 0.025, leftEdgeInner.z)
+      leftEdgeVertices.push(leftEdgeOuter.x, ROAD_THICKNESS + 0.005, leftEdgeOuter.z)
+      leftEdgeVertices.push(leftEdgeInner.x, ROAD_THICKNESS + 0.005, leftEdgeInner.z)
 
       if (i > 0) {
         const baseIdx = (i - 1) * 2
@@ -164,8 +183,8 @@ export default function CurvedRoadSegment({
         leftEdgeIndices.push(baseIdx + 1, baseIdx + 3, baseIdx + 2)
       }
 
-      rightEdgeVertices.push(rightEdgeInner.x, 0.025, rightEdgeInner.z)
-      rightEdgeVertices.push(rightEdgeOuter.x, 0.025, rightEdgeOuter.z)
+      rightEdgeVertices.push(rightEdgeInner.x, ROAD_THICKNESS + 0.005, rightEdgeInner.z)
+      rightEdgeVertices.push(rightEdgeOuter.x, ROAD_THICKNESS + 0.005, rightEdgeOuter.z)
 
       if (i > 0) {
         const baseIdx = (i - 1) * 2
@@ -229,8 +248,8 @@ export default function CurvedRoadSegment({
         .copy(p)
         .addScaledVector(perpendicular, -(halfWidth + selectionExpand))
 
-      selectionVertices.push(leftPoint.x, 0.05, leftPoint.z)
-      selectionVertices.push(rightPoint.x, 0.05, rightPoint.z)
+      selectionVertices.push(leftPoint.x, ROAD_THICKNESS + 0.03, leftPoint.z)
+      selectionVertices.push(rightPoint.x, ROAD_THICKNESS + 0.03, rightPoint.z)
 
       if (i > 0) {
         const baseIdx = (i - 1) * 2
@@ -244,12 +263,43 @@ export default function CurvedRoadSegment({
     selectionGeo.setIndex(selectionIndices)
     selectionGeo.computeVertexNormals()
 
+    // Generate sensor collider positions along the curve (approximated with box colliders)
+    const sensorData: { position: [number, number, number]; rotation: number; length: number }[] = []
+    const numSensors = Math.max(4, Math.ceil(curveLength / 8)) // One sensor every ~8 units
+    for (let i = 0; i < numSensors; i++) {
+      const t1 = i / numSensors
+      const t2 = (i + 1) / numSensors
+      const p1 = curve.getPoint(t1)
+      const p2 = curve.getPoint(t2)
+      const midpoint = new Vector3().lerpVectors(p1, p2, 0.5)
+      const segmentLength = p1.distanceTo(p2) + 0.5 // Slight overlap
+      const dir = new Vector3().subVectors(p2, p1).normalize()
+      const rotation = Math.atan2(dir.x, dir.z)
+      sensorData.push({
+        position: [midpoint.x, 0.5, midpoint.z],
+        rotation,
+        length: segmentLength,
+      })
+    }
+
+    // Calculate bounding box for road temperature registration
+    const allXs = roadVertices.filter((_, i) => i % 3 === 0)
+    const allZs = roadVertices.filter((_, i) => i % 3 === 2)
+    const roadBounds = {
+      minX: Math.min(...allXs),
+      maxX: Math.max(...allXs),
+      minZ: Math.min(...allZs),
+      maxZ: Math.max(...allZs),
+    }
+
     return {
       roadGeometry: roadGeo,
       leftEdgeGeometry: leftGeo,
       rightEdgeGeometry: rightGeo,
       centerLineDashes: dashes,
       selectionGeometry: selectionGeo,
+      sensorColliders: sensorData,
+      roadBounds,
     }
   }, [
     startPoint,
@@ -262,10 +312,35 @@ export default function CurvedRoadSegment({
     endRightEdge,
   ])
 
-  return (
-    <group>
+  // Register road cells for temperature tracking
+  // Roads retain heat better than non-road surfaces
+  useEffect(() => {
+    if (isGhost || !roadBounds) return
+
+    const { minX, minZ, maxX, maxZ } = roadBounds
+
+    // Register as road region in WASM physics engine
+    if (physics) {
+      physics.setRoadRegion(minX, minZ, maxX, maxZ, true)
+    }
+
+    // Register as road region in TypeScript temperature store (for visualization)
+    setRoadRegionTS(minX, minZ, maxX, maxZ, true)
+
+    // Cleanup: unregister on unmount
+    return () => {
+      if (physics) {
+        physics.setRoadRegion(minX, minZ, maxX, maxZ, false)
+      }
+      setRoadRegionTS(minX, minZ, maxX, maxZ, false)
+    }
+  }, [isGhost, physics, setRoadRegionTS, roadBounds])
+
+  // Visual elements
+  const roadVisuals = (
+    <>
       {/* Road surface */}
-      <mesh geometry={roadGeometry} receiveShadow={!isGhost}>
+      <mesh geometry={roadGeometry} receiveShadow={!isGhost} castShadow={!isGhost}>
         <meshStandardMaterial
           color={config.color}
           transparent={isGhost}
@@ -301,7 +376,7 @@ export default function CurvedRoadSegment({
       {centerLineDashes.map((dash, i) => (
         <mesh
           key={`dash-${i}`}
-          position={[dash.position.x, 0.03, dash.position.z]}
+          position={[dash.position.x, ROAD_THICKNESS + 0.005, dash.position.z]}
           rotation={[-Math.PI / 2, 0, dash.rotation]}
         >
           <planeGeometry args={[0.15, 1.2]} />
@@ -320,6 +395,35 @@ export default function CurvedRoadSegment({
           <meshBasicMaterial color='#22c55e' transparent opacity={0.3} depthWrite={false} side={2} />
         </mesh>
       )}
-    </group>
+    </>
+  )
+
+  // Ghost mode - no physics
+  if (isGhost) {
+    return <group position={[0, 0.02, 0]}>{roadVisuals}</group>
+  }
+
+  // Normal mode - with physics (ground provides collision, road only has sensors)
+  return (
+    <RigidBody
+      type='fixed'
+      position={[0, 0.01, 0]}
+      colliders={false}
+    >
+      {roadVisuals}
+
+      {/* Surface detection sensors along the curve */}
+      {sensorColliders.map((sensor, i) => (
+        <CuboidCollider
+          key={`sensor-${i}`}
+          args={[halfWidth, 0.5, sensor.length / 2]}
+          position={sensor.position}
+          rotation={[0, sensor.rotation, 0]}
+          sensor
+          onIntersectionEnter={handleEnterRoad}
+          onIntersectionExit={handleExitRoad}
+        />
+      ))}
+    </RigidBody>
   )
 }

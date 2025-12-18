@@ -6,6 +6,10 @@ import { WeatherCondition } from '../constants/weather'
 export interface GridCell {
   temperature: number // 0-1: cold to hot (from car driving)
   wetness: number // 0-1: dry to wet (rain accumulation)
+  waterDepth?: number // 0-1: standing water depth (from WASM physics)
+  rainExposure?: number // 0-1: 0 = sheltered, 1 = open sky
+  drainageRate?: number // Slope-based drainage speed
+  isRoad?: boolean // Whether this cell is a road surface (retains heat better)
   lastUpdated: number // timestamp for decay calculations
 }
 
@@ -13,26 +17,30 @@ export interface GridCell {
 export const TRACK_TEMP_CONFIG = {
   gridSize: 2, // World units per cell (meters)
   worldBounds: {
-    minX: -500,
-    maxX: 500,
-    minZ: -500,
-    maxZ: 500,
+    minX: -250,
+    maxX: 250,
+    minZ: -250,
+    maxZ: 250,
   },
   textureSize: 512, // DataTexture resolution
   maxTrackedCells: 5000, // Prune oldest beyond this
   cellPruneInterval: 5, // Seconds between prune checks
 
   // Temperature behavior
-  heatGainRate: 0.8, // How fast temperature rises when car drives over
-  heatRadius: 3, // Affect cells within this radius of car
+  heatGainRate: 3.0, // How fast temperature rises when car drives over (increased for visibility)
+  heatRadius: 4, // Affect cells within this radius of car
 
-  // Decay rates per weather type (per second)
+  // Decay rates per weather type (per second) - matched to Rust physics engine
   decayRates: {
-    dry: 0.03,
-    hot: 0.015,
-    rain: 0.08,
-    cold: 0.12,
+    dry: 0.004,  // Track cools very slowly in dry conditions
+    hot: 0.002,  // Hot weather keeps track warm
+    rain: 0.012, // Rain cools moderately
+    cold: 0.018, // Cold weather cools faster but still slow
   } as Record<WeatherCondition, number>,
+
+  // Road surface thermal properties (asphalt retains heat better)
+  roadDecayMultiplier: 0.3,    // Roads lose heat 70% slower than grass
+  roadRainDecayMultiplier: 2.5, // Rain accelerates road cooling (water conducts heat)
 
   // Wetness behavior
   wetnessGainRate: 0.1, // How fast wetness accumulates in rain
@@ -58,6 +66,7 @@ interface TrackTemperatureState {
   updateTexture: () => void
   getCell: (worldX: number, worldZ: number) => GridCell | undefined
   getCellKey: (worldX: number, worldZ: number) => string
+  setRoadRegion: (minX: number, minZ: number, maxX: number, maxZ: number, isRoad: boolean) => void
 }
 
 // Helper to convert world position to cell key
@@ -156,8 +165,8 @@ export const useTrackTemperatureStore = create<TrackTemperatureState>((set, get)
     const { gridSize, heatGainRate, heatRadius, wetnessDryRate } = TRACK_TEMP_CONFIG
     const now = performance.now() / 1000
 
-    // Skip if intensity is too low (no visible marks for normal driving)
-    if (intensity < 0.05) {
+    // Skip if intensity is too low (reduced threshold to allow normal driving updates)
+    if (intensity < 0.01) {
       return
     }
 
@@ -207,15 +216,35 @@ export const useTrackTemperatureStore = create<TrackTemperatureState>((set, get)
   updateWeatherEffects: (weather: WeatherCondition, delta: number) => {
     const state = get()
     const { cells, lastPruneTime } = state
-    const { decayRates, wetnessGainRate, wetnessDecayRate, maxTrackedCells, cellPruneInterval } =
-      TRACK_TEMP_CONFIG
+    const {
+      decayRates,
+      roadDecayMultiplier,
+      roadRainDecayMultiplier,
+      wetnessGainRate,
+      wetnessDecayRate,
+      maxTrackedCells,
+      cellPruneInterval,
+    } = TRACK_TEMP_CONFIG
     const now = performance.now() / 1000
 
-    const decayRate = decayRates[weather]
+    const baseDecayRate = decayRates[weather]
     const isRaining = weather === 'rain'
 
     // Update all tracked cells
     cells.forEach(cell => {
+      // Calculate decay rate based on surface type
+      // Roads retain heat better (lower decay) unless it's raining
+      let decayRate = baseDecayRate
+      if (cell.isRoad) {
+        if (isRaining) {
+          // Rain accelerates cooling on roads (water conducts heat away)
+          decayRate = baseDecayRate * roadRainDecayMultiplier
+        } else {
+          // Roads retain heat much better in dry conditions
+          decayRate = baseDecayRate * roadDecayMultiplier
+        }
+      }
+
       // Temperature decay
       cell.temperature = Math.max(0, cell.temperature - decayRate * delta)
 
@@ -254,6 +283,32 @@ export const useTrackTemperatureStore = create<TrackTemperatureState>((set, get)
       }
 
       set({ lastPruneTime: now })
+    }
+
+    set({ cells: new Map(cells), textureNeedsUpdate: true })
+  },
+
+  setRoadRegion: (minX: number, minZ: number, maxX: number, maxZ: number, isRoad: boolean) => {
+    const { cells } = get()
+    const { gridSize } = TRACK_TEMP_CONFIG
+    const now = performance.now() / 1000
+
+    const startCellX = Math.floor(minX / gridSize)
+    const startCellZ = Math.floor(minZ / gridSize)
+    const endCellX = Math.floor(maxX / gridSize)
+    const endCellZ = Math.floor(maxZ / gridSize)
+
+    for (let cellX = startCellX; cellX <= endCellX; cellX++) {
+      for (let cellZ = startCellZ; cellZ <= endCellZ; cellZ++) {
+        const key = `${cellX},${cellZ}`
+        let cell = cells.get(key)
+        if (!cell) {
+          cell = { temperature: 0, wetness: 0, isRoad, lastUpdated: now }
+          cells.set(key, cell)
+        } else {
+          cell.isRoad = isRoad
+        }
+      }
     }
 
     set({ cells: new Map(cells), textureNeedsUpdate: true })

@@ -1,12 +1,17 @@
-import Speedometer from './Speedometer'
-import GearIndicator from './GearIndicator'
-import TireIndicator from './TireIndicator'
+import { useEffect } from 'react'
+import RacePanel from './RacePanel'
+import StatsPanel from './StatsPanel'
 import PitStopUI from './PitStopUI'
 import StatusBar from './StatusBar'
 import ControlsModal from './ControlsModal'
+import WeatherControlModal from './WeatherControlModal'
+import HeatmapLegend from './HeatmapLegend'
+import AquaplaningIndicator from './AquaplaningIndicator'
 import { useGameStore } from '../../../stores/useGameStore'
 import { usePitStore } from '../../../stores/usePitStore'
-import { CustomizationPanel, ModeToggle } from '../CustomizationPanel'
+import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
+import { ModeToggle } from '../CustomizationPanel'
+import { TrackEditorDock } from '../TrackEditorDock'
 import { TrackSelector } from '../TrackSelector'
 import { MobileControls, MobileSpeedGear } from '../MobileControls'
 import { useMobileDetection } from '../../../utils/isMobile'
@@ -21,13 +26,16 @@ const styles: Record<string, React.CSSProperties> = {
     pointerEvents: 'none',
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
   },
-  bottomLeft: {
+  bottomCenter: {
     position: 'absolute',
-    bottom: 30,
-    left: 30,
-    display: 'flex',
-    gap: 20,
-    alignItems: 'flex-end',
+    bottom: 20,
+    left: '50%',
+    transform: 'translateX(-50%)',
+  },
+  bottomRight: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
   },
   trackSelectorContainer: {
     position: 'absolute',
@@ -41,13 +49,36 @@ const styles: Record<string, React.CSSProperties> = {
 export default function HUD() {
   const isMobile = useMobileDetection()
   const status = useGameStore(state => state.status)
+  const cameraMode = useGameStore(state => state.cameraMode)
   const isInPitBox = usePitStore(state => state.isInPitBox)
   const isCustomizeMode = status === 'customize'
+  const toggleEnvironmentModal = useEnvironmentStore(state => state.toggleModal)
+  const isEnvironmentModalOpen = useEnvironmentStore(state => state.isModalOpen)
+
+  // Listen for M key to toggle environment modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if modal is already open (handled by modal itself)
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+      if (e.code === 'KeyM' && !isEnvironmentModalOpen) {
+        toggleEnvironmentModal()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleEnvironmentModal, isEnvironmentModalOpen])
 
   return (
     <div style={styles.container}>
       {/* Controls modal trigger - always visible */}
       <ControlsModal />
+
+      {/* Weather/Environment control modal */}
+      <WeatherControlModal />
 
       {/* Mode toggle - hide on mobile */}
       {!isMobile && <ModeToggle />}
@@ -58,7 +89,7 @@ export default function HUD() {
           <div style={styles.trackSelectorContainer}>
             <TrackSelector />
           </div>
-          <CustomizationPanel />
+          <TrackEditorDock />
         </>
       ) : (
         /* Race mode UI */
@@ -69,13 +100,16 @@ export default function HUD() {
           {/* Mobile: Centered compact speed/gear display */}
           {isMobile && <MobileSpeedGear />}
 
-          {/* Desktop: Bottom-left speed, gear, and tires */}
-          {!isMobile && (
-            <div style={styles.bottomLeft}>
-              <Speedometer />
-              <GearIndicator />
-              <TireIndicator />
-            </div>
+          {/* Desktop: Race panel bottom-center, Stats panel bottom-right */}
+          {!isMobile && cameraMode !== 'first-person' && (
+            <>
+              <div style={styles.bottomCenter}>
+                <RacePanel />
+              </div>
+              <div style={styles.bottomRight}>
+                <StatsPanel />
+              </div>
+            </>
           )}
 
           {/* Pit box hint when in pit */}
@@ -104,6 +138,12 @@ export default function HUD() {
 
           {/* Mobile touch controls */}
           {isMobile && <MobileControls />}
+
+          {/* Heatmap/Thermal view legend */}
+          {!isMobile && <HeatmapLegend />}
+
+          {/* Aquaplaning/Thermal shock warning overlay */}
+          <AquaplaningIndicator />
         </>
       )}
     </div>

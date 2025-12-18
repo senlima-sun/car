@@ -1,11 +1,13 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 type GameStatus = 'menu' | 'countdown' | 'racing' | 'paused' | 'finished' | 'customize'
-type CameraMode = 'third-person' | 'first-person'
+type CameraMode = 'third-person' | 'first-person' | 'free'
 
 interface GameState {
   status: GameStatus
   cameraMode: CameraMode
+  previousCameraMode: CameraMode
 
   startGame: () => void
   pauseGame: () => void
@@ -14,14 +16,18 @@ interface GameState {
   resetGame: () => void
   toggleCameraMode: () => void
   setCameraMode: (mode: CameraMode) => void
+  toggleFreeCamera: () => void
   enterCustomizeMode: () => void
   exitCustomizeMode: () => void
   toggleCustomizeMode: () => void
 }
 
-export const useGameStore = create<GameState>(set => ({
-  status: 'racing',
-  cameraMode: 'third-person',
+export const useGameStore = create<GameState>()(
+  persist(
+    set => ({
+      status: 'racing',
+      cameraMode: 'third-person',
+      previousCameraMode: 'third-person',
 
   startGame: () => set({ status: 'countdown' }),
   pauseGame: () => set({ status: 'paused' }),
@@ -33,10 +39,23 @@ export const useGameStore = create<GameState>(set => ({
       cameraMode: state.cameraMode === 'third-person' ? 'first-person' : 'third-person',
     })),
   setCameraMode: mode => set({ cameraMode: mode }),
+  toggleFreeCamera: () =>
+    set(state => {
+      if (state.cameraMode === 'free') {
+        return { cameraMode: state.previousCameraMode }
+      }
+      return { previousCameraMode: state.cameraMode, cameraMode: 'free' }
+    }),
   enterCustomizeMode: () => set({ status: 'customize' }),
   exitCustomizeMode: () => set({ status: 'racing' }),
   toggleCustomizeMode: () =>
     set(state => ({
       status: state.status === 'customize' ? 'racing' : 'customize',
     })),
-}))
+    }),
+    {
+      name: 'game-settings',
+      partialize: state => ({ cameraMode: state.cameraMode, previousCameraMode: state.previousCameraMode }),
+    }
+  )
+)

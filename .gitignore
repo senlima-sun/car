@@ -5,7 +5,10 @@ node_modules
 
 # Build artifacts
 dist/
+dist-dev/
 tsconfig.tsbuildinfo
+bun.lock
+build
 
 # Rust build
 physics-engine/target/

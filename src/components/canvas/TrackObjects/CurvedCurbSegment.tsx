@@ -1,10 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
-import { CuboidCollider } from '@react-three/rapier'
-import { GHOST_OPACITY } from '../../../constants/trackObjects'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { GHOST_OPACITY, OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import { CURB_PROFILE, CURB_WIDTH, CURB_PEAK_HEIGHT } from '../../../constants/curb'
 import { useCurbStore } from '../../../stores/useCurbStore'
+import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { PlacedObject } from '../../../stores/useCustomizationStore'
+
+const curbConfig = OBJECT_CONFIGS.curb
 
 interface CurvedCurbSegmentProps {
   curb: PlacedObject
@@ -38,6 +41,8 @@ export default function CurvedCurbSegment({
 }: CurvedCurbSegmentProps) {
   const enterCurb = useCurbStore(state => state.enterCurb)
   const exitCurb = useCurbStore(state => state.exitCurb)
+  const enterSurface = useSurfaceStore(s => s.enterSurface)
+  const exitSurface = useSurfaceStore(s => s.exitSurface)
 
   const { stripeGeometries, sensorData } = useMemo(() => {
     if (
@@ -150,17 +155,19 @@ export default function CurvedCurbSegment({
 
   if (stripeGeometries.length === 0) return null
 
-  const handleEnter = () => {
+  const handleEnter = useCallback(() => {
     if (!isGhost && curb.edgeSide) {
       enterCurb(curb.edgeSide)
+      enterSurface('curb')
     }
-  }
+  }, [isGhost, curb.edgeSide, enterCurb, enterSurface])
 
-  const handleExit = () => {
+  const handleExit = useCallback(() => {
     if (!isGhost) {
       exitCurb()
+      exitSurface('curb')
     }
-  }
+  }, [isGhost, exitCurb, exitSurface])
 
   // Ghost mode - visual only
   if (isGhost) {
@@ -181,27 +188,32 @@ export default function CurvedCurbSegment({
     )
   }
 
-  // Normal mode - sensor only (no hard collision)
-  // Curbs should be driveable, only affecting grip/speed via the sensor
+  // Normal mode - sensor only for surface detection (no solid collision to allow driving over)
   return (
-    <group>
-      {/* Sensor collider for detecting car entry/exit - no physics collision */}
+    <RigidBody
+      type='fixed'
+      friction={curbConfig.friction}
+      restitution={curbConfig.restitution}
+      colliders={false}
+    >
+      {/* Sensor collider for detecting car entry/exit - surface detection */}
       {sensorData && (
         <CuboidCollider
-          position={[sensorData.position[0], CURB_PEAK_HEIGHT, sensorData.position[2]]}
-          args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT * 2, sensorData.length / 2]}
+          position={[sensorData.position[0], CURB_PEAK_HEIGHT / 2, sensorData.position[2]]}
+          args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT / 2, sensorData.length / 2]}
           sensor
           onIntersectionEnter={handleEnter}
           onIntersectionExit={handleExit}
         />
       )}
+
       {/* Visual meshes */}
       {stripeGeometries.map((stripe, i) => (
         <mesh key={i} geometry={stripe.geometry} receiveShadow castShadow>
           <meshStandardMaterial color={stripe.color} side={2} />
         </mesh>
       ))}
-    </group>
+    </RigidBody>
   )
 }
 

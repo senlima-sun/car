@@ -15,22 +15,53 @@ import {
   setWeather,
   getWeather,
   getWeatherModifiers,
+  getAmbientConditions,
+  // Custom weather API
+  setCustomWeather,
+  isCustomWeatherMode,
+  getRainIntensity,
+  exitCustomWeatherMode,
+  // Wind API
+  setWind,
+  setWindEnabled,
+  isWindEnabled,
+  getWindState,
+  getWindModifiers,
+  // Tire API
   setTireCompound,
   getTireCompound,
   getTireWear,
+  getTireWearPerWheel,
   resetTireWear,
   getEffectiveGrip,
   setOnCurb,
   isOnCurb,
+  setSurface,
+  getSurface,
+  isOnRoad,
+  isOffTrack,
+  getSurfaceModifiers,
   initTrackTemperature,
   getTrackTextureData,
   getTrackCellCount,
+  updateCarDriving,
+  // Road temperature API
+  setRoadCell,
+  setRoadRegion,
+  // Rubber deposit / tire marks API
+  updateRubberDeposits,
+  getTrackWetness,
+  getRubberDepositMultiplier,
   CarInput,
   CarPhysicsOutput,
   WeatherModifiers,
+  AmbientConditions,
+  SurfaceModifiers,
   TrackBounds,
+  PerWheelWear,
   WeatherCondition,
   TireCompound,
+  SurfaceType,
 } from './PhysicsBridge'
 
 // Re-export types
@@ -38,9 +69,12 @@ export type {
   CarInput,
   CarPhysicsOutput,
   WeatherModifiers,
+  AmbientConditions,
+  SurfaceModifiers,
   TrackBounds,
+  PerWheelWear,
 }
-export { WeatherCondition, TireCompound }
+export { WeatherCondition, TireCompound, SurfaceType }
 
 interface PhysicsContextValue {
   initialized: boolean
@@ -48,16 +82,43 @@ interface PhysicsContextValue {
   setWeather: typeof setWeather
   getWeather: typeof getWeather
   getWeatherModifiers: typeof getWeatherModifiers
+  getAmbientConditions: typeof getAmbientConditions
+  // Custom weather API
+  setCustomWeather: typeof setCustomWeather
+  isCustomWeatherMode: typeof isCustomWeatherMode
+  getRainIntensity: typeof getRainIntensity
+  exitCustomWeatherMode: typeof exitCustomWeatherMode
+  // Wind API
+  setWind: typeof setWind
+  setWindEnabled: typeof setWindEnabled
+  isWindEnabled: typeof isWindEnabled
+  getWindState: typeof getWindState
+  getWindModifiers: typeof getWindModifiers
+  // Tire API
   setTireCompound: typeof setTireCompound
   getTireCompound: typeof getTireCompound
   getTireWear: typeof getTireWear
+  getTireWearPerWheel: typeof getTireWearPerWheel
   resetTireWear: typeof resetTireWear
   getEffectiveGrip: typeof getEffectiveGrip
   setOnCurb: typeof setOnCurb
   isOnCurb: typeof isOnCurb
+  setSurface: typeof setSurface
+  getSurface: typeof getSurface
+  isOnRoad: typeof isOnRoad
+  isOffTrack: typeof isOffTrack
+  getSurfaceModifiers: typeof getSurfaceModifiers
   initTrackTemperature: typeof initTrackTemperature
   getTrackTextureData: typeof getTrackTextureData
   getTrackCellCount: typeof getTrackCellCount
+  updateCarDriving: typeof updateCarDriving
+  // Road temperature API
+  setRoadCell: typeof setRoadCell
+  setRoadRegion: typeof setRoadRegion
+  // Rubber deposit / tire marks API
+  updateRubberDeposits: typeof updateRubberDeposits
+  getTrackWetness: typeof getTrackWetness
+  getRubberDepositMultiplier: typeof getRubberDepositMultiplier
 }
 
 const PhysicsContext = createContext<PhysicsContextValue | null>(null)
@@ -114,16 +175,43 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     setWeather,
     getWeather,
     getWeatherModifiers,
+    getAmbientConditions,
+    // Custom weather API
+    setCustomWeather,
+    isCustomWeatherMode,
+    getRainIntensity,
+    exitCustomWeatherMode,
+    // Wind API
+    setWind,
+    setWindEnabled,
+    isWindEnabled,
+    getWindState,
+    getWindModifiers,
+    // Tire API
     setTireCompound,
     getTireCompound,
     getTireWear,
+    getTireWearPerWheel,
     resetTireWear,
     getEffectiveGrip,
     setOnCurb,
     isOnCurb,
+    setSurface,
+    getSurface,
+    isOnRoad,
+    isOffTrack,
+    getSurfaceModifiers,
     initTrackTemperature,
     getTrackTextureData,
     getTrackCellCount,
+    updateCarDriving,
+    // Road temperature API
+    setRoadCell,
+    setRoadRegion,
+    // Rubber deposit / tire marks API
+    updateRubberDeposits,
+    getTrackWetness,
+    getRubberDepositMultiplier,
   }
 
   return (

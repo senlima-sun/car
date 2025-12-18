@@ -42,6 +42,11 @@ export default function DynamicLighting() {
       ambientIntensity: lerp(from.ambientIntensity, to.ambientIntensity, easedProgress),
       sunIntensity: lerp(from.sunIntensity, to.sunIntensity, easedProgress),
       sunColor: lerpColor(from.sunColor, to.sunColor, easedProgress),
+      sunPosition: [
+        lerp(from.sunPosition[0], to.sunPosition[0], easedProgress),
+        lerp(from.sunPosition[1], to.sunPosition[1], easedProgress),
+        lerp(from.sunPosition[2], to.sunPosition[2], easedProgress),
+      ] as [number, number, number],
       fillLightIntensity: lerp(from.fillLightIntensity, to.fillLightIntensity, easedProgress),
       fillLightColor: lerpColor(from.fillLightColor, to.fillLightColor, easedProgress),
       hemisphereIntensity: lerp(from.hemisphereIntensity, to.hemisphereIntensity, easedProgress),
@@ -61,7 +66,7 @@ export default function DynamicLighting() {
 
       {/* Main sun light */}
       <directionalLight
-        position={[50, 80, 30]}
+        position={config.sunPosition}
         intensity={config.sunIntensity}
         color={config.sunColor}
         castShadow

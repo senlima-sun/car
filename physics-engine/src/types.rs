@@ -116,6 +116,70 @@ impl WeatherModifiers {
 }
 
 // ============================================================================
+// Wind Types
+// ============================================================================
+
+/// Wind state for dynamic wind simulation
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct WindState {
+    /// Wind direction in radians (0 = +X axis, π/2 = +Z axis)
+    pub direction: f32,
+    /// Base wind speed in m/s (player-set value)
+    pub base_speed: f32,
+    /// Current wind speed with gusts applied
+    pub current_speed: f32,
+    /// Gust intensity multiplier (0.0 to 1.0)
+    pub gust_intensity: f32,
+    /// Internal timer for gust calculations
+    pub gust_timer: f32,
+    /// Whether wind system is enabled
+    pub enabled: bool,
+}
+
+impl Default for WindState {
+    fn default() -> Self {
+        Self {
+            direction: 0.0,
+            base_speed: 0.0,
+            current_speed: 0.0,
+            gust_intensity: 0.0,
+            gust_timer: 0.0,
+            enabled: false,
+        }
+    }
+}
+
+/// Physics modifiers calculated from wind relative to car heading
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct WindModifiers {
+    /// Drag modifier based on headwind/tailwind (>1 = more drag, <1 = less drag)
+    pub drag_modifier: f32,
+    /// Lateral force from crosswind in Newtons
+    pub lateral_force: f32,
+    /// Steering difficulty multiplier (0.0-1.0, lower = harder to steer)
+    pub steering_difficulty: f32,
+    /// Cooling multiplier for heat dissipation (>1 = faster cooling)
+    pub cooling_multiplier: f32,
+    /// Headwind component in m/s (positive = against car)
+    pub headwind_component: f32,
+    /// Crosswind component in m/s (positive = from right)
+    pub crosswind_component: f32,
+}
+
+impl Default for WindModifiers {
+    fn default() -> Self {
+        Self {
+            drag_modifier: 1.0,
+            lateral_force: 0.0,
+            steering_difficulty: 1.0,
+            cooling_multiplier: 1.0,
+            headwind_component: 0.0,
+            crosswind_component: 0.0,
+        }
+    }
+}
+
+// ============================================================================
 // Tire Types
 // ============================================================================
 
@@ -158,6 +222,9 @@ pub struct TireConfig {
     pub degradation_rate: f32,
     pub optimal_weather: &'static [WeatherCondition],
     pub wrong_weather_penalty: f32,
+    pub temp_window: TireTemperatureWindow,
+    /// Rubber deposit multiplier - softer tires leave more marks
+    pub rubber_deposit_multiplier: f32,
 }
 
 impl TireConfig {
@@ -168,30 +235,65 @@ impl TireConfig {
                 degradation_rate: 0.0015,
                 optimal_weather: &[WeatherCondition::Dry, WeatherCondition::Hot],
                 wrong_weather_penalty: 0.25,
+                temp_window: TireTemperatureWindow {
+                    min_optimal: 0.50,  // 85C
+                    max_optimal: 0.70,  // 111C
+                    cold_grip_penalty: 0.75,
+                    hot_grip_penalty: 0.85,
+                },
+                rubber_deposit_multiplier: 1.4, // Soft tires leave 40% more rubber
             },
             TireCompound::Medium => Self {
                 grip_multiplier: 1.0,
                 degradation_rate: 0.0008,
                 optimal_weather: &[WeatherCondition::Dry, WeatherCondition::Hot],
                 wrong_weather_penalty: 0.3,
+                temp_window: TireTemperatureWindow {
+                    min_optimal: 0.45,  // 78C
+                    max_optimal: 0.75,  // 117C
+                    cold_grip_penalty: 0.80,
+                    hot_grip_penalty: 0.88,
+                },
+                rubber_deposit_multiplier: 1.0, // Medium tires - baseline
             },
             TireCompound::Hard => Self {
                 grip_multiplier: 0.92,
                 degradation_rate: 0.0004,
                 optimal_weather: &[WeatherCondition::Dry, WeatherCondition::Hot],
                 wrong_weather_penalty: 0.35,
+                temp_window: TireTemperatureWindow {
+                    min_optimal: 0.55,  // 91C
+                    max_optimal: 0.85,  // 130C
+                    cold_grip_penalty: 0.70, // Hard tires need more heat
+                    hot_grip_penalty: 0.92,
+                },
+                rubber_deposit_multiplier: 0.7, // Hard tires leave 30% less rubber
             },
             TireCompound::Wet => Self {
                 grip_multiplier: 0.75,
                 degradation_rate: 0.0008,
                 optimal_weather: &[WeatherCondition::Rain],
                 wrong_weather_penalty: 0.5,
+                temp_window: TireTemperatureWindow {
+                    min_optimal: 0.25,  // 52C (lower operating temp)
+                    max_optimal: 0.50,  // 85C
+                    cold_grip_penalty: 0.90,
+                    hot_grip_penalty: 0.70, // Overheats easily
+                },
+                rubber_deposit_multiplier: 0.3, // Wet tires designed to minimize marks
             },
             TireCompound::Intermediate => Self {
                 grip_multiplier: 0.88,
                 degradation_rate: 0.0006,
                 optimal_weather: &[WeatherCondition::Rain, WeatherCondition::Cold],
                 wrong_weather_penalty: 0.7,
+                temp_window: TireTemperatureWindow {
+                    min_optimal: 0.35,  // 65C
+                    max_optimal: 0.60,  // 98C
+                    cold_grip_penalty: 0.85,
+                    hot_grip_penalty: 0.80,
+                },
+                rubber_deposit_multiplier: 0.5, // Intermediate - between wet and dry compounds
             },
         }
     }
@@ -226,6 +328,11 @@ pub struct CarPhysicsOutput {
     pub skid_intensity: f32,
     pub tire_wear: PerWheelWear,
     pub steer_angle: f32,
+    pub temperature: TemperatureOutput,
+    /// Current aquaplaning state
+    pub aquaplaning: AquaplaningState,
+    /// Current tire thermal shock state (from puddle cooling)
+    pub tire_thermal_shock: TireThermalShock,
 }
 
 // ============================================================================
@@ -236,7 +343,73 @@ pub struct CarPhysicsOutput {
 pub struct GridCell {
     pub temperature: f32,
     pub wetness: f32,
+    pub rubber_buildup: f32,
+    pub ice_formation: f32,
     pub last_updated: f32,
+    /// Rain exposure factor (0.0 = fully sheltered, 1.0 = open sky)
+    pub rain_exposure: f32,
+    /// Standing water depth (0.0-1.0)
+    pub water_depth: f32,
+    /// Drainage rate multiplier (slope-based, 0.0-2.0)
+    pub drainage_rate: f32,
+    /// Whether this cell is part of a road surface (retains heat better)
+    pub is_road: bool,
+}
+
+impl GridCell {
+    /// Create a new cell with default rain exposure (open sky)
+    pub fn new() -> Self {
+        Self {
+            rain_exposure: 1.0,
+            drainage_rate: 1.0,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct AmbientConditions {
+    /// Temperature in Celsius, normalized: 0.0 = -20C, 1.0 = 50C
+    pub temperature: f32,
+    /// Humidity 0.0 to 1.0 (0% to 100%)
+    pub humidity: f32,
+    /// Rain intensity 0.0 to 1.0 (0% to 100%)
+    pub rain_intensity: f32,
+}
+
+impl Default for AmbientConditions {
+    fn default() -> Self {
+        Self {
+            temperature: 0.643, // ~25C (dry weather default)
+            humidity: 0.3,
+            rain_intensity: 0.0,
+        }
+    }
+}
+
+impl AmbientConditions {
+    /// Convert normalized temperature (0-1) to Celsius
+    pub fn to_celsius(&self) -> f32 {
+        self.temperature * 70.0 - 20.0 // 0.0 = -20C, 1.0 = 50C
+    }
+
+    /// Create from Celsius temperature
+    pub fn from_celsius(celsius: f32, humidity: f32) -> Self {
+        Self {
+            temperature: (celsius + 20.0) / 70.0,
+            humidity: humidity.clamp(0.0, 1.0),
+            rain_intensity: 0.0,
+        }
+    }
+
+    /// Create with all parameters
+    pub fn new(celsius: f32, humidity: f32, rain_intensity: f32) -> Self {
+        Self {
+            temperature: (celsius + 20.0) / 70.0,
+            humidity: humidity.clamp(0.0, 1.0),
+            rain_intensity: rain_intensity.clamp(0.0, 1.0),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -299,6 +472,88 @@ impl Default for TireDegradationModifiers {
 }
 
 // ============================================================================
+// Surface Types
+// ============================================================================
+
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum SurfaceType {
+    #[default]
+    Grass,
+    Road,
+    Curb,
+}
+
+/// Modifiers applied based on surface type
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct SurfaceModifiers {
+    /// Grip multiplier (1.0 = normal road grip)
+    pub grip_multiplier: f32,
+    /// Speed/acceleration multiplier
+    pub speed_multiplier: f32,
+    /// Tire wear rate multiplier
+    pub tire_wear_multiplier: f32,
+    /// Drag multiplier
+    pub drag_multiplier: f32,
+    /// Brake efficiency multiplier
+    pub brake_efficiency: f32,
+    /// Steering response multiplier
+    pub steer_response: f32,
+}
+
+impl Default for SurfaceModifiers {
+    fn default() -> Self {
+        Self::road()
+    }
+}
+
+impl SurfaceModifiers {
+    /// Road surface - optimal driving conditions
+    pub fn road() -> Self {
+        Self {
+            grip_multiplier: 1.0,
+            speed_multiplier: 1.0,
+            tire_wear_multiplier: 1.0,
+            drag_multiplier: 1.0,
+            brake_efficiency: 1.0,
+            steer_response: 1.0,
+        }
+    }
+
+    /// Grass surface - major penalty for going off track
+    pub fn grass() -> Self {
+        Self {
+            grip_multiplier: 0.35,
+            speed_multiplier: 0.7,
+            tire_wear_multiplier: 0.5, // Less wear on soft surface
+            drag_multiplier: 1.5,
+            brake_efficiency: 0.4,
+            steer_response: 0.5,
+        }
+    }
+
+    /// Curb surface - racing curbs provide slight advantage
+    pub fn curb() -> Self {
+        Self {
+            grip_multiplier: 1.15,
+            speed_multiplier: 0.92,
+            tire_wear_multiplier: 1.1,
+            drag_multiplier: 1.5,
+            brake_efficiency: 1.0,
+            steer_response: 1.0,
+        }
+    }
+
+    pub fn for_surface(surface: SurfaceType) -> Self {
+        match surface {
+            SurfaceType::Grass => Self::grass(),
+            SurfaceType::Road => Self::road(),
+            SurfaceType::Curb => Self::curb(),
+        }
+    }
+}
+
+// ============================================================================
 // Curb Types
 // ============================================================================
 
@@ -326,6 +581,159 @@ impl Default for CurbModifiers {
 pub enum CurbSide {
     Left,
     Right,
+}
+
+// ============================================================================
+// Temperature Types
+// ============================================================================
+
+/// Per-wheel tire temperature data (inner and outer edge)
+/// All temperatures normalized 0.0 to 1.0 (0 = 20C, 1.0 = 150C)
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct PerWheelTemperature {
+    pub front_left_inner: f32,
+    pub front_left_outer: f32,
+    pub front_right_inner: f32,
+    pub front_right_outer: f32,
+    pub rear_left_inner: f32,
+    pub rear_left_outer: f32,
+    pub rear_right_inner: f32,
+    pub rear_right_outer: f32,
+}
+
+impl PerWheelTemperature {
+    /// Get average temperature for a single wheel
+    pub fn wheel_avg(&self, wheel: usize) -> f32 {
+        match wheel {
+            0 => (self.front_left_inner + self.front_left_outer) / 2.0,
+            1 => (self.front_right_inner + self.front_right_outer) / 2.0,
+            2 => (self.rear_left_inner + self.rear_left_outer) / 2.0,
+            3 => (self.rear_right_inner + self.rear_right_outer) / 2.0,
+            _ => 0.5,
+        }
+    }
+
+    /// Convert normalized temp to Celsius (20C - 150C range)
+    pub fn to_celsius(normalized: f32) -> f32 {
+        normalized * 130.0 + 20.0
+    }
+}
+
+/// Engine temperature state
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct EngineTemperature {
+    /// Current engine temperature (0.0 = cold/20C, 1.0 = critical/120C)
+    pub temperature: f32,
+    /// Is engine in overheating state (above 0.85)
+    pub is_overheating: bool,
+    /// Power reduction due to temperature (1.0 = full power, 0.5 = 50% power)
+    pub power_multiplier: f32,
+}
+
+impl Default for EngineTemperature {
+    fn default() -> Self {
+        Self {
+            temperature: 0.3, // Start at ~50C (warm idle)
+            is_overheating: false,
+            power_multiplier: 1.0,
+        }
+    }
+}
+
+impl EngineTemperature {
+    /// Convert normalized temp to Celsius (20C - 120C range)
+    pub fn to_celsius(&self) -> f32 {
+        self.temperature * 100.0 + 20.0
+    }
+}
+
+/// Optimal temperature window per tire compound
+#[derive(Clone, Copy, Debug)]
+pub struct TireTemperatureWindow {
+    /// Minimum optimal temp (normalized)
+    pub min_optimal: f32,
+    /// Maximum optimal temp (normalized)
+    pub max_optimal: f32,
+    /// Grip multiplier when cold (below min_optimal)
+    pub cold_grip_penalty: f32,
+    /// Grip multiplier when hot (above max_optimal)
+    pub hot_grip_penalty: f32,
+}
+
+impl Default for TireTemperatureWindow {
+    fn default() -> Self {
+        // Default to medium compound window
+        Self {
+            min_optimal: 0.45,
+            max_optimal: 0.75,
+            cold_grip_penalty: 0.80,
+            hot_grip_penalty: 0.88,
+        }
+    }
+}
+
+/// Full temperature output for UI
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct TemperatureOutput {
+    pub engine: EngineTemperature,
+    pub tires: PerWheelTemperature,
+    /// Per-wheel grip multiplier from temperature (0.0-1.0)
+    pub tire_temp_grip: [f32; 4],
+    /// Per-wheel "in optimal window" status
+    pub tire_in_window: [bool; 4],
+}
+
+// ============================================================================
+// Aquaplaning Types
+// ============================================================================
+
+/// State of aquaplaning for the vehicle
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct AquaplaningState {
+    /// Whether the car is currently aquaplaning
+    pub is_aquaplaning: bool,
+    /// Intensity of aquaplaning (0.0-1.0)
+    pub intensity: f32,
+    /// Which wheels are affected [FL, FR, RL, RR]
+    pub affected_wheels: [bool; 4],
+}
+
+/// Tire thermal shock state (from sudden cooling in puddles)
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct TireThermalShock {
+    /// Whether the tire is in thermal shock
+    pub is_shocked: bool,
+    /// Grip penalty multiplier (0.0-1.0, where 0.3 = 30% grip loss)
+    pub grip_penalty: f32,
+    /// Time remaining for recovery (seconds)
+    pub recovery_time: f32,
+}
+
+/// Per-wheel thermal shock state
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PerWheelThermalShock {
+    pub front_left: TireThermalShock,
+    pub front_right: TireThermalShock,
+    pub rear_left: TireThermalShock,
+    pub rear_right: TireThermalShock,
+}
+
+impl PerWheelThermalShock {
+    /// Get the worst grip penalty across all wheels
+    pub fn max_grip_penalty(&self) -> f32 {
+        self.front_left.grip_penalty
+            .max(self.front_right.grip_penalty)
+            .max(self.rear_left.grip_penalty)
+            .max(self.rear_right.grip_penalty)
+    }
+
+    /// Check if any wheel is in thermal shock
+    pub fn any_shocked(&self) -> bool {
+        self.front_left.is_shocked
+            || self.front_right.is_shocked
+            || self.rear_left.is_shocked
+            || self.rear_right.is_shocked
+    }
 }
 
 // ============================================================================

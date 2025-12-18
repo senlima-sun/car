@@ -2,32 +2,61 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useWeatherStore } from '../../../stores/useWeatherStore'
+import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { WeatherCondition, ATMOSPHERE_CONFIG } from '../../../constants/weather'
 import SurfaceEffects from './SurfaceEffects'
 
-// Rain particle system (optimized: reduced from 2000 to 1200 particles)
+// Realistic rain using line segments for proper streaks
 function RainEffect() {
-  const pointsRef = useRef<THREE.Points>(null)
+  const linesRef = useRef<THREE.LineSegments>(null)
   const { camera } = useThree()
 
-  const particleCount = 1200
-  const areaSize = 100
+  const dropCount = 2500
+  const areaSize = 150
+  const streakLength = 1.2 // Length of each rain streak
+  const windX = 0.2 // Wind pushing rain sideways
+  const windZ = 0.1
 
-  const { geometry, velocities } = useMemo(() => {
-    const positions = new Float32Array(particleCount * 3)
-    const velocities = new Float32Array(particleCount)
+  // Each drop needs 2 vertices (start and end of line)
+  const { geometry, velocities, basePositions } = useMemo(() => {
+    const positions = new Float32Array(dropCount * 6) // 2 vertices * 3 coords
+    const velocities = new Float32Array(dropCount)
+    const basePositions = new Float32Array(dropCount * 3) // Store base position for each drop
 
-    for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * areaSize
-      positions[i * 3 + 1] = Math.random() * 50
-      positions[i * 3 + 2] = (Math.random() - 0.5) * areaSize
-      velocities[i] = 20 + Math.random() * 10 // Fall speed
+    for (let i = 0; i < dropCount; i++) {
+      const x = (Math.random() - 0.5) * areaSize
+      const y = Math.random() * 80
+      const z = (Math.random() - 0.5) * areaSize
+
+      // Fall speed varies for depth effect
+      const speed = 35 + Math.random() * 25
+      velocities[i] = speed
+
+      // Store base position
+      basePositions[i * 3] = x
+      basePositions[i * 3 + 1] = y
+      basePositions[i * 3 + 2] = z
+
+      // Calculate streak direction based on velocity
+      const streakY = streakLength * (speed / 40)
+      const streakX = windX * streakY
+      const streakZ = windZ * streakY
+
+      // Line start (top of streak)
+      positions[i * 6] = x
+      positions[i * 6 + 1] = y
+      positions[i * 6 + 2] = z
+
+      // Line end (bottom of streak - in direction of fall)
+      positions[i * 6 + 3] = x + streakX
+      positions[i * 6 + 4] = y - streakY
+      positions[i * 6 + 5] = z + streakZ
     }
 
     const geometry = new THREE.BufferGeometry()
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
 
-    return { geometry, velocities }
+    return { geometry, velocities, basePositions }
   }, [])
 
   useEffect(() => {
@@ -35,38 +64,59 @@ function RainEffect() {
   }, [geometry])
 
   useFrame((_, delta) => {
-    if (!pointsRef.current) return
+    if (!linesRef.current) return
 
-    const pos = pointsRef.current.geometry.attributes.position.array as Float32Array
+    const pos = linesRef.current.geometry.attributes.position.array as Float32Array
 
-    for (let i = 0; i < particleCount; i++) {
-      // Move rain down
-      pos[i * 3 + 1] -= velocities[i] * delta
+    for (let i = 0; i < dropCount; i++) {
+      const speed = velocities[i]
+      const moveY = speed * delta
+      const moveX = windX * speed * delta
+      const moveZ = windZ * speed * delta
 
-      // Reset position when below ground, centered on camera
-      if (pos[i * 3 + 1] < 0) {
-        pos[i * 3] = camera.position.x + (Math.random() - 0.5) * areaSize
-        pos[i * 3 + 1] = 50
-        pos[i * 3 + 2] = camera.position.z + (Math.random() - 0.5) * areaSize
+      // Move both vertices of the line
+      pos[i * 6] += moveX
+      pos[i * 6 + 1] -= moveY
+      pos[i * 6 + 2] += moveZ
+
+      pos[i * 6 + 3] += moveX
+      pos[i * 6 + 4] -= moveY
+      pos[i * 6 + 5] += moveZ
+
+      // Reset when below ground
+      if (pos[i * 6 + 4] < -2) {
+        const newX = camera.position.x + (Math.random() - 0.5) * areaSize
+        const newY = 70 + Math.random() * 20
+        const newZ = camera.position.z + (Math.random() - 0.5) * areaSize
+
+        const streakY = streakLength * (speed / 40)
+        const streakX = windX * streakY
+        const streakZ = windZ * streakY
+
+        pos[i * 6] = newX
+        pos[i * 6 + 1] = newY
+        pos[i * 6 + 2] = newZ
+
+        pos[i * 6 + 3] = newX + streakX
+        pos[i * 6 + 4] = newY - streakY
+        pos[i * 6 + 5] = newZ + streakZ
       }
     }
 
-    pointsRef.current.geometry.attributes.position.needsUpdate = true
-    // Keep particles centered around camera
-    pointsRef.current.position.set(0, 0, 0)
+    linesRef.current.geometry.attributes.position.needsUpdate = true
   })
 
   return (
-    <points ref={pointsRef} geometry={geometry}>
-      <pointsMaterial
-        color='#aaddff'
-        size={0.3}
+    <lineSegments ref={linesRef} geometry={geometry}>
+      <lineBasicMaterial
+        color='#aaccff'
         transparent
-        opacity={0.6}
-        sizeAttenuation
+        opacity={0.4}
+        linewidth={1}
         depthWrite={false}
+        blending={THREE.AdditiveBlending}
       />
-    </points>
+    </lineSegments>
   )
 }
 
@@ -75,8 +125,8 @@ function RainSplashEffect() {
   const pointsRef = useRef<THREE.Points>(null)
   const { camera } = useThree()
 
-  const splashCount = 400
-  const areaSize = 100
+  const splashCount = 600
+  const areaSize = 120
 
   const { geometry, velocities, lifetimes, initialLifetimes } = useMemo(() => {
     const positions = new Float32Array(splashCount * 3)
@@ -111,7 +161,7 @@ function RainSplashEffect() {
     if (!pointsRef.current) return
 
     const positions = pointsRef.current.geometry.attributes.position.array as Float32Array
-    const spawnRate = 60
+    const spawnRate = 100
     let toSpawn = Math.floor(spawnRate * delta)
 
     for (let i = 0; i < splashCount; i++) {
@@ -154,10 +204,10 @@ function RainSplashEffect() {
   return (
     <points ref={pointsRef} geometry={geometry}>
       <pointsMaterial
-        color='#99bbdd'
-        size={0.15}
+        color='#aaccee'
+        size={0.25}
         transparent
-        opacity={0.5}
+        opacity={0.7}
         sizeAttenuation
         depthWrite={false}
         blending={THREE.AdditiveBlending}
@@ -427,21 +477,75 @@ function WeatherFog({ weather }: { weather: WeatherCondition }) {
   return <fog attach='fog' args={[fogConfig.color, fogConfig.near, fogConfig.far]} />
 }
 
+// Overcast sky overlay - darkens the sky during rain
+function OvercastSkyOverlay() {
+  const currentWeather = useWeatherStore(s => s.currentWeather)
+  const previousWeather = useWeatherStore(s => s.previousWeather)
+  const transitionProgress = useWeatherStore(s => s.transitionProgress)
+  const isTransitioning = useWeatherStore(s => s.isTransitioning)
+  const customRainIntensity = useEnvironmentStore(s => s.rainIntensity)
+
+  const isRaining = currentWeather === 'rain'
+  const hasCustomRain = customRainIntensity > 0.01
+
+  // Calculate overlay opacity with smooth transitions
+  const overlayOpacity = useMemo(() => {
+    // Custom rain intensity takes priority
+    if (hasCustomRain) {
+      return customRainIntensity * 0.7
+    }
+
+    if (!isTransitioning) {
+      return isRaining ? 0.7 : 0
+    }
+
+    // Transitioning TO rain - fade in
+    if (isRaining && previousWeather !== 'rain') {
+      return transitionProgress * 0.7
+    }
+
+    // Transitioning FROM rain - fade out
+    if (!isRaining && previousWeather === 'rain') {
+      return (1 - transitionProgress) * 0.7
+    }
+
+    return isRaining ? 0.7 : 0
+  }, [isRaining, isTransitioning, transitionProgress, previousWeather, hasCustomRain, customRainIntensity])
+
+  if (overlayOpacity <= 0) return null
+
+  return (
+    <mesh>
+      <sphereGeometry args={[400, 32, 16]} />
+      <meshBasicMaterial
+        color='#3a4550'
+        side={THREE.BackSide}
+        transparent
+        opacity={overlayOpacity}
+        depthWrite={false}
+      />
+    </mesh>
+  )
+}
+
 // Main weather effects component
 export default function WeatherEffects() {
   const currentWeather = useWeatherStore(state => state.currentWeather)
-  const isTransitioning = useWeatherStore(state => state.isTransitioning)
+  const rainIntensity = useEnvironmentStore(state => state.rainIntensity)
 
-  // Only render effects when not transitioning for cleaner visuals
-  const showEffects = !isTransitioning
+  // Show rain if weather is 'rain' OR if custom rain intensity is above threshold
+  const showRain = currentWeather === 'rain' || rainIntensity > 0.01
 
   return (
     <>
+      {/* Overcast sky overlay for rain */}
+      <OvercastSkyOverlay />
+
       {/* Weather-specific fog */}
       <WeatherFog weather={currentWeather} />
 
-      {/* Rain particles + ground splashes */}
-      {showEffects && currentWeather === 'rain' && (
+      {/* Rain particles + ground splashes - show when raining OR custom rain intensity */}
+      {showRain && (
         <>
           <RainEffect />
           <RainSplashEffect />
@@ -449,7 +553,7 @@ export default function WeatherEffects() {
       )}
 
       {/* Snow particles + ground effects */}
-      {showEffects && currentWeather === 'cold' && (
+      {currentWeather === 'cold' && (
         <>
           <SnowEffect />
           <SnowSplashEffect />

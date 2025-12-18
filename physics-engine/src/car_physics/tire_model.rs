@@ -3,7 +3,7 @@ use super::CAR_MASS;
 
 const OPTIMAL_SLIP_ANGLE: f32 = 8.0; // degrees
 const HANDBRAKE_REAR_GRIP: f32 = 0.2;
-const THROTTLE_OVERSTEER_FACTOR: f32 = 0.65;
+const THROTTLE_OVERSTEER_FACTOR: f32 = 0.80;
 
 /// Pacejka-inspired tire grip model
 fn calculate_single_tire_grip(
@@ -20,7 +20,7 @@ fn calculate_single_tire_grip(
     } else {
         // Falloff after peak
         let excess = abs_slip - OPTIMAL_SLIP_ANGLE;
-        (1.0 - excess * 0.03).max(0.5)
+        (1.0 - excess * 0.02).max(0.6)
     };
 
     // Load sensitivity (grip doesn't scale linearly with load)

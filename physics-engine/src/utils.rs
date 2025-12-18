@@ -207,6 +207,17 @@ impl Quat {
         self.rotate_vec3(Vec3::new(0.0, 1.0, 0.0))
     }
 
+    /// Extract yaw angle (rotation around Y axis) from quaternion
+    /// Returns angle in radians
+    #[inline]
+    pub fn yaw(self) -> f32 {
+        // Calculate yaw from quaternion
+        // yaw = atan2(2*(w*y + x*z), 1 - 2*(y*y + z*z))
+        // But for Y-up with car facing +Z, we use:
+        let forward = self.forward();
+        forward.x.atan2(forward.z)
+    }
+
     /// Create quaternion from axis-angle
     pub fn from_axis_angle(axis: Vec3, angle: f32) -> Self {
         let half_angle = angle * 0.5;

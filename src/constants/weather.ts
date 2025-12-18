@@ -10,11 +10,6 @@ export interface AtmosphereConfig {
   skyMieDirectionalG: number
   sunPosition: [number, number, number]
 
-  // Cloud parameters
-  cloudOpacity: number
-  cloudCount: number
-  cloudColor: string
-
   // Lighting parameters
   ambientIntensity: number
   sunIntensity: number
@@ -153,10 +148,6 @@ export const ATMOSPHERE_CONFIG: Record<WeatherCondition, AtmosphereConfig> = {
     skyMieDirectionalG: 0.8,
     sunPosition: [100, 50, 100],
 
-    cloudOpacity: 0.5,
-    cloudCount: 6,
-    cloudColor: '#ffffff',
-
     ambientIntensity: 1.0,
     sunIntensity: 2.5,
     sunColor: '#ffffff',
@@ -179,10 +170,6 @@ export const ATMOSPHERE_CONFIG: Record<WeatherCondition, AtmosphereConfig> = {
     skyMieDirectionalG: 0.9,
     sunPosition: [80, 80, 60],
 
-    cloudOpacity: 0.3,
-    cloudCount: 4,
-    cloudColor: '#fffaf0',
-
     ambientIntensity: 1.2,
     sunIntensity: 3.0,
     sunColor: '#fff8e0',
@@ -198,29 +185,25 @@ export const ATMOSPHERE_CONFIG: Record<WeatherCondition, AtmosphereConfig> = {
   },
 
   rain: {
-    // Gray overcast, low dim sun
-    skyTurbidity: 20,
-    skyRayleigh: 2.0,
-    skyMieCoefficient: 0.02,
-    skyMieDirectionalG: 0.7,
-    sunPosition: [100, 20, 100],
+    // Dark overcast, sun barely visible at horizon
+    skyTurbidity: 30,
+    skyRayleigh: 4.0,
+    skyMieCoefficient: 0.08,
+    skyMieDirectionalG: 0.4,
+    sunPosition: [100, 2, 100],
 
-    cloudOpacity: 0.9,
-    cloudCount: 12,
-    cloudColor: '#667788',
+    ambientIntensity: 0.15,
+    sunIntensity: 0.1,
+    sunColor: '#5a6a7a',
+    fillLightIntensity: 0.08,
+    fillLightColor: '#2a3a4a',
+    hemisphereIntensity: 0.12,
+    hemisphereSkyColor: '#1a2a35',
+    hemisphereGroundColor: '#0a1510',
 
-    ambientIntensity: 0.6,
-    sunIntensity: 0.8,
-    sunColor: '#99aabc',
-    fillLightIntensity: 0.4,
-    fillLightColor: '#8899aa',
-    hemisphereIntensity: 0.5,
-    hemisphereSkyColor: '#778899',
-    hemisphereGroundColor: '#2a3a2a',
-
-    fogColor: '#8899aa',
-    fogNear: 80,
-    fogFar: 350,
+    fogColor: '#2a3a45',
+    fogNear: 30,
+    fogFar: 180,
   },
 
   cold: {
@@ -230,10 +213,6 @@ export const ATMOSPHERE_CONFIG: Record<WeatherCondition, AtmosphereConfig> = {
     skyMieCoefficient: 0.008,
     skyMieDirectionalG: 0.75,
     sunPosition: [120, 30, 80],
-
-    cloudOpacity: 0.7,
-    cloudCount: 10,
-    cloudColor: '#aabbcc',
 
     ambientIntensity: 0.7,
     sunIntensity: 1.2,

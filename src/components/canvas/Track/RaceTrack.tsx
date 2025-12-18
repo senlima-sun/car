@@ -202,12 +202,14 @@ function createAsphaltTexture(): {
 }
 
 // Ground with enhanced textures
+// Note: This represents grass/off-road surface with low friction
+// Roads sit above this at y=0 with higher friction
 function Ground() {
   const textures = useMemo(() => createGrassTextures(), [])
 
   return (
-    <RigidBody type='fixed' friction={0.4}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
+    <RigidBody type='fixed' friction={0.2} restitution={0.1}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[1000, 1000, 128, 128]} />
         <meshStandardMaterial
           map={textures.map}

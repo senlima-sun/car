@@ -119,7 +119,11 @@ const DRIVING_CONTROLS: ControlItem[] = [
 
 const GAME_CONTROLS: ControlItem[] = [
   { key: 'C', action: 'Toggle Camera' },
+  { key: 'F', action: 'Free Camera (Orbit)' },
   { key: 'Q', action: 'Cycle Weather' },
+  { key: 'M', action: 'Environment Settings' },
+  { key: 'H', action: 'Toggle Heatmap/Thermal' },
+  { key: 'OPT/ALT', action: 'Toggle Distance Grid' },
   { key: 'R', action: 'Start/Stop Lap Timer' },
   { key: 'T', action: 'Toggle Track Editor' },
   { key: 'P', action: 'Pit Stop (in pit box)' },

@@ -1,3 +1,6 @@
+// Car scale factor (target 5m car from ~3.4m base)
+export const CAR_SCALE = 1.47
+
 // Vehicle physics configuration
 export const VEHICLE_CONFIG = {
   chassis: {
@@ -9,8 +12,8 @@ export const VEHICLE_CONFIG = {
     weightDistFront: 0.47, // 47% front weight (mid-engine)
   },
   wheels: {
-    radius: 0.33, // meters - racing wheel
-    width: 0.28, // meters
+    radius: 0.3, // meters - racing wheel
+    width: 0.35, // meters
     suspensionRestLength: 0.25,
     suspensionStiffness: 85, // N/m - stiff racing suspension
     suspensionDamping: 8.5,
@@ -18,10 +21,10 @@ export const VEHICLE_CONFIG = {
     rollInfluence: 0.02,
     // Positions relative to chassis center [x, y, z]
     positions: [
-      [-1.075, 0, 1.75] as const, // Front-left
-      [1.075, 0, 1.75] as const, // Front-right
-      [-1.075, 0, -1.35] as const, // Rear-left
-      [1.075, 0, -1.35] as const, // Rear-right
+      [-0.95, 0, 1.6] as const, // Front-left
+      [0.95, 0, 1.6] as const, // Front-right
+      [-0.95, 0, -1.2] as const, // Rear-left
+      [0.95, 0, -1.2] as const, // Rear-right
     ],
   },
   engine: {

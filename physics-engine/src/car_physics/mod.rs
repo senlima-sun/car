@@ -4,7 +4,7 @@ pub mod steering;
 pub mod tire_model;
 pub mod weight_transfer;
 
-use crate::types::{CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers};
+use crate::types::{CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers, WindModifiers};
 use crate::utils::{lerp, sanitize, Quat, Vec3};
 
 // ============================================================================
@@ -12,7 +12,7 @@ use crate::utils::{lerp, sanitize, Quat, Vec3};
 // ============================================================================
 
 pub const CAR_MASS: f32 = 600.0;
-pub const WHEELBASE: f32 = 2.7;
+pub const WHEELBASE: f32 = 2.8;
 pub const TRACK_WIDTH: f32 = 1.9;
 pub const CG_HEIGHT: f32 = 0.35;
 pub const WEIGHT_DIST_FRONT: f32 = 0.47;
@@ -88,6 +88,7 @@ impl CarPhysicsState {
         current_angvel: Vec3,
         weather_modifiers: &WeatherModifiers,
         tire_degradation: &TireDegradationModifiers,
+        wind_modifiers: &WindModifiers,
         curb_grip_bonus: f32,
         is_on_curb: bool,
         curb_speed_multiplier: f32,
@@ -140,7 +141,8 @@ impl CarPhysicsState {
         let steer_input = if input.left { -1.0 } else if input.right { 1.0 } else { 0.0 };
         let target_steer = steer_input * max_steer.to_radians();
 
-        let steer_speed = 4.5 * weather_modifiers.steer_response_multiplier;
+        // Steering speed affected by both weather and wind (crosswinds make steering harder)
+        let steer_speed = 4.5 * weather_modifiers.steer_response_multiplier * wind_modifiers.steering_difficulty;
         let center_speed = 5.0 + self.speed_ms * 0.04;
 
         if steer_input.abs() > 0.01 {
@@ -159,13 +161,22 @@ impl CarPhysicsState {
             longitudinal_force += engine_force;
         }
 
-        // Braking with tire degradation effects
+        // Braking / Reverse
         if input.backward || input.brake {
-            let brake_force = BASE_BRAKE_FORCE
-                * weather_modifiers.brake_efficiency_multiplier
-                * tire_degradation.brake_efficiency;
-            let handbrake_mult = if input.handbrake { 1.2 } else { 1.0 };
-            longitudinal_force -= brake_force * handbrake_mult * forward_speed.signum();
+            // If going forward fast enough, apply brakes
+            if forward_speed > 1.0 {
+                let brake_force = BASE_BRAKE_FORCE
+                    * weather_modifiers.brake_efficiency_multiplier
+                    * tire_degradation.brake_efficiency;
+                let handbrake_mult = if input.handbrake { 1.2 } else { 1.0 };
+                longitudinal_force -= brake_force * handbrake_mult;
+            } else if input.backward && !input.brake {
+                // If slow or stopped and backward is pressed (not just brake), apply reverse force
+                let reverse_force = aerodynamics::get_engine_force(self.speed_ms, false)
+                    * weather_modifiers.engine_efficiency_multiplier
+                    * 0.4; // Reverse is weaker than forward
+                longitudinal_force -= reverse_force;
+            }
         }
 
         // Engine braking
@@ -173,9 +184,10 @@ impl CarPhysicsState {
             longitudinal_force -= BASE_ENGINE_BRAKE * forward_speed.signum();
         }
 
-        // Aerodynamic drag
+        // Aerodynamic drag (affected by weather and wind - headwind increases drag, tailwind decreases)
         let drag = aerodynamics::get_drag_force(self.speed_ms, input.drs)
-            * weather_modifiers.drag_multiplier;
+            * weather_modifiers.drag_multiplier
+            * wind_modifiers.drag_modifier;
         longitudinal_force -= drag * forward_speed.signum();
 
         // Curb drag
@@ -251,7 +263,10 @@ impl CarPhysicsState {
 
         // Calculate new velocities
         let new_forward_speed = forward_speed + (longitudinal_force / CAR_MASS) * dt;
-        let new_lateral_speed = lateral_speed * lateral_correction;
+
+        // Apply lateral wind force (crosswind pushes car sideways)
+        let wind_lateral_accel = wind_modifiers.lateral_force / CAR_MASS;
+        let new_lateral_speed = lateral_speed * lateral_correction + wind_lateral_accel * dt;
 
         // Clamp speeds with tire degradation effects
         let max_speed = BASE_MAX_SPEED
@@ -299,8 +314,11 @@ impl CarPhysicsState {
             lateral_g: sanitize(lat_g, 0.0),
             longitudinal_g: sanitize(long_g, 0.0),
             skid_intensity,
-            tire_wear: Default::default(), // Will be filled in by engine
+            tire_wear: Default::default(),       // Will be filled in by engine
             steer_angle: self.steer_angle,
+            temperature: Default::default(),     // Will be filled in by engine
+            aquaplaning: Default::default(),     // Will be filled in by engine
+            tire_thermal_shock: Default::default(), // Will be filled in by engine
         }
     }
 

@@ -1,10 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { BufferGeometry, Float32BufferAttribute } from 'three'
-import { CuboidCollider } from '@react-three/rapier'
-import { GHOST_OPACITY } from '../../../constants/trackObjects'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { GHOST_OPACITY, OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import { CURB_PROFILE, CURB_WIDTH, CURB_PEAK_HEIGHT } from '../../../constants/curb'
 import { useCurbStore } from '../../../stores/useCurbStore'
+import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { PlacedObject, getRoadEdgePositionAt } from '../../../stores/useCustomizationStore'
+
+const curbConfig = OBJECT_CONFIGS.curb
 
 interface CurbSegmentProps {
   curb: PlacedObject
@@ -63,6 +66,8 @@ function createCurbGeometry(length: number, stripeCount: number): BufferGeometry
 export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbSegmentProps) {
   const enterCurb = useCurbStore(state => state.enterCurb)
   const exitCurb = useCurbStore(state => state.exitCurb)
+  const enterSurface = useSurfaceStore(s => s.enterSurface)
+  const exitSurface = useSurfaceStore(s => s.exitSurface)
 
   const { geometry, rotation, midpoint, curbLength } = useMemo(() => {
     if (!curb.startT || !curb.endT || !curb.edgeSide) {
@@ -120,17 +125,19 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
   // The curb should extend outward from the road edge
   const perpOffset = curb.edgeSide === 'left' ? CURB_WIDTH / 2 : -CURB_WIDTH / 2
 
-  const handleEnter = () => {
+  const handleEnter = useCallback(() => {
     if (!isGhost && curb.edgeSide) {
       enterCurb(curb.edgeSide)
+      enterSurface('curb')
     }
-  }
+  }, [isGhost, curb.edgeSide, enterCurb, enterSurface])
 
-  const handleExit = () => {
+  const handleExit = useCallback(() => {
     if (!isGhost) {
       exitCurb()
+      exitSurface('curb')
     }
-  }
+  }, [isGhost, exitCurb, exitSurface])
 
   // Ghost mode - visual only, no physics
   if (isGhost) {
@@ -148,25 +155,32 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
     )
   }
 
-  // Normal mode - sensor only (no hard collision)
-  // Curbs should be driveable, only affecting grip/speed via the sensor
+  // Normal mode - sensor only for surface detection (no solid collision to allow driving over)
   return (
-    <group position={midpoint} rotation={[0, rotation, 0]}>
+    <RigidBody
+      type='fixed'
+      position={midpoint}
+      rotation={[0, rotation, 0]}
+      friction={curbConfig.friction}
+      restitution={curbConfig.restitution}
+      colliders={false}
+    >
       <group position={[perpOffset, 0, 0]}>
-        {/* Sensor collider for detecting car entry/exit - no physics collision */}
+        {/* Sensor collider for detecting car entry/exit - matches visual geometry */}
         <CuboidCollider
-          args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT * 2, curbLength / 2]}
-          position={[0, CURB_PEAK_HEIGHT, 0]}
+          args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT / 2, curbLength / 2]}
+          position={[0, CURB_PEAK_HEIGHT / 2, 0]}
           sensor
           onIntersectionEnter={handleEnter}
           onIntersectionExit={handleExit}
         />
+
         {/* Visual mesh with 3D profile */}
         <mesh geometry={geometry} receiveShadow castShadow>
           <meshStandardMaterial vertexColors />
         </mesh>
       </group>
-    </group>
+    </RigidBody>
   )
 }
 

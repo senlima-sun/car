@@ -10,6 +10,9 @@ interface ControlsState {
   handbrake: boolean
   drs: boolean
   camera: boolean
+  heatmap: boolean
+  distanceGrid: boolean
+  freeCamera: boolean
 }
 
 // Unified controls hook that merges keyboard and touch inputs
@@ -31,6 +34,9 @@ export function useControls(): () => ControlsState {
       handbrake: keyboard.handbrake || touch.handbrake,
       drs: keyboard.drs || touch.drs,
       camera: keyboard.camera || touch.camera,
+      heatmap: keyboard.heatmap || false,
+      distanceGrid: keyboard.distanceGrid || false,
+      freeCamera: keyboard.freeCamera || false,
     }
   }
 }

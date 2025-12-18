@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Vector3 } from 'three'
 import {
   useCustomizationStore,
@@ -22,6 +23,7 @@ import {
   CurbPreview,
   CurvedCurbPreview,
 } from '../TrackObjects'
+import { getSnapAngles } from '../../../utils/roadSnapping'
 
 // Snap point indicator component
 function SnapPointIndicator({
@@ -41,6 +43,131 @@ function SnapPointIndicator({
         side={2}
       />
     </mesh>
+  )
+}
+
+// Angle guide line component
+function AngleGuideLine({
+  startPoint,
+  angle,
+  length,
+  isActive,
+}: {
+  startPoint: [number, number, number]
+  angle: number
+  length: number
+  isActive: boolean
+}) {
+  // Calculate end point based on angle
+  const endX = startPoint[0] + Math.sin(angle) * length
+  const endZ = startPoint[2] + Math.cos(angle) * length
+
+  // Calculate midpoint and length for the line mesh
+  const midX = (startPoint[0] + endX) / 2
+  const midZ = (startPoint[2] + endZ) / 2
+
+  return (
+    <mesh
+      position={[midX, 0.02, midZ]}
+      rotation={[-Math.PI / 2, 0, -angle]}
+    >
+      <planeGeometry args={[0.08, length]} />
+      <meshBasicMaterial
+        color={isActive ? '#00ffff' : '#666666'}
+        transparent
+        opacity={isActive ? 0.8 : 0.25}
+        depthWrite={false}
+      />
+    </mesh>
+  )
+}
+
+// Angle guide lines radiating from start point
+function AngleGuideLines({
+  startPoint,
+  activeAngle,
+  angleIncrements,
+}: {
+  startPoint: [number, number, number]
+  activeAngle: number | null
+  angleIncrements: number[]
+}) {
+  const angles = useMemo(() => getSnapAngles(angleIncrements), [angleIncrements])
+  const guideLength = 30 // Length of guide lines
+
+  // Tolerance for determining if an angle is active
+  const angleTolerance = 0.01
+
+  return (
+    <>
+      {angles.map((angle, idx) => {
+        const isActive = activeAngle !== null && Math.abs(angle - activeAngle) < angleTolerance
+        return (
+          <AngleGuideLine
+            key={idx}
+            startPoint={startPoint}
+            angle={angle}
+            length={guideLength}
+            isActive={isActive}
+          />
+        )
+      })}
+    </>
+  )
+}
+
+// Tangent direction indicator
+function TangentIndicator({
+  origin,
+  direction,
+}: {
+  origin: [number, number, number]
+  direction: [number, number, number]
+}) {
+  const arrowLength = 8
+  const arrowHeadLength = 1.5
+
+  // Calculate end point
+  const endX = origin[0] + direction[0] * arrowLength
+  const endZ = origin[2] + direction[2] * arrowLength
+
+  // Calculate arrow shaft midpoint
+  const shaftLength = arrowLength - arrowHeadLength
+  const shaftMidX = origin[0] + direction[0] * (shaftLength / 2)
+  const shaftMidZ = origin[2] + direction[2] * (shaftLength / 2)
+
+  // Calculate angle for rotation
+  const angle = Math.atan2(direction[0], direction[2])
+
+  return (
+    <group>
+      {/* Arrow shaft */}
+      <mesh
+        position={[shaftMidX, 0.1, shaftMidZ]}
+        rotation={[-Math.PI / 2, 0, -angle]}
+      >
+        <planeGeometry args={[0.2, shaftLength]} />
+        <meshBasicMaterial
+          color='#ffaa00'
+          transparent
+          opacity={0.7}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Arrow head (triangle) */}
+      <mesh
+        position={[endX, 0.1, endZ]}
+        rotation={[-Math.PI / 2, 0, -angle]}
+      >
+        <coneGeometry args={[0.5, arrowHeadLength, 3]} />
+        <meshBasicMaterial
+          color='#ffaa00'
+          transparent
+          opacity={0.8}
+        />
+      </mesh>
+    </group>
   )
 }
 
@@ -70,6 +197,10 @@ export default function GhostPreview({
   const partialDeleteMode = useCustomizationStore(s => s.partialDeleteMode)
   const partialDeleteState = useCustomizationStore(s => s.partialDeleteState)
   const partialDeletePreviewT = useCustomizationStore(s => s.partialDeletePreviewT)
+  // Snap settings
+  const snapSettings = useCustomizationStore(s => s.snapSettings)
+  const connectedTangent = useCustomizationStore(s => s.connectedTangent)
+  const snappedAngle = useCustomizationStore(s => s.snappedAngle)
 
   // Get snap points for visual indicators
   const snapPoints = getSnapPoints(placedObjects)
@@ -225,6 +356,26 @@ export default function GhostPreview({
     })
   }
 
+  // Helper to render snap guides (angle lines + tangent indicator)
+  const renderSnapGuides = () => {
+    if (!dragStartPoint || !snapSettings.angleSnap) return null
+
+    return (
+      <>
+        {/* Angle guide lines */}
+        <AngleGuideLines
+          startPoint={dragStartPoint}
+          activeAngle={snappedAngle}
+          angleIncrements={snapSettings.angleIncrements}
+        />
+        {/* Tangent continuation indicator (when connected to an existing road) */}
+        {connectedTangent && snapSettings.tangentSnap && (
+          <TangentIndicator origin={dragStartPoint} direction={connectedTangent} />
+        )}
+      </>
+    )
+  }
+
   // For linear objects in 'selecting' state (before first click), show a short preview
   if (isLinear && placementState === 'selecting') {
     const defaultLength = 4
@@ -273,6 +424,7 @@ export default function GhostPreview({
       return (
         <>
           {renderSnapIndicators()}
+          {renderSnapGuides()}
           {/* Start point marker */}
           <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
             <sphereGeometry args={[0.5, 16, 16]} />
@@ -304,6 +456,7 @@ export default function GhostPreview({
       return (
         <>
           {renderSnapIndicators()}
+          {renderSnapGuides()}
           {/* Start point marker */}
           <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
             <sphereGeometry args={[0.5, 16, 16]} />
@@ -342,6 +495,7 @@ export default function GhostPreview({
     return (
       <>
         {renderSnapIndicators()}
+        {renderSnapGuides()}
         {/* Start point marker */}
         <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
           <sphereGeometry args={[0.5, 16, 16]} />

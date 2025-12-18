@@ -1,7 +1,14 @@
 import { create } from 'zustand'
+import {
+  SnapSettings,
+  DEFAULT_SNAP_SETTINGS,
+  getOutwardTangent,
+} from '../utils/roadSnapping'
 
 export type ObjectType = 'cone' | 'ramp' | 'checkpoint' | 'barrier' | 'road' | 'curb'
 export type TrackMode = 'straight' | 'curve'
+
+export type { SnapSettings }
 
 export interface PlacedObject {
   id: string
@@ -76,6 +83,12 @@ interface CustomizationState {
   // Auto curb generation state
   autoCurbMode: boolean
   selectedRoadIds: string[]
+  // Snap settings for road placement
+  snapSettings: SnapSettings
+  // Connected tangent direction when snapping to an endpoint (for G1 continuity)
+  connectedTangent: [number, number, number] | null
+  // Current snapped angle for visual guides
+  snappedAngle: number | null
 
   // Actions
   selectObjectType: (type: ObjectType | null) => void
@@ -132,6 +145,10 @@ interface CustomizationState {
   toggleRoadSelection: (roadId: string) => void
   clearRoadSelection: () => void
   addGeneratedCurbs: (curbs: PlacedObject[]) => void
+  // Snap settings actions
+  setSnapSettings: (settings: Partial<SnapSettings>) => void
+  setConnectedTangent: (tangent: [number, number, number] | null) => void
+  setSnappedAngle: (angle: number | null) => void
 }
 
 const STORAGE_KEY = 'car-racing-track'
@@ -149,6 +166,7 @@ export interface SnapPointWithDirection {
   direction: [number, number, number] // normalized direction vector pointing outward from the road
   leftEdge: [number, number, number] // left edge corner position at this endpoint
   rightEdge: [number, number, number] // right edge corner position at this endpoint
+  tangent: [number, number, number] // outward tangent direction for G1 continuity (same as direction for straight, bezier tangent for curves)
 }
 
 // Road width constant (should match OBJECT_CONFIGS.road.defaultSize.width)
@@ -167,44 +185,60 @@ export const getSnapPoints = (placedObjects: PlacedObject[]): SnapPointWithDirec
       const len = Math.sqrt(dx * dx + dz * dz)
       const dir: [number, number, number] = len > 0 ? [dx / len, 0, dz / len] : [0, 0, 1]
 
-      // Perpendicular direction (left side when looking from start to end)
-      const perpX = -dir[2]
-      const perpZ = dir[0]
+      // Get tangent directions (different from direction for curves)
+      const startTangent = getOutwardTangent(obj.startPoint, obj.endPoint, obj.controlPoint, true)
+      const endTangent = getOutwardTangent(obj.startPoint, obj.endPoint, obj.controlPoint, false)
 
-      // At start point
-      const startLeft: [number, number, number] = [
-        obj.startPoint[0] + perpX * halfWidth,
+      // Calculate perpendicular based on tangent direction for proper edge alignment
+      // For start: use start tangent (points outward from road)
+      const startTangentInward: [number, number, number] = [
+        -startTangent[0],
         0,
-        obj.startPoint[2] + perpZ * halfWidth,
+        -startTangent[2],
+      ]
+      const startPerpX = -startTangentInward[2]
+      const startPerpZ = startTangentInward[0]
+
+      // For end: use end tangent (points outward from road)
+      const endPerpX = -endTangent[2]
+      const endPerpZ = endTangent[0]
+
+      // At start point - use tangent-based perpendicular for curves
+      const startLeft: [number, number, number] = [
+        obj.startPoint[0] + startPerpX * halfWidth,
+        0,
+        obj.startPoint[2] + startPerpZ * halfWidth,
       ]
       const startRight: [number, number, number] = [
-        obj.startPoint[0] - perpX * halfWidth,
+        obj.startPoint[0] - startPerpX * halfWidth,
         0,
-        obj.startPoint[2] - perpZ * halfWidth,
+        obj.startPoint[2] - startPerpZ * halfWidth,
       ]
       points.push({
         position: obj.startPoint,
         direction: [-dir[0], 0, -dir[2]],
         leftEdge: startLeft,
         rightEdge: startRight,
+        tangent: startTangent,
       })
 
-      // At end point
+      // At end point - use tangent-based perpendicular for curves
       const endLeft: [number, number, number] = [
-        obj.endPoint[0] + perpX * halfWidth,
+        obj.endPoint[0] + endPerpX * halfWidth,
         0,
-        obj.endPoint[2] + perpZ * halfWidth,
+        obj.endPoint[2] + endPerpZ * halfWidth,
       ]
       const endRight: [number, number, number] = [
-        obj.endPoint[0] - perpX * halfWidth,
+        obj.endPoint[0] - endPerpX * halfWidth,
         0,
-        obj.endPoint[2] - perpZ * halfWidth,
+        obj.endPoint[2] - endPerpZ * halfWidth,
       ]
       points.push({
         position: obj.endPoint,
         direction: dir,
         leftEdge: endLeft,
         rightEdge: endRight,
+        tangent: endTangent,
       })
     }
   }
@@ -866,6 +900,9 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
   partialDeletePreviewPosition: null,
   autoCurbMode: false,
   selectedRoadIds: [],
+  snapSettings: DEFAULT_SNAP_SETTINGS,
+  connectedTangent: null,
+  snappedAngle: null,
 
   selectObjectType: type => {
     if (type === null) {
@@ -877,6 +914,8 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
         controlPoint: null,
         startSnapEdges: null,
         endSnapEdges: null,
+        connectedTangent: null,
+        snappedAngle: null,
       })
     } else {
       set({
@@ -888,6 +927,8 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
         selectedObjectId: null,
         startSnapEdges: null,
         endSnapEdges: null,
+        connectedTangent: null,
+        snappedAngle: null,
       })
     }
   },
@@ -901,6 +942,8 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
       controlPoint: null,
       startSnapEdges: null,
       endSnapEdges: null,
+      connectedTangent: null,
+      snappedAngle: null,
     }),
 
   setDeleteMode: enabled =>
@@ -1008,6 +1051,8 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
       controlPoint: null,
       startSnapEdges: null,
       endSnapEdges: null,
+      connectedTangent: null,
+      snappedAngle: null,
     }))
 
     // Auto-save after placement
@@ -1042,6 +1087,8 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
       previewPosition: null,
       startSnapEdges: null,
       endSnapEdges: null,
+      connectedTangent: null,
+      snappedAngle: null,
     }),
 
   selectObject: id =>
@@ -1314,4 +1361,14 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
     }))
     setTimeout(() => get().saveToStorage(), 0)
   },
+
+  // Snap settings actions
+  setSnapSettings: settings =>
+    set(state => ({
+      snapSettings: { ...state.snapSettings, ...settings },
+    })),
+
+  setConnectedTangent: tangent => set({ connectedTangent: tangent }),
+
+  setSnappedAngle: angle => set({ snappedAngle: angle }),
 }))
