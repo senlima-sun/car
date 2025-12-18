@@ -3,6 +3,7 @@ import RacePanel from './RacePanel'
 import StatsPanel from './StatsPanel'
 import ErsIndicator from './ErsIndicator'
 import AeroIndicator from './AeroIndicator'
+import BrakeIndicator from './BrakeIndicator'
 import PitStopUI from './PitStopUI'
 import StatusBar from './StatusBar'
 import ControlsModal from './ControlsModal'
@@ -131,6 +132,7 @@ export default function HUD() {
               <div style={styles.bottomRight as React.CSSProperties}>
                 <AeroIndicator />
                 <ErsIndicator />
+                <BrakeIndicator />
                 <StatsPanel />
               </div>
               {showDebugPanel && (

@@ -52,6 +52,15 @@ import {
   setAeroMode,
   getAeroMode,
   getActiveAeroState,
+  // Brake System API
+  setBrakeBias,
+  getBrakeBias,
+  increaseBrakeBias,
+  decreaseBrakeBias,
+  setEngineBrakingLevel,
+  getEngineBrakingLevel,
+  cycleEngineBrakingLevel,
+  getBrakeState,
   CarInput,
   CarPhysicsOutput,
   WeatherModifiers,
@@ -63,6 +72,7 @@ import {
   SurfaceType,
   ErsMode,
   AeroMode,
+  EngineBrakingLevel,
 } from './PhysicsBridge'
 
 // Re-export types
@@ -126,6 +136,15 @@ interface PhysicsContextValue {
   setAeroMode: typeof setAeroMode
   getAeroMode: typeof getAeroMode
   getActiveAeroState: typeof getActiveAeroState
+  // Brake System API
+  setBrakeBias: typeof setBrakeBias
+  getBrakeBias: typeof getBrakeBias
+  increaseBrakeBias: typeof increaseBrakeBias
+  decreaseBrakeBias: typeof decreaseBrakeBias
+  setEngineBrakingLevel: typeof setEngineBrakingLevel
+  getEngineBrakingLevel: typeof getEngineBrakingLevel
+  cycleEngineBrakingLevel: typeof cycleEngineBrakingLevel
+  getBrakeState: typeof getBrakeState
 }
 
 const PhysicsContext = createContext<PhysicsContextValue | null>(null)
@@ -225,6 +244,15 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     setAeroMode,
     getAeroMode,
     getActiveAeroState,
+    // Brake System API
+    setBrakeBias,
+    getBrakeBias,
+    increaseBrakeBias,
+    decreaseBrakeBias,
+    setEngineBrakingLevel,
+    getEngineBrakingLevel,
+    cycleEngineBrakingLevel,
+    getBrakeState,
   }
 
   return <PhysicsContext.Provider value={value}>{children}</PhysicsContext.Provider>

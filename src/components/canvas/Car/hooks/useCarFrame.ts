@@ -16,6 +16,7 @@ import { useWindViewStore } from '../../../../stores/useWindViewStore'
 import { useAquaplaningStore } from '../../../../stores/useAquaplaningStore'
 import { useErsStore } from '../../../../stores/useErsStore'
 import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
+import { useBrakeStore } from '../../../../stores/useBrakeStore'
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 
@@ -91,6 +92,14 @@ export function useCarFrame({
   const aeroMode = useActiveAeroStore(state => state.mode)
   const syncAeroState = useActiveAeroStore(state => state.syncFromPhysics)
 
+  // Brake mode controls and sync
+  const increaseBias = useBrakeStore(state => state.increaseBias)
+  const decreaseBias = useBrakeStore(state => state.decreaseBias)
+  const cycleEngineBraking = useBrakeStore(state => state.cycleEngineBraking)
+  const frontBias = useBrakeStore(state => state.frontBias)
+  const engineBraking = useBrakeStore(state => state.engineBraking)
+  const syncBrakeState = useBrakeStore(state => state.syncFromPhysics)
+
   // Curb state
   const isOnCurb = useCurbStore(state => state.isOnCurb)
   const curbSide = useCurbStore(state => state.curbSide)
@@ -109,6 +118,9 @@ export function useCarFrame({
   const lastGridToggle = useRef(0)
   const lastErsModeToggle = useRef(0)
   const lastAeroModeToggle = useRef(0)
+  const lastBrakeIncrToggle = useRef(0)
+  const lastBrakeDecrToggle = useRef(0)
+  const lastEngineBrakeToggle = useRef(0)
   const tempCarPosRef = useRef(new Vector3())
 
   // Pre-allocated arrays for rubber deposit updates (avoid GC)
@@ -136,6 +148,9 @@ export function useCarFrame({
       drs,
       ers,
       aero,
+      brakeIncr,
+      brakeDecr,
+      engineBrake,
       camera,
       heatmap,
       distanceGrid,
@@ -179,6 +194,24 @@ export function useCarFrame({
     if (aero && state.clock.elapsedTime - lastAeroModeToggle.current > 0.3) {
       toggleAeroMode()
       lastAeroModeToggle.current = state.clock.elapsedTime
+    }
+
+    // Brake bias increase with debounce (] key)
+    if (brakeIncr && state.clock.elapsedTime - lastBrakeIncrToggle.current > 0.3) {
+      increaseBias()
+      lastBrakeIncrToggle.current = state.clock.elapsedTime
+    }
+
+    // Brake bias decrease with debounce ([ key)
+    if (brakeDecr && state.clock.elapsedTime - lastBrakeDecrToggle.current > 0.3) {
+      decreaseBias()
+      lastBrakeDecrToggle.current = state.clock.elapsedTime
+    }
+
+    // Engine braking cycle with debounce (N key)
+    if (engineBrake && state.clock.elapsedTime - lastEngineBrakeToggle.current > 0.3) {
+      cycleEngineBraking()
+      lastEngineBrakeToggle.current = state.clock.elapsedTime
     }
 
     // Skip physics when in free camera mode or customize mode (freeze car)
@@ -237,6 +270,12 @@ export function useCarFrame({
     physics.setAeroMode(aeroMode)
     const aeroState = physics.getActiveAeroState()
     syncAeroState(aeroState)
+
+    // Sync Brake settings to physics and get current state
+    physics.setBrakeBias(frontBias)
+    physics.setEngineBrakingLevel(engineBraking)
+    const brakeState = physics.getBrakeState()
+    syncBrakeState(brakeState)
 
     // Build input for WASM physics
     const input: CarInput = {

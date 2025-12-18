@@ -54,6 +54,15 @@ export {
   setAeroMode,
   getAeroMode,
   getActiveAeroState,
+  // Brake System API
+  setBrakeBias,
+  getBrakeBias,
+  increaseBrakeBias,
+  decreaseBrakeBias,
+  setEngineBrakingLevel,
+  getEngineBrakingLevel,
+  cycleEngineBrakingLevel,
+  getBrakeState,
 } from './PhysicsBridge'
 
 export type {
@@ -69,6 +78,8 @@ export type {
   ErsState,
   AeroMode,
   ActiveAeroState,
+  EngineBrakingLevel,
+  BrakeState,
 } from './PhysicsBridge'
 
 // React provider

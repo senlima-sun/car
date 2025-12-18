@@ -209,6 +209,19 @@ export interface ActiveAeroState {
 }
 
 // ============================================================================
+// Brake System Types
+// ============================================================================
+
+export type EngineBrakingLevel = 'Low' | 'Medium' | 'High'
+
+export interface BrakeState {
+  front_bias: number // 0.50-0.70
+  engine_braking: EngineBrakingLevel
+  front_brake_force: number // N
+  rear_brake_force: number // N
+}
+
+// ============================================================================
 // Engine Instance Management
 // ============================================================================
 
@@ -819,4 +832,70 @@ export function getActiveAeroState(): ActiveAeroState {
       downforce_multiplier: 0.6, // Lower downforce
     }
   }
+}
+
+// ============================================================================
+// Brake System API
+// ============================================================================
+
+/**
+ * Set brake bias (front percentage)
+ * @param bias - Front brake bias as percentage (50-70)
+ */
+export function setBrakeBias(bias: number): void {
+  const normalized = Math.max(0.5, Math.min(0.7, bias / 100))
+  getPhysicsEngine().set_brake_bias(normalized)
+}
+
+/**
+ * Get current brake bias (front percentage)
+ * @returns Front brake bias as percentage (50-70)
+ */
+export function getBrakeBias(): number {
+  return getPhysicsEngine().get_brake_bias() * 100
+}
+
+/**
+ * Increase brake bias by 2%
+ */
+export function increaseBrakeBias(): void {
+  getPhysicsEngine().increase_brake_bias()
+}
+
+/**
+ * Decrease brake bias by 2%
+ */
+export function decreaseBrakeBias(): void {
+  getPhysicsEngine().decrease_brake_bias()
+}
+
+/**
+ * Set engine braking level
+ * @param level - 'Low', 'Medium', or 'High'
+ */
+export function setEngineBrakingLevel(level: EngineBrakingLevel): void {
+  const levelIndex = level === 'Low' ? 0 : level === 'Medium' ? 1 : 2
+  getPhysicsEngine().set_engine_braking_level(levelIndex)
+}
+
+/**
+ * Get current engine braking level
+ */
+export function getEngineBrakingLevel(): EngineBrakingLevel {
+  const levelIndex = getPhysicsEngine().get_engine_braking_level()
+  return levelIndex === 0 ? 'Low' : levelIndex === 1 ? 'Medium' : 'High'
+}
+
+/**
+ * Cycle engine braking level (Low -> Medium -> High -> Low)
+ */
+export function cycleEngineBrakingLevel(): void {
+  getPhysicsEngine().cycle_engine_braking_level()
+}
+
+/**
+ * Get current brake state from physics engine
+ */
+export function getBrakeState(): BrakeState {
+  return getPhysicsEngine().get_brake_state() as BrakeState
 }

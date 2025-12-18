@@ -11,6 +11,9 @@ interface ControlsState {
   drs: boolean
   ers: boolean
   aero: boolean
+  brakeIncr: boolean
+  brakeDecr: boolean
+  engineBrake: boolean
   camera: boolean
   heatmap: boolean
   distanceGrid: boolean
@@ -37,6 +40,9 @@ export function useControls(): () => ControlsState {
       drs: keyboard.drs || touch.drs,
       ers: keyboard.ers || false,
       aero: keyboard.aero || false,
+      brakeIncr: keyboard.brakeIncr || false,
+      brakeDecr: keyboard.brakeDecr || false,
+      engineBrake: keyboard.engineBrake || false,
       camera: keyboard.camera || touch.camera,
       heatmap: keyboard.heatmap || false,
       distanceGrid: keyboard.distanceGrid || false,
