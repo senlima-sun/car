@@ -92,6 +92,7 @@ impl CarPhysicsState {
         curb_grip_bonus: f32,
         is_on_curb: bool,
         curb_speed_multiplier: f32,
+        ers_boost: f32,
     ) -> CarPhysicsOutput {
         let dt = delta.min(0.05); // Clamp delta time
 
@@ -156,7 +157,7 @@ impl CarPhysicsState {
 
         // Engine force
         if input.forward && !input.brake {
-            let engine_force = aerodynamics::get_engine_force(self.speed_ms, input.drs)
+            let engine_force = aerodynamics::get_engine_force(self.speed_ms, input.drs, ers_boost)
                 * weather_modifiers.engine_efficiency_multiplier;
             longitudinal_force += engine_force;
         }
@@ -172,9 +173,9 @@ impl CarPhysicsState {
                 longitudinal_force -= brake_force * handbrake_mult;
             } else if input.backward && !input.brake {
                 // If slow or stopped and backward is pressed (not just brake), apply reverse force
-                let reverse_force = aerodynamics::get_engine_force(self.speed_ms, false)
+                let reverse_force = aerodynamics::get_engine_force(self.speed_ms, false, 0.0)
                     * weather_modifiers.engine_efficiency_multiplier
-                    * 0.4; // Reverse is weaker than forward
+                    * 0.4; // Reverse is weaker than forward (no ERS in reverse)
                 longitudinal_force -= reverse_force;
             }
         }
@@ -319,6 +320,7 @@ impl CarPhysicsState {
             temperature: Default::default(),     // Will be filled in by engine
             aquaplaning: Default::default(),     // Will be filled in by engine
             tire_thermal_shock: Default::default(), // Will be filled in by engine
+            ers: Default::default(),             // Will be filled in by engine
         }
     }
 

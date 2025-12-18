@@ -2,17 +2,17 @@ use crate::car_physics::weight_transfer::calculate_weight_transfer;
 use crate::car_physics::CarPhysicsState;
 use crate::curb::CurbState;
 use crate::engine_temp::EngineTemperatureState;
+use crate::ers::ErsPhysicsState;
 use crate::surface::SurfaceState;
 use crate::tires::{TempInput, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
-    AmbientConditions, AquaplaningState, CarInput, CarPhysicsOutput, CurbSide, PerWheelWear,
+    AmbientConditions, AquaplaningState, CarInput, CarPhysicsOutput, CurbSide, ErsMode, PerWheelWear,
     SurfaceModifiers, SurfaceType, TemperatureOutput, TireCompound, TireThermalShock, TrackBounds,
     WeatherModifiers, WindModifiers, WindState,
 };
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
-use crate::wind;
 
 /// Main physics engine that orchestrates all physics systems
 #[derive(Debug)]
@@ -22,6 +22,7 @@ pub struct PhysicsEngine {
     tires: TireState,
     tire_temperature: TireTemperatureState,
     engine_temperature: EngineTemperatureState,
+    ers: ErsPhysicsState,
     track_temperature: TrackTemperatureGrid,
     curb: CurbState,
     surface: SurfaceState,
@@ -42,6 +43,7 @@ impl PhysicsEngine {
             tires: TireState::new(),
             tire_temperature: TireTemperatureState::new(),
             engine_temperature: EngineTemperatureState::new(),
+            ers: ErsPhysicsState::new(),
             track_temperature: TrackTemperatureGrid::default(),
             curb: CurbState::new(),
             surface: SurfaceState::new(),
@@ -113,6 +115,10 @@ impl PhysicsEngine {
         self.tires.reset_wear();
     }
 
+    pub fn set_tire_wear(&mut self, wear: f32) {
+        self.tires.set_wear_all(wear);
+    }
+
     pub fn get_effective_grip(&self) -> f32 {
         let ambient = self.weather.get_ambient_conditions();
         self.tires.calculate_effective_grip_from_ambient(&ambient)
@@ -120,6 +126,26 @@ impl PhysicsEngine {
 
     pub fn get_tire_wear_per_wheel(&self) -> PerWheelWear {
         self.tires.get_per_wheel_wear()
+    }
+
+    // ========================================================================
+    // ERS API
+    // ========================================================================
+
+    pub fn set_ers_mode(&mut self, mode: ErsMode) {
+        self.ers.set_mode(mode);
+    }
+
+    pub fn get_ers_mode(&self) -> ErsMode {
+        self.ers.get_mode()
+    }
+
+    pub fn get_ers_battery_charge(&self) -> f32 {
+        self.ers.get_battery_charge()
+    }
+
+    pub fn set_ers_battery_charge(&mut self, charge: f32) {
+        self.ers.set_battery_charge(charge);
     }
 
     // ========================================================================
@@ -326,6 +352,14 @@ impl PhysicsEngine {
         self.engine_temperature
             .update(dt, input.forward, speed_ms, &ambient);
 
+        // Update ERS and get force boost
+        let ers_boost = self.ers.update(
+            dt,
+            input.forward && !input.brake,
+            input.backward || input.brake,
+            speed_ms,
+        );
+
         // Update tire temperatures (use default weight transfer for now, will be refined after car step)
         let temp_input = TempInput {
             delta_seconds: dt,
@@ -390,7 +424,7 @@ impl PhysicsEngine {
         // Update curb and get pitch angular velocity for bump effect
         let curb_pitch = self.curb.update(dt, speed_ms);
 
-        // Run car physics with surface, tire degradation, and wind effects
+        // Run car physics with surface, tire degradation, wind, and ERS effects
         let mut output = self.car.step(
             dt,
             &input,
@@ -404,6 +438,7 @@ impl PhysicsEngine {
             combined_grip,
             self.curb.is_on_curb(),
             surface_speed,
+            ers_boost,
         );
 
         // Apply curb bump as pitch rotation (X axis = pitch in Three.js)
@@ -459,6 +494,9 @@ impl PhysicsEngine {
 
         // Fill in thermal shock state
         output.tire_thermal_shock = self.tire_temperature.get_thermal_shock_state();
+
+        // Fill in ERS state
+        output.ers = self.ers.get_state();
 
         // Update track temperature with skid marks
         if output.skid_intensity > 0.01 {

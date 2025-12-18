@@ -180,6 +180,28 @@ impl Default for WindModifiers {
 }
 
 // ============================================================================
+// ERS Types
+// ============================================================================
+
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum ErsMode {
+    #[default]
+    Balanced,
+    Attack,
+    Harvest,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct ErsState {
+    pub battery_charge: f32,  // 0.0-1.0
+    pub mode: ErsMode,
+    pub power_flow: f32,      // kW (positive=deploy, negative=harvest)
+    pub is_deploying: bool,
+    pub is_harvesting: bool,
+}
+
+// ============================================================================
 // Tire Types
 // ============================================================================
 
@@ -342,6 +364,8 @@ pub struct CarPhysicsOutput {
     pub aquaplaning: AquaplaningState,
     /// Current tire thermal shock state (from puddle cooling)
     pub tire_thermal_shock: TireThermalShock,
+    /// Current ERS state
+    pub ers: ErsState,
 }
 
 // ============================================================================

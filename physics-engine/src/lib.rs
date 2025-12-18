@@ -2,6 +2,7 @@ mod car_physics;
 mod curb;
 mod engine;
 mod engine_temp;
+mod ers;
 mod surface;
 mod tires;
 mod track_temperature;
@@ -12,11 +13,12 @@ mod wind;
 
 use engine::PhysicsEngine as PhysicsEngineInternal;
 use serde_wasm_bindgen::{from_value, to_value};
-use types::{CarInput, CurbSide, SurfaceType, TireCompound, TrackBounds};
+use types::{CarInput, CurbSide, ErsMode, SurfaceType, TireCompound, TrackBounds};
 use wasm_bindgen::prelude::*;
 
 // Re-export enums for JavaScript
 pub use types::TireCompound as TireCompoundEnum;
+pub use types::ErsMode as ErsModeEnum;
 
 /// WASM-exposed physics engine wrapper
 #[wasm_bindgen]
@@ -137,6 +139,13 @@ impl PhysicsEngine {
         self.inner.reset_tire_wear();
     }
 
+    /// Set tire wear for all wheels (for debug/testing)
+    /// wear: 0.0 (new) to 1.0 (fully worn)
+    #[wasm_bindgen]
+    pub fn set_tire_wear(&mut self, wear: f32) {
+        self.inner.set_tire_wear(wear);
+    }
+
     /// Get effective grip (compound * weather * wear)
     #[wasm_bindgen]
     pub fn get_effective_grip(&self) -> f32 {
@@ -147,6 +156,35 @@ impl PhysicsEngine {
     #[wasm_bindgen]
     pub fn get_tire_wear_per_wheel(&self) -> JsValue {
         to_value(&self.inner.get_tire_wear_per_wheel()).unwrap_or(JsValue::NULL)
+    }
+
+    // ========================================================================
+    // ERS API
+    // ========================================================================
+
+    /// Set ERS mode (Balanced, Attack, Harvest)
+    #[wasm_bindgen]
+    pub fn set_ers_mode(&mut self, mode: ErsMode) {
+        self.inner.set_ers_mode(mode);
+    }
+
+    /// Get current ERS mode
+    #[wasm_bindgen]
+    pub fn get_ers_mode(&self) -> ErsMode {
+        self.inner.get_ers_mode()
+    }
+
+    /// Get ERS battery charge (0.0 to 1.0)
+    #[wasm_bindgen]
+    pub fn get_ers_battery_charge(&self) -> f32 {
+        self.inner.get_ers_battery_charge()
+    }
+
+    /// Set ERS battery charge (for debug/testing)
+    /// charge: 0.0 (empty) to 1.0 (full)
+    #[wasm_bindgen]
+    pub fn set_ers_battery_charge(&mut self, charge: f32) {
+        self.inner.set_ers_battery_charge(charge);
     }
 
     // ========================================================================

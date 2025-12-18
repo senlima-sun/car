@@ -9,7 +9,8 @@ const DRS_DRAG_REDUCTION: f32 = 0.4;     // 40% drag reduction
 const DRS_DOWNFORCE_REDUCTION: f32 = 0.4; // 40% downforce reduction
 
 /// Calculate engine force based on speed (power curve)
-pub fn get_engine_force(speed_ms: f32, drs_active: bool) -> f32 {
+/// ers_boost: additional force from ERS deployment in Newtons
+pub fn get_engine_force(speed_ms: f32, drs_active: bool, ers_boost: f32) -> f32 {
     let speed_kmh = speed_ms * 3.6;
 
     // Multi-stage power curve
@@ -38,7 +39,7 @@ pub fn get_engine_force(speed_ms: f32, drs_active: bool) -> f32 {
         0.0
     };
 
-    base_force + drs_boost
+    base_force + drs_boost + ers_boost
 }
 
 /// Calculate aerodynamic drag force (proportional to v²)
@@ -71,30 +72,39 @@ mod tests {
 
     #[test]
     fn test_engine_force_low_speed() {
-        let force = get_engine_force(10.0, false); // ~36 km/h
+        let force = get_engine_force(10.0, false, 0.0); // ~36 km/h
         assert!((force - 18000.0).abs() < 100.0);
     }
 
     #[test]
     fn test_engine_force_mid_speed() {
-        let force = get_engine_force(30.0, false); // ~108 km/h
+        let force = get_engine_force(30.0, false, 0.0); // ~108 km/h
         assert!(force < 18000.0);
         assert!(force > 12000.0);
     }
 
     #[test]
     fn test_engine_force_high_speed() {
-        let force = get_engine_force(70.0, false); // ~252 km/h
+        let force = get_engine_force(70.0, false, 0.0); // ~252 km/h
         assert!(force < 8000.0);
         assert!(force > 5000.0);
     }
 
     #[test]
     fn test_drs_boost() {
-        let force_no_drs = get_engine_force(60.0, false); // ~216 km/h
-        let force_with_drs = get_engine_force(60.0, true);
+        let force_no_drs = get_engine_force(60.0, false, 0.0); // ~216 km/h
+        let force_with_drs = get_engine_force(60.0, true, 0.0);
 
         assert!(force_with_drs > force_no_drs);
+    }
+
+    #[test]
+    fn test_ers_boost() {
+        let force_no_ers = get_engine_force(50.0, false, 0.0);
+        let ers_boost = 2000.0; // 2000 N from ERS
+        let force_with_ers = get_engine_force(50.0, false, ers_boost);
+
+        assert!((force_with_ers - force_no_ers - ers_boost).abs() < 0.1);
     }
 
     #[test]
