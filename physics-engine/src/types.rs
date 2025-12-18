@@ -180,6 +180,33 @@ impl Default for WindModifiers {
 }
 
 // ============================================================================
+// Brake Types
+// ============================================================================
+
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum EngineBrakingLevel {
+    Low,
+    #[default]
+    Medium,
+    High,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct BrakeConfig {
+    pub front_bias: f32,           // 0.50-0.70 (50-70% front)
+    pub engine_braking: EngineBrakingLevel,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct BrakeState {
+    pub front_bias: f32,
+    pub engine_braking: EngineBrakingLevel,
+    pub front_brake_force: f32,    // Current front brake force (N)
+    pub rear_brake_force: f32,     // Current rear brake force (N)
+}
+
+// ============================================================================
 // ERS Types
 // ============================================================================
 

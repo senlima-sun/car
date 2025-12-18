@@ -95,6 +95,7 @@ impl CarPhysicsState {
         ers_boost: f32,
         active_aero_drag_mult: f32,
         active_aero_downforce_mult: f32,
+        engine_braking_force: f32,
     ) -> CarPhysicsOutput {
         let dt = delta.min(0.05); // Clamp delta time
 
@@ -182,9 +183,9 @@ impl CarPhysicsState {
             }
         }
 
-        // Engine braking
+        // Engine braking (use configured level from brake system)
         if !input.forward && !input.backward && !input.brake && self.speed_ms > 1.0 {
-            longitudinal_force -= BASE_ENGINE_BRAKE * forward_speed.signum();
+            longitudinal_force -= engine_braking_force * forward_speed.signum();
         }
 
         // Aerodynamic drag (affected by weather, wind, and active aero)

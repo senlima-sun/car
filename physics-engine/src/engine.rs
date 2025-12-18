@@ -1,4 +1,5 @@
 use crate::active_aero::ActiveAeroPhysicsState;
+use crate::brakes::BrakePhysicsState;
 use crate::car_physics::weight_transfer::calculate_weight_transfer;
 use crate::car_physics::CarPhysicsState;
 use crate::curb::CurbState;
@@ -8,9 +9,9 @@ use crate::surface::SurfaceState;
 use crate::tires::{TempInput, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
-    AeroMode, AmbientConditions, AquaplaningState, CarInput, CarPhysicsOutput, CurbSide, ErsMode,
-    PerWheelWear, SurfaceModifiers, SurfaceType, TemperatureOutput, TireCompound, TireThermalShock,
-    TrackBounds, WeatherModifiers, WindModifiers, WindState,
+    AeroMode, AmbientConditions, AquaplaningState, BrakeState, CarInput, CarPhysicsOutput, CurbSide,
+    EngineBrakingLevel, ErsMode, PerWheelWear, SurfaceModifiers, SurfaceType, TemperatureOutput,
+    TireCompound, TireThermalShock, TrackBounds, WeatherModifiers, WindModifiers, WindState,
 };
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
@@ -25,6 +26,7 @@ pub struct PhysicsEngine {
     engine_temperature: EngineTemperatureState,
     ers: ErsPhysicsState,
     active_aero: ActiveAeroPhysicsState,
+    brakes: BrakePhysicsState,
     track_temperature: TrackTemperatureGrid,
     curb: CurbState,
     surface: SurfaceState,
@@ -47,6 +49,7 @@ impl PhysicsEngine {
             engine_temperature: EngineTemperatureState::new(),
             ers: ErsPhysicsState::new(),
             active_aero: ActiveAeroPhysicsState::new(),
+            brakes: BrakePhysicsState::new(),
             track_temperature: TrackTemperatureGrid::default(),
             curb: CurbState::new(),
             surface: SurfaceState::new(),
@@ -169,6 +172,42 @@ impl PhysicsEngine {
 
     pub fn get_active_aero_state(&self) -> crate::types::ActiveAeroState {
         self.active_aero.get_state()
+    }
+
+    // ========================================================================
+    // Brake API
+    // ========================================================================
+
+    pub fn set_brake_bias(&mut self, bias: f32) {
+        self.brakes.set_brake_bias(bias);
+    }
+
+    pub fn get_brake_bias(&self) -> f32 {
+        self.brakes.get_brake_bias()
+    }
+
+    pub fn increase_brake_bias(&mut self) {
+        self.brakes.increase_brake_bias();
+    }
+
+    pub fn decrease_brake_bias(&mut self) {
+        self.brakes.decrease_brake_bias();
+    }
+
+    pub fn set_engine_braking_level(&mut self, level: EngineBrakingLevel) {
+        self.brakes.set_engine_braking_level(level);
+    }
+
+    pub fn get_engine_braking_level(&self) -> EngineBrakingLevel {
+        self.brakes.get_engine_braking_level()
+    }
+
+    pub fn cycle_engine_braking_level(&mut self) {
+        self.brakes.cycle_engine_braking_level();
+    }
+
+    pub fn get_brake_state(&self) -> BrakeState {
+        self.brakes.get_state()
     }
 
     // ========================================================================
@@ -453,7 +492,10 @@ impl PhysicsEngine {
         // Get active aero multipliers
         let active_aero_state = self.active_aero.get_state();
 
-        // Run car physics with surface, tire degradation, wind, ERS, and active aero effects
+        // Get engine braking force from brake system
+        let engine_braking_force = self.brakes.get_engine_braking_force();
+
+        // Run car physics with surface, tire degradation, wind, ERS, active aero, and brake effects
         let mut output = self.car.step(
             dt,
             &input,
@@ -470,6 +512,7 @@ impl PhysicsEngine {
             ers_boost,
             active_aero_state.drag_multiplier,
             active_aero_state.downforce_multiplier,
+            engine_braking_force,
         );
 
         // Apply curb bump as pitch rotation (X axis = pitch in Three.js)

@@ -1,4 +1,5 @@
 mod active_aero;
+mod brakes;
 mod car_physics;
 mod curb;
 mod engine;
@@ -226,6 +227,75 @@ impl PhysicsEngine {
     #[wasm_bindgen]
     pub fn get_active_aero_state(&self) -> JsValue {
         to_value(&self.inner.get_active_aero_state()).unwrap_or(JsValue::NULL)
+    }
+
+    // ========================================================================
+    // Brake API
+    // ========================================================================
+
+    /// Set front brake bias (clamped to 0.50-0.70)
+    /// bias: 0.50 to 0.70 (50% to 70% front)
+    #[wasm_bindgen]
+    pub fn set_brake_bias(&mut self, bias: f32) {
+        self.inner.set_brake_bias(bias);
+    }
+
+    /// Get current front brake bias
+    /// Returns: 0.50 to 0.70
+    #[wasm_bindgen]
+    pub fn get_brake_bias(&self) -> f32 {
+        self.inner.get_brake_bias()
+    }
+
+    /// Increase brake bias by 2%
+    #[wasm_bindgen]
+    pub fn increase_brake_bias(&mut self) {
+        self.inner.increase_brake_bias();
+    }
+
+    /// Decrease brake bias by 2%
+    #[wasm_bindgen]
+    pub fn decrease_brake_bias(&mut self) {
+        self.inner.decrease_brake_bias();
+    }
+
+    /// Set engine braking level
+    /// level: 0 = Low, 1 = Medium, 2 = High
+    #[wasm_bindgen]
+    pub fn set_engine_braking_level(&mut self, level: u8) {
+        use types::EngineBrakingLevel;
+        let brake_level = match level {
+            0 => EngineBrakingLevel::Low,
+            1 => EngineBrakingLevel::Medium,
+            2 => EngineBrakingLevel::High,
+            _ => EngineBrakingLevel::Medium,
+        };
+        self.inner.set_engine_braking_level(brake_level);
+    }
+
+    /// Get current engine braking level
+    /// Returns: 0 = Low, 1 = Medium, 2 = High
+    #[wasm_bindgen]
+    pub fn get_engine_braking_level(&self) -> u8 {
+        use types::EngineBrakingLevel;
+        match self.inner.get_engine_braking_level() {
+            EngineBrakingLevel::Low => 0,
+            EngineBrakingLevel::Medium => 1,
+            EngineBrakingLevel::High => 2,
+        }
+    }
+
+    /// Cycle through engine braking levels (Low -> Medium -> High -> Low)
+    #[wasm_bindgen]
+    pub fn cycle_engine_braking_level(&mut self) {
+        self.inner.cycle_engine_braking_level();
+    }
+
+    /// Get current brake state as JavaScript object
+    /// Returns: { frontBias, engineBraking, frontBrakeForce, rearBrakeForce }
+    #[wasm_bindgen]
+    pub fn get_brake_state(&self) -> JsValue {
+        to_value(&self.inner.get_brake_state()).unwrap_or(JsValue::NULL)
     }
 
     // ========================================================================
