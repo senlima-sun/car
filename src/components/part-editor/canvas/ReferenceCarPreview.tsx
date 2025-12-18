@@ -1,4 +1,4 @@
-import { usePartEditorStore } from '@/stores/usePartEditorStore'
+import { usePartEditorStore } from '../store'
 
 /**
  * Ghost preview of the car frame for positioning reference.

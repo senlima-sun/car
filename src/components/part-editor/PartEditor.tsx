@@ -1,8 +1,8 @@
 import { useEffect, useCallback } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { usePartEditorStore } from '@/stores/usePartEditorStore'
-import EditorScene from '@/components/canvas/PartEditor/EditorScene'
-import EditorLayout from '@/components/ui/PartEditor/EditorLayout'
+import { usePartEditorStore } from './store'
+import EditorScene from './canvas/EditorScene'
+import EditorLayout from './ui/EditorLayout'
 
 export default function PartEditor() {
   const loadFromLocalStorage = usePartEditorStore((s) => s.loadFromLocalStorage)

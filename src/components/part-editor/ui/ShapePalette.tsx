@@ -1,6 +1,6 @@
-import { usePartEditorStore } from '@/stores/usePartEditorStore'
-import { GEOMETRY_DEFAULTS } from '@/constants/partEditor'
-import type { GeometryType } from '@/types/partEditor'
+import { usePartEditorStore } from '../store'
+import { GEOMETRY_DEFAULTS } from '../constants'
+import type { GeometryType } from '../types'
 
 const buttonStyle: React.CSSProperties = {
   padding: '8px 12px',

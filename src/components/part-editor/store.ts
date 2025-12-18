@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { EditorPart, GeometryType, TransformMode, CarPartConfig, HistoryEntry } from '@/types/partEditor'
-import { GEOMETRY_DEFAULTS, DEFAULT_MATERIAL, PART_EDITOR_STORAGE_KEY, MAX_HISTORY_LENGTH } from '@/constants/partEditor'
+import type { EditorPart, GeometryType, TransformMode, CarPartConfig, HistoryEntry } from './types'
+import { GEOMETRY_DEFAULTS, DEFAULT_MATERIAL, PART_EDITOR_STORAGE_KEY, MAX_HISTORY_LENGTH } from './constants'
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9)

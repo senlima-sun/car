@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback } from 'react'
 import { TransformControls } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { usePartEditorStore } from '@/stores/usePartEditorStore'
+import { usePartEditorStore } from '../store'
 
 export default function GizmoController() {
   const transformRef = useRef<any>(null)

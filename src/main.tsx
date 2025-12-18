@@ -2,7 +2,7 @@ import { StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { PostHogProvider } from 'posthog-js/react'
 import App from './App'
-import PartEditor from './pages/PartEditor'
+import PartEditor from './components/part-editor'
 
 const options = {
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,

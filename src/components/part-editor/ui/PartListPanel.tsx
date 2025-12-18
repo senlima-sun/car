@@ -1,5 +1,5 @@
-import { usePartEditorStore } from '@/stores/usePartEditorStore'
-import { GEOMETRY_DEFAULTS } from '@/constants/partEditor'
+import { usePartEditorStore } from '../store'
+import { GEOMETRY_DEFAULTS } from '../constants'
 
 const listItemStyle: React.CSSProperties = {
   padding: '8px 10px',

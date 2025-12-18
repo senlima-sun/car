@@ -1,4 +1,4 @@
-import { usePartEditorStore } from '@/stores/usePartEditorStore'
+import { usePartEditorStore } from '../store'
 import ShapePointsEditor from './ShapePointsEditor'
 import HeightProfileEditor from './HeightProfileEditor'
 

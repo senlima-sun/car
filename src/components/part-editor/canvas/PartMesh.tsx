@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react'
 import { Outlines, RoundedBox } from '@react-three/drei'
 import { ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import type { EditorPart } from '@/types/partEditor'
+import type { EditorPart } from '../types'
 
 interface PartMeshProps {
   part: EditorPart

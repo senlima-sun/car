@@ -1,4 +1,4 @@
-import type { GeometryType } from '@/types/partEditor'
+import type { GeometryType } from './types'
 
 export const GEOMETRY_DEFAULTS: Record<GeometryType, { args: number[]; name: string; icon: string; points?: [number, number][]; heightProfile?: [number, number][]; heightProfileSmooth?: boolean }> = {
   box: { args: [1, 1, 1], name: 'Box', icon: '◻' },

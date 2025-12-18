@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
-import type { EditorPart, CarPartConfig } from '@/types/partEditor'
-import { PART_EDITOR_STORAGE_KEY } from '@/constants/partEditor'
+import type { EditorPart, CarPartConfig } from '@/components/part-editor/types'
+import { PART_EDITOR_STORAGE_KEY } from '@/components/part-editor/constants'
 
 // Create a path from points with optional rounded corners
 function createPathFromPoints(

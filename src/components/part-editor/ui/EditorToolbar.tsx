@@ -1,7 +1,7 @@
 import { useRef } from 'react'
-import { usePartEditorStore } from '@/stores/usePartEditorStore'
-import { SNAP_VALUES } from '@/constants/partEditor'
-import type { TransformMode } from '@/types/partEditor'
+import { usePartEditorStore } from '../store'
+import { SNAP_VALUES } from '../constants'
+import type { TransformMode } from '../types'
 
 const toolbarStyle: React.CSSProperties = {
   display: 'flex',

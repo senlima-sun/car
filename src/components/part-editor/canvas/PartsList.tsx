@@ -1,4 +1,4 @@
-import { usePartEditorStore } from '@/stores/usePartEditorStore'
+import { usePartEditorStore } from '../store'
 import PartMesh from './PartMesh'
 
 export default function PartsList() {
