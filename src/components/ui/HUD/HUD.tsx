@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import RacePanel from './RacePanel'
 import StatsPanel from './StatsPanel'
 import ErsIndicator from './ErsIndicator'
+import AeroIndicator from './AeroIndicator'
 import PitStopUI from './PitStopUI'
 import StatusBar from './StatusBar'
 import ControlsModal from './ControlsModal'
@@ -128,6 +129,7 @@ export default function HUD() {
                 <RacePanel />
               </div>
               <div style={styles.bottomRight as React.CSSProperties}>
+                <AeroIndicator />
                 <ErsIndicator />
                 <StatsPanel />
               </div>
