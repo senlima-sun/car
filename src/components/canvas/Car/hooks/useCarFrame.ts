@@ -15,6 +15,7 @@ import { useWindStore } from '../../../../stores/useWindStore'
 import { useWindViewStore } from '../../../../stores/useWindViewStore'
 import { useAquaplaningStore } from '../../../../stores/useAquaplaningStore'
 import { useErsStore } from '../../../../stores/useErsStore'
+import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 
@@ -85,6 +86,11 @@ export function useCarFrame({
   const ersMode = useErsStore(state => state.mode)
   const syncErsState = useErsStore(state => state.syncFromPhysics)
 
+  // Active Aero mode toggle and sync
+  const toggleAeroMode = useActiveAeroStore(state => state.toggleMode)
+  const aeroMode = useActiveAeroStore(state => state.mode)
+  const syncAeroState = useActiveAeroStore(state => state.syncFromPhysics)
+
   // Curb state
   const isOnCurb = useCurbStore(state => state.isOnCurb)
   const curbSide = useCurbStore(state => state.curbSide)
@@ -102,6 +108,7 @@ export function useCarFrame({
   const lastHeatmapToggle = useRef(0)
   const lastGridToggle = useRef(0)
   const lastErsModeToggle = useRef(0)
+  const lastAeroModeToggle = useRef(0)
   const tempCarPosRef = useRef(new Vector3())
 
   // Pre-allocated arrays for rubber deposit updates (avoid GC)
@@ -128,6 +135,7 @@ export function useCarFrame({
       handbrake,
       drs,
       ers,
+      aero,
       camera,
       heatmap,
       distanceGrid,
@@ -165,6 +173,12 @@ export function useCarFrame({
     if (ers && state.clock.elapsedTime - lastErsModeToggle.current > 0.3) {
       cycleErsMode()
       lastErsModeToggle.current = state.clock.elapsedTime
+    }
+
+    // Active Aero mode toggle with debounce (V key)
+    if (aero && state.clock.elapsedTime - lastAeroModeToggle.current > 0.3) {
+      toggleAeroMode()
+      lastAeroModeToggle.current = state.clock.elapsedTime
     }
 
     // Skip physics when in free camera mode or customize mode (freeze car)
@@ -218,6 +232,11 @@ export function useCarFrame({
 
     // Sync ERS mode from UI to physics engine
     physics.setErsMode(ersMode)
+
+    // Sync Active Aero mode to physics and get current state
+    physics.setAeroMode(aeroMode)
+    const aeroState = physics.getActiveAeroState()
+    syncAeroState(aeroState)
 
     // Build input for WASM physics
     const input: CarInput = {

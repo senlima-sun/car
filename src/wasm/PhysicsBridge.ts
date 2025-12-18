@@ -195,6 +195,20 @@ export interface TireThermalShock {
 }
 
 // ============================================================================
+// Active Aero Types
+// ============================================================================
+
+export type AeroMode = 'Corner' | 'Straight'
+
+export interface ActiveAeroState {
+  mode: AeroMode
+  front_wing_angle: number // 0.0-1.0
+  rear_wing_angle: number // 0.0-1.0
+  drag_multiplier: number
+  downforce_multiplier: number
+}
+
+// ============================================================================
 // Engine Instance Management
 // ============================================================================
 
@@ -753,5 +767,56 @@ export function getWheelAvgTemp(temps: PerWheelTemperature, wheel: 0 | 1 | 2 | 3
       return (temps.rear_left_inner + temps.rear_left_outer) / 2
     case 3:
       return (temps.rear_right_inner + temps.rear_right_outer) / 2
+  }
+}
+
+// ============================================================================
+// Active Aero API
+// ============================================================================
+
+/**
+ * Set active aero mode
+ * @param mode - 'Corner' for high downforce, 'Straight' for low drag
+ */
+export function setAeroMode(mode: AeroMode): void {
+  // For now, this is a client-side only feature
+  // When WASM implements this, we'll call: getPhysicsEngine().set_aero_mode(mode)
+  console.log('[PhysicsBridge] Active Aero mode set to:', mode)
+}
+
+/**
+ * Get current aero mode
+ */
+export function getAeroMode(): AeroMode {
+  // For now, return default
+  // When WASM implements this, we'll call: getPhysicsEngine().get_aero_mode()
+  return 'Corner'
+}
+
+/**
+ * Get current active aero state
+ * Returns wing angles and multipliers based on current mode
+ */
+export function getActiveAeroState(): ActiveAeroState {
+  // For now, return simulated state
+  // When WASM implements this, we'll call: getPhysicsEngine().get_active_aero_state()
+  const mode = getAeroMode()
+
+  if (mode === 'Corner') {
+    return {
+      mode: 'Corner',
+      front_wing_angle: 1.0, // Fully deployed
+      rear_wing_angle: 1.0,
+      drag_multiplier: 1.2, // Higher drag
+      downforce_multiplier: 1.4, // Higher downforce
+    }
+  } else {
+    return {
+      mode: 'Straight',
+      front_wing_angle: 0.2, // Minimal angle
+      rear_wing_angle: 0.1,
+      drag_multiplier: 0.7, // Lower drag
+      downforce_multiplier: 0.6, // Lower downforce
+    }
   }
 }

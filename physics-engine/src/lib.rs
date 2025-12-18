@@ -1,3 +1,4 @@
+mod active_aero;
 mod car_physics;
 mod curb;
 mod engine;
@@ -13,12 +14,13 @@ mod wind;
 
 use engine::PhysicsEngine as PhysicsEngineInternal;
 use serde_wasm_bindgen::{from_value, to_value};
-use types::{CarInput, CurbSide, ErsMode, SurfaceType, TireCompound, TrackBounds};
+use types::{AeroMode, CarInput, CurbSide, ErsMode, SurfaceType, TireCompound, TrackBounds};
 use wasm_bindgen::prelude::*;
 
 // Re-export enums for JavaScript
 pub use types::TireCompound as TireCompoundEnum;
 pub use types::ErsMode as ErsModeEnum;
+pub use types::AeroMode as AeroModeEnum;
 
 /// WASM-exposed physics engine wrapper
 #[wasm_bindgen]
@@ -185,6 +187,45 @@ impl PhysicsEngine {
     #[wasm_bindgen]
     pub fn set_ers_battery_charge(&mut self, charge: f32) {
         self.inner.set_ers_battery_charge(charge);
+    }
+
+    // ========================================================================
+    // Active Aero API
+    // ========================================================================
+
+    /// Set active aero mode
+    /// mode: 0 = Corner (max downforce), 1 = Straight (low drag)
+    #[wasm_bindgen]
+    pub fn set_aero_mode(&mut self, mode: u8) {
+        let aero_mode = match mode {
+            0 => AeroMode::Corner,
+            1 => AeroMode::Straight,
+            _ => AeroMode::Corner,
+        };
+        self.inner.set_aero_mode(aero_mode);
+    }
+
+    /// Get current active aero mode
+    /// Returns: 0 = Corner, 1 = Straight
+    #[wasm_bindgen]
+    pub fn get_aero_mode(&self) -> u8 {
+        match self.inner.get_aero_mode() {
+            AeroMode::Corner => 0,
+            AeroMode::Straight => 1,
+        }
+    }
+
+    /// Toggle active aero mode between Corner and Straight
+    #[wasm_bindgen]
+    pub fn toggle_aero_mode(&mut self) {
+        self.inner.toggle_aero_mode();
+    }
+
+    /// Get current active aero state as JavaScript object
+    /// Returns: { mode, frontWingAngle, rearWingAngle, dragMultiplier, downforceMultiplier }
+    #[wasm_bindgen]
+    pub fn get_active_aero_state(&self) -> JsValue {
+        to_value(&self.inner.get_active_aero_state()).unwrap_or(JsValue::NULL)
     }
 
     // ========================================================================

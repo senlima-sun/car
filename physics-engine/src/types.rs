@@ -202,6 +202,27 @@ pub struct ErsState {
 }
 
 // ============================================================================
+// Active Aero Types
+// ============================================================================
+
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum AeroMode {
+    #[default]
+    Corner,   // Max downforce, high drag
+    Straight, // Low drag, reduced downforce
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct ActiveAeroState {
+    pub mode: AeroMode,
+    pub front_wing_angle: f32,    // 0.0 = closed, 1.0 = open
+    pub rear_wing_angle: f32,     // 0.0 = closed, 1.0 = open
+    pub drag_multiplier: f32,
+    pub downforce_multiplier: f32,
+}
+
+// ============================================================================
 // Tire Types
 // ============================================================================
 
@@ -366,6 +387,8 @@ pub struct CarPhysicsOutput {
     pub tire_thermal_shock: TireThermalShock,
     /// Current ERS state
     pub ers: ErsState,
+    /// Current active aero state
+    pub active_aero: ActiveAeroState,
 }
 
 // ============================================================================

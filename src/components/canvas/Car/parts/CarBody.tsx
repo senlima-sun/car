@@ -10,6 +10,8 @@ import { BodyFrame } from './BodyFrame'
 import { Cockpit } from './Cockpit'
 import { WheelsGroup } from './WheelsGroup'
 import DynamicParts from './DynamicParts'
+import { FrontWing } from './FrontWing'
+import { RearWing } from './RearWing'
 import { useEngineThermal } from '../hooks/useEngineThermal'
 
 export default function CarBody() {
@@ -56,6 +58,12 @@ export default function CarBody() {
         isThermalView={isThermalView}
         compoundColor={compoundColor}
       />
+
+      {/* Active Aero - Front Wing */}
+      <FrontWing />
+
+      {/* Active Aero - Rear Wing */}
+      <RearWing />
 
       {/* Custom parts from Part Editor (loads from localStorage) */}
       <DynamicParts loadFromStorage />

@@ -1,3 +1,4 @@
+use crate::active_aero::ActiveAeroPhysicsState;
 use crate::car_physics::weight_transfer::calculate_weight_transfer;
 use crate::car_physics::CarPhysicsState;
 use crate::curb::CurbState;
@@ -7,9 +8,9 @@ use crate::surface::SurfaceState;
 use crate::tires::{TempInput, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
-    AmbientConditions, AquaplaningState, CarInput, CarPhysicsOutput, CurbSide, ErsMode, PerWheelWear,
-    SurfaceModifiers, SurfaceType, TemperatureOutput, TireCompound, TireThermalShock, TrackBounds,
-    WeatherModifiers, WindModifiers, WindState,
+    AeroMode, AmbientConditions, AquaplaningState, CarInput, CarPhysicsOutput, CurbSide, ErsMode,
+    PerWheelWear, SurfaceModifiers, SurfaceType, TemperatureOutput, TireCompound, TireThermalShock,
+    TrackBounds, WeatherModifiers, WindModifiers, WindState,
 };
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
@@ -23,6 +24,7 @@ pub struct PhysicsEngine {
     tire_temperature: TireTemperatureState,
     engine_temperature: EngineTemperatureState,
     ers: ErsPhysicsState,
+    active_aero: ActiveAeroPhysicsState,
     track_temperature: TrackTemperatureGrid,
     curb: CurbState,
     surface: SurfaceState,
@@ -44,6 +46,7 @@ impl PhysicsEngine {
             tire_temperature: TireTemperatureState::new(),
             engine_temperature: EngineTemperatureState::new(),
             ers: ErsPhysicsState::new(),
+            active_aero: ActiveAeroPhysicsState::new(),
             track_temperature: TrackTemperatureGrid::default(),
             curb: CurbState::new(),
             surface: SurfaceState::new(),
@@ -146,6 +149,26 @@ impl PhysicsEngine {
 
     pub fn set_ers_battery_charge(&mut self, charge: f32) {
         self.ers.set_battery_charge(charge);
+    }
+
+    // ========================================================================
+    // Active Aero API
+    // ========================================================================
+
+    pub fn set_aero_mode(&mut self, mode: AeroMode) {
+        self.active_aero.set_mode(mode);
+    }
+
+    pub fn get_aero_mode(&self) -> AeroMode {
+        self.active_aero.get_mode()
+    }
+
+    pub fn toggle_aero_mode(&mut self) {
+        self.active_aero.toggle_mode();
+    }
+
+    pub fn get_active_aero_state(&self) -> crate::types::ActiveAeroState {
+        self.active_aero.get_state()
     }
 
     // ========================================================================
@@ -360,6 +383,9 @@ impl PhysicsEngine {
             speed_ms,
         );
 
+        // Update active aero wing positions
+        self.active_aero.update(dt);
+
         // Update tire temperatures (use default weight transfer for now, will be refined after car step)
         let temp_input = TempInput {
             delta_seconds: dt,
@@ -424,7 +450,10 @@ impl PhysicsEngine {
         // Update curb and get pitch angular velocity for bump effect
         let curb_pitch = self.curb.update(dt, speed_ms);
 
-        // Run car physics with surface, tire degradation, wind, and ERS effects
+        // Get active aero multipliers
+        let active_aero_state = self.active_aero.get_state();
+
+        // Run car physics with surface, tire degradation, wind, ERS, and active aero effects
         let mut output = self.car.step(
             dt,
             &input,
@@ -439,6 +468,8 @@ impl PhysicsEngine {
             self.curb.is_on_curb(),
             surface_speed,
             ers_boost,
+            active_aero_state.drag_multiplier,
+            active_aero_state.downforce_multiplier,
         );
 
         // Apply curb bump as pitch rotation (X axis = pitch in Three.js)
@@ -497,6 +528,9 @@ impl PhysicsEngine {
 
         // Fill in ERS state
         output.ers = self.ers.get_state();
+
+        // Fill in active aero state
+        output.active_aero = self.active_aero.get_state();
 
         // Update track temperature with skid marks
         if output.skid_intensity > 0.01 {

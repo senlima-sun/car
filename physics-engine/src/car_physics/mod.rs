@@ -93,6 +93,8 @@ impl CarPhysicsState {
         is_on_curb: bool,
         curb_speed_multiplier: f32,
         ers_boost: f32,
+        active_aero_drag_mult: f32,
+        active_aero_downforce_mult: f32,
     ) -> CarPhysicsOutput {
         let dt = delta.min(0.05); // Clamp delta time
 
@@ -185,8 +187,8 @@ impl CarPhysicsState {
             longitudinal_force -= BASE_ENGINE_BRAKE * forward_speed.signum();
         }
 
-        // Aerodynamic drag (affected by weather and wind - headwind increases drag, tailwind decreases)
-        let drag = aerodynamics::get_drag_force(self.speed_ms, input.drs)
+        // Aerodynamic drag (affected by weather, wind, and active aero)
+        let drag = aerodynamics::get_drag_force(self.speed_ms, input.drs, active_aero_drag_mult)
             * weather_modifiers.drag_multiplier
             * wind_modifiers.drag_modifier;
         longitudinal_force -= drag * forward_speed.signum();
@@ -197,8 +199,8 @@ impl CarPhysicsState {
             longitudinal_force -= curb_drag * forward_speed.signum();
         }
 
-        // Downforce for grip
-        let downforce = aerodynamics::get_downforce(self.speed_ms, input.drs)
+        // Downforce for grip (affected by weather and active aero)
+        let downforce = aerodynamics::get_downforce(self.speed_ms, input.drs, active_aero_downforce_mult)
             * weather_modifiers.downforce_multiplier;
         let total_load = CAR_MASS * 9.81 + downforce;
         let downforce_grip_bonus = 1.0 + (downforce / (CAR_MASS * 9.81)) * 0.3;
@@ -321,6 +323,7 @@ impl CarPhysicsState {
             aquaplaning: Default::default(),     // Will be filled in by engine
             tire_thermal_shock: Default::default(), // Will be filled in by engine
             ers: Default::default(),             // Will be filled in by engine
+            active_aero: Default::default(),     // Will be filled in by engine
         }
     }
 

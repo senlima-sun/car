@@ -43,27 +43,35 @@ pub fn get_engine_force(speed_ms: f32, drs_active: bool, ers_boost: f32) -> f32 
 }
 
 /// Calculate aerodynamic drag force (proportional to v²)
-pub fn get_drag_force(speed_ms: f32, drs_active: bool) -> f32 {
+/// active_aero_mult: multiplier from active aero system (0.65-1.0)
+pub fn get_drag_force(speed_ms: f32, drs_active: bool, active_aero_mult: f32) -> f32 {
     let drag_coeff = if drs_active {
         BASE_DRAG_COEFFICIENT * (1.0 - DRS_DRAG_REDUCTION)
     } else {
         BASE_DRAG_COEFFICIENT
     };
 
+    // Apply active aero multiplier to drag coefficient
+    let final_drag_coeff = drag_coeff * active_aero_mult;
+
     // F = 0.5 * ρ * Cd * A * v²
-    0.5 * AIR_DENSITY * drag_coeff * FRONTAL_AREA * speed_ms * speed_ms
+    0.5 * AIR_DENSITY * final_drag_coeff * FRONTAL_AREA * speed_ms * speed_ms
 }
 
 /// Calculate aerodynamic downforce (proportional to v²)
-pub fn get_downforce(speed_ms: f32, drs_active: bool) -> f32 {
+/// active_aero_mult: multiplier from active aero system (0.55-1.0)
+pub fn get_downforce(speed_ms: f32, drs_active: bool, active_aero_mult: f32) -> f32 {
     let downforce_coeff = if drs_active {
         BASE_DOWNFORCE_COEFFICIENT * (1.0 - DRS_DOWNFORCE_REDUCTION)
     } else {
         BASE_DOWNFORCE_COEFFICIENT
     };
 
+    // Apply active aero multiplier to downforce coefficient
+    let final_downforce_coeff = downforce_coeff * active_aero_mult;
+
     // F = 0.5 * ρ * Cl * A * v²
-    0.5 * AIR_DENSITY * downforce_coeff * FRONTAL_AREA * speed_ms * speed_ms
+    0.5 * AIR_DENSITY * final_downforce_coeff * FRONTAL_AREA * speed_ms * speed_ms
 }
 
 #[cfg(test)]
@@ -109,8 +117,8 @@ mod tests {
 
     #[test]
     fn test_drag_increases_with_speed() {
-        let drag_slow = get_drag_force(10.0, false);
-        let drag_fast = get_drag_force(30.0, false);
+        let drag_slow = get_drag_force(10.0, false, 1.0);
+        let drag_fast = get_drag_force(30.0, false, 1.0);
 
         // Drag should be ~9x higher at 3x speed (v²)
         assert!(drag_fast > drag_slow * 8.0);
@@ -118,8 +126,8 @@ mod tests {
 
     #[test]
     fn test_drs_reduces_drag() {
-        let drag_no_drs = get_drag_force(50.0, false);
-        let drag_with_drs = get_drag_force(50.0, true);
+        let drag_no_drs = get_drag_force(50.0, false, 1.0);
+        let drag_with_drs = get_drag_force(50.0, true, 1.0);
 
         assert!(drag_with_drs < drag_no_drs);
         assert!((drag_with_drs / drag_no_drs - 0.6).abs() < 0.01);
@@ -127,9 +135,27 @@ mod tests {
 
     #[test]
     fn test_downforce_increases_with_speed() {
-        let df_slow = get_downforce(10.0, false);
-        let df_fast = get_downforce(30.0, false);
+        let df_slow = get_downforce(10.0, false, 1.0);
+        let df_fast = get_downforce(30.0, false, 1.0);
 
         assert!(df_fast > df_slow * 8.0);
+    }
+
+    #[test]
+    fn test_active_aero_reduces_drag() {
+        let drag_corner = get_drag_force(50.0, false, 1.0);
+        let drag_straight = get_drag_force(50.0, false, 0.65);
+
+        assert!(drag_straight < drag_corner);
+        assert!((drag_straight / drag_corner - 0.65).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_active_aero_reduces_downforce() {
+        let df_corner = get_downforce(50.0, false, 1.0);
+        let df_straight = get_downforce(50.0, false, 0.55);
+
+        assert!(df_straight < df_corner);
+        assert!((df_straight / df_corner - 0.55).abs() < 0.01);
     }
 }

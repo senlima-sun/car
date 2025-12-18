@@ -8,6 +8,7 @@ export const keyboardMap = [
   { name: 'handbrake', keys: ['ShiftLeft', 'ShiftRight'] },
   { name: 'drs', keys: ['KeyE'] },
   { name: 'ers', keys: ['KeyB'] },
+  { name: 'aero', keys: ['KeyV'] },
   { name: 'camera', keys: ['KeyC'] },
   { name: 'heatmap', keys: ['KeyH'] },
   { name: 'distanceGrid', keys: ['AltLeft', 'AltRight'] },

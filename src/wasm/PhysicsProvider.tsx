@@ -48,6 +48,10 @@ import {
   getErsBatteryCharge,
   setErsBatteryCharge,
   getErsState,
+  // Active Aero API
+  setAeroMode,
+  getAeroMode,
+  getActiveAeroState,
   CarInput,
   CarPhysicsOutput,
   WeatherModifiers,
@@ -58,6 +62,7 @@ import {
   TireCompound,
   SurfaceType,
   ErsMode,
+  AeroMode,
 } from './PhysicsBridge'
 
 // Re-export types
@@ -117,6 +122,10 @@ interface PhysicsContextValue {
   getErsBatteryCharge: typeof getErsBatteryCharge
   setErsBatteryCharge: typeof setErsBatteryCharge
   getErsState: typeof getErsState
+  // Active Aero API
+  setAeroMode: typeof setAeroMode
+  getAeroMode: typeof getAeroMode
+  getActiveAeroState: typeof getActiveAeroState
 }
 
 const PhysicsContext = createContext<PhysicsContextValue | null>(null)
@@ -212,6 +221,10 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     getErsBatteryCharge,
     setErsBatteryCharge,
     getErsState,
+    // Active Aero API
+    setAeroMode,
+    getAeroMode,
+    getActiveAeroState,
   }
 
   return <PhysicsContext.Provider value={value}>{children}</PhysicsContext.Provider>

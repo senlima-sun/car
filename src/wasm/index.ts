@@ -50,6 +50,10 @@ export {
   getErsBatteryCharge,
   setErsBatteryCharge,
   getErsState,
+  // Active Aero API
+  setAeroMode,
+  getAeroMode,
+  getActiveAeroState,
 } from './PhysicsBridge'
 
 export type {
@@ -63,6 +67,8 @@ export type {
   WindModifiers,
   ErsMode,
   ErsState,
+  AeroMode,
+  ActiveAeroState,
 } from './PhysicsBridge'
 
 // React provider
