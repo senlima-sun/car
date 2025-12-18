@@ -7,7 +7,6 @@ interface TouchControlsState {
   right: boolean
   brake: boolean
   handbrake: boolean
-  drs: boolean
   camera: boolean
 
   // Actions
@@ -17,7 +16,6 @@ interface TouchControlsState {
   setRight: (value: boolean) => void
   setBrake: (value: boolean) => void
   setHandbrake: (value: boolean) => void
-  setDrs: (value: boolean) => void
   setCamera: (value: boolean) => void
 
   // Compound actions for D-pad diagonal movement
@@ -35,7 +33,6 @@ const initialState = {
   right: false,
   brake: false,
   handbrake: false,
-  drs: false,
   camera: false,
 }
 
@@ -48,7 +45,6 @@ export const useTouchControlsStore = create<TouchControlsState>(set => ({
   setRight: value => set({ right: value, left: value ? false : undefined }),
   setBrake: value => set({ brake: value }),
   setHandbrake: value => set({ handbrake: value }),
-  setDrs: value => set({ drs: value }),
   setCamera: value => set({ camera: value }),
 
   // Diagonal movements

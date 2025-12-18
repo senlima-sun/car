@@ -160,7 +160,7 @@ impl CarPhysicsState {
 
         // Engine force
         if input.forward && !input.brake {
-            let engine_force = aerodynamics::get_engine_force(self.speed_ms, input.drs, ers_boost)
+            let engine_force = aerodynamics::get_engine_force(self.speed_ms, ers_boost)
                 * weather_modifiers.engine_efficiency_multiplier;
             longitudinal_force += engine_force;
         }
@@ -176,7 +176,7 @@ impl CarPhysicsState {
                 longitudinal_force -= brake_force * handbrake_mult;
             } else if input.backward && !input.brake {
                 // If slow or stopped and backward is pressed (not just brake), apply reverse force
-                let reverse_force = aerodynamics::get_engine_force(self.speed_ms, false, 0.0)
+                let reverse_force = aerodynamics::get_engine_force(self.speed_ms, 0.0)
                     * weather_modifiers.engine_efficiency_multiplier
                     * 0.4; // Reverse is weaker than forward (no ERS in reverse)
                 longitudinal_force -= reverse_force;
@@ -189,7 +189,7 @@ impl CarPhysicsState {
         }
 
         // Aerodynamic drag (affected by weather, wind, and active aero)
-        let drag = aerodynamics::get_drag_force(self.speed_ms, input.drs, active_aero_drag_mult)
+        let drag = aerodynamics::get_drag_force(self.speed_ms, active_aero_drag_mult)
             * weather_modifiers.drag_multiplier
             * wind_modifiers.drag_modifier;
         longitudinal_force -= drag * forward_speed.signum();
@@ -201,7 +201,7 @@ impl CarPhysicsState {
         }
 
         // Downforce for grip (affected by weather and active aero)
-        let downforce = aerodynamics::get_downforce(self.speed_ms, input.drs, active_aero_downforce_mult)
+        let downforce = aerodynamics::get_downforce(self.speed_ms, active_aero_downforce_mult)
             * weather_modifiers.downforce_multiplier;
         let total_load = CAR_MASS * 9.81 + downforce;
         let downforce_grip_bonus = 1.0 + (downforce / (CAR_MASS * 9.81)) * 0.3;

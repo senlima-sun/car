@@ -114,7 +114,6 @@ const DRIVING_CONTROLS: ControlItem[] = [
   { key: 'S', action: 'Brake / Reverse' },
   { key: 'A / D', action: 'Steer Left / Right' },
   { key: 'SPACE', action: 'Handbrake' },
-  { key: 'E', action: 'DRS (Speed Boost)' },
 ]
 
 const GAME_CONTROLS: ControlItem[] = [

@@ -8,7 +8,6 @@ interface ControlsState {
   right: boolean
   brake: boolean
   handbrake: boolean
-  drs: boolean
   ers: boolean
   aero: boolean
   brakeIncr: boolean
@@ -37,7 +36,6 @@ export function useControls(): () => ControlsState {
       right: keyboard.right || touch.right,
       brake: keyboard.brake || touch.brake,
       handbrake: keyboard.handbrake || touch.handbrake,
-      drs: keyboard.drs || touch.drs,
       ers: keyboard.ers || false,
       aero: keyboard.aero || false,
       brakeIncr: keyboard.brakeIncr || false,

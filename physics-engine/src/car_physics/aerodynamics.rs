@@ -3,14 +3,9 @@ use super::{BASE_DOWNFORCE_COEFFICIENT, BASE_DRAG_COEFFICIENT};
 const AIR_DENSITY: f32 = 1.225; // kg/m³
 const FRONTAL_AREA: f32 = 2.0;  // m²
 
-// DRS Configuration
-const DRS_ACTIVATION_SPEED: f32 = 200.0; // km/h
-const DRS_DRAG_REDUCTION: f32 = 0.4;     // 40% drag reduction
-const DRS_DOWNFORCE_REDUCTION: f32 = 0.4; // 40% downforce reduction
-
 /// Calculate engine force based on speed (power curve)
 /// ers_boost: additional force from ERS deployment in Newtons
-pub fn get_engine_force(speed_ms: f32, drs_active: bool, ers_boost: f32) -> f32 {
+pub fn get_engine_force(speed_ms: f32, ers_boost: f32) -> f32 {
     let speed_kmh = speed_ms * 3.6;
 
     // Multi-stage power curve
@@ -31,28 +26,14 @@ pub fn get_engine_force(speed_ms: f32, drs_active: bool, ers_boost: f32) -> f32 
         7000.0 - t * t * 3500.0 // 7000 -> 3500
     };
 
-    // DRS boost
-    let drs_boost = if drs_active && speed_kmh >= DRS_ACTIVATION_SPEED && speed_kmh < 300.0 {
-        let t = (speed_kmh - 200.0) / 100.0;
-        4000.0 + t * 4000.0 // 4000 -> 8000 N boost
-    } else {
-        0.0
-    };
-
-    base_force + drs_boost + ers_boost
+    base_force + ers_boost
 }
 
 /// Calculate aerodynamic drag force (proportional to v²)
 /// active_aero_mult: multiplier from active aero system (0.65-1.0)
-pub fn get_drag_force(speed_ms: f32, drs_active: bool, active_aero_mult: f32) -> f32 {
-    let drag_coeff = if drs_active {
-        BASE_DRAG_COEFFICIENT * (1.0 - DRS_DRAG_REDUCTION)
-    } else {
-        BASE_DRAG_COEFFICIENT
-    };
-
+pub fn get_drag_force(speed_ms: f32, active_aero_mult: f32) -> f32 {
     // Apply active aero multiplier to drag coefficient
-    let final_drag_coeff = drag_coeff * active_aero_mult;
+    let final_drag_coeff = BASE_DRAG_COEFFICIENT * active_aero_mult;
 
     // F = 0.5 * ρ * Cd * A * v²
     0.5 * AIR_DENSITY * final_drag_coeff * FRONTAL_AREA * speed_ms * speed_ms
@@ -60,15 +41,9 @@ pub fn get_drag_force(speed_ms: f32, drs_active: bool, active_aero_mult: f32) ->
 
 /// Calculate aerodynamic downforce (proportional to v²)
 /// active_aero_mult: multiplier from active aero system (0.55-1.0)
-pub fn get_downforce(speed_ms: f32, drs_active: bool, active_aero_mult: f32) -> f32 {
-    let downforce_coeff = if drs_active {
-        BASE_DOWNFORCE_COEFFICIENT * (1.0 - DRS_DOWNFORCE_REDUCTION)
-    } else {
-        BASE_DOWNFORCE_COEFFICIENT
-    };
-
+pub fn get_downforce(speed_ms: f32, active_aero_mult: f32) -> f32 {
     // Apply active aero multiplier to downforce coefficient
-    let final_downforce_coeff = downforce_coeff * active_aero_mult;
+    let final_downforce_coeff = BASE_DOWNFORCE_COEFFICIENT * active_aero_mult;
 
     // F = 0.5 * ρ * Cl * A * v²
     0.5 * AIR_DENSITY * final_downforce_coeff * FRONTAL_AREA * speed_ms * speed_ms
@@ -80,71 +55,54 @@ mod tests {
 
     #[test]
     fn test_engine_force_low_speed() {
-        let force = get_engine_force(10.0, false, 0.0); // ~36 km/h
+        let force = get_engine_force(10.0, 0.0); // ~36 km/h
         assert!((force - 18000.0).abs() < 100.0);
     }
 
     #[test]
     fn test_engine_force_mid_speed() {
-        let force = get_engine_force(30.0, false, 0.0); // ~108 km/h
+        let force = get_engine_force(30.0, 0.0); // ~108 km/h
         assert!(force < 18000.0);
         assert!(force > 12000.0);
     }
 
     #[test]
     fn test_engine_force_high_speed() {
-        let force = get_engine_force(70.0, false, 0.0); // ~252 km/h
+        let force = get_engine_force(70.0, 0.0); // ~252 km/h
         assert!(force < 8000.0);
         assert!(force > 5000.0);
     }
 
     #[test]
-    fn test_drs_boost() {
-        let force_no_drs = get_engine_force(60.0, false, 0.0); // ~216 km/h
-        let force_with_drs = get_engine_force(60.0, true, 0.0);
-
-        assert!(force_with_drs > force_no_drs);
-    }
-
-    #[test]
     fn test_ers_boost() {
-        let force_no_ers = get_engine_force(50.0, false, 0.0);
+        let force_no_ers = get_engine_force(50.0, 0.0);
         let ers_boost = 2000.0; // 2000 N from ERS
-        let force_with_ers = get_engine_force(50.0, false, ers_boost);
+        let force_with_ers = get_engine_force(50.0, ers_boost);
 
         assert!((force_with_ers - force_no_ers - ers_boost).abs() < 0.1);
     }
 
     #[test]
     fn test_drag_increases_with_speed() {
-        let drag_slow = get_drag_force(10.0, false, 1.0);
-        let drag_fast = get_drag_force(30.0, false, 1.0);
+        let drag_slow = get_drag_force(10.0, 1.0);
+        let drag_fast = get_drag_force(30.0, 1.0);
 
         // Drag should be ~9x higher at 3x speed (v²)
         assert!(drag_fast > drag_slow * 8.0);
     }
 
     #[test]
-    fn test_drs_reduces_drag() {
-        let drag_no_drs = get_drag_force(50.0, false, 1.0);
-        let drag_with_drs = get_drag_force(50.0, true, 1.0);
-
-        assert!(drag_with_drs < drag_no_drs);
-        assert!((drag_with_drs / drag_no_drs - 0.6).abs() < 0.01);
-    }
-
-    #[test]
     fn test_downforce_increases_with_speed() {
-        let df_slow = get_downforce(10.0, false, 1.0);
-        let df_fast = get_downforce(30.0, false, 1.0);
+        let df_slow = get_downforce(10.0, 1.0);
+        let df_fast = get_downforce(30.0, 1.0);
 
         assert!(df_fast > df_slow * 8.0);
     }
 
     #[test]
     fn test_active_aero_reduces_drag() {
-        let drag_corner = get_drag_force(50.0, false, 1.0);
-        let drag_straight = get_drag_force(50.0, false, 0.65);
+        let drag_corner = get_drag_force(50.0, 1.0);
+        let drag_straight = get_drag_force(50.0, 0.65);
 
         assert!(drag_straight < drag_corner);
         assert!((drag_straight / drag_corner - 0.65).abs() < 0.01);
@@ -152,8 +110,8 @@ mod tests {
 
     #[test]
     fn test_active_aero_reduces_downforce() {
-        let df_corner = get_downforce(50.0, false, 1.0);
-        let df_straight = get_downforce(50.0, false, 0.55);
+        let df_corner = get_downforce(50.0, 1.0);
+        let df_straight = get_downforce(50.0, 0.55);
 
         assert!(df_straight < df_corner);
         assert!((df_straight / df_corner - 0.55).abs() < 0.01);

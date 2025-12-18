@@ -390,7 +390,6 @@ pub struct CarInput {
     pub right: bool,
     pub brake: bool,
     pub handbrake: bool,
-    pub drs: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]

@@ -6,7 +6,6 @@ export const keyboardMap = [
   { name: 'right', keys: ['KeyD', 'ArrowRight'] },
   { name: 'brake', keys: ['Space'] },
   { name: 'handbrake', keys: ['ShiftLeft', 'ShiftRight'] },
-  { name: 'drs', keys: ['KeyE'] },
   { name: 'ers', keys: ['KeyB'] },
   { name: 'aero', keys: ['KeyV'] },
   { name: 'brakeIncr', keys: ['BracketRight'] },
@@ -47,7 +46,6 @@ export const CONTROLS: ControlDefinition[] = [
   { id: 'handbrake', displayName: 'E-Brake', keys: ['Shift'], category: 'movement' },
 
   // Driving Systems
-  { id: 'drs', displayName: 'DRS', keys: ['E'], category: 'drivingSystems' },
   { id: 'ers', displayName: 'Cycle ERS', keys: ['B'], category: 'drivingSystems' },
   { id: 'aero', displayName: 'Aero Mode', keys: ['V'], category: 'drivingSystems' },
   { id: 'brakeIncr', displayName: 'Brake Bias +', keys: [']'], category: 'drivingSystems' },
