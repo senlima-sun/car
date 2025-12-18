@@ -1,7 +1,6 @@
 import { useRef, useState, useCallback } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useWeatherStore } from '../../../stores/useWeatherStore'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 
 // Lightning flash pattern - multi-flash for realism
@@ -37,8 +36,7 @@ function generateFlashPattern(): FlashPattern {
 
 export default function LightningEffect() {
   const lightRef = useRef<THREE.DirectionalLight>(null)
-  const currentWeather = useWeatherStore(s => s.currentWeather)
-  const customRainIntensity = useEnvironmentStore(s => s.rainIntensity)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
   // Lightning timing state
   const [nextFlashTime, setNextFlashTime] = useState(5 + Math.random() * 10)
@@ -47,8 +45,8 @@ export default function LightningEffect() {
   const flashStartTime = useRef(0)
   const elapsedTime = useRef(0)
 
-  // Lightning only in heavy rain (weather preset or custom intensity > 0.6)
-  const isRaining = currentWeather === 'rain' || customRainIntensity > 0.6
+  // Lightning only in heavy rain (intensity > 0.6)
+  const isRaining = rainIntensity > 0.6
 
   // Schedule next flash
   const scheduleNextFlash = useCallback(() => {

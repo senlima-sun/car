@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import * as THREE from 'three'
-import { WeatherCondition } from '../constants/weather'
 
 // Grid cell data
 export interface GridCell {
@@ -30,13 +29,11 @@ export const TRACK_TEMP_CONFIG = {
   heatGainRate: 3.0, // How fast temperature rises when car drives over (increased for visibility)
   heatRadius: 4, // Affect cells within this radius of car
 
-  // Decay rates per weather type (per second) - matched to Rust physics engine
-  decayRates: {
-    dry: 0.004,  // Track cools very slowly in dry conditions
-    hot: 0.002,  // Hot weather keeps track warm
-    rain: 0.012, // Rain cools moderately
-    cold: 0.018, // Cold weather cools faster but still slow
-  } as Record<WeatherCondition, number>,
+  // Base decay rate per second - matched to Rust physics engine
+  baseDecayRate: 0.004,  // Track cools slowly in normal conditions
+  coldDecayMultiplier: 4.5, // Cold weather cools faster (< 5°C)
+  hotDecayMultiplier: 0.5, // Hot weather keeps track warm (> 35°C)
+  rainDecayMultiplier: 3.0, // Rain cools track faster
 
   // Road surface thermal properties (asphalt retains heat better)
   roadDecayMultiplier: 0.3,    // Roads lose heat 70% slower than grass
@@ -61,7 +58,7 @@ interface TrackTemperatureState {
 
   // Actions
   updateCarPosition: (x: number, z: number, delta: number, intensity?: number) => void
-  updateWeatherEffects: (weather: WeatherCondition, delta: number) => void
+  updateWeatherEffects: (temperature: number, rainIntensity: number, delta: number) => void
   initializeTexture: () => void
   updateTexture: () => void
   getCell: (worldX: number, worldZ: number) => GridCell | undefined
@@ -213,11 +210,14 @@ export const useTrackTemperatureStore = create<TrackTemperatureState>((set, get)
     set({ cells: new Map(cells), textureNeedsUpdate: true })
   },
 
-  updateWeatherEffects: (weather: WeatherCondition, delta: number) => {
+  updateWeatherEffects: (temperature: number, rainIntensity: number, delta: number) => {
     const state = get()
     const { cells, lastPruneTime } = state
     const {
-      decayRates,
+      baseDecayRate,
+      coldDecayMultiplier,
+      hotDecayMultiplier,
+      rainDecayMultiplier,
       roadDecayMultiplier,
       roadRainDecayMultiplier,
       wetnessGainRate,
@@ -227,31 +227,44 @@ export const useTrackTemperatureStore = create<TrackTemperatureState>((set, get)
     } = TRACK_TEMP_CONFIG
     const now = performance.now() / 1000
 
-    const baseDecayRate = decayRates[weather]
-    const isRaining = weather === 'rain'
+    // Calculate decay rate from temperature
+    let tempDecayRate = baseDecayRate
+    if (temperature < 5) {
+      // Cold: interpolate from normal to cold decay
+      const t = Math.max(0, (temperature + 10) / 15) // -10°C -> 0, 5°C -> 1
+      tempDecayRate = baseDecayRate * (coldDecayMultiplier - (coldDecayMultiplier - 1) * t)
+    } else if (temperature > 35) {
+      // Hot: interpolate from normal to hot decay
+      const t = Math.min(1, (temperature - 35) / 15) // 35°C -> 0, 50°C -> 1
+      tempDecayRate = baseDecayRate * (1 - (1 - hotDecayMultiplier) * t)
+    }
+
+    // Apply rain multiplier
+    const weatherDecayRate = tempDecayRate * (1 + rainIntensity * (rainDecayMultiplier - 1))
+    const isRaining = rainIntensity > 0.01
 
     // Update all tracked cells
     cells.forEach(cell => {
       // Calculate decay rate based on surface type
       // Roads retain heat better (lower decay) unless it's raining
-      let decayRate = baseDecayRate
+      let decayRate = weatherDecayRate
       if (cell.isRoad) {
         if (isRaining) {
           // Rain accelerates cooling on roads (water conducts heat away)
-          decayRate = baseDecayRate * roadRainDecayMultiplier
+          decayRate = weatherDecayRate * roadRainDecayMultiplier
         } else {
           // Roads retain heat much better in dry conditions
-          decayRate = baseDecayRate * roadDecayMultiplier
+          decayRate = weatherDecayRate * roadDecayMultiplier
         }
       }
 
       // Temperature decay
       cell.temperature = Math.max(0, cell.temperature - decayRate * delta)
 
-      // Wetness changes based on weather
+      // Wetness changes based on rain intensity
       if (isRaining) {
-        // Rain adds wetness
-        cell.wetness = Math.min(1, cell.wetness + wetnessGainRate * delta)
+        // Rain adds wetness proportional to intensity
+        cell.wetness = Math.min(1, cell.wetness + wetnessGainRate * rainIntensity * delta)
       } else {
         // Wetness evaporates
         cell.wetness = Math.max(0, cell.wetness - wetnessDecayRate * delta)

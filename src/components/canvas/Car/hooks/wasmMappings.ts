@@ -1,25 +1,8 @@
 import {
-  WeatherCondition,
   TireCompound,
   SurfaceType as WasmSurfaceType,
 } from '../../../../wasm'
 import { type SurfaceType } from '../../../../stores/useSurfaceStore'
-
-/**
- * Map JS weather string to WASM WeatherCondition enum
- */
-export function mapWeatherToWasm(weather: string): WeatherCondition {
-  switch (weather) {
-    case 'hot':
-      return WeatherCondition.Hot
-    case 'rain':
-      return WeatherCondition.Rain
-    case 'cold':
-      return WeatherCondition.Cold
-    default:
-      return WeatherCondition.Dry
-  }
-}
 
 /**
  * Map JS tire compound string to WASM TireCompound enum

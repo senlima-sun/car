@@ -4,13 +4,12 @@
 
 import init, {
   PhysicsEngine,
-  WeatherCondition,
   TireCompound,
   SurfaceType,
 } from './pkg/car_physics_engine'
 
 // Re-export types for convenience
-export { WeatherCondition, TireCompound, SurfaceType }
+export { TireCompound, SurfaceType }
 
 // ============================================================================
 // Type Definitions
@@ -287,31 +286,10 @@ export function stepPhysics(
 }
 
 /**
- * Set weather condition
- */
-export function setWeather(weather: WeatherCondition): void {
-  getPhysicsEngine().set_weather(weather)
-}
-
-/**
- * Get current weather condition
- */
-export function getWeather(): WeatherCondition {
-  return getPhysicsEngine().get_weather()
-}
-
-/**
  * Get current weather modifiers
  */
 export function getWeatherModifiers(): WeatherModifiers {
   return getPhysicsEngine().get_weather_modifiers() as WeatherModifiers
-}
-
-/**
- * Check if weather is transitioning
- */
-export function isWeatherTransitioning(): boolean {
-  return getPhysicsEngine().is_weather_transitioning()
 }
 
 /**
@@ -322,7 +300,7 @@ export function getAmbientConditions(): AmbientConditions {
 }
 
 /**
- * Set custom/granular weather (bypasses weather presets)
+ * Set weather conditions
  * @param celsius Temperature in Celsius (-10 to 50)
  * @param humidity Humidity 0.0 to 1.0 (0% to 100%)
  * @param rainIntensity Rain intensity 0.0 to 1.0 (0% to 100%)
@@ -332,24 +310,10 @@ export function setCustomWeather(celsius: number, humidity: number, rainIntensit
 }
 
 /**
- * Check if in custom weather mode
- */
-export function isCustomWeatherMode(): boolean {
-  return getPhysicsEngine().is_custom_weather_mode()
-}
-
-/**
  * Get current rain intensity (0.0 to 1.0)
  */
 export function getRainIntensity(): number {
   return getPhysicsEngine().get_rain_intensity()
-}
-
-/**
- * Exit custom weather mode and return to preset weather
- */
-export function exitCustomWeatherMode(): void {
-  getPhysicsEngine().exit_custom_weather_mode()
 }
 
 // ============================================================================

@@ -3,7 +3,6 @@ import { TIRE_CONFIG } from '../../../../constants/tires'
 import { useCarStore } from '../../../../stores/useCarStore'
 import { useGameStore } from '../../../../stores/useGameStore'
 import { useThermalViewStore } from '../../../../stores/useThermalViewStore'
-import { useWeatherStore } from '../../../../stores/useWeatherStore'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import { useTireStore } from '../../../../stores/useTireStore'
 
@@ -21,9 +20,8 @@ export default function CarBody() {
   const cameraMode = useGameStore(state => state.cameraMode)
 
   // Weather state for wet material
-  const currentWeather = useWeatherStore(state => state.currentWeather)
-  const customRainIntensity = useEnvironmentStore(state => state.rainIntensity)
-  const isRaining = currentWeather === 'rain' || customRainIntensity > 0.01
+  const rainIntensity = useEnvironmentStore(state => state.rainIntensity)
+  const isRaining = rainIntensity > 0.01
 
   // Thermal view state
   const isThermalView = useThermalViewStore(state => state.isEnabled)

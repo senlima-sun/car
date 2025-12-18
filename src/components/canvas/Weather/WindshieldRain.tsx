@@ -2,7 +2,6 @@ import { useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../../../stores/useGameStore'
-import { useWeatherStore } from '../../../stores/useWeatherStore'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { useCarStore } from '../../../stores/useCarStore'
 
@@ -145,11 +144,10 @@ export default function WindshieldRain() {
   const { camera } = useThree()
 
   const cameraMode = useGameStore(s => s.cameraMode)
-  const currentWeather = useWeatherStore(s => s.currentWeather)
-  const customRainIntensity = useEnvironmentStore(s => s.rainIntensity)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
   const speed = useCarStore(s => s.speed)
 
-  const isRaining = currentWeather === 'rain' || customRainIntensity > 0.01
+  const isRaining = rainIntensity > 0.01
   const isVisible = cameraMode === 'first-person' && isRaining
 
   // Create shader material

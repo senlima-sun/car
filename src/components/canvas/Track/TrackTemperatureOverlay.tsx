@@ -5,7 +5,7 @@ import {
   useTrackTemperatureStore,
   TRACK_TEMP_CONFIG,
 } from '../../../stores/useTrackTemperatureStore'
-import { useWeatherStore } from '../../../stores/useWeatherStore'
+import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { useHeatmapStore } from '../../../stores/useHeatmapStore'
 import {
   trackSurfaceVertexShader,
@@ -13,6 +13,14 @@ import {
   WEATHER_TYPE_MAP,
 } from '../../../shaders/trackSurface'
 import { usePhysics } from '../../../wasm'
+
+// Helper to compute shader weather type from dynamic conditions
+function computeWeatherType(temperature: number, rainIntensity: number): number {
+  if (rainIntensity > 0.3) return WEATHER_TYPE_MAP.rain
+  if (temperature < 5) return WEATHER_TYPE_MAP.cold
+  if (temperature > 35) return WEATHER_TYPE_MAP.hot
+  return WEATHER_TYPE_MAP.dry
+}
 
 export default function TrackTemperatureOverlay() {
   const materialRef = useRef<THREE.ShaderMaterial>(null)
@@ -23,7 +31,8 @@ export default function TrackTemperatureOverlay() {
   const updateTexture = useTrackTemperatureStore(s => s.updateTexture)
   const updateWeatherEffects = useTrackTemperatureStore(s => s.updateWeatherEffects)
 
-  const currentWeather = useWeatherStore(s => s.currentWeather)
+  const temperature = useEnvironmentStore(s => s.temperature)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
   const isHeatmapVisible = useHeatmapStore(s => s.isVisible)
 
   const physics = usePhysics()
@@ -72,7 +81,7 @@ export default function TrackTemperatureOverlay() {
   // Update shader uniforms each frame
   useFrame((_, delta) => {
     // Update weather effects (temperature decay, wetness changes)
-    updateWeatherEffects(currentWeather, delta)
+    updateWeatherEffects(temperature, rainIntensity, delta)
 
     // Update texture if needed
     if (textureNeedsUpdate) {
@@ -100,7 +109,7 @@ export default function TrackTemperatureOverlay() {
     // Update shader uniforms
     if (materialRef.current) {
       materialRef.current.uniforms.temperatureMap.value = dataTexture
-      materialRef.current.uniforms.weatherType.value = WEATHER_TYPE_MAP[currentWeather]
+      materialRef.current.uniforms.weatherType.value = computeWeatherType(temperature, rainIntensity)
       materialRef.current.uniforms.heatmapVisible.value = isHeatmapVisible
 
       // Get ambient conditions from WASM physics if initialized

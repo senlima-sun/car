@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 // Weather Types
 // ============================================================================
 
-#[wasm_bindgen]
+/// Internal weather condition for modifier blending (not exposed to JS)
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum WeatherCondition {
     #[default]
@@ -220,8 +220,12 @@ impl PerWheelWear {
 pub struct TireConfig {
     pub grip_multiplier: f32,
     pub degradation_rate: f32,
-    pub optimal_weather: &'static [WeatherCondition],
-    pub wrong_weather_penalty: f32,
+    /// Optimal temperature range in Celsius (min, max)
+    pub optimal_temp_range: (f32, f32),
+    /// How well this tire handles rain (0.0 = terrible, 1.0 = excellent)
+    pub rain_suitability: f32,
+    /// Penalty when outside optimal conditions
+    pub wrong_conditions_penalty: f32,
     pub temp_window: TireTemperatureWindow,
     /// Rubber deposit multiplier - softer tires leave more marks
     pub rubber_deposit_multiplier: f32,
@@ -233,8 +237,9 @@ impl TireConfig {
             TireCompound::Soft => Self {
                 grip_multiplier: 1.15,
                 degradation_rate: 0.0015,
-                optimal_weather: &[WeatherCondition::Dry, WeatherCondition::Hot],
-                wrong_weather_penalty: 0.25,
+                optimal_temp_range: (15.0, 50.0), // Good in warm/hot conditions
+                rain_suitability: 0.3,            // Poor in rain
+                wrong_conditions_penalty: 0.25,
                 temp_window: TireTemperatureWindow {
                     min_optimal: 0.50,  // 85C
                     max_optimal: 0.70,  // 111C
@@ -246,8 +251,9 @@ impl TireConfig {
             TireCompound::Medium => Self {
                 grip_multiplier: 1.0,
                 degradation_rate: 0.0008,
-                optimal_weather: &[WeatherCondition::Dry, WeatherCondition::Hot],
-                wrong_weather_penalty: 0.3,
+                optimal_temp_range: (10.0, 45.0), // Wide temperature range
+                rain_suitability: 0.4,            // Moderate in rain
+                wrong_conditions_penalty: 0.3,
                 temp_window: TireTemperatureWindow {
                     min_optimal: 0.45,  // 78C
                     max_optimal: 0.75,  // 117C
@@ -259,8 +265,9 @@ impl TireConfig {
             TireCompound::Hard => Self {
                 grip_multiplier: 0.92,
                 degradation_rate: 0.0004,
-                optimal_weather: &[WeatherCondition::Dry, WeatherCondition::Hot],
-                wrong_weather_penalty: 0.35,
+                optimal_temp_range: (20.0, 50.0), // Needs heat to work
+                rain_suitability: 0.35,           // Poor in rain
+                wrong_conditions_penalty: 0.35,
                 temp_window: TireTemperatureWindow {
                     min_optimal: 0.55,  // 91C
                     max_optimal: 0.85,  // 130C
@@ -272,8 +279,9 @@ impl TireConfig {
             TireCompound::Wet => Self {
                 grip_multiplier: 0.75,
                 degradation_rate: 0.0008,
-                optimal_weather: &[WeatherCondition::Rain],
-                wrong_weather_penalty: 0.5,
+                optimal_temp_range: (5.0, 30.0),  // Works in cooler temps
+                rain_suitability: 1.0,            // Excellent in rain
+                wrong_conditions_penalty: 0.5,
                 temp_window: TireTemperatureWindow {
                     min_optimal: 0.25,  // 52C (lower operating temp)
                     max_optimal: 0.50,  // 85C
@@ -285,8 +293,9 @@ impl TireConfig {
             TireCompound::Intermediate => Self {
                 grip_multiplier: 0.88,
                 degradation_rate: 0.0006,
-                optimal_weather: &[WeatherCondition::Rain, WeatherCondition::Cold],
-                wrong_weather_penalty: 0.7,
+                optimal_temp_range: (0.0, 25.0),  // Works in cold/wet conditions
+                rain_suitability: 0.8,            // Good in rain
+                wrong_conditions_penalty: 0.7,
                 temp_window: TireTemperatureWindow {
                     min_optimal: 0.35,  // 65C
                     max_optimal: 0.60,  // 98C

@@ -1,22 +1,17 @@
 import { useEffect, useRef } from 'react'
-import { useWeatherStore } from '../../../../stores/useWeatherStore'
 import { useTireStore } from '../../../../stores/useTireStore'
 import { useSurfaceStore, type SurfaceType } from '../../../../stores/useSurfaceStore'
 import { useWindStore } from '../../../../stores/useWindStore'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import { usePhysics } from '../../../../wasm'
-import { mapWeatherToWasm, mapTireToWasm, mapSurfaceToWasm } from './wasmMappings'
+import { mapTireToWasm, mapSurfaceToWasm } from './wasmMappings'
 
 /**
  * Hook to synchronize JS stores with WASM physics engine
- * Handles weather, tire compound, surface, wind, and environment settings
+ * Handles tire compound, surface, wind, and environment settings
  */
 export function usePhysicsSync() {
   const physics = usePhysics()
-
-  // Weather system
-  const currentWeather = useWeatherStore(state => state.currentWeather)
-  const lastWeatherRef = useRef<string>('')
 
   // Tire system
   const currentCompound = useTireStore(state => state.currentCompound)
@@ -32,18 +27,10 @@ export function usePhysicsSync() {
   const windEnabled = useWindStore(state => state.enabled)
   const lastWindRef = useRef({ direction: -999, speed: -1, enabled: !windEnabled })
 
-  // Environment system
+  // Environment system (dynamic weather)
   const envTemperature = useEnvironmentStore(state => state.temperature)
   const envRainIntensity = useEnvironmentStore(state => state.rainIntensity)
   const lastEnvRef = useRef({ temperature: -999, rainIntensity: -1 })
-
-  // Sync weather with WASM engine
-  useEffect(() => {
-    if (currentWeather !== lastWeatherRef.current) {
-      physics.setWeather(mapWeatherToWasm(currentWeather))
-      lastWeatherRef.current = currentWeather
-    }
-  }, [currentWeather, physics])
 
   // Sync tire compound with WASM engine
   useEffect(() => {

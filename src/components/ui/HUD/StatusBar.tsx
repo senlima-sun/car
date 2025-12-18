@@ -1,10 +1,8 @@
 import { useEffect } from 'react'
 import { useFPSStore } from '../../../stores/useFPSStore'
-import { useWeatherStore } from '../../../stores/useWeatherStore'
 import { useTireStore } from '../../../stores/useTireStore'
 import { useGameStore } from '../../../stores/useGameStore'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
-import { WEATHER_CONFIG } from '../../../constants/weather'
 import { TIRE_CONFIG } from '../../../constants/tires'
 import { useMobileDetection } from '../../../utils/isMobile'
 
@@ -44,25 +42,6 @@ const styles: Record<string, React.CSSProperties> = {
   separator: {
     opacity: 0.3,
     userSelect: 'none',
-  },
-  weatherClickable: {
-    cursor: 'pointer',
-    padding: '2px 6px',
-    margin: '-2px -6px',
-    borderRadius: 4,
-    transition: 'background 0.2s ease',
-    pointerEvents: 'auto',
-  },
-  transitionBar: {
-    height: 2,
-    background: 'rgba(255,255,255,0.2)',
-    borderRadius: 1,
-    overflow: 'hidden',
-  },
-  transitionProgress: {
-    height: '100%',
-    background: '#4CAF50',
-    transition: 'width 0.1s linear',
   },
   lapRow: {
     display: 'flex',
@@ -146,10 +125,6 @@ function formatTime(ms: number | null): string {
 export default function StatusBar() {
   const isMobile = useMobileDetection()
   const fps = useFPSStore(state => state.fps)
-  const currentWeather = useWeatherStore(state => state.currentWeather)
-  const isTransitioning = useWeatherStore(state => state.isTransitioning)
-  const transitionProgress = useWeatherStore(state => state.transitionProgress)
-  const cycleWeather = useWeatherStore(state => state.cycleWeather)
   const currentCompound = useTireStore(state => state.currentCompound)
   const cameraMode = useGameStore(state => state.cameraMode)
 
@@ -177,7 +152,6 @@ export default function StatusBar() {
     return () => cancelAnimationFrame(animationId)
   }, [isLapActive, isRecording, currentLapStart, updateCurrentTime])
 
-  const weatherConfig = WEATHER_CONFIG[currentWeather]
   const tireConfig = TIRE_CONFIG[currentCompound]
   const fpsColor = getFPSColor(fps)
   const hasLapStarted = currentLapStart !== null
@@ -194,11 +168,6 @@ export default function StatusBar() {
             }
           `}
         </style>
-
-        {/* Weather icon only */}
-        <span title={weatherConfig.displayName}>{weatherConfig.icon}</span>
-
-        <span style={mobileStyles.separator}>|</span>
 
         {/* FPS with color */}
         <span style={{ color: fpsColor, fontWeight: 'bold' }}>{fps}</span>
@@ -240,29 +209,6 @@ export default function StatusBar() {
   return (
     <div style={styles.container}>
       <div style={styles.row}>
-        {/* Weather - clickable */}
-        <div
-          style={{
-            ...styles.item,
-            ...styles.weatherClickable,
-          }}
-          onClick={cycleWeather}
-          title='Click to change weather (Q)'
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.1)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent'
-          }}
-        >
-          <span style={styles.label}>Weather:</span>
-          <span style={styles.value}>
-            {weatherConfig.icon} {weatherConfig.displayName}
-          </span>
-        </div>
-
-        <span style={styles.separator}>|</span>
-
         {/* FPS */}
         <div style={styles.item}>
           <span style={styles.label}>FPS:</span>
@@ -293,18 +239,6 @@ export default function StatusBar() {
           <span style={styles.value}>{cameraMode === 'third-person' ? 'Chase' : 'Cockpit'}</span>
         </div>
       </div>
-
-      {/* Weather transition progress bar */}
-      {isTransitioning && (
-        <div style={styles.transitionBar}>
-          <div
-            style={{
-              ...styles.transitionProgress,
-              width: `${transitionProgress * 100}%`,
-            }}
-          />
-        </div>
-      )}
 
       {/* Lap Timer Row */}
       {isLapActive && (

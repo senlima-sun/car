@@ -8,7 +8,7 @@ use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
     AmbientConditions, AquaplaningState, CarInput, CarPhysicsOutput, CurbSide, PerWheelWear,
     SurfaceModifiers, SurfaceType, TemperatureOutput, TireCompound, TireThermalShock, TrackBounds,
-    WeatherCondition, WeatherModifiers, WindModifiers, WindState,
+    WeatherModifiers, WindModifiers, WindState,
 };
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
@@ -53,24 +53,8 @@ impl PhysicsEngine {
     // Weather API
     // ========================================================================
 
-    pub fn set_weather(&mut self, weather: WeatherCondition) {
-        self.weather.set_weather(weather);
-    }
-
-    pub fn get_weather(&self) -> WeatherCondition {
-        self.weather.get_weather()
-    }
-
-    pub fn update_weather_transition(&mut self, delta_seconds: f32) {
-        self.weather.update(delta_seconds);
-    }
-
     pub fn get_weather_modifiers(&self) -> WeatherModifiers {
         *self.weather.get_modifiers()
-    }
-
-    pub fn is_weather_transitioning(&self) -> bool {
-        self.weather.is_transitioning()
     }
 
     pub fn get_ambient_conditions(&self) -> AmbientConditions {
@@ -81,16 +65,8 @@ impl PhysicsEngine {
         self.weather.set_custom_ambient(celsius, humidity, rain_intensity);
     }
 
-    pub fn is_custom_weather_mode(&self) -> bool {
-        self.weather.is_custom_mode()
-    }
-
     pub fn get_rain_intensity(&self) -> f32 {
         self.weather.get_rain_intensity()
-    }
-
-    pub fn exit_custom_weather_mode(&mut self) {
-        self.weather.exit_custom_mode();
     }
 
     // ========================================================================
@@ -138,8 +114,8 @@ impl PhysicsEngine {
     }
 
     pub fn get_effective_grip(&self) -> f32 {
-        self.tires
-            .calculate_effective_grip(self.weather.get_current_weather())
+        let ambient = self.weather.get_ambient_conditions();
+        self.tires.calculate_effective_grip_from_ambient(&ambient)
     }
 
     pub fn get_tire_wear_per_wheel(&self) -> PerWheelWear {
@@ -304,9 +280,8 @@ impl PhysicsEngine {
         self.track_temperature.update_time(dt);
         let ambient = self.weather.get_ambient_conditions();
         self.track_temperature
-            .update_weather_with_wind(
-                self.weather.get_current_weather(),
-                ambient,
+            .update_weather_with_ambient(
+                &ambient,
                 wind_modifiers.cooling_multiplier,
                 dt,
             );
@@ -315,7 +290,7 @@ impl PhysicsEngine {
         let weather_modifiers = self.weather.get_modifiers();
         let tire_degradation = self
             .tires
-            .calculate_degradation_modifiers(self.weather.get_current_weather());
+            .calculate_degradation_modifiers_from_ambient(&ambient);
 
         // Get surface modifiers (grass, road, curb)
         let surface_modifiers = self.surface.get_modifiers();
@@ -459,7 +434,7 @@ impl PhysicsEngine {
             is_throttle: input.forward && !input.brake,
             is_drifting: self.car.is_drifting(),
             is_handbrake: input.handbrake,
-            weather: self.weather.get_current_weather(),
+            ambient: ambient.clone(),
             track_temperature: track_temp,
             weight_transfer: weight_transfer_wear,
             lateral_g: output.lateral_g,
@@ -503,9 +478,10 @@ impl PhysicsEngine {
     // ========================================================================
 
     pub fn get_debug_info(&self) -> DebugInfo {
+        let ambient = self.weather.get_ambient_conditions();
         DebugInfo {
-            weather: self.weather.get_weather(),
-            weather_transitioning: self.weather.is_transitioning(),
+            temperature_celsius: ambient.to_celsius(),
+            rain_intensity: ambient.rain_intensity,
             tire_compound: self.tires.get_compound(),
             tire_wear: self.tires.get_wear(),
             tire_wear_per_wheel: self.tires.get_per_wheel_wear(),
@@ -522,8 +498,8 @@ impl PhysicsEngine {
 
 #[derive(Debug, Clone)]
 pub struct DebugInfo {
-    pub weather: WeatherCondition,
-    pub weather_transitioning: bool,
+    pub temperature_celsius: f32,
+    pub rain_intensity: f32,
     pub tire_compound: TireCompound,
     pub tire_wear: f32,
     pub tire_wear_per_wheel: PerWheelWear,
@@ -543,7 +519,8 @@ mod tests {
     #[test]
     fn test_engine_creation() {
         let engine = PhysicsEngine::new();
-        assert_eq!(engine.get_weather(), WeatherCondition::Dry);
+        let ambient = engine.get_ambient_conditions();
+        assert!((ambient.to_celsius() - 25.0).abs() < 1.0); // Default is ~25C
         assert_eq!(engine.get_tire_compound(), TireCompound::Medium);
         assert!(!engine.is_on_curb());
     }
@@ -572,20 +549,18 @@ mod tests {
     }
 
     #[test]
-    fn test_weather_change() {
+    fn test_custom_weather() {
         let mut engine = PhysicsEngine::new();
 
-        engine.set_weather(WeatherCondition::Rain);
-        assert_eq!(engine.get_weather(), WeatherCondition::Rain);
-        assert!(engine.is_weather_transitioning());
+        // Set rainy conditions
+        engine.set_custom_weather(15.0, 0.9, 1.0);
 
-        // Complete transition
-        for _ in 0..200 {
-            engine.update_weather_transition(1.0 / 60.0);
-        }
+        let ambient = engine.get_ambient_conditions();
+        assert!((ambient.to_celsius() - 15.0).abs() < 1.0);
+        assert!((ambient.rain_intensity - 1.0).abs() < 0.01);
 
-        assert!(!engine.is_weather_transitioning());
         let modifiers = engine.get_weather_modifiers();
+        // Rain should reduce friction
         assert!(modifiers.friction_slip_multiplier < 0.6);
     }
 

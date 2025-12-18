@@ -1,7 +1,7 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useWeatherStore } from '../../../../stores/useWeatherStore'
+import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import { useTrackTemperatureStore } from '../../../../stores/useTrackTemperatureStore'
 
 const MIN_SPEED_FOR_SPRAY = 8 // m/s (~29 km/h)
@@ -84,7 +84,8 @@ export default function CarSprayEffect({
   carVelocity,
   carRotation,
 }: CarSprayEffectProps) {
-  const currentWeather = useWeatherStore(s => s.currentWeather)
+  const temperature = useEnvironmentStore(s => s.temperature)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
   const getCell = useTrackTemperatureStore(s => s.getCell)
 
   // Main spray particles (medium water droplets)
@@ -205,14 +206,16 @@ export default function CarSprayEffect({
     }
   }, [sprayGeometry, mistGeometry, dropletGeometry, shaderMaterial])
 
-  // Check surface condition
+  // Check surface condition based on dynamic weather
   const getSurfaceCondition = () => {
     const cell = getCell(carPosition.x, carPosition.z)
-    if (currentWeather === 'rain') {
+    // Wet conditions when raining
+    if (rainIntensity > 0.01) {
       if (!cell) return 'wet'
       return cell.wetness > 0.2 ? 'wet' : null
     }
-    if (currentWeather === 'cold') {
+    // Icy conditions when cold (temp < 0°C)
+    if (temperature < 0) {
       return cell && cell.temperature < 0.5 ? 'icy' : null
     }
     return null
@@ -372,8 +375,8 @@ export default function CarSprayEffect({
     updateParticles(dropletData, dropletGeometry, DROPLET_COUNT, 'droplet', 20, 0.99)
   })
 
-  // Only render in rain or cold
-  if (currentWeather !== 'rain' && currentWeather !== 'cold') {
+  // Only render when raining or cold
+  if (rainIntensity <= 0.01 && temperature >= 0) {
     return null
   }
 

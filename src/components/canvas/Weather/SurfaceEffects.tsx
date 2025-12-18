@@ -1,7 +1,6 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useWeatherStore } from '../../../stores/useWeatherStore'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import {
   useTrackTemperatureStore,
@@ -13,16 +12,16 @@ const MAX_ICE_PATCHES = 100
 const WATER_DEPTH_THRESHOLD = 0.2 // Minimum water depth to show puddle
 const ICE_THRESHOLD = 0.3 // Maximum temperature to show ice
 
-// Puddle patches - appear in rain weather based on water depth
+// Puddle patches - appear when rain intensity > 0 based on water depth
 function PuddlePatches() {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const colorRef = useRef<THREE.InstancedBufferAttribute | null>(null)
   const dummyRef = useRef(new THREE.Object3D())
-  const currentWeather = useWeatherStore(s => s.currentWeather)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
   const cells = useTrackTemperatureStore(s => s.cells)
 
-  // Only render in rain or shortly after (puddles persist)
-  const isRaining = currentWeather === 'rain'
+  // Only render when raining or shortly after (puddles persist)
+  const isRaining = rainIntensity > 0.01
 
   // Create color attribute for per-instance colors
   const colorArray = useMemo(() => new Float32Array(MAX_PUDDLES * 3), [])
@@ -121,15 +120,15 @@ function PuddlePatches() {
   )
 }
 
-// Ice patches - appear in cold weather
+// Ice patches - appear when temperature < 0°C
 function IcePatches() {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const dummyRef = useRef(new THREE.Object3D())
-  const currentWeather = useWeatherStore(s => s.currentWeather)
+  const temperature = useEnvironmentStore(s => s.temperature)
   const cells = useTrackTemperatureStore(s => s.cells)
 
-  // Only render in cold
-  const isCold = currentWeather === 'cold'
+  // Only render when cold (temp < 0°C)
+  const isCold = temperature < 0
 
   useFrame(() => {
     if (!meshRef.current || !isCold) return
@@ -234,35 +233,20 @@ function IcePatches() {
   )
 }
 
-// Snow accumulation overlay - white ground layer that builds up in cold weather
+// Snow accumulation overlay - white ground layer that builds up when temp < 0°C
 function SnowAccumulation() {
   const meshRef = useRef<THREE.Mesh>(null)
-  const currentWeather = useWeatherStore(s => s.currentWeather)
-  const transitionProgress = useWeatherStore(s => s.transitionProgress)
-  const isTransitioning = useWeatherStore(s => s.isTransitioning)
-  const previousWeather = useWeatherStore(s => s.previousWeather)
+  const temperature = useEnvironmentStore(s => s.temperature)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
-  const isCold = currentWeather === 'cold'
-  const wasNotCold = previousWeather !== 'cold'
-
-  // Calculate snow opacity based on weather state
+  // Snow appears when temp < 0°C and increases as it gets colder
+  // No snow during rain (it turns to sleet/rain at those temps)
   const snowOpacity = useMemo(() => {
-    if (!isTransitioning) {
-      return isCold ? 0.35 : 0
-    }
-
-    // Transitioning TO cold - fade in
-    if (isCold && wasNotCold) {
-      return transitionProgress * 0.35
-    }
-
-    // Transitioning FROM cold - fade out
-    if (!isCold && previousWeather === 'cold') {
-      return (1 - transitionProgress) * 0.35
-    }
-
-    return isCold ? 0.35 : 0
-  }, [isCold, isTransitioning, transitionProgress, wasNotCold, previousWeather])
+    if (temperature >= 0 || rainIntensity > 0.3) return 0
+    // Fade in snow from 0°C to -5°C (max at -5°C or below)
+    const coldFactor = Math.min(1, Math.abs(temperature) / 5)
+    return coldFactor * 0.35
+  }, [temperature, rainIntensity])
 
   // Create snow texture
   const snowTexture = useMemo(() => {
@@ -324,39 +308,13 @@ function SnowAccumulation() {
 
 // Wet road overlay - large reflective plane during rain for water layer effect
 function WetRoadOverlay() {
-  const currentWeather = useWeatherStore(s => s.currentWeather)
-  const transitionProgress = useWeatherStore(s => s.transitionProgress)
-  const isTransitioning = useWeatherStore(s => s.isTransitioning)
-  const previousWeather = useWeatherStore(s => s.previousWeather)
-  const customRainIntensity = useEnvironmentStore(s => s.rainIntensity)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
-  const isRaining = currentWeather === 'rain'
-  const wasNotRaining = previousWeather !== 'rain'
-  const hasCustomRain = customRainIntensity > 0.01
-
-  // Calculate opacity based on weather state with smooth transitions
+  // Calculate opacity based on rain intensity
   const waterOpacity = useMemo(() => {
-    // Custom rain intensity takes priority
-    if (hasCustomRain) {
-      return customRainIntensity * 0.25
-    }
-
-    if (!isTransitioning) {
-      return isRaining ? 0.2 : 0
-    }
-
-    // Transitioning TO rain - fade in
-    if (isRaining && wasNotRaining) {
-      return transitionProgress * 0.2
-    }
-
-    // Transitioning FROM rain - fade out
-    if (!isRaining && previousWeather === 'rain') {
-      return (1 - transitionProgress) * 0.2
-    }
-
-    return isRaining ? 0.2 : 0
-  }, [isRaining, isTransitioning, transitionProgress, wasNotRaining, previousWeather, hasCustomRain, customRainIntensity])
+    if (rainIntensity <= 0.01) return 0
+    return rainIntensity * 0.25
+  }, [rainIntensity])
 
   if (waterOpacity <= 0) return null
 

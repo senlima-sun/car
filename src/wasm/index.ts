@@ -8,16 +8,11 @@ export {
   isPhysicsEngineInitialized,
   getPhysicsEngine,
   stepPhysics,
-  setWeather,
-  getWeather,
   getWeatherModifiers,
-  isWeatherTransitioning,
   getAmbientConditions,
-  // Custom weather API
+  // Weather API
   setCustomWeather,
-  isCustomWeatherMode,
   getRainIntensity,
-  exitCustomWeatherMode,
   // Wind API
   setWind,
   setWindEnabled,
@@ -47,7 +42,6 @@ export {
   getDebugState,
   createDefaultInput,
   inputFromKeyboard,
-  WeatherCondition,
   TireCompound,
   SurfaceType,
 } from './PhysicsBridge'

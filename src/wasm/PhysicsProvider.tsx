@@ -12,15 +12,11 @@ import {
 import {
   initPhysicsEngine,
   stepPhysics,
-  setWeather,
-  getWeather,
   getWeatherModifiers,
   getAmbientConditions,
-  // Custom weather API
+  // Weather API
   setCustomWeather,
-  isCustomWeatherMode,
   getRainIntensity,
-  exitCustomWeatherMode,
   // Wind API
   setWind,
   setWindEnabled,
@@ -59,7 +55,6 @@ import {
   SurfaceModifiers,
   TrackBounds,
   PerWheelWear,
-  WeatherCondition,
   TireCompound,
   SurfaceType,
 } from './PhysicsBridge'
@@ -74,20 +69,16 @@ export type {
   TrackBounds,
   PerWheelWear,
 }
-export { WeatherCondition, TireCompound, SurfaceType }
+export { TireCompound, SurfaceType }
 
 interface PhysicsContextValue {
   initialized: boolean
   stepPhysics: typeof stepPhysics
-  setWeather: typeof setWeather
-  getWeather: typeof getWeather
   getWeatherModifiers: typeof getWeatherModifiers
   getAmbientConditions: typeof getAmbientConditions
-  // Custom weather API
+  // Weather API
   setCustomWeather: typeof setCustomWeather
-  isCustomWeatherMode: typeof isCustomWeatherMode
   getRainIntensity: typeof getRainIntensity
-  exitCustomWeatherMode: typeof exitCustomWeatherMode
   // Wind API
   setWind: typeof setWind
   setWindEnabled: typeof setWindEnabled
@@ -172,15 +163,11 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
   const value: PhysicsContextValue = {
     initialized,
     stepPhysics,
-    setWeather,
-    getWeather,
     getWeatherModifiers,
     getAmbientConditions,
-    // Custom weather API
+    // Weather API
     setCustomWeather,
-    isCustomWeatherMode,
     getRainIntensity,
-    exitCustomWeatherMode,
     // Wind API
     setWind,
     setWindEnabled,

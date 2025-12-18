@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
-import { useWeatherStore } from '../../../stores/useWeatherStore'
-import { ATMOSPHERE_CONFIG } from '../../../constants/weather'
-import { lerp } from './DynamicSky'
+import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
+import { lerp, computeAtmosphereFromDynamic } from './DynamicSky'
 
 // Color interpolation helper
 function lerpColor(from: string, to: string, t: number): string {
@@ -22,42 +21,12 @@ function lerpColor(from: string, to: string, t: number): string {
 }
 
 export default function DynamicLighting() {
-  const currentWeather = useWeatherStore(s => s.currentWeather)
-  const previousWeather = useWeatherStore(s => s.previousWeather)
-  const transitionProgress = useWeatherStore(s => s.transitionProgress)
-  const isTransitioning = useWeatherStore(s => s.isTransitioning)
+  const temperature = useEnvironmentStore(s => s.temperature)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
   const config = useMemo(() => {
-    if (!isTransitioning) {
-      return ATMOSPHERE_CONFIG[currentWeather]
-    }
-
-    const from = ATMOSPHERE_CONFIG[previousWeather]
-    const to = ATMOSPHERE_CONFIG[currentWeather]
-    // Smoothstep easing
-    const easedProgress = transitionProgress * transitionProgress * (3 - 2 * transitionProgress)
-
-    return {
-      ...to,
-      ambientIntensity: lerp(from.ambientIntensity, to.ambientIntensity, easedProgress),
-      sunIntensity: lerp(from.sunIntensity, to.sunIntensity, easedProgress),
-      sunColor: lerpColor(from.sunColor, to.sunColor, easedProgress),
-      sunPosition: [
-        lerp(from.sunPosition[0], to.sunPosition[0], easedProgress),
-        lerp(from.sunPosition[1], to.sunPosition[1], easedProgress),
-        lerp(from.sunPosition[2], to.sunPosition[2], easedProgress),
-      ] as [number, number, number],
-      fillLightIntensity: lerp(from.fillLightIntensity, to.fillLightIntensity, easedProgress),
-      fillLightColor: lerpColor(from.fillLightColor, to.fillLightColor, easedProgress),
-      hemisphereIntensity: lerp(from.hemisphereIntensity, to.hemisphereIntensity, easedProgress),
-      hemisphereSkyColor: lerpColor(from.hemisphereSkyColor, to.hemisphereSkyColor, easedProgress),
-      hemisphereGroundColor: lerpColor(
-        from.hemisphereGroundColor,
-        to.hemisphereGroundColor,
-        easedProgress,
-      ),
-    }
-  }, [currentWeather, previousWeather, transitionProgress, isTransitioning])
+    return computeAtmosphereFromDynamic(temperature, rainIntensity)
+  }, [temperature, rainIntensity])
 
   return (
     <>

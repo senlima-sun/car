@@ -6,7 +6,6 @@ import {
   DEFAULT_TIRE,
   getWearGripMultiplier,
 } from '../constants/tires'
-import { WeatherCondition } from '../constants/weather'
 
 // Per-wheel wear data (0-100 percentage)
 export interface PerWheelWear {
@@ -26,17 +25,18 @@ interface TireState {
   // Average wear across all wheels
   averageWear: number
 
-  // Computed effective grip based on compound, weather, and wear
+  // Computed effective grip based on compound, conditions, and wear
   effectiveGripMultiplier: number
 
-  // Current weather for grip calculations
-  currentWeather: WeatherCondition
+  // Current conditions for grip calculations
+  currentTemperature: number // Celsius
+  currentRainIntensity: number // 0-1
 
   // Actions
   setTireCompound: (compound: TireCompound) => void
   syncFromWasm: (wear: PerWheelWear) => void
   resetWear: () => void
-  updateWeather: (weather: WeatherCondition) => void
+  updateConditions: (temperature: number, rainIntensity: number) => void
 
   // Computed getters
   getTireConfig: () => TireModifiers
@@ -56,7 +56,8 @@ export const useTireStore = create<TireState>((set, get) => ({
   perWheelWear: { ...initialPerWheelWear },
   averageWear: 0,
   effectiveGripMultiplier: 1.0,
-  currentWeather: 'dry',
+  currentTemperature: 20, // Default 20°C
+  currentRainIntensity: 0, // Default no rain
 
   setTireCompound: compound => {
     set({
@@ -94,9 +95,9 @@ export const useTireStore = create<TireState>((set, get) => ({
     set({ effectiveGripMultiplier: newGrip })
   },
 
-  updateWeather: weather => {
-    set({ currentWeather: weather })
-    // Recalculate grip when weather changes
+  updateConditions: (temperature, rainIntensity) => {
+    set({ currentTemperature: temperature, currentRainIntensity: rainIntensity })
+    // Recalculate grip when conditions change
     const newGrip = get().calculateEffectiveGrip()
     set({ effectiveGripMultiplier: newGrip })
   },
@@ -113,11 +114,17 @@ export const useTireStore = create<TireState>((set, get) => ({
     // Start with base grip multiplier from tire compound
     let grip = config.gripMultiplier
 
-    // Apply weather compatibility
-    const isOptimalWeather = config.optimalWeather.includes(state.currentWeather)
-    if (!isOptimalWeather) {
-      // Apply wrong weather penalty
-      grip *= config.wrongWeatherPenalty
+    // Check temperature compatibility
+    const [minTemp, maxTemp] = config.optimalTempRange
+    const tempInRange = state.currentTemperature >= minTemp && state.currentTemperature <= maxTemp
+
+    // Check rain compatibility
+    const hasRain = state.currentRainIntensity > 0.01
+    const rainCompatible = hasRain ? config.rainSuitability >= 0.5 : config.rainSuitability <= 0.5
+
+    // Apply conditions penalty if not optimal
+    if (!tempInRange || !rainCompatible) {
+      grip *= config.wrongConditionsPenalty
     }
 
     // Apply wear degradation using average wear

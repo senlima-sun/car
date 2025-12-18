@@ -1,7 +1,7 @@
 use crate::car_physics::weight_transfer::WeightTransferResult;
 use crate::types::{
     AmbientConditions, PerWheelTemperature, PerWheelThermalShock, PerWheelWear, TireCompound,
-    TireConfig, TireDegradationModifiers, TireTemperatureWindow, TireThermalShock, WeatherCondition,
+    TireConfig, TireDegradationModifiers, TireTemperatureWindow, TireThermalShock,
 };
 
 /// Wheel position indices
@@ -20,7 +20,7 @@ pub struct WearInput {
     pub is_throttle: bool,
     pub is_drifting: bool,
     pub is_handbrake: bool,
-    pub weather: WeatherCondition,
+    pub ambient: AmbientConditions,
     pub track_temperature: f32,  // 0.0 to 1.0 normalized
     pub weight_transfer: WeightTransferResult,
     pub lateral_g: f32,          // Lateral G-force (cornering force)
@@ -93,8 +93,8 @@ impl TireState {
         // Speed factor - normalized around 30 m/s (108 km/h)
         let speed_factor = (input.speed_ms / 30.0).clamp(0.2, 2.0);
 
-        // Weather compatibility penalty
-        let weather_penalty = if self.is_optimal_weather(input.weather) {
+        // Weather compatibility penalty (based on ambient conditions)
+        let weather_penalty = if self.is_optimal_conditions(&input.ambient) {
             1.0
         } else {
             1.5
@@ -279,27 +279,41 @@ impl TireState {
         }
     }
 
-    /// Check if current weather is optimal for this tire compound
-    pub fn is_optimal_weather(&self, weather: WeatherCondition) -> bool {
-        self.config.optimal_weather.contains(&weather)
+    /// Check if current ambient conditions are optimal for this tire compound
+    pub fn is_optimal_conditions(&self, ambient: &AmbientConditions) -> bool {
+        let celsius = ambient.to_celsius();
+        let rain = ambient.rain_intensity;
+        let (min_temp, max_temp) = self.config.optimal_temp_range;
+
+        // Temperature check
+        let temp_ok = celsius >= min_temp && celsius <= max_temp;
+
+        // Rain check: if rain > 0.3, tire needs good rain suitability
+        let rain_ok = if rain > 0.3 {
+            self.config.rain_suitability >= 0.7
+        } else {
+            true
+        };
+
+        temp_ok && rain_ok
     }
 
-    /// Calculate effective grip considering compound, weather, and average wear
-    pub fn calculate_effective_grip(&self, weather: WeatherCondition) -> f32 {
+    /// Calculate effective grip considering compound, ambient conditions, and average wear
+    pub fn calculate_effective_grip_from_ambient(&self, ambient: &AmbientConditions) -> f32 {
         let base_grip = self.config.grip_multiplier;
 
         // Weather compatibility factor
-        let weather_factor = if self.is_optimal_weather(weather) {
+        let conditions_factor = if self.is_optimal_conditions(ambient) {
             1.0
         } else {
-            self.config.wrong_weather_penalty
+            self.config.wrong_conditions_penalty
         };
 
         // Use progressive "cliff" formula for grip degradation
         let avg_wear = self.get_wear();
         let wear_factor = Self::calculate_progressive_degradation(avg_wear, 0.30);
 
-        base_grip * weather_factor * wear_factor
+        base_grip * conditions_factor * wear_factor
     }
 
     /// Calculate progressive degradation with "cliff" effect
@@ -322,21 +336,21 @@ impl TireState {
         }
     }
 
-    /// Calculate all degradation modifiers based on current tire wear
-    pub fn calculate_degradation_modifiers(&self, weather: WeatherCondition) -> TireDegradationModifiers {
+    /// Calculate all degradation modifiers based on current tire wear and ambient conditions
+    pub fn calculate_degradation_modifiers_from_ambient(&self, ambient: &AmbientConditions) -> TireDegradationModifiers {
         let avg_wear = self.get_wear();
 
-        // Calculate grip with weather factored in
+        // Calculate grip with ambient conditions factored in
         let base_grip = self.config.grip_multiplier;
-        let weather_factor = if self.is_optimal_weather(weather) {
+        let conditions_factor = if self.is_optimal_conditions(ambient) {
             1.0
         } else {
-            self.config.wrong_weather_penalty
+            self.config.wrong_conditions_penalty
         };
         let grip_wear_factor = Self::calculate_progressive_degradation(avg_wear, 0.30);
 
         TireDegradationModifiers {
-            grip_multiplier: base_grip * weather_factor * grip_wear_factor,
+            grip_multiplier: base_grip * conditions_factor * grip_wear_factor,
             brake_efficiency: Self::calculate_progressive_degradation(avg_wear, 0.40),
             max_steer_multiplier: Self::calculate_progressive_degradation(avg_wear, 0.70),
             steer_instability: if avg_wear > 0.6 {
@@ -806,7 +820,7 @@ mod tests {
             is_throttle: false,
             is_drifting: false,
             is_handbrake: false,
-            weather: WeatherCondition::Dry,
+            ambient: AmbientConditions::from_celsius(25.0, 0.3),
             track_temperature: 0.5,
             weight_transfer: WeightTransferResult::default(),
             lateral_g: 0.0,
@@ -840,7 +854,7 @@ mod tests {
             is_throttle: false,
             is_drifting: false,
             is_handbrake: false,
-            weather: WeatherCondition::Dry,
+            ambient: AmbientConditions::from_celsius(25.0, 0.3),
             track_temperature: 0.5,
             weight_transfer: WeightTransferResult::default(),
             lateral_g: 0.0,
@@ -880,7 +894,7 @@ mod tests {
             is_throttle: false,
             is_drifting: false,
             is_handbrake: false,
-            weather: WeatherCondition::Dry,
+            ambient: AmbientConditions::from_celsius(25.0, 0.3),
             track_temperature: 0.5,
             weight_transfer: WeightTransferResult::default(),
             lateral_g: 1.0, // Right turn generates positive lateral G
@@ -909,7 +923,7 @@ mod tests {
             is_throttle: false,
             is_drifting: true,
             is_handbrake: false,
-            weather: WeatherCondition::Dry,
+            ambient: AmbientConditions::from_celsius(25.0, 0.3),
             track_temperature: 0.5,
             weight_transfer: WeightTransferResult::default(),
             lateral_g: 0.5, // Some lateral G during drift
@@ -941,7 +955,7 @@ mod tests {
             is_throttle: false,
             is_drifting: false,
             is_handbrake: false,
-            weather: WeatherCondition::Dry,
+            ambient: AmbientConditions::from_celsius(25.0, 0.3),
             track_temperature: 0.5,
             weight_transfer: WeightTransferResult::default(),
             lateral_g: 0.0,
@@ -976,7 +990,7 @@ mod tests {
             is_throttle: false,
             is_drifting: false,
             is_handbrake: false,
-            weather: WeatherCondition::Dry,
+            ambient: AmbientConditions::from_celsius(25.0, 0.3),
             track_temperature: 0.5,
             weight_transfer: WeightTransferResult::default(),
             lateral_g: 0.0,
@@ -985,7 +999,7 @@ mod tests {
         };
 
         let rain_input = WearInput {
-            weather: WeatherCondition::Rain,
+            ambient: AmbientConditions::new(15.0, 0.9, 0.8), // Rain conditions
             ..dry_input
         };
 
@@ -999,34 +1013,39 @@ mod tests {
     }
 
     #[test]
-    fn test_effective_grip_optimal_weather() {
-        let state = TireState::new(); // Medium, dry-optimal
-        let grip = state.calculate_effective_grip(WeatherCondition::Dry);
+    fn test_effective_grip_optimal_conditions() {
+        let state = TireState::new(); // Medium
+        let ambient = AmbientConditions::from_celsius(25.0, 0.3); // Optimal for medium tires
+        let grip = state.calculate_effective_grip_from_ambient(&ambient);
         assert!((grip - 1.0).abs() < 0.01); // Medium = 1.0 grip, no penalties
     }
 
     #[test]
-    fn test_effective_grip_wrong_weather() {
+    fn test_effective_grip_wrong_conditions() {
         let mut state = TireState::new();
-        state.set_compound(TireCompound::Soft); // Optimal for dry
+        state.set_compound(TireCompound::Soft); // Optimal for warm/dry
 
-        let dry_grip = state.calculate_effective_grip(WeatherCondition::Dry);
-        let rain_grip = state.calculate_effective_grip(WeatherCondition::Rain);
+        let dry_ambient = AmbientConditions::from_celsius(25.0, 0.3);
+        let rain_ambient = AmbientConditions::new(15.0, 0.9, 0.8); // Heavy rain
 
-        // Rain should apply wrong weather penalty (0.25 for soft)
+        let dry_grip = state.calculate_effective_grip_from_ambient(&dry_ambient);
+        let rain_grip = state.calculate_effective_grip_from_ambient(&rain_ambient);
+
+        // Rain should apply wrong conditions penalty (0.25 for soft)
         assert!(rain_grip < dry_grip * 0.3);
     }
 
     #[test]
     fn test_wear_grip_degradation() {
         let mut state = TireState::new();
+        let ambient = AmbientConditions::from_celsius(25.0, 0.3);
 
-        let fresh_grip = state.calculate_effective_grip(WeatherCondition::Dry);
+        let fresh_grip = state.calculate_effective_grip_from_ambient(&ambient);
 
         // Manually set high wear on all wheels
         state.wheels = [1.0, 1.0, 1.0, 1.0];
 
-        let worn_grip = state.calculate_effective_grip(WeatherCondition::Dry);
+        let worn_grip = state.calculate_effective_grip_from_ambient(&ambient);
 
         // At 100% wear, grip should be ~30% (severe degradation)
         assert!((worn_grip / fresh_grip - 0.30).abs() < 0.05);
@@ -1053,16 +1072,17 @@ mod tests {
     #[test]
     fn test_degradation_modifiers() {
         let mut state = TireState::new();
+        let ambient = AmbientConditions::from_celsius(25.0, 0.3);
 
         // Fresh tires - all modifiers should be near 1.0
-        let fresh = state.calculate_degradation_modifiers(WeatherCondition::Dry);
+        let fresh = state.calculate_degradation_modifiers_from_ambient(&ambient);
         assert!((fresh.brake_efficiency - 1.0).abs() < 0.01);
         assert!((fresh.max_steer_multiplier - 1.0).abs() < 0.01);
         assert!((fresh.steer_instability - 0.0).abs() < 0.01);
 
         // Worn tires - modifiers should be degraded
         state.wheels = [1.0, 1.0, 1.0, 1.0];
-        let worn = state.calculate_degradation_modifiers(WeatherCondition::Dry);
+        let worn = state.calculate_degradation_modifiers_from_ambient(&ambient);
         assert!(worn.brake_efficiency < 0.5);
         assert!(worn.max_steer_multiplier < 0.8);
         assert!(worn.steer_instability > 0.1);
@@ -1082,7 +1102,7 @@ mod tests {
             is_throttle: false,
             is_drifting: false,
             is_handbrake: false,
-            weather: WeatherCondition::Dry,
+            ambient: AmbientConditions::from_celsius(25.0, 0.3),
             track_temperature: 0.5,
             weight_transfer: WeightTransferResult::default(),
             lateral_g: 0.0,
@@ -1117,7 +1137,7 @@ mod tests {
             is_throttle: false,
             is_drifting: false,
             is_handbrake: false,
-            weather: WeatherCondition::Dry,
+            ambient: AmbientConditions::from_celsius(25.0, 0.3),
             track_temperature: 0.5,
             weight_transfer: WeightTransferResult::default(),
             lateral_g: 0.0,
@@ -1174,7 +1194,7 @@ mod tests {
             is_throttle: false,
             is_drifting: false,
             is_handbrake: false,
-            weather: WeatherCondition::Dry,
+            ambient: AmbientConditions::from_celsius(25.0, 0.3),
             track_temperature: 0.5,
             weight_transfer: WeightTransferResult::default(),
             lateral_g: 0.0,

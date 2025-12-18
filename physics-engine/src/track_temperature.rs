@@ -1,5 +1,5 @@
 use rustc_hash::FxHashMap;
-use crate::types::{AmbientConditions, AquaplaningState, GridCell, TrackBounds, WeatherCondition};
+use crate::types::{AmbientConditions, AquaplaningState, GridCell, TrackBounds};
 
 const DEFAULT_CELL_SIZE: f32 = 2.0;
 const MAX_CELLS: usize = 5000;
@@ -224,97 +224,13 @@ impl TrackTemperatureGrid {
     }
 
     /// Update weather effects on all cells (decay, wetness, ice, water depth)
+    /// Wrapper for tests - calls update_weather_with_ambient with wind_cooling = 1.0
     pub fn update_weather(
         &mut self,
-        weather: WeatherCondition,
-        ambient: AmbientConditions,
+        ambient: &AmbientConditions,
         delta_seconds: f32,
     ) {
-        // Base decay rates by weather
-        let base_decay_rate = match weather {
-            WeatherCondition::Dry => 0.004,  // Track cools very slowly
-            WeatherCondition::Hot => 0.002,  // Hot weather keeps track warm
-            WeatherCondition::Rain => 0.012, // Rain cools moderately
-            WeatherCondition::Cold => 0.018, // Cold weather cools faster but still slow
-        };
-
-        let is_raining = weather == WeatherCondition::Rain;
-        let rain_intensity = ambient.rain_intensity;
-        let is_freezing = ambient.temperature < FREEZING_THRESHOLD;
-        let mut cells_modified = false;
-
-        // Update all cells
-        for cell in self.cells.values_mut() {
-            // Calculate decay rate based on surface type
-            // Roads retain heat better (lower decay) unless it's raining
-            let decay_rate = if cell.is_road {
-                if is_raining {
-                    // Rain accelerates cooling on roads (water conducts heat away)
-                    base_decay_rate * ROAD_RAIN_DECAY_MULTIPLIER
-                } else {
-                    // Roads retain heat much better in dry conditions
-                    base_decay_rate * ROAD_DECAY_MULTIPLIER
-                }
-            } else {
-                base_decay_rate
-            };
-
-            // Temperature decay
-            let old_temp = cell.temperature;
-            cell.temperature = (cell.temperature - decay_rate * delta_seconds).max(0.0);
-
-            // Wetness and water depth changes - scaled by rain_exposure
-            if is_raining {
-                let effective_rain = rain_intensity * cell.rain_exposure;
-                cell.wetness = (cell.wetness + WETNESS_GAIN_RATE * effective_rain * delta_seconds).min(1.0);
-
-                // Water depth accumulation (affected by drainage)
-                let water_gain = WATER_ACCUMULATION_RATE * effective_rain * delta_seconds;
-                let water_drain = cell.drainage_rate * WATER_DRAINAGE_BASE_RATE * delta_seconds;
-                cell.water_depth = (cell.water_depth + water_gain - water_drain).clamp(0.0, MAX_WATER_DEPTH);
-            } else {
-                // Drying - sheltered areas dry faster
-                let dry_multiplier = if cell.rain_exposure < 0.5 {
-                    SHELTERED_DRYING_MULTIPLIER
-                } else {
-                    1.0
-                };
-                cell.wetness = (cell.wetness - WETNESS_DECAY_RATE * dry_multiplier * delta_seconds).max(0.0);
-                // Water drains when not raining
-                let drain_rate = WATER_DRAINAGE_BASE_RATE * (1.0 + cell.drainage_rate) * delta_seconds;
-                cell.water_depth = (cell.water_depth - drain_rate).max(0.0);
-            }
-
-            // Ice formation/melting based on ambient temperature
-            if is_freezing {
-                // Ice forms when cold AND (wet or high humidity)
-                let ice_potential = cell.wetness.max(ambient.humidity * 0.5);
-                let ice_gain = ICE_FORMATION_RATE * ice_potential * (FREEZING_THRESHOLD - ambient.temperature) * delta_seconds;
-                cell.ice_formation = (cell.ice_formation + ice_gain).min(1.0);
-            } else {
-                // Ice melts when above freezing
-                let melt_factor = (ambient.temperature - FREEZING_THRESHOLD).min(0.2);
-                cell.ice_formation = (cell.ice_formation - ICE_MELT_RATE * melt_factor * delta_seconds).max(0.0);
-            }
-
-            // Rubber decay based on weather conditions
-            // Rain washes away rubber faster, hot weather accelerates UV decay
-            let rubber_decay_rate = match weather {
-                WeatherCondition::Rain => RUBBER_RAIN_WASH_RATE * rain_intensity.max(0.3),
-                WeatherCondition::Hot => RUBBER_HOT_DECAY_RATE,
-                WeatherCondition::Cold => RUBBER_UV_DECAY_RATE * 0.5, // Cold slows decay
-                WeatherCondition::Dry => RUBBER_UV_DECAY_RATE,
-            };
-            cell.rubber_buildup = (cell.rubber_buildup - rubber_decay_rate * delta_seconds).max(0.0);
-
-            if (cell.temperature - old_temp).abs() > 0.001 {
-                cells_modified = true;
-            }
-        }
-
-        if cells_modified {
-            self.texture_dirty = true;
-        }
+        self.update_weather_with_ambient(ambient, 1.0, delta_seconds);
 
         // Periodic pruning
         self.prune_timer += delta_seconds;
@@ -325,24 +241,34 @@ impl TrackTemperatureGrid {
     }
 
     /// Update weather effects on all cells with wind cooling modifier
-    pub fn update_weather_with_wind(
+    pub fn update_weather_with_ambient(
         &mut self,
-        weather: WeatherCondition,
-        ambient: AmbientConditions,
+        ambient: &AmbientConditions,
         wind_cooling_multiplier: f32,
         delta_seconds: f32,
     ) {
-        // Base decay rates by weather
-        let base_decay_rate = match weather {
-            WeatherCondition::Dry => 0.004,
-            WeatherCondition::Hot => 0.002,
-            WeatherCondition::Rain => 0.012,
-            WeatherCondition::Cold => 0.018,
+        let celsius = ambient.to_celsius();
+        let rain_intensity = ambient.rain_intensity;
+        let is_raining = rain_intensity > 0.01;
+        let is_freezing = ambient.temperature < FREEZING_THRESHOLD;
+
+        // Base decay rate from temperature
+        // Cold: fast decay, Hot: slow decay, Normal: medium
+        let base_decay_rate = if celsius < 5.0 {
+            0.018 // Cold
+        } else if celsius > 35.0 {
+            0.002 // Hot
+        } else {
+            0.004 // Normal
         };
 
-        let is_raining = weather == WeatherCondition::Rain;
-        let rain_intensity = ambient.rain_intensity;
-        let is_freezing = ambient.temperature < FREEZING_THRESHOLD;
+        // Rain increases decay
+        let weather_decay_rate = if is_raining {
+            base_decay_rate * (1.0 + rain_intensity * 2.0) // Up to 3x decay with heavy rain
+        } else {
+            base_decay_rate
+        };
+
         let mut cells_modified = false;
 
         // Update all cells
@@ -352,13 +278,13 @@ impl TrackTemperatureGrid {
             let surface_decay = if cell.is_road {
                 if is_raining {
                     // Rain accelerates cooling on roads (water conducts heat away)
-                    base_decay_rate * ROAD_RAIN_DECAY_MULTIPLIER
+                    weather_decay_rate * ROAD_RAIN_DECAY_MULTIPLIER
                 } else {
                     // Roads retain heat much better in dry conditions
-                    base_decay_rate * ROAD_DECAY_MULTIPLIER
+                    weather_decay_rate * ROAD_DECAY_MULTIPLIER
                 }
             } else {
-                base_decay_rate
+                weather_decay_rate
             };
 
             // Wind increases cooling rate
@@ -400,12 +326,15 @@ impl TrackTemperatureGrid {
                 cell.ice_formation = (cell.ice_formation - ICE_MELT_RATE * melt_factor * delta_seconds).max(0.0);
             }
 
-            // Rubber decay based on weather conditions (wind helps drying/decay)
-            let rubber_decay_rate = match weather {
-                WeatherCondition::Rain => RUBBER_RAIN_WASH_RATE * rain_intensity.max(0.3) * wind_cooling_multiplier,
-                WeatherCondition::Hot => RUBBER_HOT_DECAY_RATE * wind_cooling_multiplier,
-                WeatherCondition::Cold => RUBBER_UV_DECAY_RATE * 0.5,
-                WeatherCondition::Dry => RUBBER_UV_DECAY_RATE * wind_cooling_multiplier.sqrt(), // Wind has modest effect
+            // Rubber decay based on ambient conditions (wind helps drying/decay)
+            let rubber_decay_rate = if is_raining {
+                RUBBER_RAIN_WASH_RATE * rain_intensity.max(0.3) * wind_cooling_multiplier
+            } else if celsius > 35.0 {
+                RUBBER_HOT_DECAY_RATE * wind_cooling_multiplier
+            } else if celsius < 5.0 {
+                RUBBER_UV_DECAY_RATE * 0.5
+            } else {
+                RUBBER_UV_DECAY_RATE * wind_cooling_multiplier.sqrt() // Wind has modest effect
             };
             cell.rubber_buildup = (cell.rubber_buildup - rubber_decay_rate * delta_seconds).max(0.0);
 
@@ -827,10 +756,10 @@ mod tests {
         let (cx, cz) = grid.world_to_cell(0.0, 0.0);
         let initial_temp = grid.cells.get(&(cx, cz)).unwrap().temperature;
 
-        // Let it decay (dry weather)
+        // Let it decay (dry weather - 25C, 30% humidity, no rain)
         let ambient = AmbientConditions::from_celsius(25.0, 0.3);
         for _ in 0..300 {
-            grid.update_weather(WeatherCondition::Dry, ambient, 1.0 / 60.0);
+            grid.update_weather(&ambient, 1.0 / 60.0);
             grid.update_time(1.0 / 60.0);
         }
 
@@ -851,7 +780,7 @@ mod tests {
         // Simulate rain (rainy ambient conditions with rain_intensity set)
         let ambient = AmbientConditions::new(15.0, 0.9, 0.8); // 15C, 90% humidity, 80% rain
         for _ in 0..180 {
-            grid.update_weather(WeatherCondition::Rain, ambient, 1.0 / 60.0);
+            grid.update_weather(&ambient, 1.0 / 60.0);
             grid.update_time(1.0 / 60.0);
         }
 
@@ -895,8 +824,8 @@ mod tests {
         // Let them decay (dry weather - road should retain heat better)
         let ambient = AmbientConditions::from_celsius(25.0, 0.3);
         for _ in 0..600 { // 10 seconds at 60fps
-            road_grid.update_weather(WeatherCondition::Dry, ambient, 1.0 / 60.0);
-            grass_grid.update_weather(WeatherCondition::Dry, ambient, 1.0 / 60.0);
+            road_grid.update_weather(&ambient, 1.0 / 60.0);
+            grass_grid.update_weather(&ambient, 1.0 / 60.0);
             road_grid.update_time(1.0 / 60.0);
             grass_grid.update_time(1.0 / 60.0);
         }
@@ -927,8 +856,8 @@ mod tests {
         // Let them decay in rain (road should lose heat faster)
         let ambient = AmbientConditions::new(15.0, 0.9, 0.8); // 15C, 90% humidity, 80% rain
         for _ in 0..600 { // 10 seconds at 60fps
-            road_grid.update_weather(WeatherCondition::Rain, ambient, 1.0 / 60.0);
-            grass_grid.update_weather(WeatherCondition::Rain, ambient, 1.0 / 60.0);
+            road_grid.update_weather(&ambient, 1.0 / 60.0);
+            grass_grid.update_weather(&ambient, 1.0 / 60.0);
             road_grid.update_time(1.0 / 60.0);
             grass_grid.update_time(1.0 / 60.0);
         }

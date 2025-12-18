@@ -163,7 +163,7 @@ export default function PitStopUI() {
   const cancelPitStop = usePitStore(s => s.cancelPitStop)
 
   const currentCompound = useTireStore(s => s.currentCompound)
-  const wear = useTireStore(s => s.wear)
+  const averageWear = useTireStore(s => s.averageWear)
   const setTireCompound = useTireStore(s => s.setTireCompound)
   const resetWear = useTireStore(s => s.resetWear)
 
@@ -207,7 +207,7 @@ export default function PitStopUI() {
             <div style={styles.currentLabel}>Current</div>
             <div style={styles.currentValue}>
               <span style={{ color: currentConfig.color }}>{currentConfig.icon}</span>{' '}
-              {currentConfig.displayName} ({Math.round(100 - wear)}% life)
+              {currentConfig.displayName} ({Math.round(100 - averageWear)}% life)
             </div>
           </div>
           {selectedConfig && (

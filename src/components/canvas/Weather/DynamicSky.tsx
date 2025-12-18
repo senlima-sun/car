@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Sky } from '@react-three/drei'
-import { useWeatherStore } from '../../../stores/useWeatherStore'
+import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { ATMOSPHERE_CONFIG, AtmosphereConfig } from '../../../constants/weather'
 
 // Linear interpolation helper
@@ -34,24 +34,44 @@ function lerpAtmosphere(from: AtmosphereConfig, to: AtmosphereConfig, t: number)
   }
 }
 
+// Compute atmosphere based on dynamic temperature and rain
+function computeAtmosphereFromDynamic(temperature: number, rainIntensity: number): AtmosphereConfig {
+  // Determine base atmosphere from temperature
+  let baseConfig = ATMOSPHERE_CONFIG.dry
+  let blendTarget: AtmosphereConfig | null = null
+  let blendFactor = 0
+
+  if (temperature < 0) {
+    // Cold zone: blend from cold to dry as temp increases
+    baseConfig = ATMOSPHERE_CONFIG.cold
+    // At -10C = full cold, at 0C = blend toward dry
+    blendTarget = ATMOSPHERE_CONFIG.dry
+    blendFactor = Math.max(0, (temperature + 10) / 10) // -10 -> 0 maps to 0 -> 1
+  } else if (temperature > 35) {
+    // Hot zone: blend from dry to hot as temp increases
+    baseConfig = ATMOSPHERE_CONFIG.dry
+    blendTarget = ATMOSPHERE_CONFIG.hot
+    blendFactor = Math.min(1, (temperature - 35) / 15) // 35 -> 50 maps to 0 -> 1
+  }
+
+  // Apply temperature-based blending
+  let result = blendTarget ? lerpAtmosphere(baseConfig, blendTarget, blendFactor) : baseConfig
+
+  // Apply rain blending on top
+  if (rainIntensity > 0.01) {
+    result = lerpAtmosphere(result, ATMOSPHERE_CONFIG.rain, rainIntensity)
+  }
+
+  return result
+}
+
 export default function DynamicSky() {
-  const currentWeather = useWeatherStore(s => s.currentWeather)
-  const previousWeather = useWeatherStore(s => s.previousWeather)
-  const transitionProgress = useWeatherStore(s => s.transitionProgress)
-  const isTransitioning = useWeatherStore(s => s.isTransitioning)
+  const temperature = useEnvironmentStore(s => s.temperature)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
   const atmosphere = useMemo(() => {
-    if (!isTransitioning) {
-      return ATMOSPHERE_CONFIG[currentWeather]
-    }
-    // Smoothstep easing for natural transition
-    const easedProgress = transitionProgress * transitionProgress * (3 - 2 * transitionProgress)
-    return lerpAtmosphere(
-      ATMOSPHERE_CONFIG[previousWeather],
-      ATMOSPHERE_CONFIG[currentWeather],
-      easedProgress,
-    )
-  }, [currentWeather, previousWeather, transitionProgress, isTransitioning])
+    return computeAtmosphereFromDynamic(temperature, rainIntensity)
+  }, [temperature, rainIntensity])
 
   return (
     <Sky
@@ -66,4 +86,4 @@ export default function DynamicSky() {
 }
 
 // Export the lerp functions for use in other components
-export { lerp, lerpAtmosphere }
+export { lerp, lerpAtmosphere, computeAtmosphereFromDynamic }

@@ -1,4 +1,4 @@
-// Weather types
+// Weather types (kept for shader compatibility and internal blending)
 export type WeatherCondition = 'dry' | 'hot' | 'rain' | 'cold'
 
 // Atmosphere configuration for dynamic sky/lighting
@@ -26,119 +26,7 @@ export interface AtmosphereConfig {
   fogFar: number
 }
 
-// Weather modifier interface
-export interface WeatherModifiers {
-  // Tire grip modifiers (multiplier to base frictionSlip 1.7)
-  frictionSlipMultiplier: number
-
-  // Aerodynamic modifiers
-  dragMultiplier: number
-  downforceMultiplier: number
-
-  // Engine/power modifiers
-  engineEfficiencyMultiplier: number
-
-  // Brake modifiers
-  brakeEfficiencyMultiplier: number
-
-  // Steering modifiers
-  steerResponseMultiplier: number
-  maxSteerAngleMultiplier: number
-
-  // Drift behavior modifiers
-  driftEntrySlipAngleMultiplier: number
-  driftLateralCorrectionMultiplier: number
-
-  // Speed limits
-  maxSpeedMultiplier: number
-
-  // Display properties
-  displayName: string
-  description: string
-  icon: string
-}
-
-// Weather configurations
-export const WEATHER_CONFIG: Record<WeatherCondition, WeatherModifiers> = {
-  dry: {
-    // Baseline - all multipliers at 1.0
-    frictionSlipMultiplier: 1.0,
-    dragMultiplier: 1.0,
-    downforceMultiplier: 1.0,
-    engineEfficiencyMultiplier: 1.0,
-    brakeEfficiencyMultiplier: 1.0,
-    steerResponseMultiplier: 1.0,
-    maxSteerAngleMultiplier: 1.0,
-    driftEntrySlipAngleMultiplier: 1.0,
-    driftLateralCorrectionMultiplier: 1.0,
-    maxSpeedMultiplier: 1.0,
-    displayName: 'Dry',
-    description: 'Normal conditions - optimal grip',
-    icon: '☀️',
-  },
-
-  hot: {
-    // Hot weather - good grip from warm tires, slight brake fade
-    frictionSlipMultiplier: 1.1,
-    dragMultiplier: 0.98,
-    downforceMultiplier: 0.98,
-    engineEfficiencyMultiplier: 1.0,
-    brakeEfficiencyMultiplier: 0.92,
-    steerResponseMultiplier: 1.0,
-    maxSteerAngleMultiplier: 1.0,
-    driftEntrySlipAngleMultiplier: 1.1,
-    driftLateralCorrectionMultiplier: 1.05,
-    maxSpeedMultiplier: 1.0,
-    displayName: 'Hot',
-    description: 'Warm conditions - good grip, watch brake temps',
-    icon: '🔥',
-  },
-
-  rain: {
-    // Rain - reduced grip, slippery in turns at high speed
-    frictionSlipMultiplier: 0.5, // Even less base grip (was 0.55)
-    dragMultiplier: 1.1,
-    downforceMultiplier: 0.9,
-    engineEfficiencyMultiplier: 1.0,
-    brakeEfficiencyMultiplier: 0.55, // Harder to stop (was 0.65)
-    steerResponseMultiplier: 0.8, // Sluggish steering (was 0.85)
-    maxSteerAngleMultiplier: 1.0,
-    driftEntrySlipAngleMultiplier: 0.5, // Easier to break loose (was 0.6)
-    driftLateralCorrectionMultiplier: 0.5, // Much more slide in corners (was 0.65)
-    maxSpeedMultiplier: 1.0,
-    displayName: 'Rain',
-    description: 'Wet conditions - slippery in turns!',
-    icon: '🌧️',
-  },
-
-  cold: {
-    // Cold/Freezing - very slippery, easy to lose control
-    frictionSlipMultiplier: 0.25,
-    dragMultiplier: 1.05,
-    downforceMultiplier: 1.05,
-    engineEfficiencyMultiplier: 1.0,
-    brakeEfficiencyMultiplier: 0.35,
-    steerResponseMultiplier: 0.7,
-    maxSteerAngleMultiplier: 1.0,
-    driftEntrySlipAngleMultiplier: 0.3,
-    driftLateralCorrectionMultiplier: 0.35,
-    maxSpeedMultiplier: 1.0,
-    displayName: 'Freezing',
-    description: 'Icy conditions - very easy to slide!',
-    icon: '❄️',
-  },
-}
-
-// Transition duration when weather changes (ms)
-export const WEATHER_TRANSITION_DURATION = 3000
-
-// Default weather
-export const DEFAULT_WEATHER: WeatherCondition = 'dry'
-
-// Weather order for cycling
-export const WEATHER_ORDER: WeatherCondition[] = ['dry', 'hot', 'rain', 'cold']
-
-// Atmosphere configurations per weather type
+// Atmosphere configurations per weather type (used for interpolation)
 export const ATMOSPHERE_CONFIG: Record<WeatherCondition, AtmosphereConfig> = {
   dry: {
     // Clear blue sky, normal sun

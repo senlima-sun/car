@@ -9,7 +9,6 @@ export { useStartPosition, type StartTransform } from './useStartPosition'
 
 // WASM type mapping utilities
 export {
-  mapWeatherToWasm,
   mapTireToWasm,
   mapSurfaceToWasm,
 } from './wasmMappings'

@@ -12,11 +12,11 @@ mod wind;
 
 use engine::PhysicsEngine as PhysicsEngineInternal;
 use serde_wasm_bindgen::{from_value, to_value};
-use types::{CarInput, CurbSide, SurfaceType, TireCompound, TrackBounds, WeatherCondition};
+use types::{CarInput, CurbSide, SurfaceType, TireCompound, TrackBounds};
 use wasm_bindgen::prelude::*;
 
 // Re-export enums for JavaScript
-pub use types::{TireCompound as TireCompoundEnum, WeatherCondition as WeatherConditionEnum};
+pub use types::TireCompound as TireCompoundEnum;
 
 /// WASM-exposed physics engine wrapper
 #[wasm_bindgen]
@@ -42,34 +42,10 @@ impl PhysicsEngine {
     // Weather API
     // ========================================================================
 
-    /// Set the current weather condition
-    #[wasm_bindgen]
-    pub fn set_weather(&mut self, weather: WeatherCondition) {
-        self.inner.set_weather(weather);
-    }
-
-    /// Get the current weather condition
-    #[wasm_bindgen]
-    pub fn get_weather(&self) -> WeatherCondition {
-        self.inner.get_weather()
-    }
-
-    /// Update weather transition (call each frame)
-    #[wasm_bindgen]
-    pub fn update_weather_transition(&mut self, delta_seconds: f32) {
-        self.inner.update_weather_transition(delta_seconds);
-    }
-
     /// Get current weather modifiers as JavaScript object
     #[wasm_bindgen]
     pub fn get_weather_modifiers(&self) -> JsValue {
         to_value(&self.inner.get_weather_modifiers()).unwrap_or(JsValue::NULL)
-    }
-
-    /// Check if weather is transitioning
-    #[wasm_bindgen]
-    pub fn is_weather_transitioning(&self) -> bool {
-        self.inner.is_weather_transitioning()
     }
 
     /// Get current ambient conditions (temperature and humidity)
@@ -78,7 +54,7 @@ impl PhysicsEngine {
         to_value(&self.inner.get_ambient_conditions()).unwrap_or(JsValue::NULL)
     }
 
-    /// Set custom/granular ambient conditions (bypasses weather presets)
+    /// Set ambient conditions
     /// celsius: temperature in Celsius (-10 to 50)
     /// humidity: 0.0 to 1.0
     /// rain_intensity: 0.0 to 1.0 (0% to 100%)
@@ -87,22 +63,10 @@ impl PhysicsEngine {
         self.inner.set_custom_weather(celsius, humidity, rain_intensity);
     }
 
-    /// Check if in custom weather mode
-    #[wasm_bindgen]
-    pub fn is_custom_weather_mode(&self) -> bool {
-        self.inner.is_custom_weather_mode()
-    }
-
     /// Get current rain intensity (0.0 to 1.0)
     #[wasm_bindgen]
     pub fn get_rain_intensity(&self) -> f32 {
         self.inner.get_rain_intensity()
-    }
-
-    /// Exit custom mode and return to preset weather
-    #[wasm_bindgen]
-    pub fn exit_custom_weather_mode(&mut self) {
-        self.inner.exit_custom_weather_mode();
     }
 
     // ========================================================================

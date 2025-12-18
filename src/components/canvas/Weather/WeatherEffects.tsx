@@ -1,9 +1,8 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useWeatherStore } from '../../../stores/useWeatherStore'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
-import { WeatherCondition, ATMOSPHERE_CONFIG } from '../../../constants/weather'
+import { ATMOSPHERE_CONFIG } from '../../../constants/weather'
 import SurfaceEffects from './SurfaceEffects'
 
 // Realistic rain using line segments for proper streaks
@@ -450,67 +449,48 @@ export function HeatEffect() {
   )
 }
 
-// Weather-specific fog adjustments - now uses atmosphere config
-function WeatherFog({ weather }: { weather: WeatherCondition }) {
-  const previousWeather = useWeatherStore(s => s.previousWeather)
-  const transitionProgress = useWeatherStore(s => s.transitionProgress)
-  const isTransitioning = useWeatherStore(s => s.isTransitioning)
+// Dynamic fog adjustments based on temperature and rain
+function DynamicFog() {
+  const temperature = useEnvironmentStore(s => s.temperature)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
   const fogConfig = useMemo(() => {
-    const current = ATMOSPHERE_CONFIG[weather]
-
-    if (!isTransitioning) {
-      return { color: current.fogColor, near: current.fogNear, far: current.fogFar }
+    // Determine base atmosphere from temperature
+    let baseConfig = ATMOSPHERE_CONFIG.dry
+    if (temperature < 0) {
+      baseConfig = ATMOSPHERE_CONFIG.cold
+    } else if (temperature > 35) {
+      baseConfig = ATMOSPHERE_CONFIG.hot
     }
 
-    // Interpolate fog during transitions
-    const prev = ATMOSPHERE_CONFIG[previousWeather]
-    const t = transitionProgress * transitionProgress * (3 - 2 * transitionProgress) // smoothstep
-
-    return {
-      color: current.fogColor, // Use target color
-      near: prev.fogNear + (current.fogNear - prev.fogNear) * t,
-      far: prev.fogFar + (current.fogFar - prev.fogFar) * t,
+    // Blend with rain atmosphere if raining
+    if (rainIntensity > 0.01) {
+      const rainConfig = ATMOSPHERE_CONFIG.rain
+      const t = rainIntensity
+      return {
+        color: rainConfig.fogColor,
+        near: baseConfig.fogNear + (rainConfig.fogNear - baseConfig.fogNear) * t,
+        far: baseConfig.fogFar + (rainConfig.fogFar - baseConfig.fogFar) * t,
+      }
     }
-  }, [weather, previousWeather, transitionProgress, isTransitioning])
+
+    return { color: baseConfig.fogColor, near: baseConfig.fogNear, far: baseConfig.fogFar }
+  }, [temperature, rainIntensity])
 
   return <fog attach='fog' args={[fogConfig.color, fogConfig.near, fogConfig.far]} />
 }
 
-// Overcast sky overlay - darkens the sky during rain
+// Overcast sky overlay - darkens the sky based on rain intensity
 function OvercastSkyOverlay() {
-  const currentWeather = useWeatherStore(s => s.currentWeather)
-  const previousWeather = useWeatherStore(s => s.previousWeather)
-  const transitionProgress = useWeatherStore(s => s.transitionProgress)
-  const isTransitioning = useWeatherStore(s => s.isTransitioning)
-  const customRainIntensity = useEnvironmentStore(s => s.rainIntensity)
+  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
-  const isRaining = currentWeather === 'rain'
-  const hasCustomRain = customRainIntensity > 0.01
-
-  // Calculate overlay opacity with smooth transitions
+  // Calculate overlay opacity from rain intensity
   const overlayOpacity = useMemo(() => {
-    // Custom rain intensity takes priority
-    if (hasCustomRain) {
-      return customRainIntensity * 0.7
+    if (rainIntensity > 0.01) {
+      return rainIntensity * 0.7
     }
-
-    if (!isTransitioning) {
-      return isRaining ? 0.7 : 0
-    }
-
-    // Transitioning TO rain - fade in
-    if (isRaining && previousWeather !== 'rain') {
-      return transitionProgress * 0.7
-    }
-
-    // Transitioning FROM rain - fade out
-    if (!isRaining && previousWeather === 'rain') {
-      return (1 - transitionProgress) * 0.7
-    }
-
-    return isRaining ? 0.7 : 0
-  }, [isRaining, isTransitioning, transitionProgress, previousWeather, hasCustomRain, customRainIntensity])
+    return 0
+  }, [rainIntensity])
 
   if (overlayOpacity <= 0) return null
 
@@ -528,23 +508,25 @@ function OvercastSkyOverlay() {
   )
 }
 
-// Main weather effects component
+// Main weather effects component - uses dynamic temperature and rain
 export default function WeatherEffects() {
-  const currentWeather = useWeatherStore(state => state.currentWeather)
+  const temperature = useEnvironmentStore(state => state.temperature)
   const rainIntensity = useEnvironmentStore(state => state.rainIntensity)
 
-  // Show rain if weather is 'rain' OR if custom rain intensity is above threshold
-  const showRain = currentWeather === 'rain' || rainIntensity > 0.01
+  // Dynamic weather conditions based on temperature and rain
+  const showRain = rainIntensity > 0.01
+  const showSnow = temperature < 0 && !showRain // Snow when cold and not raining
+  const showHeat = temperature > 35 && !showRain // Heat shimmer when hot and not raining
 
   return (
     <>
       {/* Overcast sky overlay for rain */}
       <OvercastSkyOverlay />
 
-      {/* Weather-specific fog */}
-      <WeatherFog weather={currentWeather} />
+      {/* Dynamic fog based on conditions */}
+      <DynamicFog />
 
-      {/* Rain particles + ground splashes - show when raining OR custom rain intensity */}
+      {/* Rain particles + ground splashes */}
       {showRain && (
         <>
           <RainEffect />
@@ -553,12 +535,15 @@ export default function WeatherEffects() {
       )}
 
       {/* Snow particles + ground effects */}
-      {currentWeather === 'cold' && (
+      {showSnow && (
         <>
           <SnowEffect />
           <SnowSplashEffect />
         </>
       )}
+
+      {/* Heat shimmer effect */}
+      {showHeat && <HeatEffect />}
 
       {/* Surface effects (puddles, ice patches) */}
       <SurfaceEffects />
