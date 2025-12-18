@@ -93,12 +93,7 @@ export function useCarFrame({
   const aeroMode = useActiveAeroStore(state => state.mode)
   const syncAeroState = useActiveAeroStore(state => state.syncFromPhysics)
 
-  // Brake mode controls and sync
-  const increaseBias = useBrakeStore(state => state.increaseBias)
-  const decreaseBias = useBrakeStore(state => state.decreaseBias)
-  const cycleEngineBraking = useBrakeStore(state => state.cycleEngineBraking)
-  const frontBias = useBrakeStore(state => state.frontBias)
-  const engineBraking = useBrakeStore(state => state.engineBraking)
+  // Brake mode sync (physics engine is source of truth)
   const syncBrakeState = useBrakeStore(state => state.syncFromPhysics)
 
   // Curb state
@@ -146,7 +141,6 @@ export function useCarFrame({
       right,
       brake,
       handbrake,
-      drs,
       ers,
       aero,
       brakeIncr,
@@ -197,21 +191,21 @@ export function useCarFrame({
       lastAeroModeToggle.current = state.clock.elapsedTime
     }
 
-    // Brake bias increase with debounce (] key)
+    // Brake bias increase with debounce (] key) - call physics directly
     if (brakeIncr && state.clock.elapsedTime - lastBrakeIncrToggle.current > 0.3) {
-      increaseBias()
+      physics.increaseBrakeBias()
       lastBrakeIncrToggle.current = state.clock.elapsedTime
     }
 
-    // Brake bias decrease with debounce ([ key)
+    // Brake bias decrease with debounce ([ key) - call physics directly
     if (brakeDecr && state.clock.elapsedTime - lastBrakeDecrToggle.current > 0.3) {
-      decreaseBias()
+      physics.decreaseBrakeBias()
       lastBrakeDecrToggle.current = state.clock.elapsedTime
     }
 
-    // Engine braking cycle with debounce (N key)
+    // Engine braking cycle with debounce (N key) - call physics directly
     if (engineBrake && state.clock.elapsedTime - lastEngineBrakeToggle.current > 0.3) {
-      cycleEngineBraking()
+      physics.cycleEngineBrakingLevel()
       lastEngineBrakeToggle.current = state.clock.elapsedTime
     }
 
@@ -264,17 +258,15 @@ export function useCarFrame({
     // Update curb state in WASM
     physics.setOnCurb(isOnCurb, curbSide || undefined)
 
-    // Sync ERS mode from UI to physics engine
-    physics.setErsMode(ersMode)
+    // Sync ERS mode from UI to physics engine (get fresh state to avoid stale closure)
+    physics.setErsMode(useErsStore.getState().mode)
 
-    // Sync Active Aero mode to physics and get current state
-    physics.setAeroMode(aeroMode)
+    // Sync Active Aero mode to physics and get current state (get fresh state to avoid stale closure)
+    physics.setAeroMode(useActiveAeroStore.getState().mode)
     const aeroState = physics.getActiveAeroState()
     syncAeroState(aeroState)
 
-    // Sync Brake settings to physics and get current state
-    physics.setBrakeBias(frontBias)
-    physics.setEngineBrakingLevel(engineBraking)
+    // Get brake state from physics (physics is source of truth)
     const brakeState = physics.getBrakeState()
     syncBrakeState(brakeState)
 
@@ -286,7 +278,6 @@ export function useCarFrame({
       right,
       brake,
       handbrake,
-      drs,
     }
 
     // Run WASM physics step

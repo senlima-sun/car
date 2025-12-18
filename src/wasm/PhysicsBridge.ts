@@ -18,7 +18,6 @@ export interface CarInput {
   right: boolean
   brake: boolean
   handbrake: boolean
-  drs: boolean
 }
 
 export interface PerWheelWear {
@@ -716,7 +715,6 @@ export function createDefaultInput(): CarInput {
     right: false,
     brake: false,
     handbrake: false,
-    drs: false,
   }
 }
 
@@ -730,7 +728,6 @@ export function inputFromKeyboard(keys: {
   right: boolean
   brake: boolean
   handbrake: boolean
-  drs: boolean
 }): CarInput {
   return { ...keys }
 }
@@ -792,18 +789,16 @@ export function getWheelAvgTemp(temps: PerWheelTemperature, wheel: 0 | 1 | 2 | 3
  * @param mode - 'Corner' for high downforce, 'Straight' for low drag
  */
 export function setAeroMode(mode: AeroMode): void {
-  // For now, this is a client-side only feature
-  // When WASM implements this, we'll call: getPhysicsEngine().set_aero_mode(mode)
-  console.log('[PhysicsBridge] Active Aero mode set to:', mode)
+  const modeIndex = mode === 'Corner' ? 0 : 1
+  getPhysicsEngine().set_aero_mode(modeIndex)
 }
 
 /**
  * Get current aero mode
  */
 export function getAeroMode(): AeroMode {
-  // For now, return default
-  // When WASM implements this, we'll call: getPhysicsEngine().get_aero_mode()
-  return 'Corner'
+  const modeIndex = getPhysicsEngine().get_aero_mode()
+  return modeIndex === 0 ? 'Corner' : 'Straight'
 }
 
 /**
@@ -811,27 +806,7 @@ export function getAeroMode(): AeroMode {
  * Returns wing angles and multipliers based on current mode
  */
 export function getActiveAeroState(): ActiveAeroState {
-  // For now, return simulated state
-  // When WASM implements this, we'll call: getPhysicsEngine().get_active_aero_state()
-  const mode = getAeroMode()
-
-  if (mode === 'Corner') {
-    return {
-      mode: 'Corner',
-      front_wing_angle: 1.0, // Fully deployed
-      rear_wing_angle: 1.0,
-      drag_multiplier: 1.2, // Higher drag
-      downforce_multiplier: 1.4, // Higher downforce
-    }
-  } else {
-    return {
-      mode: 'Straight',
-      front_wing_angle: 0.2, // Minimal angle
-      rear_wing_angle: 0.1,
-      drag_multiplier: 0.7, // Lower drag
-      downforce_multiplier: 0.6, // Lower downforce
-    }
-  }
+  return getPhysicsEngine().get_active_aero_state() as ActiveAeroState
 }
 
 // ============================================================================
