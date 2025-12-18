@@ -14,6 +14,7 @@ import { useDistanceGridStore } from '../../../../stores/useDistanceGridStore'
 import { useWindStore } from '../../../../stores/useWindStore'
 import { useWindViewStore } from '../../../../stores/useWindViewStore'
 import { useAquaplaningStore } from '../../../../stores/useAquaplaningStore'
+import { useErsStore } from '../../../../stores/useErsStore'
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 
@@ -79,6 +80,9 @@ export function useCarFrame({
   const setAquaplaning = useAquaplaningStore(state => state.setAquaplaning)
   const setThermalShock = useAquaplaningStore(state => state.setThermalShock)
 
+  // ERS mode cycling
+  const cycleErsMode = useErsStore(state => state.cycleMode)
+
   // Curb state
   const isOnCurb = useCurbStore(state => state.isOnCurb)
   const curbSide = useCurbStore(state => state.curbSide)
@@ -95,6 +99,7 @@ export function useCarFrame({
   const lastFreeCamToggle = useRef(0)
   const lastHeatmapToggle = useRef(0)
   const lastGridToggle = useRef(0)
+  const lastErsModeToggle = useRef(0)
   const tempCarPosRef = useRef(new Vector3())
 
   // Pre-allocated arrays for rubber deposit updates (avoid GC)
@@ -120,6 +125,7 @@ export function useCarFrame({
       brake,
       handbrake,
       drs,
+      ers,
       camera,
       heatmap,
       distanceGrid,
@@ -151,6 +157,12 @@ export function useCarFrame({
     if (freeCamera && state.clock.elapsedTime - lastFreeCamToggle.current > 0.3) {
       toggleFreeCamera()
       lastFreeCamToggle.current = state.clock.elapsedTime
+    }
+
+    // ERS mode cycle with debounce (B key)
+    if (ers && state.clock.elapsedTime - lastErsModeToggle.current > 0.3) {
+      cycleErsMode()
+      lastErsModeToggle.current = state.clock.elapsedTime
     }
 
     // Skip physics when in free camera mode or customize mode (freeze car)

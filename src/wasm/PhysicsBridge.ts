@@ -157,6 +157,20 @@ export interface TemperatureOutput {
 }
 
 // ============================================================================
+// ERS (Energy Recovery System) Types
+// ============================================================================
+
+export type ErsMode = 'Balanced' | 'Attack' | 'Harvest'
+
+export interface ErsState {
+  battery_charge: number // 0.0-1.0
+  mode: ErsMode
+  power_flow: number // kW (positive=deploy, negative=harvest)
+  is_deploying: boolean
+  is_harvesting: boolean
+}
+
+// ============================================================================
 // Aquaplaning and Thermal Shock Types
 // ============================================================================
 
@@ -383,6 +397,15 @@ export function getTireWear(): number {
  */
 export function resetTireWear(): void {
   getPhysicsEngine().reset_tire_wear()
+}
+
+/**
+ * Set tire wear for all wheels (for debug/testing)
+ * @param wearPercentage Wear percentage 0-100 (0 = new, 100 = fully worn)
+ */
+export function setTireWear(wearPercentage: number): void {
+  const clamped = Math.max(0, Math.min(100, wearPercentage))
+  getPhysicsEngine().set_tire_wear(clamped / 100)
 }
 
 /**

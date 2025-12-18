@@ -9,6 +9,7 @@ interface ControlsState {
   brake: boolean
   handbrake: boolean
   drs: boolean
+  ers: boolean
   camera: boolean
   heatmap: boolean
   distanceGrid: boolean
@@ -33,6 +34,7 @@ export function useControls(): () => ControlsState {
       brake: keyboard.brake || touch.brake,
       handbrake: keyboard.handbrake || touch.handbrake,
       drs: keyboard.drs || touch.drs,
+      ers: keyboard.ers || false,
       camera: keyboard.camera || touch.camera,
       heatmap: keyboard.heatmap || false,
       distanceGrid: keyboard.distanceGrid || false,
