@@ -17,7 +17,7 @@ export function Cockpit({ steerAngle, speed, showSpeedDisplay }: CockpitProps) {
     <group>
       {/* Cockpit floor */}
       <mesh castShadow position={[0, -0.05, 0.15]}>
-        <boxGeometry args={[1.0, 0.1, 1.3]} />
+        <boxGeometry args={[0.65, 0.1, 1.3]} />
         <meshStandardMaterial color={cockpitColor} metalness={0.5} roughness={0.5} />
       </mesh>
 

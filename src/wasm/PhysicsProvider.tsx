@@ -42,6 +42,12 @@ import {
   updateRubberDeposits,
   getTrackWetness,
   getRubberDepositMultiplier,
+  // ERS API
+  setErsMode,
+  getErsMode,
+  getErsBatteryCharge,
+  setErsBatteryCharge,
+  getErsState,
   CarInput,
   CarPhysicsOutput,
   WeatherModifiers,
@@ -51,6 +57,7 @@ import {
   PerWheelWear,
   TireCompound,
   SurfaceType,
+  ErsMode,
 } from './PhysicsBridge'
 
 // Re-export types
@@ -104,6 +111,12 @@ interface PhysicsContextValue {
   updateRubberDeposits: typeof updateRubberDeposits
   getTrackWetness: typeof getTrackWetness
   getRubberDepositMultiplier: typeof getRubberDepositMultiplier
+  // ERS API
+  setErsMode: typeof setErsMode
+  getErsMode: typeof getErsMode
+  getErsBatteryCharge: typeof getErsBatteryCharge
+  setErsBatteryCharge: typeof setErsBatteryCharge
+  getErsState: typeof getErsState
 }
 
 const PhysicsContext = createContext<PhysicsContextValue | null>(null)
@@ -193,6 +206,12 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     updateRubberDeposits,
     getTrackWetness,
     getRubberDepositMultiplier,
+    // ERS API
+    setErsMode,
+    getErsMode,
+    getErsBatteryCharge,
+    setErsBatteryCharge,
+    getErsState,
   }
 
   return <PhysicsContext.Provider value={value}>{children}</PhysicsContext.Provider>

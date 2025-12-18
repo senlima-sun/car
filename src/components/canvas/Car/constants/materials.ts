@@ -39,7 +39,7 @@ export const CAR_COLORS = {
 
 // Wheel positions relative to car body
 export const WHEEL_POSITIONS = {
-  frontZ: 1.6,
+  frontZ: 1.8,
   rearZ: -1.2,
 } as const
 

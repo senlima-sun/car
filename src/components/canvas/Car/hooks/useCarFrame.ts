@@ -80,8 +80,10 @@ export function useCarFrame({
   const setAquaplaning = useAquaplaningStore(state => state.setAquaplaning)
   const setThermalShock = useAquaplaningStore(state => state.setThermalShock)
 
-  // ERS mode cycling
+  // ERS mode cycling and sync
   const cycleErsMode = useErsStore(state => state.cycleMode)
+  const ersMode = useErsStore(state => state.mode)
+  const syncErsState = useErsStore(state => state.syncFromPhysics)
 
   // Curb state
   const isOnCurb = useCurbStore(state => state.isOnCurb)
@@ -214,6 +216,9 @@ export function useCarFrame({
     // Update curb state in WASM
     physics.setOnCurb(isOnCurb, curbSide || undefined)
 
+    // Sync ERS mode from UI to physics engine
+    physics.setErsMode(ersMode)
+
     // Build input for WASM physics
     const input: CarInput = {
       forward,
@@ -285,6 +290,11 @@ export function useCarFrame({
         output.tire_thermal_shock.grip_penalty,
         output.tire_thermal_shock.recovery_time,
       )
+    }
+
+    // Sync ERS state from WASM to UI store
+    if (output.ers) {
+      syncErsState(output.ers)
     }
 
     // Update wheel rotation (visual)

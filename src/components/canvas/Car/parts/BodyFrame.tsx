@@ -27,7 +27,7 @@ export function BodyFrame({ isRaining, isThermalView, engineThermalMaterial }: B
     <group>
       {/* === FRONT NOSE === */}
       <mesh castShadow position={[0, 0.0, frontZ + 0.1]}>
-        <boxGeometry args={[0.5, 0.15, 0.6]} />
+        <boxGeometry args={[0.5, 0.15, 1]} />
         <meshStandardMaterial color={frameColor} {...bodyMaterial} />
       </mesh>
 

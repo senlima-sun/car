@@ -6,6 +6,7 @@ import {
   DEFAULT_TIRE,
   getWearGripMultiplier,
 } from '../constants/tires'
+import { setTireWear as setTireWearWasm } from '../wasm/PhysicsBridge'
 
 // Per-wheel wear data (0-100 percentage)
 export interface PerWheelWear {
@@ -32,11 +33,16 @@ interface TireState {
   currentTemperature: number // Celsius
   currentRainIntensity: number // 0-1
 
+  // Debug mode - when true, syncFromWasm is skipped
+  debugMode: boolean
+
   // Actions
   setTireCompound: (compound: TireCompound) => void
   syncFromWasm: (wear: PerWheelWear) => void
   resetWear: () => void
   updateConditions: (temperature: number, rainIntensity: number) => void
+  setWearDebug: (wearPercentage: number) => void
+  disableDebugMode: () => void
 
   // Computed getters
   getTireConfig: () => TireModifiers
@@ -58,6 +64,7 @@ export const useTireStore = create<TireState>((set, get) => ({
   effectiveGripMultiplier: 1.0,
   currentTemperature: 20, // Default 20°C
   currentRainIntensity: 0, // Default no rain
+  debugMode: false,
 
   setTireCompound: compound => {
     set({
@@ -71,7 +78,11 @@ export const useTireStore = create<TireState>((set, get) => ({
   },
 
   // Sync tire wear from WASM engine (called every frame)
+  // Skipped when debugMode is true to allow manual wear adjustment
   syncFromWasm: wear => {
+    // Skip sync when in debug mode
+    if (get().debugMode) return
+
     const avgWear = (wear.frontLeft + wear.frontRight + wear.rearLeft + wear.rearRight) / 4
 
     set({
@@ -99,6 +110,40 @@ export const useTireStore = create<TireState>((set, get) => ({
     // Recalculate grip when conditions change
     const newGrip = get().calculateEffectiveGrip()
     set({ effectiveGripMultiplier: newGrip })
+  },
+
+  // Set tire wear directly (debug/testing)
+  // Enables debug mode to prevent frame sync from overwriting
+  setWearDebug: wearPercentage => {
+    const clamped = Math.max(0, Math.min(100, wearPercentage))
+    const wear: PerWheelWear = {
+      frontLeft: clamped,
+      frontRight: clamped,
+      rearLeft: clamped,
+      rearRight: clamped,
+    }
+
+    // Update WASM physics engine
+    try {
+      setTireWearWasm(clamped)
+    } catch {
+      // WASM may not be initialized yet
+    }
+
+    set({
+      debugMode: true,
+      perWheelWear: wear,
+      averageWear: clamped,
+    })
+
+    // Recalculate effective grip
+    const newGrip = get().calculateEffectiveGrip()
+    set({ effectiveGripMultiplier: newGrip })
+  },
+
+  // Disable debug mode to resume normal wear accumulation
+  disableDebugMode: () => {
+    set({ debugMode: false })
   },
 
   getTireConfig: () => {

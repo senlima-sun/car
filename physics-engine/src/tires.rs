@@ -81,6 +81,12 @@ impl TireState {
         self.wheels = [0.0; 4];
     }
 
+    /// Set wear for all wheels (for debug/testing)
+    pub fn set_wear_all(&mut self, wear: f32) {
+        let clamped = wear.clamp(0.0, 1.0);
+        self.wheels = [clamped; 4];
+    }
+
     /// Update per-wheel tire wear based on driving conditions
     pub fn update_wear_per_wheel(&mut self, input: &WearInput) {
         // Skip wear calculation if not moving
@@ -361,7 +367,9 @@ impl TireState {
             },
             drift_entry_multiplier: Self::calculate_progressive_degradation(avg_wear, 0.50),
             drift_exit_multiplier: Self::calculate_progressive_degradation(avg_wear, 0.60),
-            max_speed_multiplier: Self::calculate_progressive_degradation(avg_wear, 0.85),
+            // Gentle quadratic curve for max speed (not using the cliff formula)
+            // At 0% wear: 1.0, at 50% wear: 0.96, at 100% wear: 0.84
+            max_speed_multiplier: 1.0 - avg_wear * avg_wear * 0.16,
             lateral_correction_penalty: Self::calculate_progressive_degradation(avg_wear, 0.70),
         }
     }

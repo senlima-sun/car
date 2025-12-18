@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from '@react-three/drei'
 import { Vector3 } from 'three'
@@ -28,58 +28,55 @@ export default function IsometricCamera() {
     right: false,
   })
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    switch (e.code) {
+      case 'KeyW':
+      case 'ArrowUp':
+        keys.current.forward = true
+        break
+      case 'KeyS':
+      case 'ArrowDown':
+        keys.current.backward = true
+        break
+      case 'KeyA':
+      case 'ArrowLeft':
+        keys.current.left = true
+        break
+      case 'KeyD':
+      case 'ArrowRight':
+        keys.current.right = true
+        break
+    }
+  }, [])
+
+  const handleKeyUp = useCallback((e: KeyboardEvent) => {
+    switch (e.code) {
+      case 'KeyW':
+      case 'ArrowUp':
+        keys.current.forward = false
+        break
+      case 'KeyS':
+      case 'ArrowDown':
+        keys.current.backward = false
+        break
+      case 'KeyA':
+      case 'ArrowLeft':
+        keys.current.left = false
+        break
+      case 'KeyD':
+      case 'ArrowRight':
+        keys.current.right = false
+        break
+    }
+  }, [])
+
+  const handleWheel = useCallback((e: WheelEvent) => {
+    e.preventDefault()
+    zoomLevel.current = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel.current + e.deltaY * 0.05))
+  }, [])
+
   // Handle keyboard events
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.code) {
-        case 'KeyW':
-        case 'ArrowUp':
-          keys.current.forward = true
-          break
-        case 'KeyS':
-        case 'ArrowDown':
-          keys.current.backward = true
-          break
-        case 'KeyA':
-        case 'ArrowLeft':
-          keys.current.left = true
-          break
-        case 'KeyD':
-        case 'ArrowRight':
-          keys.current.right = true
-          break
-      }
-    }
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      switch (e.code) {
-        case 'KeyW':
-        case 'ArrowUp':
-          keys.current.forward = false
-          break
-        case 'KeyS':
-        case 'ArrowDown':
-          keys.current.backward = false
-          break
-        case 'KeyA':
-        case 'ArrowLeft':
-          keys.current.left = false
-          break
-        case 'KeyD':
-        case 'ArrowRight':
-          keys.current.right = false
-          break
-      }
-    }
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      zoomLevel.current = Math.max(
-        MIN_ZOOM,
-        Math.min(MAX_ZOOM, zoomLevel.current + e.deltaY * 0.05),
-      )
-    }
-
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
     gl.domElement.addEventListener('wheel', handleWheel, { passive: false })

@@ -586,6 +586,55 @@ export function getDebugState(): string {
 }
 
 // ============================================================================
+// ERS (Energy Recovery System) API
+// ============================================================================
+
+/**
+ * Set ERS deployment mode
+ * @param mode - 0 = Balanced, 1 = Attack, 2 = Harvest
+ */
+export function setErsMode(mode: ErsMode): void {
+  const modeIndex = mode === 'Balanced' ? 0 : mode === 'Attack' ? 1 : 2
+  getPhysicsEngine().set_ers_mode(modeIndex)
+}
+
+/**
+ * Get current ERS mode
+ */
+export function getErsMode(): ErsMode {
+  const modeIndex = getPhysicsEngine().get_ers_mode()
+  return modeIndex === 0 ? 'Balanced' : modeIndex === 1 ? 'Attack' : 'Harvest'
+}
+
+/**
+ * Get current ERS battery charge (0.0-1.0)
+ */
+export function getErsBatteryCharge(): number {
+  return getPhysicsEngine().get_ers_battery_charge()
+}
+
+/**
+ * Set ERS battery charge (0.0-1.0)
+ * Useful for pit stops or testing
+ */
+export function setErsBatteryCharge(charge: number): void {
+  getPhysicsEngine().set_ers_battery_charge(charge)
+}
+
+/**
+ * Get current ERS state from physics output
+ */
+export function getErsState(): ErsState {
+  return {
+    battery_charge: getErsBatteryCharge(),
+    mode: getErsMode(),
+    power_flow: 0, // Will be updated from physics output
+    is_deploying: false,
+    is_harvesting: false,
+  }
+}
+
+// ============================================================================
 // Rubber Deposit / Tire Marks API
 // ============================================================================
 

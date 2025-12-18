@@ -44,6 +44,12 @@ export {
   inputFromKeyboard,
   TireCompound,
   SurfaceType,
+  // ERS API
+  setErsMode,
+  getErsMode,
+  getErsBatteryCharge,
+  setErsBatteryCharge,
+  getErsState,
 } from './PhysicsBridge'
 
 export type {
@@ -55,6 +61,8 @@ export type {
   AmbientConditions,
   WindState,
   WindModifiers,
+  ErsMode,
+  ErsState,
 } from './PhysicsBridge'
 
 // React provider

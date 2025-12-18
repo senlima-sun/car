@@ -21,8 +21,8 @@ export const VEHICLE_CONFIG = {
     rollInfluence: 0.02,
     // Positions relative to chassis center [x, y, z]
     positions: [
-      [-0.95, 0, 1.6] as const, // Front-left
-      [0.95, 0, 1.6] as const, // Front-right
+      [-0.95, 0, 1.8] as const, // Front-left
+      [0.95, 0, 1.8] as const, // Front-right
       [-0.95, 0, -1.2] as const, // Rear-left
       [0.95, 0, -1.2] as const, // Rear-right
     ],

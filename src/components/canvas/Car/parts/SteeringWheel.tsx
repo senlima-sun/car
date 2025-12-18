@@ -30,7 +30,7 @@ export function SteeringWheel({ steerAngle, speed, showSpeedDisplay }: SteeringW
   })
 
   return (
-    <group position={[0, 0.32, 0.82]} rotation={[-0.4, 0, 0]}>
+    <group position={[0, 0.32, 0.78]} rotation={[-0.4, 0, 0]}>
       {/* Rotating wheel group - smoothed steering input */}
       <group ref={steeringWheelRef} rotation={[Math.PI / 2, 0, 0]}>
         {/* Wheel rim - torus */}
