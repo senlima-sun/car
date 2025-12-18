@@ -16,7 +16,7 @@ interface EnvironmentStore {
   toggleModal: () => void
 }
 
-export const useEnvironmentStore = create<EnvironmentStore>((set) => ({
+export const useEnvironmentStore = create<EnvironmentStore>(set => ({
   // Default values (room temperature, no rain)
   temperature: 25,
   rainIntensity: 0,
@@ -24,12 +24,12 @@ export const useEnvironmentStore = create<EnvironmentStore>((set) => ({
   // Modal starts closed
   isModalOpen: false,
 
-  setTemperature: (temp) =>
+  setTemperature: temp =>
     set({
       temperature: Math.max(-10, Math.min(50, temp)),
     }),
 
-  setRainIntensity: (intensity) =>
+  setRainIntensity: intensity =>
     set({
       rainIntensity: Math.max(0, Math.min(1, intensity)),
     }),
@@ -38,7 +38,7 @@ export const useEnvironmentStore = create<EnvironmentStore>((set) => ({
 
   closeModal: () => set({ isModalOpen: false }),
 
-  toggleModal: () => set((state) => ({ isModalOpen: !state.isModalOpen })),
+  toggleModal: () => set(state => ({ isModalOpen: !state.isModalOpen })),
 }))
 
 // Utility function to get rain description from intensity

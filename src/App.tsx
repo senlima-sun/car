@@ -23,16 +23,18 @@ const keyboardMap = [
 
 function LoadingFallback() {
   return (
-    <div style={{
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#1a1a2e',
-      color: '#eee',
-      fontFamily: 'system-ui, sans-serif',
-    }}>
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#1a1a2e',
+        color: '#eee',
+        fontFamily: 'system-ui, sans-serif',
+      }}
+    >
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '24px', marginBottom: '10px' }}>Loading Physics Engine...</div>
         <div style={{ fontSize: '14px', opacity: 0.7 }}>Initializing WASM module</div>

@@ -18,7 +18,7 @@ interface WindStore {
   syncFromPhysics: (state: PhysicsWindState) => void
 }
 
-export const useWindStore = create<WindStore>((set) => ({
+export const useWindStore = create<WindStore>(set => ({
   // Default: moderate wind from the west
   direction: Math.PI, // West wind (blowing east)
   speed: 8, // 8 m/s (~29 km/h) - moderate wind
@@ -32,11 +32,11 @@ export const useWindStore = create<WindStore>((set) => ({
       speed: Math.max(0, Math.min(25, speed)), // Clamp to 0-25 m/s
     }),
 
-  setEnabled: (enabled) => set({ enabled }),
+  setEnabled: enabled => set({ enabled }),
 
-  toggle: () => set((state) => ({ enabled: !state.enabled })),
+  toggle: () => set(state => ({ enabled: !state.enabled })),
 
-  syncFromPhysics: (state) =>
+  syncFromPhysics: state =>
     set({
       currentSpeed: state.current_speed,
       gustIntensity: state.gust_intensity,
@@ -78,7 +78,7 @@ export function getWindDirectionName(radians: number): string {
     const diff = Math.min(
       Math.abs(normalized - dir.angle),
       Math.abs(normalized - dir.angle + 2 * Math.PI),
-      Math.abs(normalized - dir.angle - 2 * Math.PI)
+      Math.abs(normalized - dir.angle - 2 * Math.PI),
     )
     if (diff < minDiff) {
       minDiff = diff

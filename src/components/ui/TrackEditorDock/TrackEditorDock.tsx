@@ -1,8 +1,5 @@
 import { useEffect } from 'react'
-import {
-  useCustomizationStore,
-  isLinearObject,
-} from '../../../stores/useCustomizationStore'
+import { useCustomizationStore, isLinearObject } from '../../../stores/useCustomizationStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import ObjectToolbar from './ObjectToolbar'
 import DeleteTools from './DeleteTools'

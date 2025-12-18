@@ -59,7 +59,7 @@ export const useTemperatureStore = create<TemperatureState>((set, get) => ({
   tireGripMultipliers: [1, 1, 1, 1],
   tiresInWindow: [false, false, false, false],
 
-  syncFromWasm: (output) => {
+  syncFromWasm: output => {
     set({
       engine: output.engine,
       tires: output.tires,
@@ -76,14 +76,14 @@ export const useTemperatureStore = create<TemperatureState>((set, get) => ({
     return 'cold'
   },
 
-  getTireStatus: (wheel) => {
+  getTireStatus: wheel => {
     const avg = get().getWheelAvgTemp(wheel)
     if (avg >= TIRE_TEMP_CRITICAL) return 'hot'
     if (avg < TIRE_TEMP_COLD) return 'cold'
     return 'optimal'
   },
 
-  getWheelAvgTemp: (wheel) => {
+  getWheelAvgTemp: wheel => {
     const t = get().tires
     switch (wheel) {
       case 0:

@@ -124,7 +124,7 @@ export default function MobileControls() {
           break
       }
     },
-    []
+    [],
   )
 
   const handleTouchEnd = useCallback(
@@ -158,7 +158,7 @@ export default function MobileControls() {
           break
       }
     },
-    []
+    [],
   )
 
   // Reset all controls when component unmounts or device changes

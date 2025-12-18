@@ -14,7 +14,7 @@ interface PartMeshProps {
 function createPathFromPoints(
   path: THREE.Shape | THREE.Path,
   points: [number, number][],
-  bevelRadius: number
+  bevelRadius: number,
 ): void {
   if (points.length < 3) {
     path.moveTo(0, 0)
@@ -72,7 +72,7 @@ function createExtrudeGeometry(
   points: [number, number][],
   depth: number,
   bevelRadius: number,
-  holes?: [number, number][][]
+  holes?: [number, number][][],
 ): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape()
   createPathFromPoints(shape, points, bevelRadius)
@@ -95,11 +95,7 @@ function createExtrudeGeometry(
 }
 
 // Interpolate depth from profile at normalized position t (0-1)
-function getDepthAtPosition(
-  profile: [number, number][],
-  t: number,
-  smooth: boolean
-): number {
+function getDepthAtPosition(profile: [number, number][], t: number, smooth: boolean): number {
   if (profile.length === 0) return 1
   if (profile.length === 1) return profile[0][1]
 
@@ -136,9 +132,16 @@ function getDepthAtPosition(
 }
 
 // Get bounding box of points
-function getBounds(points: THREE.Vector2[]): { minX: number; maxX: number; minY: number; maxY: number } {
-  let minX = Infinity, maxX = -Infinity
-  let minY = Infinity, maxY = -Infinity
+function getBounds(points: THREE.Vector2[]): {
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
+} {
+  let minX = Infinity,
+    maxX = -Infinity
+  let minY = Infinity,
+    maxY = -Infinity
   for (const p of points) {
     minX = Math.min(minX, p.x)
     maxX = Math.max(maxX, p.x)
@@ -156,7 +159,7 @@ function createVariableExtrudeGeometry(
   bevelRadius: number,
   heightProfile: [number, number][],
   smooth: boolean,
-  holes?: [number, number][][]
+  holes?: [number, number][][],
 ): THREE.BufferGeometry {
   if (points.length < 3) {
     return createExtrudeGeometry(points, depth, bevelRadius, holes)
@@ -215,7 +218,7 @@ function createVariableExtrudeGeometry(
       indices.push(
         frontBaseIdx + shapeIndex.getX(i),
         frontBaseIdx + shapeIndex.getX(i + 2),
-        frontBaseIdx + shapeIndex.getX(i + 1)
+        frontBaseIdx + shapeIndex.getX(i + 1),
       )
     }
   }
@@ -235,7 +238,7 @@ function createVariableExtrudeGeometry(
       indices.push(
         backBaseIdx + shapeIndex.getX(i),
         backBaseIdx + shapeIndex.getX(i + 1),
-        backBaseIdx + shapeIndex.getX(i + 2)
+        backBaseIdx + shapeIndex.getX(i + 2),
       )
     }
   }
@@ -255,10 +258,10 @@ function createVariableExtrudeGeometry(
     // Four corners of the side quad
     // Front edge: z = 0
     // Back edge: z = variable
-    vertices.push(p1.x, p1.y, 0)      // 0: front-left
-    vertices.push(p2.x, p2.y, 0)      // 1: front-right
-    vertices.push(p2.x, p2.y, z2)     // 2: back-right
-    vertices.push(p1.x, p1.y, z1)     // 3: back-left
+    vertices.push(p1.x, p1.y, 0) // 0: front-left
+    vertices.push(p2.x, p2.y, 0) // 1: front-right
+    vertices.push(p2.x, p2.y, z2) // 2: back-right
+    vertices.push(p1.x, p1.y, z1) // 3: back-left
 
     // Two triangles for the quad
     indices.push(baseIdx, baseIdx + 1, baseIdx + 2)
@@ -324,7 +327,10 @@ export default function PartMesh({ part, isSelected, onClick }: PartMeshProps) {
   const customGeometry = useMemo(() => {
     if (part.geometryType === 'extrude' && part.points) {
       const [depth, bevelRadius] = part.args
-      const heightProfile = part.heightProfile || [[0, 1], [1, 1]]
+      const heightProfile = part.heightProfile || [
+        [0, 1],
+        [1, 1],
+      ]
       const smooth = part.heightProfileSmooth ?? true
 
       // Use variable extrusion if profile has variation
@@ -335,14 +341,21 @@ export default function PartMesh({ part, isSelected, onClick }: PartMeshProps) {
           bevelRadius || 0,
           heightProfile,
           smooth,
-          part.holes
+          part.holes,
         )
       }
 
       return createExtrudeGeometry(part.points, depth || 0.5, bevelRadius || 0, part.holes)
     }
     return null
-  }, [part.geometryType, part.args, part.points, part.holes, part.heightProfile, part.heightProfileSmooth])
+  }, [
+    part.geometryType,
+    part.args,
+    part.points,
+    part.holes,
+    part.heightProfile,
+    part.heightProfileSmooth,
+  ])
 
   const geometry = useMemo(() => {
     switch (part.geometryType) {
@@ -393,9 +406,7 @@ export default function PartMesh({ part, isSelected, onClick }: PartMeshProps) {
           metalness={part.metalness}
           roughness={part.roughness}
         />
-        {isSelected && (
-          <Outlines thickness={0.03} color="#00ff00" />
-        )}
+        {isSelected && <Outlines thickness={0.03} color='#00ff00' />}
       </RoundedBox>
     )
   }
@@ -419,9 +430,7 @@ export default function PartMesh({ part, isSelected, onClick }: PartMeshProps) {
           metalness={part.metalness}
           roughness={part.roughness}
         />
-        {isSelected && (
-          <Outlines thickness={0.03} color="#00ff00" />
-        )}
+        {isSelected && <Outlines thickness={0.03} color='#00ff00' />}
       </mesh>
     )
   }
@@ -443,9 +452,7 @@ export default function PartMesh({ part, isSelected, onClick }: PartMeshProps) {
         metalness={part.metalness}
         roughness={part.roughness}
       />
-      {isSelected && (
-        <Outlines thickness={0.03} color="#00ff00" />
-      )}
+      {isSelected && <Outlines thickness={0.03} color='#00ff00' />}
     </mesh>
   )
 }

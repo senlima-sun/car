@@ -128,11 +128,11 @@ void main() {
 // Temperature conversion constants for shader uniforms
 export const TEMP_SCALES = {
   tire: {
-    min: 20.0,    // Minimum tire temp in Celsius
+    min: 20.0, // Minimum tire temp in Celsius
     range: 130.0, // 20C to 150C
   },
   engine: {
-    min: 20.0,    // Minimum engine temp in Celsius
+    min: 20.0, // Minimum engine temp in Celsius
     range: 100.0, // 20C to 120C
   },
 } as const

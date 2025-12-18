@@ -29,33 +29,36 @@ export const useGameStore = create<GameState>()(
       cameraMode: 'third-person',
       previousCameraMode: 'third-person',
 
-  startGame: () => set({ status: 'countdown' }),
-  pauseGame: () => set({ status: 'paused' }),
-  resumeGame: () => set({ status: 'racing' }),
-  finishGame: () => set({ status: 'finished' }),
-  resetGame: () => set({ status: 'menu' }),
-  toggleCameraMode: () =>
-    set(state => ({
-      cameraMode: state.cameraMode === 'third-person' ? 'first-person' : 'third-person',
-    })),
-  setCameraMode: mode => set({ cameraMode: mode }),
-  toggleFreeCamera: () =>
-    set(state => {
-      if (state.cameraMode === 'free') {
-        return { cameraMode: state.previousCameraMode }
-      }
-      return { previousCameraMode: state.cameraMode, cameraMode: 'free' }
-    }),
-  enterCustomizeMode: () => set({ status: 'customize' }),
-  exitCustomizeMode: () => set({ status: 'racing' }),
-  toggleCustomizeMode: () =>
-    set(state => ({
-      status: state.status === 'customize' ? 'racing' : 'customize',
-    })),
+      startGame: () => set({ status: 'countdown' }),
+      pauseGame: () => set({ status: 'paused' }),
+      resumeGame: () => set({ status: 'racing' }),
+      finishGame: () => set({ status: 'finished' }),
+      resetGame: () => set({ status: 'menu' }),
+      toggleCameraMode: () =>
+        set(state => ({
+          cameraMode: state.cameraMode === 'third-person' ? 'first-person' : 'third-person',
+        })),
+      setCameraMode: mode => set({ cameraMode: mode }),
+      toggleFreeCamera: () =>
+        set(state => {
+          if (state.cameraMode === 'free') {
+            return { cameraMode: state.previousCameraMode }
+          }
+          return { previousCameraMode: state.cameraMode, cameraMode: 'free' }
+        }),
+      enterCustomizeMode: () => set({ status: 'customize' }),
+      exitCustomizeMode: () => set({ status: 'racing' }),
+      toggleCustomizeMode: () =>
+        set(state => ({
+          status: state.status === 'customize' ? 'racing' : 'customize',
+        })),
     }),
     {
       name: 'game-settings',
-      partialize: state => ({ cameraMode: state.cameraMode, previousCameraMode: state.previousCameraMode }),
-    }
-  )
+      partialize: state => ({
+        cameraMode: state.cameraMode,
+        previousCameraMode: state.previousCameraMode,
+      }),
+    },
+  ),
 )

@@ -15,7 +15,6 @@ interface CurbSegmentProps {
   isGhost?: boolean
 }
 
-
 // Generate 3D curb geometry with rounded slope profile
 function createCurbGeometry(length: number, stripeCount: number): BufferGeometry {
   const vertices: number[] = []

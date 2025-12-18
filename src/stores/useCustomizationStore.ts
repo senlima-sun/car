@@ -1,9 +1,5 @@
 import { create } from 'zustand'
-import {
-  SnapSettings,
-  DEFAULT_SNAP_SETTINGS,
-  getOutwardTangent,
-} from '../utils/roadSnapping'
+import { SnapSettings, DEFAULT_SNAP_SETTINGS, getOutwardTangent } from '../utils/roadSnapping'
 
 export type ObjectType = 'cone' | 'ramp' | 'checkpoint' | 'barrier' | 'road' | 'curb'
 export type TrackMode = 'straight' | 'curve'
@@ -191,11 +187,7 @@ export const getSnapPoints = (placedObjects: PlacedObject[]): SnapPointWithDirec
 
       // Calculate perpendicular based on tangent direction for proper edge alignment
       // For start: use start tangent (points outward from road)
-      const startTangentInward: [number, number, number] = [
-        -startTangent[0],
-        0,
-        -startTangent[2],
-      ]
+      const startTangentInward: [number, number, number] = [-startTangent[0], 0, -startTangent[2]]
       const startPerpX = -startTangentInward[2]
       const startPerpZ = startTangentInward[0]
 

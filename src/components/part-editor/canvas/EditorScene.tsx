@@ -11,29 +11,60 @@ import ReferenceCarPreview from './ReferenceCarPreview'
 // Keyboard camera panning with Arrow keys + Page Up/Down
 function CameraKeyboardControls() {
   const { camera } = useThree()
-  const keys = useRef({ up: false, down: false, left: false, right: false, pageup: false, pagedown: false })
+  const keys = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    pageup: false,
+    pagedown: false,
+  })
   const panSpeed = 0.15
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       switch (e.key) {
-        case 'ArrowUp': keys.current.up = true; break
-        case 'ArrowDown': keys.current.down = true; break
-        case 'ArrowLeft': keys.current.left = true; break
-        case 'ArrowRight': keys.current.right = true; break
-        case 'PageUp': keys.current.pageup = true; break
-        case 'PageDown': keys.current.pagedown = true; break
+        case 'ArrowUp':
+          keys.current.up = true
+          break
+        case 'ArrowDown':
+          keys.current.down = true
+          break
+        case 'ArrowLeft':
+          keys.current.left = true
+          break
+        case 'ArrowRight':
+          keys.current.right = true
+          break
+        case 'PageUp':
+          keys.current.pageup = true
+          break
+        case 'PageDown':
+          keys.current.pagedown = true
+          break
       }
     }
     const handleKeyUp = (e: KeyboardEvent) => {
       switch (e.key) {
-        case 'ArrowUp': keys.current.up = false; break
-        case 'ArrowDown': keys.current.down = false; break
-        case 'ArrowLeft': keys.current.left = false; break
-        case 'ArrowRight': keys.current.right = false; break
-        case 'PageUp': keys.current.pageup = false; break
-        case 'PageDown': keys.current.pagedown = false; break
+        case 'ArrowUp':
+          keys.current.up = false
+          break
+        case 'ArrowDown':
+          keys.current.down = false
+          break
+        case 'ArrowLeft':
+          keys.current.left = false
+          break
+        case 'ArrowRight':
+          keys.current.right = false
+          break
+        case 'PageUp':
+          keys.current.pageup = false
+          break
+        case 'PageDown':
+          keys.current.pagedown = false
+          break
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -70,7 +101,7 @@ function CameraKeyboardControls() {
 }
 
 export default function EditorScene() {
-  const selectPart = usePartEditorStore((s) => s.selectPart)
+  const selectPart = usePartEditorStore(s => s.selectPart)
 
   const handleBackgroundClick = () => {
     selectPart(null)
@@ -89,7 +120,7 @@ export default function EditorScene() {
       <directionalLight position={[-5, 5, -5]} intensity={0.3} />
 
       {/* Environment for reflections */}
-      <Environment preset="studio" />
+      <Environment preset='studio' />
 
       {/* Grid */}
       <EditorGrid />

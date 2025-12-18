@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 
 interface HeightProfileEditorProps {
-  profile: [number, number][]  // [position (0-1), height (0-1)]
+  profile: [number, number][] // [position (0-1), height (0-1)]
   onChange: (profile: [number, number][]) => void
   smooth: boolean
   onSmoothChange: (smooth: boolean) => void
@@ -16,20 +16,14 @@ const POINT_RADIUS = 5
 function toCanvas(x: number, y: number): [number, number] {
   const drawWidth = CANVAS_WIDTH - PADDING * 2
   const drawHeight = CANVAS_HEIGHT - PADDING * 2
-  return [
-    PADDING + x * drawWidth,
-    CANVAS_HEIGHT - PADDING - y * drawHeight,
-  ]
+  return [PADDING + x * drawWidth, CANVAS_HEIGHT - PADDING - y * drawHeight]
 }
 
 // Convert canvas coords to world coords (0-1, 0-1)
 function toWorld(cx: number, cy: number): [number, number] {
   const drawWidth = CANVAS_WIDTH - PADDING * 2
   const drawHeight = CANVAS_HEIGHT - PADDING * 2
-  return [
-    (cx - PADDING) / drawWidth,
-    (CANVAS_HEIGHT - PADDING - cy) / drawHeight,
-  ]
+  return [(cx - PADDING) / drawWidth, (CANVAS_HEIGHT - PADDING - cy) / drawHeight]
 }
 
 // Clamp value between min and max
@@ -128,7 +122,14 @@ export default function HeightProfileEditor({
         for (let i = 0; i < sortedProfile.length; i++) {
           const [x, y] = toCanvas(sortedProfile[i][0], sortedProfile[i][1])
           // Horizontal line to this point's x
-          ctx.lineTo(x, ctx.getLineDash().length > 0 ? firstY : (i === 0 ? firstY : toCanvas(0, sortedProfile[i - 1][1])[1]))
+          ctx.lineTo(
+            x,
+            ctx.getLineDash().length > 0
+              ? firstY
+              : i === 0
+                ? firstY
+                : toCanvas(0, sortedProfile[i - 1][1])[1],
+          )
           // Step to this point's height
           const prevY = i === 0 ? firstY : toCanvas(0, sortedProfile[i - 1][1])[1]
           ctx.lineTo(x, prevY)
@@ -265,7 +266,10 @@ export default function HeightProfileEditor({
 
   const handleReset = () => {
     // Reset to flat profile
-    onChange([[0, 1], [1, 1]])
+    onChange([
+      [0, 1],
+      [1, 1],
+    ])
   }
 
   const buttonStyle: React.CSSProperties = {
@@ -304,7 +308,7 @@ export default function HeightProfileEditor({
           <button
             style={snapEnabled ? { ...activeButtonStyle, background: '#3a6050' } : buttonStyle}
             onClick={() => setSnapEnabled(!snapEnabled)}
-            title="Toggle grid snapping"
+            title='Toggle grid snapping'
           >
             Snap {snapEnabled ? 'ON' : 'OFF'}
           </button>
@@ -322,13 +326,14 @@ export default function HeightProfileEditor({
         style={{
           border: '1px solid #3a3a50',
           borderRadius: '4px',
-          cursor: draggingIndex !== null ? 'grabbing' : hoveredIndex !== null ? 'grab' : 'crosshair',
+          cursor:
+            draggingIndex !== null ? 'grabbing' : hoveredIndex !== null ? 'grab' : 'crosshair',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={e => e.preventDefault()}
       />
 
       <div style={{ marginTop: '8px', display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -337,15 +342,28 @@ export default function HeightProfileEditor({
         </button>
         <button
           style={buttonStyle}
-          onClick={() => onChange([[0, 1], [0.3, 1], [0.3, 0.5], [1, 0.5]])}
-          title="Create a step-down profile"
+          onClick={() =>
+            onChange([
+              [0, 1],
+              [0.3, 1],
+              [0.3, 0.5],
+              [1, 0.5],
+            ])
+          }
+          title='Create a step-down profile'
         >
           Step Down
         </button>
         <button
           style={buttonStyle}
-          onClick={() => onChange([[0, 0.5], [0.5, 1], [1, 0.5]])}
-          title="Create a peak in the middle"
+          onClick={() =>
+            onChange([
+              [0, 0.5],
+              [0.5, 1],
+              [1, 0.5],
+            ])
+          }
+          title='Create a peak in the middle'
         >
           Peak
         </button>

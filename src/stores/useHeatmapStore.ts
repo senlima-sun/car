@@ -6,8 +6,8 @@ interface HeatmapState {
   setVisible: (visible: boolean) => void
 }
 
-export const useHeatmapStore = create<HeatmapState>((set) => ({
+export const useHeatmapStore = create<HeatmapState>(set => ({
   isVisible: false,
-  toggleHeatmap: () => set((state) => ({ isVisible: !state.isVisible })),
-  setVisible: (visible) => set({ isVisible: visible }),
+  toggleHeatmap: () => set(state => ({ isVisible: !state.isVisible })),
+  setVisible: visible => set({ isVisible: visible }),
 }))

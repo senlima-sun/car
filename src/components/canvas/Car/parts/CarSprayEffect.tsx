@@ -246,7 +246,7 @@ export default function CarSprayEffect({
       wheelX: number,
       wheelZ: number,
       isRear: boolean,
-      type: 'spray' | 'mist' | 'droplet'
+      type: 'spray' | 'mist' | 'droplet',
     ) => {
       const i3 = index * 3
 
@@ -311,7 +311,7 @@ export default function CarSprayEffect({
       count: number,
       type: 'spray' | 'mist' | 'droplet',
       gravity: number,
-      drag: number
+      drag: number,
     ) => {
       const pos = data.positions
       const vel = data.velocities
@@ -357,9 +357,14 @@ export default function CarSprayEffect({
         } else if (toSpawn > 0 && shouldEmit) {
           toSpawn--
           // Pick a wheel (prefer rear wheels)
-          const wheelIdx = Math.random() < 0.7
-            ? (Math.random() < 0.5 ? 2 : 3) // Rear wheels
-            : (Math.random() < 0.5 ? 0 : 1) // Front wheels
+          const wheelIdx =
+            Math.random() < 0.7
+              ? Math.random() < 0.5
+                ? 2
+                : 3 // Rear wheels
+              : Math.random() < 0.5
+                ? 0
+                : 1 // Front wheels
           const wheel = WHEEL_POSITIONS[wheelIdx]
           spawnParticle(data, i, wheel.x, wheel.z, wheel.isRear, type)
         }

@@ -8,16 +8,16 @@ export default function GizmoController() {
   const transformRef = useRef<any>(null)
   const { scene } = useThree()
 
-  const selectedPartId = usePartEditorStore((s) => s.selectedPartId)
-  const parts = usePartEditorStore((s) => s.parts)
-  const transformMode = usePartEditorStore((s) => s.transformMode)
-  const snapEnabled = usePartEditorStore((s) => s.snapEnabled)
-  const snapValue = usePartEditorStore((s) => s.snapValue)
-  const rotationSnapValue = usePartEditorStore((s) => s.rotationSnapValue)
-  const updatePart = usePartEditorStore((s) => s.updatePart)
-  const pushHistory = usePartEditorStore((s) => s.pushHistory)
+  const selectedPartId = usePartEditorStore(s => s.selectedPartId)
+  const parts = usePartEditorStore(s => s.parts)
+  const transformMode = usePartEditorStore(s => s.transformMode)
+  const snapEnabled = usePartEditorStore(s => s.snapEnabled)
+  const snapValue = usePartEditorStore(s => s.snapValue)
+  const rotationSnapValue = usePartEditorStore(s => s.rotationSnapValue)
+  const updatePart = usePartEditorStore(s => s.updatePart)
+  const pushHistory = usePartEditorStore(s => s.pushHistory)
 
-  const selectedPart = parts.find((p) => p.id === selectedPartId)
+  const selectedPart = parts.find(p => p.id === selectedPartId)
 
   const handleObjectChange = useCallback(() => {
     if (!transformRef.current || !selectedPartId) return
@@ -63,7 +63,7 @@ export default function GizmoController() {
 
     // Find mesh with matching userData or by traversing children
     let targetMesh: THREE.Object3D | null = null
-    scene.traverse((obj) => {
+    scene.traverse(obj => {
       if (obj.userData.partId === selectedPartId) {
         targetMesh = obj
       }

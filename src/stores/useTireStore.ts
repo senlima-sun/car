@@ -72,8 +72,7 @@ export const useTireStore = create<TireState>((set, get) => ({
 
   // Sync tire wear from WASM engine (called every frame)
   syncFromWasm: wear => {
-    const avgWear =
-      (wear.frontLeft + wear.frontRight + wear.rearLeft + wear.rearRight) / 4
+    const avgWear = (wear.frontLeft + wear.frontRight + wear.rearLeft + wear.rearRight) / 4
 
     set({
       perWheelWear: wear,

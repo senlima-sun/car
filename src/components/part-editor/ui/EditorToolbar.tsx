@@ -46,24 +46,24 @@ const separatorStyle: React.CSSProperties = {
 export default function EditorToolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const transformMode = usePartEditorStore((s) => s.transformMode)
-  const setTransformMode = usePartEditorStore((s) => s.setTransformMode)
-  const snapEnabled = usePartEditorStore((s) => s.snapEnabled)
-  const setSnapEnabled = usePartEditorStore((s) => s.setSnapEnabled)
-  const snapValue = usePartEditorStore((s) => s.snapValue)
-  const setSnapValue = usePartEditorStore((s) => s.setSnapValue)
-  const canUndo = usePartEditorStore((s) => s.canUndo())
-  const canRedo = usePartEditorStore((s) => s.canRedo())
-  const undo = usePartEditorStore((s) => s.undo)
-  const redo = usePartEditorStore((s) => s.redo)
-  const exportConfig = usePartEditorStore((s) => s.exportConfig)
-  const importConfig = usePartEditorStore((s) => s.importConfig)
-  const configName = usePartEditorStore((s) => s.configName)
-  const setConfigName = usePartEditorStore((s) => s.setConfigName)
-  const saveToLocalStorage = usePartEditorStore((s) => s.saveToLocalStorage)
-  const clearAll = usePartEditorStore((s) => s.clearAll)
-  const showReferenceModel = usePartEditorStore((s) => s.showReferenceModel)
-  const toggleReferenceModel = usePartEditorStore((s) => s.toggleReferenceModel)
+  const transformMode = usePartEditorStore(s => s.transformMode)
+  const setTransformMode = usePartEditorStore(s => s.setTransformMode)
+  const snapEnabled = usePartEditorStore(s => s.snapEnabled)
+  const setSnapEnabled = usePartEditorStore(s => s.setSnapEnabled)
+  const snapValue = usePartEditorStore(s => s.snapValue)
+  const setSnapValue = usePartEditorStore(s => s.setSnapValue)
+  const canUndo = usePartEditorStore(s => s.canUndo())
+  const canRedo = usePartEditorStore(s => s.canRedo())
+  const undo = usePartEditorStore(s => s.undo)
+  const redo = usePartEditorStore(s => s.redo)
+  const exportConfig = usePartEditorStore(s => s.exportConfig)
+  const importConfig = usePartEditorStore(s => s.importConfig)
+  const configName = usePartEditorStore(s => s.configName)
+  const setConfigName = usePartEditorStore(s => s.setConfigName)
+  const saveToLocalStorage = usePartEditorStore(s => s.saveToLocalStorage)
+  const clearAll = usePartEditorStore(s => s.clearAll)
+  const showReferenceModel = usePartEditorStore(s => s.showReferenceModel)
+  const toggleReferenceModel = usePartEditorStore(s => s.toggleReferenceModel)
 
   const modes: { mode: TransformMode; label: string; shortcut: string }[] = [
     { mode: 'translate', label: 'Move', shortcut: 'T' },
@@ -87,7 +87,7 @@ export default function EditorToolbar() {
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = (event) => {
+    reader.onload = event => {
       try {
         const config = JSON.parse(event.target?.result as string)
         importConfig(config)
@@ -104,9 +104,9 @@ export default function EditorToolbar() {
     <div style={toolbarStyle}>
       {/* Config name */}
       <input
-        type="text"
+        type='text'
         value={configName}
-        onChange={(e) => setConfigName(e.target.value)}
+        onChange={e => setConfigName(e.target.value)}
         style={{
           background: 'transparent',
           border: 'none',
@@ -137,16 +137,16 @@ export default function EditorToolbar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
           <input
-            type="checkbox"
+            type='checkbox'
             checked={snapEnabled}
-            onChange={(e) => setSnapEnabled(e.target.checked)}
+            onChange={e => setSnapEnabled(e.target.checked)}
           />
           <span style={{ color: '#aaa', fontSize: '12px' }}>Snap</span>
         </label>
         {snapEnabled && (
           <select
             value={snapValue}
-            onChange={(e) => setSnapValue(parseFloat(e.target.value))}
+            onChange={e => setSnapValue(parseFloat(e.target.value))}
             style={{
               background: '#3a3a50',
               border: 'none',
@@ -156,8 +156,10 @@ export default function EditorToolbar() {
               fontSize: '12px',
             }}
           >
-            {SNAP_VALUES.map((v) => (
-              <option key={v} value={v}>{v}</option>
+            {SNAP_VALUES.map(v => (
+              <option key={v} value={v}>
+                {v}
+              </option>
             ))}
           </select>
         )}
@@ -167,7 +169,7 @@ export default function EditorToolbar() {
       <button
         style={showReferenceModel ? activeButtonStyle : buttonStyle}
         onClick={toggleReferenceModel}
-        title="Toggle car reference (H)"
+        title='Toggle car reference (H)'
       >
         Car Ref
       </button>
@@ -180,7 +182,7 @@ export default function EditorToolbar() {
           style={{ ...buttonStyle, opacity: canUndo ? 1 : 0.4 }}
           onClick={undo}
           disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
+          title='Undo (Ctrl+Z)'
         >
           Undo
         </button>
@@ -188,7 +190,7 @@ export default function EditorToolbar() {
           style={{ ...buttonStyle, opacity: canRedo ? 1 : 0.4 }}
           onClick={redo}
           disabled={!canRedo}
-          title="Redo (Ctrl+Y)"
+          title='Redo (Ctrl+Y)'
         >
           Redo
         </button>
@@ -200,27 +202,24 @@ export default function EditorToolbar() {
       <button
         style={{ ...buttonStyle, background: '#3a5070' }}
         onClick={saveToLocalStorage}
-        title="Save to browser (Ctrl+S)"
+        title='Save to browser (Ctrl+S)'
       >
         Save
       </button>
       <button
         style={{ ...buttonStyle, background: '#3a5070' }}
         onClick={handleExport}
-        title="Export JSON (Ctrl+E)"
+        title='Export JSON (Ctrl+E)'
       >
         Export
       </button>
-      <button
-        style={buttonStyle}
-        onClick={() => fileInputRef.current?.click()}
-      >
+      <button style={buttonStyle} onClick={() => fileInputRef.current?.click()}>
         Import
       </button>
       <input
         ref={fileInputRef}
-        type="file"
-        accept=".json"
+        type='file'
+        accept='.json'
         style={{ display: 'none' }}
         onChange={handleImport}
       />
@@ -238,7 +237,7 @@ export default function EditorToolbar() {
       {/* Back to game */}
       <div style={separatorStyle} />
       <a
-        href="#/"
+        href='#/'
         style={{
           ...buttonStyle,
           textDecoration: 'none',

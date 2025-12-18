@@ -2,13 +2,7 @@
  * React context provider for WASM physics engine
  */
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import {
   initPhysicsEngine,
   stepPhysics,
@@ -201,11 +195,7 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     getRubberDepositMultiplier,
   }
 
-  return (
-    <PhysicsContext.Provider value={value}>
-      {children}
-    </PhysicsContext.Provider>
-  )
+  return <PhysicsContext.Provider value={value}>{children}</PhysicsContext.Provider>
 }
 
 export function usePhysics(): PhysicsContextValue {

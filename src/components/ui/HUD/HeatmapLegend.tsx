@@ -1,6 +1,11 @@
 import { useHeatmapStore } from '../../../stores/useHeatmapStore'
 import { useThermalViewStore } from '../../../stores/useThermalViewStore'
-import { useWindStore, getWindDirectionName, windSpeedToKmh, windSpeedDescription } from '../../../stores/useWindStore'
+import {
+  useWindStore,
+  getWindDirectionName,
+  windSpeedToKmh,
+  windSpeedDescription,
+} from '../../../stores/useWindStore'
 import { useWindViewStore } from '../../../stores/useWindViewStore'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -77,11 +82,11 @@ const styles: Record<string, React.CSSProperties> = {
 
 // 5-stage temperature gradient colors with Celsius labels (unified scale)
 const TEMP_GRADIENT = [
-  { color: 'rgb(26, 51, 153)', label: '<10' },    // Deep blue (very cold)
+  { color: 'rgb(26, 51, 153)', label: '<10' }, // Deep blue (very cold)
   { color: 'rgb(51, 128, 230)', label: '10-30' }, // Light blue (cold)
-  { color: 'rgb(51, 204, 77)', label: '30-60' },  // Green (moderate)
+  { color: 'rgb(51, 204, 77)', label: '30-60' }, // Green (moderate)
   { color: 'rgb(255, 153, 26)', label: '60-90' }, // Orange (warm)
-  { color: 'rgb(255, 38, 26)', label: '>90' },    // Red (hot)
+  { color: 'rgb(255, 38, 26)', label: '>90' }, // Red (hot)
 ]
 
 export default function HeatmapLegend() {
@@ -163,9 +168,7 @@ export default function HeatmapLegend() {
               {windSpeedDescription(currentSpeed || windSpeed)}
             </span>
             {gustIntensity > 0.3 && (
-              <span style={{ marginLeft: 'auto', color: '#ffaa33' }}>
-                Gusting
-              </span>
+              <span style={{ marginLeft: 'auto', color: '#ffaa33' }}>Gusting</span>
             )}
           </div>
         </div>
@@ -181,9 +184,7 @@ export default function HeatmapLegend() {
       )}
 
       {/* Keyboard hint */}
-      <div style={styles.hint as React.CSSProperties}>
-        Press H to toggle
-      </div>
+      <div style={styles.hint as React.CSSProperties}>Press H to toggle</div>
     </div>
   )
 }

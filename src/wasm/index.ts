@@ -58,8 +58,4 @@ export type {
 } from './PhysicsBridge'
 
 // React provider
-export {
-  PhysicsProvider,
-  usePhysics,
-  usePhysicsOptional,
-} from './PhysicsProvider'
+export { PhysicsProvider, usePhysics, usePhysicsOptional } from './PhysicsProvider'

@@ -16,7 +16,7 @@ import { usePartEditorStore } from '../store'
  * - Ground (wheel bottom): Y ≈ -0.3
  */
 export default function ReferenceCarPreview() {
-  const showReferenceModel = usePartEditorStore((s) => s.showReferenceModel)
+  const showReferenceModel = usePartEditorStore(s => s.showReferenceModel)
 
   if (!showReferenceModel) return null
 
@@ -40,11 +40,11 @@ export default function ReferenceCarPreview() {
   const groundY = -wheelRadius // Where wheels touch ground
 
   return (
-    <group name="reference-car">
+    <group name='reference-car'>
       {/* Ground plane indicator */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, groundY - 0.01, 0.2]}>
         <planeGeometry args={[3, 4]} />
-        <meshBasicMaterial color="#335588" transparent opacity={0.1} />
+        <meshBasicMaterial color='#335588' transparent opacity={0.1} />
       </mesh>
 
       {/* === MAIN BODY === */}
@@ -110,24 +110,24 @@ export default function ReferenceCarPreview() {
       {/* Front arrow */}
       <mesh position={[0, 0.5, 2.2]}>
         <coneGeometry args={[0.08, 0.2, 8]} />
-        <meshBasicMaterial color="#00ff00" />
+        <meshBasicMaterial color='#00ff00' />
       </mesh>
       <mesh position={[0, 0.5, 2.0]}>
         <boxGeometry args={[0.03, 0.03, 0.3]} />
-        <meshBasicMaterial color="#00ff00" />
+        <meshBasicMaterial color='#00ff00' />
       </mesh>
 
       {/* Position markers */}
       {/* Cockpit center marker */}
       <mesh position={[0, 0.1, 0.35]}>
         <sphereGeometry args={[0.05, 8, 8]} />
-        <meshBasicMaterial color="#ffff00" />
+        <meshBasicMaterial color='#ffff00' />
       </mesh>
 
       {/* Ground level line */}
       <mesh position={[0, groundY, 0.2]}>
         <boxGeometry args={[2.5, 0.01, 0.01]} />
-        <meshBasicMaterial color="#ff4444" />
+        <meshBasicMaterial color='#ff4444' />
       </mesh>
     </group>
   )

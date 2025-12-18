@@ -1,6 +1,11 @@
 import { create } from 'zustand'
 import type { EditorPart, GeometryType, TransformMode, CarPartConfig, HistoryEntry } from './types'
-import { GEOMETRY_DEFAULTS, DEFAULT_MATERIAL, PART_EDITOR_STORAGE_KEY, MAX_HISTORY_LENGTH } from './constants'
+import {
+  GEOMETRY_DEFAULTS,
+  DEFAULT_MATERIAL,
+  PART_EDITOR_STORAGE_KEY,
+  MAX_HISTORY_LENGTH,
+} from './constants'
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9)
@@ -79,7 +84,7 @@ export const usePartEditorStore = create<PartEditorState>((set, get) => ({
   configName: 'Untitled Part',
 
   // Part CRUD
-  addPart: (geometryType) => {
+  addPart: geometryType => {
     const defaults = GEOMETRY_DEFAULTS[geometryType]
     const existingCount = get().parts.filter(p => p.geometryType === geometryType).length
     const newPart: EditorPart = {
@@ -96,25 +101,29 @@ export const usePartEditorStore = create<PartEditorState>((set, get) => ({
       // Add points for extrude geometry
       ...(defaults.points ? { points: defaults.points.map(p => [...p] as [number, number]) } : {}),
       // Add height profile for extrude geometry
-      ...(defaults.heightProfile ? { heightProfile: defaults.heightProfile.map(p => [...p] as [number, number]) } : {}),
-      ...(defaults.heightProfileSmooth !== undefined ? { heightProfileSmooth: defaults.heightProfileSmooth } : {}),
+      ...(defaults.heightProfile
+        ? { heightProfile: defaults.heightProfile.map(p => [...p] as [number, number]) }
+        : {}),
+      ...(defaults.heightProfileSmooth !== undefined
+        ? { heightProfileSmooth: defaults.heightProfileSmooth }
+        : {}),
     }
-    set((state) => ({
+    set(state => ({
       parts: [...state.parts, newPart],
       selectedPartId: newPart.id,
     }))
     get().pushHistory()
   },
 
-  removePart: (id) => {
-    set((state) => ({
+  removePart: id => {
+    set(state => ({
       parts: state.parts.filter(p => p.id !== id),
       selectedPartId: state.selectedPartId === id ? null : state.selectedPartId,
     }))
     get().pushHistory()
   },
 
-  duplicatePart: (id) => {
+  duplicatePart: id => {
     const part = get().parts.find(p => p.id === id)
     if (!part) return
     const newPart: EditorPart = {
@@ -125,11 +134,15 @@ export const usePartEditorStore = create<PartEditorState>((set, get) => ({
       // Deep copy points if they exist
       ...(part.points ? { points: part.points.map(p => [...p] as [number, number]) } : {}),
       // Deep copy holes if they exist
-      ...(part.holes ? { holes: part.holes.map(hole => hole.map(p => [...p] as [number, number])) } : {}),
+      ...(part.holes
+        ? { holes: part.holes.map(hole => hole.map(p => [...p] as [number, number])) }
+        : {}),
       // Deep copy height profile if it exists
-      ...(part.heightProfile ? { heightProfile: part.heightProfile.map(p => [...p] as [number, number]) } : {}),
+      ...(part.heightProfile
+        ? { heightProfile: part.heightProfile.map(p => [...p] as [number, number]) }
+        : {}),
     }
-    set((state) => ({
+    set(state => ({
       parts: [...state.parts, newPart],
       selectedPartId: newPart.id,
     }))
@@ -137,46 +150,42 @@ export const usePartEditorStore = create<PartEditorState>((set, get) => ({
   },
 
   updatePart: (id, updates) => {
-    set((state) => ({
-      parts: state.parts.map(p =>
-        p.id === id ? { ...p, ...updates } : p
-      ),
+    set(state => ({
+      parts: state.parts.map(p => (p.id === id ? { ...p, ...updates } : p)),
     }))
   },
 
   renamePart: (id, name) => {
-    set((state) => ({
-      parts: state.parts.map(p =>
-        p.id === id ? { ...p, name } : p
-      ),
+    set(state => ({
+      parts: state.parts.map(p => (p.id === id ? { ...p, name } : p)),
     }))
   },
 
   // Selection
-  selectPart: (id) => {
+  selectPart: id => {
     set({ selectedPartId: id })
   },
 
   // Transform
-  setTransformMode: (mode) => {
+  setTransformMode: mode => {
     set({ transformMode: mode })
   },
 
-  setSnapEnabled: (enabled) => {
+  setSnapEnabled: enabled => {
     set({ snapEnabled: enabled })
   },
 
-  setSnapValue: (value) => {
+  setSnapValue: value => {
     set({ snapValue: value })
   },
 
-  setRotationSnapValue: (value) => {
+  setRotationSnapValue: value => {
     set({ rotationSnapValue: value })
   },
 
   // View
   toggleReferenceModel: () => {
-    set((state) => ({ showReferenceModel: !state.showReferenceModel }))
+    set(state => ({ showReferenceModel: !state.showReferenceModel }))
   },
 
   // History
@@ -234,7 +243,7 @@ export const usePartEditorStore = create<PartEditorState>((set, get) => ({
     }
   },
 
-  importConfig: (config) => {
+  importConfig: config => {
     set({
       parts: config.parts,
       configName: config.name,
@@ -279,7 +288,7 @@ export const usePartEditorStore = create<PartEditorState>((set, get) => ({
     })
   },
 
-  setConfigName: (name) => {
+  setConfigName: name => {
     set({ configName: name })
   },
 

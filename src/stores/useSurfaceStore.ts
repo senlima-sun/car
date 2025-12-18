@@ -54,16 +54,14 @@ export const useSurfaceStore = create<SurfaceState>((set, get) => ({
       set({
         roadContactCount: newCount,
         // If no roads and no curbs, fall back to grass
-        currentSurface:
-          state.curbContactCount > 0 ? 'curb' : newCount > 0 ? 'road' : 'grass',
+        currentSurface: state.curbContactCount > 0 ? 'curb' : newCount > 0 ? 'road' : 'grass',
       })
     } else if (type === 'curb') {
       const newCount = Math.max(0, state.curbContactCount - 1)
       set({
         curbContactCount: newCount,
         // If no curbs, check roads, then grass
-        currentSurface:
-          newCount > 0 ? 'curb' : state.roadContactCount > 0 ? 'road' : 'grass',
+        currentSurface: newCount > 0 ? 'curb' : state.roadContactCount > 0 ? 'road' : 'grass',
       })
     }
   },

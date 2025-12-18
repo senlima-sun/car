@@ -17,13 +17,18 @@ const buttonStyle: React.CSSProperties = {
 }
 
 export default function ShapePalette() {
-  const addPart = usePartEditorStore((s) => s.addPart)
+  const addPart = usePartEditorStore(s => s.addPart)
 
-  const shapes = Object.entries(GEOMETRY_DEFAULTS) as [GeometryType, typeof GEOMETRY_DEFAULTS[GeometryType]][]
+  const shapes = Object.entries(GEOMETRY_DEFAULTS) as [
+    GeometryType,
+    (typeof GEOMETRY_DEFAULTS)[GeometryType],
+  ][]
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#888', textTransform: 'uppercase' }}>
+      <h3
+        style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#888', textTransform: 'uppercase' }}
+      >
         Add Shape
       </h3>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
@@ -32,8 +37,8 @@ export default function ShapePalette() {
             key={type}
             style={buttonStyle}
             onClick={() => addPart(type)}
-            onMouseOver={(e) => (e.currentTarget.style.background = '#4a4a60')}
-            onMouseOut={(e) => (e.currentTarget.style.background = '#3a3a50')}
+            onMouseOver={e => (e.currentTarget.style.background = '#4a4a60')}
+            onMouseOut={e => (e.currentTarget.style.background = '#3a3a50')}
           >
             <span style={{ fontSize: '16px' }}>{config.icon}</span>
             <span>{config.name}</span>

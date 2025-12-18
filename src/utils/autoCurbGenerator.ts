@@ -54,7 +54,7 @@ function getEdges(turnDirection: 'left' | 'right'): {
  */
 function distance(p1: [number, number, number], p2: [number, number, number]): number {
   return Math.sqrt(
-    Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2) + Math.pow(p1[2] - p2[2], 2)
+    Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2) + Math.pow(p1[2] - p2[2], 2),
   )
 }
 
@@ -73,7 +73,7 @@ function findConnectedStraight(
   curveRoad: PlacedObject,
   curveEnd: 'start' | 'end',
   allRoads: PlacedObject[],
-  selectedIds: string[]
+  selectedIds: string[],
 ): ConnectionInfo | null {
   if (!curveRoad.startPoint || !curveRoad.endPoint) return null
 
@@ -115,7 +115,7 @@ function createCurb(
   parentRoadId: string,
   edgeSide: 'left' | 'right',
   startT: number,
-  endT: number
+  endT: number,
 ): PlacedObject {
   return {
     id: generateId(),
@@ -134,7 +134,7 @@ function createCurb(
  */
 export function generateCurbsForRoads(
   selectedRoadIds: string[],
-  allObjects: PlacedObject[]
+  allObjects: PlacedObject[],
 ): PlacedObject[] {
   const roads = allObjects.filter(obj => selectedRoadIds.includes(obj.id) && obj.type === 'road')
   const generatedCurbs: PlacedObject[] = []
@@ -152,7 +152,7 @@ export function generateCurbsForRoads(
 
       // 2. Generate apex curb (inside of curve)
       generatedCurbs.push(
-        createCurb(road.id, insideEdge, CURB_POSITIONS.apex.startT, CURB_POSITIONS.apex.endT)
+        createCurb(road.id, insideEdge, CURB_POSITIONS.apex.startT, CURB_POSITIONS.apex.endT),
       )
 
       // 3. Generate entry curb on curve (outside, start portion)
@@ -161,8 +161,8 @@ export function generateCurbsForRoads(
           road.id,
           outsideEdge,
           CURB_POSITIONS.entryOnCurve.startT,
-          CURB_POSITIONS.entryOnCurve.endT
-        )
+          CURB_POSITIONS.entryOnCurve.endT,
+        ),
       )
 
       // 4. Generate exit curb on curve (outside, end portion)
@@ -171,8 +171,8 @@ export function generateCurbsForRoads(
           road.id,
           outsideEdge,
           CURB_POSITIONS.exitOnCurve.startT,
-          CURB_POSITIONS.exitOnCurve.endT
-        )
+          CURB_POSITIONS.exitOnCurve.endT,
+        ),
       )
 
       // 5. Check for connected straight before the curve (entry transition)
@@ -192,7 +192,7 @@ export function generateCurbsForRoads(
             : 1 - CURB_POSITIONS.entryOnStraight.startT
 
         generatedCurbs.push(
-          createCurb(beforeConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT)
+          createCurb(beforeConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT),
         )
       }
 
@@ -213,7 +213,7 @@ export function generateCurbsForRoads(
             : 1 - CURB_POSITIONS.exitOnStraight.startT
 
         generatedCurbs.push(
-          createCurb(afterConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT)
+          createCurb(afterConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT),
         )
       }
     }

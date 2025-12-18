@@ -36,9 +36,7 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
         </div>
 
         {/* Center viewport */}
-        <div style={{ flex: 1, borderRadius: '8px', overflow: 'hidden' }}>
-          {children}
-        </div>
+        <div style={{ flex: 1, borderRadius: '8px', overflow: 'hidden' }}>{children}</div>
 
         {/* Right panel */}
         <div style={{ width: '260px' }}>

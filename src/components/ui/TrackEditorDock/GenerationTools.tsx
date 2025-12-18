@@ -190,11 +190,18 @@ export default function GenerationTools() {
             ...(hasPitLane ? styles.buttonSuccess : {}),
           }}
           onClick={() => setPitPopoverOpen(prev => !prev)}
-          title="Pit lane"
+          title='Pit lane'
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="11" width="18" height="10" rx="2" />
-            <path d="M7 11V7a5 5 0 0110 0v4" />
+          <svg
+            width='14'
+            height='14'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2'
+          >
+            <rect x='3' y='11' width='18' height='10' rx='2' />
+            <path d='M7 11V7a5 5 0 0110 0v4' />
           </svg>
           Pit
           {hasPitLane && <span style={{ color: '#22c55e' }}>OK</span>}
@@ -210,9 +217,16 @@ export default function GenerationTools() {
         onClick={handleToggleAutoCurbMode}
         title={autoCurbMode ? 'Cancel curb selection' : 'Select roads for auto curbs'}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M3 6l3-3 3 3M3 6v12l3 3 3-3V6" />
-          <path d="M15 6l3-3 3 3M15 6v12l3 3 3-3V6" />
+        <svg
+          width='14'
+          height='14'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='2'
+        >
+          <path d='M3 6l3-3 3 3M3 6v12l3 3 3-3V6' />
+          <path d='M15 6l3-3 3 3M15 6v12l3 3 3-3V6' />
         </svg>
         Curbs
         {autoCurbMode && selectedRoadIds.length > 0 && (

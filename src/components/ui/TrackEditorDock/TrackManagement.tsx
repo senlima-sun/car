@@ -72,12 +72,19 @@ export default function TrackManagement() {
       <button
         style={{ ...styles.button, ...styles.saveButton }}
         onClick={saveCurrentTrack}
-        title="Save track"
+        title='Save track'
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-          <polyline points="17 21 17 13 7 13 7 21" />
-          <polyline points="7 3 7 8 15 8" />
+        <svg
+          width='12'
+          height='12'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='2.5'
+        >
+          <path d='M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z' />
+          <polyline points='17 21 17 13 7 13 7 21' />
+          <polyline points='7 3 7 8 15 8' />
         </svg>
         Save
       </button>
@@ -86,12 +93,19 @@ export default function TrackManagement() {
       <button
         style={{ ...styles.button, ...styles.exportButton }}
         onClick={exportCurrentTrack}
-        title="Export track as JSON"
+        title='Export track as JSON'
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
+        <svg
+          width='12'
+          height='12'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='2.5'
+        >
+          <path d='M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4' />
+          <polyline points='7 10 12 15 17 10' />
+          <line x1='12' y1='15' x2='12' y2='3' />
         </svg>
         Export
       </button>
@@ -100,11 +114,18 @@ export default function TrackManagement() {
       <button
         style={{ ...styles.button, ...styles.clearButton }}
         onClick={handleClearAll}
-        title="Clear all objects"
+        title='Clear all objects'
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
+        <svg
+          width='12'
+          height='12'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='2.5'
+        >
+          <line x1='18' y1='6' x2='6' y2='18' />
+          <line x1='6' y1='6' x2='18' y2='18' />
         </svg>
         Clear
       </button>

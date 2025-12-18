@@ -77,6 +77,7 @@ car/
 **WASM Physics Engine** (`physics-engine/`):
 
 All core physics calculations run in Rust/WASM for performance:
+
 - Vehicle dynamics: aerodynamics (drag, downforce), Pacejka tire model, weight transfer, Ackerman steering, drift state machine
 - Weather system: 4 conditions with 10 physics modifiers, smoothstep transitions
 - Tire system: 5 compounds (soft/medium/hard/wet/intermediate), wear degradation, weather compatibility

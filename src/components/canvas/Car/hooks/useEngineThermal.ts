@@ -22,7 +22,7 @@ export function useEngineThermal() {
       tempMin: { value: TEMP_SCALES.engine.min },
       tempRange: { value: TEMP_SCALES.engine.range },
     }),
-    []
+    [],
   )
 
   // Update temperature value each render
@@ -36,7 +36,7 @@ export function useEngineThermal() {
         fragmentShader: engineThermalFragmentShader,
         uniforms: engineThermalUniforms,
       }),
-    [engineThermalUniforms]
+    [engineThermalUniforms],
   )
 
   return {

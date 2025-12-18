@@ -20,10 +20,10 @@ import { type CarInput } from '../../../../wasm'
 // Wheel offset positions relative to car center [x, z]
 // FL, FR, RL, RR
 const WHEEL_OFFSETS: [number, number][] = [
-  [-0.95, 1.6],  // Front Left
-  [0.95, 1.6],   // Front Right
+  [-0.95, 1.6], // Front Left
+  [0.95, 1.6], // Front Right
   [-0.95, -1.2], // Rear Left
-  [0.95, -1.2],  // Rear Right
+  [0.95, -1.2], // Rear Right
 ]
 
 // Minimum speed (km/h) to leave rubber marks
@@ -192,7 +192,7 @@ export function useCarFrame({
       if (posIsInvalid) {
         chassis.setTranslation(
           { x: startPosition[0], y: startPosition[1], z: startPosition[2] },
-          true
+          true,
         )
         chassis.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
       }
@@ -220,7 +220,7 @@ export function useCarFrame({
       [pos.x, pos.y, pos.z],
       [rot.x, rot.y, rot.z, rot.w],
       [linvel.x, linvel.y, linvel.z],
-      [angvel.x, angvel.y, angvel.z]
+      [angvel.x, angvel.y, angvel.z],
     )
 
     // Apply velocities to Rapier
@@ -230,7 +230,7 @@ export function useCarFrame({
         y: output.linear_velocity[1],
         z: output.linear_velocity[2],
       },
-      true
+      true,
     )
 
     chassis.setAngvel(
@@ -239,7 +239,7 @@ export function useCarFrame({
         y: output.angular_velocity[1],
         z: output.angular_velocity[2],
       },
-      true
+      true,
     )
 
     // Sync tire wear from WASM to UI store
@@ -262,7 +262,7 @@ export function useCarFrame({
       setAquaplaning(
         output.aquaplaning.is_aquaplaning,
         output.aquaplaning.intensity,
-        output.aquaplaning.affected_wheels
+        output.aquaplaning.affected_wheels,
       )
     }
 
@@ -271,7 +271,7 @@ export function useCarFrame({
       setThermalShock(
         output.tire_thermal_shock.is_shocked,
         output.tire_thermal_shock.grip_penalty,
-        output.tire_thermal_shock.recovery_time
+        output.tire_thermal_shock.recovery_time,
       )
     }
 
@@ -313,7 +313,7 @@ export function useCarFrame({
       // Calculate car yaw for wheel position rotation
       const yawForRubber = Math.atan2(
         2 * (rot.w * rot.y + rot.x * rot.z),
-        1 - 2 * (rot.y * rot.y + rot.x * rot.x)
+        1 - 2 * (rot.y * rot.y + rot.x * rot.x),
       )
       const cosYaw = Math.cos(yawForRubber)
       const sinYaw = Math.sin(yawForRubber)
@@ -334,7 +334,7 @@ export function useCarFrame({
       // G-force contribution
       const gIntensity = Math.min(
         (Math.abs(output.lateral_g) + Math.abs(output.longitudinal_g)) / 2,
-        0.6
+        0.6,
       )
 
       // Speed factor: ramps from 0 at 7.2 km/h to 1 at ~60 km/h
@@ -399,7 +399,7 @@ export function useCarFrame({
     // Update car state for spray effect
     const yaw = Math.atan2(
       2 * (rot.w * rot.y + rot.x * rot.z),
-      1 - 2 * (rot.y * rot.y + rot.x * rot.x)
+      1 - 2 * (rot.y * rot.y + rot.x * rot.x),
     )
 
     setCarState({

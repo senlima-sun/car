@@ -1,7 +1,4 @@
-import {
-  TireCompound,
-  SurfaceType as WasmSurfaceType,
-} from '../../../../wasm'
+import { TireCompound, SurfaceType as WasmSurfaceType } from '../../../../wasm'
 import { type SurfaceType } from '../../../../stores/useSurfaceStore'
 
 /**

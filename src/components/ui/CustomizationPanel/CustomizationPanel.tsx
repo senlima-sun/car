@@ -543,7 +543,8 @@ export default function CustomizationPanel() {
             </div>
           </div>
           <div style={{ ...styles.placementHint, marginTop: 4 }}>
-            Angle snap aligns roads to grid angles. Tangent continuation creates smooth curves when connecting to existing roads.
+            Angle snap aligns roads to grid angles. Tangent continuation creates smooth curves when
+            connecting to existing roads.
           </div>
         </div>
       )}

@@ -112,9 +112,11 @@ export default function WindVisualization() {
 
       if (Math.abs(distX) > areaSize / 2 || Math.abs(distZ) > areaSize / 2) {
         // Spawn on upwind side
-        const spawnX = camera.position.x - dirX * (areaSize / 2) + (Math.random() - 0.5) * areaSize * 0.8
+        const spawnX =
+          camera.position.x - dirX * (areaSize / 2) + (Math.random() - 0.5) * areaSize * 0.8
         const spawnY = 1 + Math.random() * 15
-        const spawnZ = camera.position.z - dirZ * (areaSize / 2) + (Math.random() - 0.5) * areaSize * 0.8
+        const spawnZ =
+          camera.position.z - dirZ * (areaSize / 2) + (Math.random() - 0.5) * areaSize * 0.8
 
         pos[i * 6] = spawnX
         pos[i * 6 + 1] = spawnY

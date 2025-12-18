@@ -46,11 +46,11 @@ function Vector3Input({ label, value, onChange }: Vector3InputProps) {
           <div key={i}>
             <span style={{ fontSize: '10px', color: '#666' }}>{labels[i]}</span>
             <input
-              type="number"
+              type='number'
               style={inputStyle}
               value={v}
               step={0.01}
-              onChange={(e) => {
+              onChange={e => {
                 const newValue = [...value] as [number, number, number]
                 newValue[i] = parseFloat(e.target.value) || 0
                 onChange(newValue)
@@ -63,7 +63,11 @@ function Vector3Input({ label, value, onChange }: Vector3InputProps) {
   )
 }
 
-function GeometryArgsEditor({ geometryType, args, onChange }: {
+function GeometryArgsEditor({
+  geometryType,
+  args,
+  onChange,
+}: {
   geometryType: string
   args: number[]
   onChange: (args: number[]) => void
@@ -87,14 +91,16 @@ function GeometryArgsEditor({ geometryType, args, onChange }: {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {args.map((val, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '11px', color: '#888', width: '80px' }}>{labels[i] || `Arg ${i}`}</span>
+            <span style={{ fontSize: '11px', color: '#888', width: '80px' }}>
+              {labels[i] || `Arg ${i}`}
+            </span>
             <input
-              type="number"
+              type='number'
               style={{ ...inputStyle, flex: 1 }}
               value={val}
               step={0.01}
               min={0}
-              onChange={(e) => {
+              onChange={e => {
                 const newArgs = [...args]
                 newArgs[i] = parseFloat(e.target.value) || 0
                 onChange(newArgs)
@@ -108,17 +114,24 @@ function GeometryArgsEditor({ geometryType, args, onChange }: {
 }
 
 export default function PropertiesPanel() {
-  const selectedPart = usePartEditorStore((s) => s.getSelectedPart())
-  const updatePart = usePartEditorStore((s) => s.updatePart)
-  const pushHistory = usePartEditorStore((s) => s.pushHistory)
-  const duplicatePart = usePartEditorStore((s) => s.duplicatePart)
-  const removePart = usePartEditorStore((s) => s.removePart)
-  const renamePart = usePartEditorStore((s) => s.renamePart)
+  const selectedPart = usePartEditorStore(s => s.getSelectedPart())
+  const updatePart = usePartEditorStore(s => s.updatePart)
+  const pushHistory = usePartEditorStore(s => s.pushHistory)
+  const duplicatePart = usePartEditorStore(s => s.duplicatePart)
+  const removePart = usePartEditorStore(s => s.removePart)
+  const renamePart = usePartEditorStore(s => s.renamePart)
 
   if (!selectedPart) {
     return (
       <div>
-        <h3 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#888', textTransform: 'uppercase' }}>
+        <h3
+          style={{
+            margin: '0 0 8px 0',
+            fontSize: '12px',
+            color: '#888',
+            textTransform: 'uppercase',
+          }}
+        >
           Properties
         </h3>
         <div style={{ color: '#666', fontSize: '12px', padding: '8px' }}>
@@ -138,7 +151,14 @@ export default function PropertiesPanel() {
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#888', textTransform: 'uppercase' }}>
+      <h3
+        style={{
+          margin: '0 0 12px 0',
+          fontSize: '12px',
+          color: '#888',
+          textTransform: 'uppercase',
+        }}
+      >
         Properties
       </h3>
 
@@ -146,37 +166,37 @@ export default function PropertiesPanel() {
       <div style={sectionStyle}>
         <label style={labelStyle}>Name</label>
         <input
-          type="text"
+          type='text'
           style={inputStyle}
           value={selectedPart.name}
-          onChange={(e) => renamePart(selectedPart.id, e.target.value)}
+          onChange={e => renamePart(selectedPart.id, e.target.value)}
         />
       </div>
 
       {/* Transform */}
       <Vector3Input
-        label="Position"
+        label='Position'
         value={selectedPart.position}
-        onChange={(v) => handleChange({ position: v })}
+        onChange={v => handleChange({ position: v })}
       />
 
       <Vector3Input
-        label="Rotation (rad)"
+        label='Rotation (rad)'
         value={selectedPart.rotation}
-        onChange={(v) => handleChange({ rotation: v })}
+        onChange={v => handleChange({ rotation: v })}
       />
 
       <Vector3Input
-        label="Scale"
+        label='Scale'
         value={selectedPart.scale}
-        onChange={(v) => handleChange({ scale: v })}
+        onChange={v => handleChange({ scale: v })}
       />
 
       {/* Geometry */}
       <GeometryArgsEditor
         geometryType={selectedPart.geometryType}
         args={selectedPart.args}
-        onChange={(args) => {
+        onChange={args => {
           handleChange({ args })
           pushHistory()
         }}
@@ -188,12 +208,12 @@ export default function PropertiesPanel() {
           <label style={labelStyle}>Shape Outline</label>
           <ShapePointsEditor
             points={selectedPart.points}
-            onChange={(points) => {
+            onChange={points => {
               handleChange({ points })
               pushHistory()
             }}
             holes={selectedPart.holes}
-            onHolesChange={(holes) => {
+            onHolesChange={holes => {
               handleChange({ holes })
               pushHistory()
             }}
@@ -207,13 +227,18 @@ export default function PropertiesPanel() {
         <div style={sectionStyle}>
           <label style={labelStyle}>Depth Profile (Z depth by X position)</label>
           <HeightProfileEditor
-            profile={selectedPart.heightProfile || [[0, 1], [1, 1]]}
-            onChange={(heightProfile) => {
+            profile={
+              selectedPart.heightProfile || [
+                [0, 1],
+                [1, 1],
+              ]
+            }
+            onChange={heightProfile => {
               handleChange({ heightProfile })
               pushHistory()
             }}
             smooth={selectedPart.heightProfileSmooth ?? true}
-            onSmoothChange={(heightProfileSmooth) => {
+            onSmoothChange={heightProfileSmooth => {
               handleChange({ heightProfileSmooth })
               pushHistory()
             }}
@@ -227,30 +252,30 @@ export default function PropertiesPanel() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <span style={{ fontSize: '11px', color: '#888', width: '60px' }}>Color</span>
           <input
-            type="color"
+            type='color'
             style={{ width: '40px', height: '28px', border: 'none', cursor: 'pointer' }}
             value={selectedPart.color}
-            onChange={(e) => handleChange({ color: e.target.value })}
+            onChange={e => handleChange({ color: e.target.value })}
             onBlur={handleBlur}
           />
           <input
-            type="text"
+            type='text'
             style={{ ...inputStyle, flex: 1 }}
             value={selectedPart.color}
-            onChange={(e) => handleChange({ color: e.target.value })}
+            onChange={e => handleChange({ color: e.target.value })}
             onBlur={handleBlur}
           />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <span style={{ fontSize: '11px', color: '#888', width: '60px' }}>Metalness</span>
           <input
-            type="range"
+            type='range'
             style={{ flex: 1 }}
             min={0}
             max={1}
             step={0.05}
             value={selectedPart.metalness}
-            onChange={(e) => handleChange({ metalness: parseFloat(e.target.value) })}
+            onChange={e => handleChange({ metalness: parseFloat(e.target.value) })}
             onMouseUp={handleBlur}
           />
           <span style={{ fontSize: '11px', color: '#aaa', width: '30px' }}>
@@ -260,13 +285,13 @@ export default function PropertiesPanel() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '11px', color: '#888', width: '60px' }}>Roughness</span>
           <input
-            type="range"
+            type='range'
             style={{ flex: 1 }}
             min={0}
             max={1}
             step={0.05}
             value={selectedPart.roughness}
-            onChange={(e) => handleChange({ roughness: parseFloat(e.target.value) })}
+            onChange={e => handleChange({ roughness: parseFloat(e.target.value) })}
             onMouseUp={handleBlur}
           />
           <span style={{ fontSize: '11px', color: '#aaa', width: '30px' }}>

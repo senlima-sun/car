@@ -2,11 +2,7 @@
  * TypeScript bridge for Rust/WASM physics engine
  */
 
-import init, {
-  PhysicsEngine,
-  TireCompound,
-  SurfaceType,
-} from './pkg/car_physics_engine'
+import init, { PhysicsEngine, TireCompound, SurfaceType } from './pkg/car_physics_engine'
 
 // Re-export types for convenience
 export { TireCompound, SurfaceType }
@@ -225,9 +221,7 @@ export async function initPhysicsEngine(): Promise<void> {
  */
 export function getPhysicsEngine(): PhysicsEngine {
   if (!engine) {
-    throw new Error(
-      'Physics engine not initialized. Call initPhysicsEngine() first.'
-    )
+    throw new Error('Physics engine not initialized. Call initPhysicsEngine() first.')
   }
   return engine
 }
@@ -255,7 +249,7 @@ function sanitize(value: number, fallback: number = 0): number {
  */
 function sanitizeVec3(
   vec: [number, number, number],
-  fallback: [number, number, number] = [0, 0, 0]
+  fallback: [number, number, number] = [0, 0, 0],
 ): [number, number, number] {
   return [
     sanitize(vec[0], fallback[0]),
@@ -273,7 +267,7 @@ export function stepPhysics(
   position: [number, number, number],
   rotation: [number, number, number, number],
   linvel: [number, number, number],
-  angvel: [number, number, number]
+  angvel: [number, number, number],
 ): CarPhysicsOutput {
   const eng = getPhysicsEngine()
 
@@ -457,10 +451,7 @@ export function getSurfaceModifiers(): SurfaceModifiers {
 /**
  * Initialize track temperature grid
  */
-export function initTrackTemperature(
-  cellSize: number,
-  bounds: TrackBounds
-): void {
+export function initTrackTemperature(cellSize: number, bounds: TrackBounds): void {
   getPhysicsEngine().init_track_temperature(cellSize, bounds)
 }
 
@@ -482,12 +473,7 @@ export function getTrackCellCount(): number {
  * Update track temperature from normal driving (heat generation, road drying)
  * Call this every frame when car is moving (even without skidding)
  */
-export function updateCarDriving(
-  x: number,
-  z: number,
-  speedMs: number,
-  delta: number
-): void {
+export function updateCarDriving(x: number, z: number, speedMs: number, delta: number): void {
   getPhysicsEngine().update_car_driving(x, z, speedMs, delta)
 }
 
@@ -537,7 +523,7 @@ export function setRoadRegion(
   minZ: number,
   maxX: number,
   maxZ: number,
-  isRoad: boolean
+  isRoad: boolean,
 ): void {
   getPhysicsEngine().set_road_region(minX, minZ, maxX, maxZ, isRoad)
 }
@@ -590,16 +576,12 @@ export function getDebugState(): string {
 export function updateRubberDeposits(
   wheelPositions: Float32Array | number[],
   wheelIntensities: Float32Array | number[],
-  delta: number
+  delta: number,
 ): void {
   const posArray =
-    wheelPositions instanceof Float32Array
-      ? wheelPositions
-      : new Float32Array(wheelPositions)
+    wheelPositions instanceof Float32Array ? wheelPositions : new Float32Array(wheelPositions)
   const intArray =
-    wheelIntensities instanceof Float32Array
-      ? wheelIntensities
-      : new Float32Array(wheelIntensities)
+    wheelIntensities instanceof Float32Array ? wheelIntensities : new Float32Array(wheelIntensities)
 
   getPhysicsEngine().update_rubber_deposits(posArray, intArray, delta)
 }
@@ -689,10 +671,7 @@ export function celsiusToNormalizedAmbient(celsius: number): number {
 /**
  * Get wheel average temperature from per-wheel temperature
  */
-export function getWheelAvgTemp(
-  temps: PerWheelTemperature,
-  wheel: 0 | 1 | 2 | 3
-): number {
+export function getWheelAvgTemp(temps: PerWheelTemperature, wheel: 0 | 1 | 2 | 3): number {
   switch (wheel) {
     case 0:
       return (temps.front_left_inner + temps.front_left_outer) / 2

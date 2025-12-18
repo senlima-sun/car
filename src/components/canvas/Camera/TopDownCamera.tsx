@@ -31,7 +31,10 @@ export default function TopDownCamera() {
       const delta = e.deltaY > 0 ? 1 : -1
       cameraState.current.zoom = Math.max(
         MIN_ZOOM,
-        Math.min(MAX_ZOOM, cameraState.current.zoom + delta * ZOOM_SPEED * cameraState.current.zoom)
+        Math.min(
+          MAX_ZOOM,
+          cameraState.current.zoom + delta * ZOOM_SPEED * cameraState.current.zoom,
+        ),
       )
     }
 

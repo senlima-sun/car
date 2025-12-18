@@ -6,8 +6,8 @@ interface DistanceGridState {
   setVisible: (visible: boolean) => void
 }
 
-export const useDistanceGridStore = create<DistanceGridState>((set) => ({
+export const useDistanceGridStore = create<DistanceGridState>(set => ({
   isVisible: true, // Default visible for testing
-  toggleGrid: () => set((state) => ({ isVisible: !state.isVisible })),
-  setVisible: (visible) => set({ isVisible: visible }),
+  toggleGrid: () => set(state => ({ isVisible: !state.isVisible })),
+  setVisible: visible => set({ isVisible: visible }),
 }))

@@ -1,6 +1,15 @@
 import { useEffect, useCallback, useState } from 'react'
-import { useEnvironmentStore, getRainDescription, getTemperatureDescription } from '@/stores/useEnvironmentStore'
-import { useWindStore, WIND_DIRECTIONS, windSpeedDescription, getWindDirectionName } from '@/stores/useWindStore'
+import {
+  useEnvironmentStore,
+  getRainDescription,
+  getTemperatureDescription,
+} from '@/stores/useEnvironmentStore'
+import {
+  useWindStore,
+  WIND_DIRECTIONS,
+  windSpeedDescription,
+  getWindDirectionName,
+} from '@/stores/useWindStore'
 
 const styles: Record<string, React.CSSProperties> = {
   backdrop: {
@@ -179,7 +188,8 @@ const COMPASS_GRID = [
 ] as const
 
 export default function WeatherControlModal() {
-  const { isModalOpen, closeModal, temperature, setTemperature, rainIntensity, setRainIntensity } = useEnvironmentStore()
+  const { isModalOpen, closeModal, temperature, setTemperature, rainIntensity, setRainIntensity } =
+    useEnvironmentStore()
   const { direction, speed, enabled, setWind, setEnabled } = useWindStore()
 
   // Local state for slider values to avoid too many store updates
@@ -250,7 +260,7 @@ export default function WeatherControlModal() {
               <span style={styles.sliderValue}>{Math.round(localTemp)}°C</span>
             </div>
             <input
-              type="range"
+              type='range'
               min={-10}
               max={50}
               step={1}
@@ -273,7 +283,7 @@ export default function WeatherControlModal() {
               <span style={styles.sliderValue}>{Math.round(localRain * 100)}%</span>
             </div>
             <input
-              type="range"
+              type='range'
               min={0}
               max={1}
               step={0.01}
@@ -294,7 +304,9 @@ export default function WeatherControlModal() {
             <div style={styles.compass}>
               {COMPASS_GRID.flat().map((dir, index) => {
                 if (dir === null) {
-                  return <div key={index} style={{ ...styles.compassButton, ...styles.compassCenter }} />
+                  return (
+                    <div key={index} style={{ ...styles.compassButton, ...styles.compassCenter }} />
+                  )
                 }
                 const isActive = currentDirection === dir
                 return (
@@ -329,7 +341,7 @@ export default function WeatherControlModal() {
               <span style={styles.sliderValue}>{localWindSpeed.toFixed(1)} m/s</span>
             </div>
             <input
-              type="range"
+              type='range'
               min={0}
               max={25}
               step={0.5}
@@ -375,9 +387,7 @@ export default function WeatherControlModal() {
           Close
         </button>
 
-        <div style={styles.hint as React.CSSProperties}>
-          Press M or ESC to close
-        </div>
+        <div style={styles.hint as React.CSSProperties}>Press M or ESC to close</div>
       </div>
     </div>
   )

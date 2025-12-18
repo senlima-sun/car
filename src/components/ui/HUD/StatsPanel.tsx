@@ -169,7 +169,7 @@ export default function StatsPanel() {
     perWheelWear.frontLeft,
     perWheelWear.frontRight,
     perWheelWear.rearLeft,
-    perWheelWear.rearRight
+    perWheelWear.rearRight,
   )
   const isCritical = maxWear >= TIRE_WEAR_CRITICAL
 
@@ -191,9 +191,7 @@ export default function StatsPanel() {
 
       {/* Tire compound badge */}
       <div style={styles.compound}>
-        <div style={{ ...styles.compoundBadge, backgroundColor: config.color }}>
-          {config.icon}
-        </div>
+        <div style={{ ...styles.compoundBadge, backgroundColor: config.color }}>{config.icon}</div>
         <span style={styles.compoundLabel}>{config.displayName.slice(0, 3)}</span>
       </div>
 

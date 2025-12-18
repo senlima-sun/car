@@ -67,10 +67,7 @@ function AngleGuideLine({
   const midZ = (startPoint[2] + endZ) / 2
 
   return (
-    <mesh
-      position={[midX, 0.02, midZ]}
-      rotation={[-Math.PI / 2, 0, -angle]}
-    >
+    <mesh position={[midX, 0.02, midZ]} rotation={[-Math.PI / 2, 0, -angle]}>
       <planeGeometry args={[0.08, length]} />
       <meshBasicMaterial
         color={isActive ? '#00ffff' : '#666666'}
@@ -142,30 +139,15 @@ function TangentIndicator({
   return (
     <group>
       {/* Arrow shaft */}
-      <mesh
-        position={[shaftMidX, 0.1, shaftMidZ]}
-        rotation={[-Math.PI / 2, 0, -angle]}
-      >
+      <mesh position={[shaftMidX, 0.1, shaftMidZ]} rotation={[-Math.PI / 2, 0, -angle]}>
         <planeGeometry args={[0.2, shaftLength]} />
-        <meshBasicMaterial
-          color='#ffaa00'
-          transparent
-          opacity={0.7}
-          depthWrite={false}
-        />
+        <meshBasicMaterial color='#ffaa00' transparent opacity={0.7} depthWrite={false} />
       </mesh>
 
       {/* Arrow head (triangle) */}
-      <mesh
-        position={[endX, 0.1, endZ]}
-        rotation={[-Math.PI / 2, 0, -angle]}
-      >
+      <mesh position={[endX, 0.1, endZ]} rotation={[-Math.PI / 2, 0, -angle]}>
         <coneGeometry args={[0.5, arrowHeadLength, 3]} />
-        <meshBasicMaterial
-          color='#ffaa00'
-          transparent
-          opacity={0.8}
-        />
+        <meshBasicMaterial color='#ffaa00' transparent opacity={0.8} />
       </mesh>
     </group>
   )

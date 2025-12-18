@@ -22,13 +22,9 @@ interface AquaplaningState {
   setAquaplaning: (
     isAquaplaning: boolean,
     intensity: number,
-    affectedWheels: [boolean, boolean, boolean, boolean]
+    affectedWheels: [boolean, boolean, boolean, boolean],
   ) => void
-  setThermalShock: (
-    isShocked: boolean,
-    penalty: number,
-    recoveryTime: number
-  ) => void
+  setThermalShock: (isShocked: boolean, penalty: number, recoveryTime: number) => void
   reset: () => void
 }
 

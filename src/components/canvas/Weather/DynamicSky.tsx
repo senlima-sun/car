@@ -35,7 +35,10 @@ function lerpAtmosphere(from: AtmosphereConfig, to: AtmosphereConfig, t: number)
 }
 
 // Compute atmosphere based on dynamic temperature and rain
-function computeAtmosphereFromDynamic(temperature: number, rainIntensity: number): AtmosphereConfig {
+function computeAtmosphereFromDynamic(
+  temperature: number,
+  rainIntensity: number,
+): AtmosphereConfig {
   // Determine base atmosphere from temperature
   let baseConfig = ATMOSPHERE_CONFIG.dry
   let blendTarget: AtmosphereConfig | null = null

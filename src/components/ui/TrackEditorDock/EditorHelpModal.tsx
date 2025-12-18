@@ -94,22 +94,29 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 const shortcuts = [
-  { section: 'Placement', items: [
-    { key: 'Click', description: 'Place object / Set point' },
-    { key: 'R', description: 'Rotate object 90 degrees' },
-    { key: 'Esc', description: 'Cancel current action' },
-  ]},
-  { section: 'Editing', items: [
-    { key: 'Del', description: 'Delete selected object' },
-    { key: 'Backspace', description: 'Delete selected object' },
-  ]},
-  { section: 'Camera', items: [
-    { key: 'WASD', description: 'Pan camera' },
-    { key: 'Scroll', description: 'Zoom in/out' },
-  ]},
-  { section: 'Mode', items: [
-    { key: 'T', description: 'Toggle editor / race mode' },
-  ]},
+  {
+    section: 'Placement',
+    items: [
+      { key: 'Click', description: 'Place object / Set point' },
+      { key: 'R', description: 'Rotate object 90 degrees' },
+      { key: 'Esc', description: 'Cancel current action' },
+    ],
+  },
+  {
+    section: 'Editing',
+    items: [
+      { key: 'Del', description: 'Delete selected object' },
+      { key: 'Backspace', description: 'Delete selected object' },
+    ],
+  },
+  {
+    section: 'Camera',
+    items: [
+      { key: 'WASD', description: 'Pan camera' },
+      { key: 'Scroll', description: 'Zoom in/out' },
+    ],
+  },
+  { section: 'Mode', items: [{ key: 'T', description: 'Toggle editor / race mode' }] },
 ]
 
 export default function EditorHelpModal() {
@@ -117,11 +124,7 @@ export default function EditorHelpModal() {
 
   return (
     <>
-      <button
-        style={styles.button}
-        onClick={() => setIsOpen(true)}
-        title="Keyboard shortcuts"
-      >
+      <button style={styles.button} onClick={() => setIsOpen(true)} title='Keyboard shortcuts'>
         ?
       </button>
 

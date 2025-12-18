@@ -22,7 +22,7 @@ export function SteeringWheel({ steerAngle, speed, showSpeedDisplay }: SteeringW
     smoothSteeringWheel.current = THREE.MathUtils.lerp(
       smoothSteeringWheel.current,
       steerAngle,
-      lerpSpeed * delta
+      lerpSpeed * delta,
     )
     if (steeringWheelRef.current) {
       steeringWheelRef.current.rotation.set(Math.PI / 2, 0, -smoothSteeringWheel.current * 3)

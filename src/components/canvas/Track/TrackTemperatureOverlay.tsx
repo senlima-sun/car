@@ -109,7 +109,10 @@ export default function TrackTemperatureOverlay() {
     // Update shader uniforms
     if (materialRef.current) {
       materialRef.current.uniforms.temperatureMap.value = dataTexture
-      materialRef.current.uniforms.weatherType.value = computeWeatherType(temperature, rainIntensity)
+      materialRef.current.uniforms.weatherType.value = computeWeatherType(
+        temperature,
+        rainIntensity,
+      )
       materialRef.current.uniforms.heatmapVisible.value = isHeatmapVisible
 
       // Get ambient conditions from WASM physics if initialized
@@ -132,11 +135,7 @@ export default function TrackTemperatureOverlay() {
   const overlayHeight = TRACK_TEMP_CONFIG.worldBounds.maxZ - TRACK_TEMP_CONFIG.worldBounds.minZ
 
   return (
-    <mesh
-      position={[0, 0.03, 0]}
-      rotation={[-Math.PI / 2, 0, 0]}
-      renderOrder={999}
-    >
+    <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={999}>
       <planeGeometry args={[overlayWidth, overlayHeight]} />
       <shaderMaterial
         ref={materialRef}

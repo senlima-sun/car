@@ -6,28 +6,28 @@
 
 // Temperature breakpoints in Celsius
 export const TEMP_BREAKPOINTS = {
-  veryCold: 10,  // Below: deep blue
-  cold: 30,      // 10-30: light blue
-  moderate: 60,  // 30-60: green
-  warm: 90,      // 60-90: orange
+  veryCold: 10, // Below: deep blue
+  cold: 30, // 10-30: light blue
+  moderate: 60, // 30-60: green
+  warm: 90, // 60-90: orange
   // Above 90: red
 } as const
 
 // Color palette (hex strings for CSS)
 export const TEMP_COLORS = {
-  deepCold: '#1a3399',  // rgb(26, 51, 153)
-  cold: '#3380e6',      // rgb(51, 128, 230)
-  moderate: '#33cc4d',  // rgb(51, 204, 77)
-  warm: '#ff991a',      // rgb(255, 153, 26)
-  hot: '#ff261a',       // rgb(255, 38, 26)
+  deepCold: '#1a3399', // rgb(26, 51, 153)
+  cold: '#3380e6', // rgb(51, 128, 230)
+  moderate: '#33cc4d', // rgb(51, 204, 77)
+  warm: '#ff991a', // rgb(255, 153, 26)
+  hot: '#ff261a', // rgb(255, 38, 26)
 } as const
 
 // RGB values normalized to 0-1 for shader uniforms
 export const TEMP_COLORS_RGB = {
-  deepCold: [0.102, 0.200, 0.600] as const,
-  cold: [0.200, 0.502, 0.902] as const,
-  moderate: [0.200, 0.800, 0.302] as const,
-  warm: [1.0, 0.600, 0.102] as const,
+  deepCold: [0.102, 0.2, 0.6] as const,
+  cold: [0.2, 0.502, 0.902] as const,
+  moderate: [0.2, 0.8, 0.302] as const,
+  warm: [1.0, 0.6, 0.102] as const,
   hot: [1.0, 0.149, 0.102] as const,
 } as const
 
@@ -56,7 +56,7 @@ function lerp(a: number, b: number, t: number): number {
 function lerpRGB(
   a: readonly [number, number, number],
   b: readonly [number, number, number],
-  t: number
+  t: number,
 ): [number, number, number] {
   return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]
 }

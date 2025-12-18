@@ -7,10 +7,10 @@ export default function EditorGrid() {
       args={[20, 20]}
       cellSize={0.5}
       cellThickness={0.5}
-      cellColor="#444444"
+      cellColor='#444444'
       sectionSize={2}
       sectionThickness={1}
-      sectionColor="#666666"
+      sectionColor='#666666'
       fadeDistance={30}
       fadeStrength={1}
       followCamera={false}

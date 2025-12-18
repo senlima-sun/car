@@ -1,10 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import {
-  thermalVertexShader,
-  thermalFragmentShader,
-  TEMP_SCALES,
-} from '../shaders/thermalView'
+import { thermalVertexShader, thermalFragmentShader, TEMP_SCALES } from '../shaders/thermalView'
 
 // Thermal material for tires - created once and uniforms updated
 // Uses unified Celsius-based temperature colors

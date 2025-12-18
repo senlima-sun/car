@@ -52,8 +52,15 @@ export default function CurvedRoadSegment({
   }, [exitSurface])
 
   // Generate the road surface geometry as a continuous mesh
-  const { roadGeometry, leftEdgeGeometry, rightEdgeGeometry, centerLineDashes, selectionGeometry, sensorColliders, roadBounds } =
-    useMemo(() => {
+  const {
+    roadGeometry,
+    leftEdgeGeometry,
+    rightEdgeGeometry,
+    centerLineDashes,
+    selectionGeometry,
+    sensorColliders,
+    roadBounds,
+  } = useMemo(() => {
     const start = new Vector3(...startPoint)
     const control = new Vector3(...controlPoint)
     const end = new Vector3(...endPoint)
@@ -264,7 +271,8 @@ export default function CurvedRoadSegment({
     selectionGeo.computeVertexNormals()
 
     // Generate sensor collider positions along the curve (approximated with box colliders)
-    const sensorData: { position: [number, number, number]; rotation: number; length: number }[] = []
+    const sensorData: { position: [number, number, number]; rotation: number; length: number }[] =
+      []
     const numSensors = Math.max(4, Math.ceil(curveLength / 8)) // One sensor every ~8 units
     for (let i = 0; i < numSensors; i++) {
       const t1 = i / numSensors
@@ -392,7 +400,13 @@ export default function CurvedRoadSegment({
       {/* Selection highlight for auto curb mode */}
       {isSelectedForCurb && (
         <mesh geometry={selectionGeometry}>
-          <meshBasicMaterial color='#22c55e' transparent opacity={0.3} depthWrite={false} side={2} />
+          <meshBasicMaterial
+            color='#22c55e'
+            transparent
+            opacity={0.3}
+            depthWrite={false}
+            side={2}
+          />
         </mesh>
       )}
     </>
@@ -405,11 +419,7 @@ export default function CurvedRoadSegment({
 
   // Normal mode - with physics (ground provides collision, road only has sensors)
   return (
-    <RigidBody
-      type='fixed'
-      position={[0, 0.01, 0]}
-      colliders={false}
-    >
+    <RigidBody type='fixed' position={[0, 0.01, 0]} colliders={false}>
       {roadVisuals}
 
       {/* Surface detection sensors along the curve */}

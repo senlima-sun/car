@@ -13,14 +13,16 @@ const listItemStyle: React.CSSProperties = {
 }
 
 export default function PartListPanel() {
-  const parts = usePartEditorStore((s) => s.parts)
-  const selectedPartId = usePartEditorStore((s) => s.selectedPartId)
-  const selectPart = usePartEditorStore((s) => s.selectPart)
-  const removePart = usePartEditorStore((s) => s.removePart)
+  const parts = usePartEditorStore(s => s.parts)
+  const selectedPartId = usePartEditorStore(s => s.selectedPartId)
+  const selectPart = usePartEditorStore(s => s.selectPart)
+  const removePart = usePartEditorStore(s => s.removePart)
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#888', textTransform: 'uppercase' }}>
+      <h3
+        style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#888', textTransform: 'uppercase' }}
+      >
         Parts ({parts.length})
       </h3>
       {parts.length === 0 ? (
@@ -29,7 +31,7 @@ export default function PartListPanel() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          {parts.map((part) => {
+          {parts.map(part => {
             const isSelected = selectedPartId === part.id
             const icon = GEOMETRY_DEFAULTS[part.geometryType]?.icon || '?'
             return (
@@ -55,11 +57,11 @@ export default function PartListPanel() {
                     padding: '2px 6px',
                     fontSize: '14px',
                   }}
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation()
                     removePart(part.id)
                   }}
-                  title="Delete part"
+                  title='Delete part'
                 >
                   x
                 </button>

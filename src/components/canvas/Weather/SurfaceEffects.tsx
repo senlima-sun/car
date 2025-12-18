@@ -101,11 +101,7 @@ function PuddlePatches() {
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_PUDDLES]}>
       <circleGeometry args={[1, 16]}>
-        <instancedBufferAttribute
-          ref={colorRef}
-          attach='attributes-color'
-          args={[colorArray, 3]}
-        />
+        <instancedBufferAttribute ref={colorRef} attach='attributes-color' args={[colorArray, 3]} />
       </circleGeometry>
       <meshStandardMaterial
         vertexColors

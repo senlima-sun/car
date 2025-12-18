@@ -66,7 +66,9 @@ export function Wheel({
           <group rotation={[0, wheelRotation, 0]}>
             {/* Main tire body - solid cylinder (shortened for rounded edges) */}
             <mesh castShadow>
-              <cylinderGeometry args={[radius - edgeRadius, radius - edgeRadius, width - edgeRadius * 2, 32]} />
+              <cylinderGeometry
+                args={[radius - edgeRadius, radius - edgeRadius, width - edgeRadius * 2, 32]}
+              />
               {isThermalView ? (
                 <primitive object={thermalMaterial} attach='material' />
               ) : (
@@ -87,7 +89,11 @@ export function Wheel({
             {/* Rounded edge - outer side */}
             <mesh
               castShadow
-              position={[0, isLeft ? (width - edgeRadius * 2) / 2 : -(width - edgeRadius * 2) / 2, 0]}
+              position={[
+                0,
+                isLeft ? (width - edgeRadius * 2) / 2 : -(width - edgeRadius * 2) / 2,
+                0,
+              ]}
               rotation={[Math.PI / 2, 0, 0]}
             >
               <torusGeometry args={[radius - edgeRadius, edgeRadius, 12, 32]} />
@@ -101,7 +107,11 @@ export function Wheel({
             {/* Rounded edge - inner side */}
             <mesh
               castShadow
-              position={[0, isLeft ? -(width - edgeRadius * 2) / 2 : (width - edgeRadius * 2) / 2, 0]}
+              position={[
+                0,
+                isLeft ? -(width - edgeRadius * 2) / 2 : (width - edgeRadius * 2) / 2,
+                0,
+              ]}
               rotation={[Math.PI / 2, 0, 0]}
             >
               <torusGeometry args={[radius - edgeRadius, edgeRadius, 12, 32]} />

@@ -8,7 +8,7 @@ import { PART_EDITOR_STORAGE_KEY } from '@/components/part-editor/constants'
 function createPathFromPoints(
   path: THREE.Shape | THREE.Path,
   points: [number, number][],
-  bevelRadius: number
+  bevelRadius: number,
 ): void {
   if (points.length < 3) {
     path.moveTo(0, 0)
@@ -66,7 +66,7 @@ function createExtrudeGeometry(
   points: [number, number][],
   depth: number,
   bevelRadius: number,
-  holes?: [number, number][][]
+  holes?: [number, number][][],
 ): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape()
   createPathFromPoints(shape, points, bevelRadius)
@@ -233,8 +233,8 @@ export default function DynamicParts({ config, loadFromStorage = false }: Dynami
   if (parts.length === 0) return null
 
   return (
-    <group name="dynamic-parts">
-      {parts.map((part) => (
+    <group name='dynamic-parts'>
+      {parts.map(part => (
         <DynamicPart key={part.id} part={part} />
       ))}
     </group>

@@ -1,8 +1,5 @@
 import { useTemperatureStore } from '../../../stores/useTemperatureStore'
-import {
-  engineTempToCelsius,
-  tireTempToCelsius,
-} from '../../../wasm/PhysicsBridge'
+import { engineTempToCelsius, tireTempToCelsius } from '../../../wasm/PhysicsBridge'
 import { celsiusToColor } from '../../../utils/temperatureColors'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -99,10 +96,7 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 function getTempColor(normalized: number, type: 'tire' | 'engine'): string {
-  const celsius =
-    type === 'tire'
-      ? tireTempToCelsius(normalized)
-      : engineTempToCelsius(normalized)
+  const celsius = type === 'tire' ? tireTempToCelsius(normalized) : engineTempToCelsius(normalized)
   return celsiusToColor(celsius)
 }
 
@@ -150,9 +144,9 @@ function TireDisplay({
 }
 
 export default function TemperaturePanel() {
-  const engine = useTemperatureStore((state) => state.engine)
-  const tires = useTemperatureStore((state) => state.tires)
-  const tiresInWindow = useTemperatureStore((state) => state.tiresInWindow)
+  const engine = useTemperatureStore(state => state.engine)
+  const tires = useTemperatureStore(state => state.tires)
+  const tiresInWindow = useTemperatureStore(state => state.tiresInWindow)
 
   const engineTempC = Math.round(engineTempToCelsius(engine.temperature))
   const powerLoss = Math.round((1 - engine.power_multiplier) * 100)
@@ -165,9 +159,7 @@ export default function TemperaturePanel() {
       <div style={styles.engineSection as React.CSSProperties}>
         <div style={styles.engineLabel}>
           <span>ENGINE</span>
-          <span style={{ color: getTempColor(engine.temperature, 'engine') }}>
-            {engineTempC}C
-          </span>
+          <span style={{ color: getTempColor(engine.temperature, 'engine') }}>{engineTempC}C</span>
         </div>
         <div style={styles.engineBar}>
           <div
@@ -179,9 +171,7 @@ export default function TemperaturePanel() {
           />
         </div>
         {powerLoss > 0 && (
-          <div style={styles.powerLoss as React.CSSProperties}>
-            -{powerLoss}% POWER
-          </div>
+          <div style={styles.powerLoss as React.CSSProperties}>-{powerLoss}% POWER</div>
         )}
       </div>
 
@@ -190,13 +180,13 @@ export default function TemperaturePanel() {
         {/* Left side */}
         <div style={styles.tireColumn as React.CSSProperties}>
           <TireDisplay
-            label="FL"
+            label='FL'
             inner={tires.front_left_inner}
             outer={tires.front_left_outer}
             inWindow={tiresInWindow[0]}
           />
           <TireDisplay
-            label="RL"
+            label='RL'
             inner={tires.rear_left_inner}
             outer={tires.rear_left_outer}
             inWindow={tiresInWindow[2]}
@@ -209,13 +199,13 @@ export default function TemperaturePanel() {
         {/* Right side */}
         <div style={styles.tireColumn as React.CSSProperties}>
           <TireDisplay
-            label="FR"
+            label='FR'
             inner={tires.front_right_inner}
             outer={tires.front_right_outer}
             inWindow={tiresInWindow[1]}
           />
           <TireDisplay
-            label="RR"
+            label='RR'
             inner={tires.rear_right_inner}
             outer={tires.rear_right_outer}
             inWindow={tiresInWindow[3]}

@@ -117,7 +117,9 @@ export default function AquaplaningIndicator() {
         {isAquaplaning && (
           <div style={styles.warning}>
             <div style={styles.title}>AQUAPLANING</div>
-            <div style={styles.subtitle}>Reduce Speed - Grip Loss {Math.round(intensity * 100)}%</div>
+            <div style={styles.subtitle}>
+              Reduce Speed - Grip Loss {Math.round(intensity * 100)}%
+            </div>
             <div style={styles.wheels}>
               {affectedWheels.map((affected, i) => (
                 <div
@@ -138,7 +140,8 @@ export default function AquaplaningIndicator() {
           <div style={styles.thermalShock}>
             <div style={styles.shockTitle}>Tire Thermal Shock</div>
             <div style={styles.shockInfo}>
-              Grip -{Math.round(thermalShockPenalty * 100)}% | Recovery: {thermalShockRecoveryTime.toFixed(1)}s
+              Grip -{Math.round(thermalShockPenalty * 100)}% | Recovery:{' '}
+              {thermalShockRecoveryTime.toFixed(1)}s
             </div>
           </div>
         )}

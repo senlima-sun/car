@@ -30,13 +30,13 @@ export const TRACK_TEMP_CONFIG = {
   heatRadius: 4, // Affect cells within this radius of car
 
   // Base decay rate per second - matched to Rust physics engine
-  baseDecayRate: 0.004,  // Track cools slowly in normal conditions
+  baseDecayRate: 0.004, // Track cools slowly in normal conditions
   coldDecayMultiplier: 4.5, // Cold weather cools faster (< 5°C)
   hotDecayMultiplier: 0.5, // Hot weather keeps track warm (> 35°C)
   rainDecayMultiplier: 3.0, // Rain cools track faster
 
   // Road surface thermal properties (asphalt retains heat better)
-  roadDecayMultiplier: 0.3,    // Roads lose heat 70% slower than grass
+  roadDecayMultiplier: 0.3, // Roads lose heat 70% slower than grass
   roadRainDecayMultiplier: 2.5, // Rain accelerates road cooling (water conducts heat)
 
   // Wetness behavior

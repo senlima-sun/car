@@ -1,4 +1,12 @@
-export type GeometryType = 'box' | 'cylinder' | 'sphere' | 'torus' | 'cone' | 'capsule' | 'roundedbox' | 'extrude'
+export type GeometryType =
+  | 'box'
+  | 'cylinder'
+  | 'sphere'
+  | 'torus'
+  | 'cone'
+  | 'capsule'
+  | 'roundedbox'
+  | 'extrude'
 
 export type TransformMode = 'translate' | 'rotate' | 'scale'
 

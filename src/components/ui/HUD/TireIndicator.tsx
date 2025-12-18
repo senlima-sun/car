@@ -123,17 +123,27 @@ function getWearColor(wear: number): string {
 }
 
 // Single wheel indicator component
-function WheelIndicator({ label, wear, compoundColor }: { label: string; wear: number; compoundColor: string }) {
+function WheelIndicator({
+  label,
+  wear,
+  compoundColor,
+}: {
+  label: string
+  wear: number
+  compoundColor: string
+}) {
   const remaining = Math.max(0, 100 - wear)
   const color = getWearColor(wear)
 
   return (
     <div style={styles.wheelIndicator}>
       <span style={styles.wheelLabel}>{label}</span>
-      <div style={{
-        ...styles.wheelBar,
-        border: `3px solid ${compoundColor}`,
-      }}>
+      <div
+        style={{
+          ...styles.wheelBar,
+          border: `3px solid ${compoundColor}`,
+        }}
+      >
         <div
           style={{
             ...styles.wheelFill,
@@ -162,7 +172,7 @@ export default function TireIndicator() {
     perWheelWear.frontLeft,
     perWheelWear.frontRight,
     perWheelWear.rearLeft,
-    perWheelWear.rearRight
+    perWheelWear.rearRight,
   )
   const isFlashing = maxWear >= TIRE_WEAR_CRITICAL
 
@@ -202,8 +212,8 @@ export default function TireIndicator() {
       <div style={styles.wheelsContainer}>
         {/* Left wheels */}
         <div style={styles.wheelColumn}>
-          <WheelIndicator label="FL" wear={perWheelWear.frontLeft} compoundColor={config.color} />
-          <WheelIndicator label="RL" wear={perWheelWear.rearLeft} compoundColor={config.color} />
+          <WheelIndicator label='FL' wear={perWheelWear.frontLeft} compoundColor={config.color} />
+          <WheelIndicator label='RL' wear={perWheelWear.rearLeft} compoundColor={config.color} />
         </div>
 
         {/* Car body silhouette */}
@@ -211,8 +221,8 @@ export default function TireIndicator() {
 
         {/* Right wheels */}
         <div style={styles.wheelColumn}>
-          <WheelIndicator label="FR" wear={perWheelWear.frontRight} compoundColor={config.color} />
-          <WheelIndicator label="RR" wear={perWheelWear.rearRight} compoundColor={config.color} />
+          <WheelIndicator label='FR' wear={perWheelWear.frontRight} compoundColor={config.color} />
+          <WheelIndicator label='RR' wear={perWheelWear.rearRight} compoundColor={config.color} />
         </div>
       </div>
 

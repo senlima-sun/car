@@ -52,8 +52,12 @@ async function buildApp(): Promise<boolean> {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>3D Car Racing Game - Dev</title>
-    <link rel="icon" href="/favicon.ico" type="image/x-icon" />${cssFileName ? `
-    <link rel="stylesheet" href="/${cssFileName}" />` : ''}
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />${
+      cssFileName
+        ? `
+    <link rel="stylesheet" href="/${cssFileName}" />`
+        : ''
+    }
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body, #root { width: 100%; height: 100%; overflow: hidden; }
