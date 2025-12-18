@@ -43,6 +43,8 @@ export interface CarPhysicsOutput {
   temperature: TemperatureOutput
   aquaplaning: AquaplaningState
   tire_thermal_shock: TireThermalShock
+  ers: ErsState
+  active_aero: ActiveAeroState
 }
 
 export interface WeatherModifiers {
@@ -156,10 +158,13 @@ export interface TemperatureOutput {
 }
 
 // ============================================================================
-// ERS (Energy Recovery System) Types
+// ERS (Energy Recovery System) Types - 2026 F1 Regulations
 // ============================================================================
 
-export type ErsMode = 'Balanced' | 'Attack' | 'Harvest'
+export type ErsMode = 'Balanced' | 'Attack' | 'Harvest' | 'Overtake'
+
+/** Source of energy harvesting (2026 ERS) */
+export type HarvestSource = 'None' | 'Braking' | 'Coast' | 'SuperClip'
 
 export interface ErsState {
   battery_charge: number // 0.0-1.0
@@ -167,6 +172,10 @@ export interface ErsState {
   power_flow: number // kW (positive=deploy, negative=harvest)
   is_deploying: boolean
   is_harvesting: boolean
+  // 2026 ERS fields
+  super_clip_active: boolean // True when harvesting at full throttle
+  harvest_source: HarvestSource
+  overtake_available: boolean // True when in testing mode
 }
 
 // ============================================================================
@@ -648,6 +657,13 @@ export function setErsBatteryCharge(charge: number): void {
 }
 
 /**
+ * Set ERS overtake availability (testing mode only)
+ */
+export function setErsOvertakeAvailable(available: boolean): void {
+  getPhysicsEngine().set_ers_overtake_available(available)
+}
+
+/**
  * Get current ERS state from physics output
  */
 export function getErsState(): ErsState {
@@ -657,6 +673,9 @@ export function getErsState(): ErsState {
     power_flow: 0, // Will be updated from physics output
     is_deploying: false,
     is_harvesting: false,
+    super_clip_active: false, // Will be updated from physics output
+    harvest_source: 'None', // Will be updated from physics output
+    overtake_available: false, // Will be updated from physics output
   }
 }
 

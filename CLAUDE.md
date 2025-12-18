@@ -119,7 +119,8 @@ All core physics calculations run in Rust/WASM for performance:
 | Space         | Handbrake                          |
 | Shift         | Handbrake                          |
 | V             | Toggle Aero Mode (Corner/Straight) |
-| B             | Cycle ERS Mode                     |
+| B             | Cycle ERS Mode (HRV/BAL/ATK)       |
+| O             | Activate Overtake (testing mode)   |
 | C             | Toggle camera (third/first person) |
 | T             | Toggle customize mode              |
 | Q             | Cycle weather                      |

@@ -217,15 +217,31 @@ pub enum ErsMode {
     Balanced,
     Attack,
     Harvest,
+    Overtake, // 2026: Max deploy burst, testing mode only
+}
+
+/// Source of energy harvesting (2026 ERS)
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum HarvestSource {
+    #[default]
+    None,
+    Braking,
+    Coast,
+    SuperClip, // 2026: Harvesting at full throttle when engine has surplus
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct ErsState {
-    pub battery_charge: f32,  // 0.0-1.0
+    pub battery_charge: f32,       // 0.0-1.0
     pub mode: ErsMode,
-    pub power_flow: f32,      // kW (positive=deploy, negative=harvest)
+    pub power_flow: f32,           // kW (positive=deploy, negative=harvest)
     pub is_deploying: bool,
     pub is_harvesting: bool,
+    // 2026 ERS fields
+    pub super_clip_active: bool,   // True when harvesting at full throttle
+    pub harvest_source: HarvestSource,
+    pub overtake_available: bool,  // True when in testing mode
 }
 
 // ============================================================================

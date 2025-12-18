@@ -154,6 +154,10 @@ impl PhysicsEngine {
         self.ers.set_battery_charge(charge);
     }
 
+    pub fn set_ers_overtake_available(&mut self, available: bool) {
+        self.ers.set_overtake_available(available);
+    }
+
     // ========================================================================
     // Active Aero API
     // ========================================================================

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ErsMode, ErsState } from '../wasm/PhysicsBridge'
+import type { ErsMode, ErsState, HarvestSource } from '../wasm/PhysicsBridge'
 
 interface ErsStoreState {
   batteryCharge: number // 0-100
@@ -7,13 +7,19 @@ interface ErsStoreState {
   powerFlow: number // kW (positive=deploy, negative=harvest)
   isDeploying: boolean
   isHarvesting: boolean
+  // 2026 ERS fields
+  superClipActive: boolean
+  harvestSource: HarvestSource
+  overtakeAvailable: boolean
 
   // Actions
   setMode: (mode: ErsMode) => void
   cycleMode: () => void
+  activateOvertake: () => void
   syncFromPhysics: (state: ErsState) => void
 }
 
+// Standard mode cycle (Overtake is manual activation only)
 const MODE_CYCLE: ErsMode[] = ['Balanced', 'Attack', 'Harvest']
 
 export const useErsStore = create<ErsStoreState>((set, get) => ({
@@ -22,6 +28,9 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
   powerFlow: 0,
   isDeploying: false,
   isHarvesting: false,
+  superClipActive: false,
+  harvestSource: 'None',
+  overtakeAvailable: false,
 
   setMode: (mode: ErsMode) => {
     set({ mode })
@@ -29,10 +38,22 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
 
   cycleMode: () => {
     const currentMode = get().mode
+    // If in Overtake, cycle back to Balanced
+    if (currentMode === 'Overtake') {
+      set({ mode: 'Balanced' })
+      return
+    }
     const currentIndex = MODE_CYCLE.indexOf(currentMode)
     const nextIndex = (currentIndex + 1) % MODE_CYCLE.length
     const nextMode = MODE_CYCLE[nextIndex]
     set({ mode: nextMode })
+  },
+
+  activateOvertake: () => {
+    const { overtakeAvailable } = get()
+    if (overtakeAvailable) {
+      set({ mode: 'Overtake' })
+    }
   },
 
   syncFromPhysics: (state: ErsState) => {
@@ -42,6 +63,9 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
       powerFlow: state.power_flow,
       isDeploying: state.is_deploying,
       isHarvesting: state.is_harvesting,
+      superClipActive: state.super_clip_active,
+      harvestSource: state.harvest_source,
+      overtakeAvailable: state.overtake_available,
     })
   },
 }))

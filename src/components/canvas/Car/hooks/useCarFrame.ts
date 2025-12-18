@@ -85,6 +85,7 @@ export function useCarFrame({
 
   // ERS mode cycling and sync
   const cycleErsMode = useErsStore(state => state.cycleMode)
+  const activateOvertake = useErsStore(state => state.activateOvertake)
   const ersMode = useErsStore(state => state.mode)
   const syncErsState = useErsStore(state => state.syncFromPhysics)
 
@@ -113,6 +114,7 @@ export function useCarFrame({
   const lastHeatmapToggle = useRef(0)
   const lastGridToggle = useRef(0)
   const lastErsModeToggle = useRef(0)
+  const lastOvertakeToggle = useRef(0)
   const lastAeroModeToggle = useRef(0)
   const lastBrakeIncrToggle = useRef(0)
   const lastBrakeDecrToggle = useRef(0)
@@ -142,6 +144,7 @@ export function useCarFrame({
       brake,
       handbrake,
       ers,
+      overtake,
       aero,
       brakeIncr,
       brakeDecr,
@@ -183,6 +186,16 @@ export function useCarFrame({
     if (ers && state.clock.elapsedTime - lastErsModeToggle.current > 0.3) {
       cycleErsMode()
       lastErsModeToggle.current = state.clock.elapsedTime
+    }
+
+    // Overtake mode activation with debounce (O key) - testing mode only
+    if (
+      isTestingMode &&
+      overtake &&
+      state.clock.elapsedTime - lastOvertakeToggle.current > 0.3
+    ) {
+      activateOvertake()
+      lastOvertakeToggle.current = state.clock.elapsedTime
     }
 
     // Active Aero mode toggle with debounce (V key)
@@ -257,6 +270,9 @@ export function useCarFrame({
 
     // Update curb state in WASM
     physics.setOnCurb(isOnCurb, curbSide || undefined)
+
+    // Sync testing mode to ERS overtake availability
+    physics.setErsOvertakeAvailable(useGameStore.getState().isTestingMode)
 
     // Sync ERS mode from UI to physics engine (get fresh state to avoid stale closure)
     physics.setErsMode(useErsStore.getState().mode)

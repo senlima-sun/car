@@ -47,6 +47,7 @@ import {
   getErsMode,
   getErsBatteryCharge,
   setErsBatteryCharge,
+  setErsOvertakeAvailable,
   getErsState,
   // Active Aero API
   setAeroMode,
@@ -131,6 +132,7 @@ interface PhysicsContextValue {
   getErsMode: typeof getErsMode
   getErsBatteryCharge: typeof getErsBatteryCharge
   setErsBatteryCharge: typeof setErsBatteryCharge
+  setErsOvertakeAvailable: typeof setErsOvertakeAvailable
   getErsState: typeof getErsState
   // Active Aero API
   setAeroMode: typeof setAeroMode
@@ -239,6 +241,7 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     getErsMode,
     getErsBatteryCharge,
     setErsBatteryCharge,
+    setErsOvertakeAvailable,
     getErsState,
     // Active Aero API
     setAeroMode,

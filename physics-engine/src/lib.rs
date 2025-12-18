@@ -190,6 +190,12 @@ impl PhysicsEngine {
         self.inner.set_ers_battery_charge(charge);
     }
 
+    /// Set ERS overtake availability (testing mode only)
+    #[wasm_bindgen]
+    pub fn set_ers_overtake_available(&mut self, available: bool) {
+        self.inner.set_ers_overtake_available(available);
+    }
+
     // ========================================================================
     // Active Aero API
     // ========================================================================

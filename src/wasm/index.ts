@@ -49,6 +49,7 @@ export {
   getErsMode,
   getErsBatteryCharge,
   setErsBatteryCharge,
+  setErsOvertakeAvailable,
   getErsState,
   // Active Aero API
   setAeroMode,
@@ -76,6 +77,7 @@ export type {
   WindModifiers,
   ErsMode,
   ErsState,
+  HarvestSource,
   AeroMode,
   ActiveAeroState,
   EngineBrakingLevel,
