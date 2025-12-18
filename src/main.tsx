@@ -1,6 +1,7 @@
 import { StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { PostHogProvider } from 'posthog-js/react'
+import './styles.css'
 import App from './App'
 import PartEditor from './components/part-editor'
 
