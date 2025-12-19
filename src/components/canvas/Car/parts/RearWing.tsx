@@ -50,28 +50,28 @@ export function RearWing() {
   })
 
   return (
-    <group position={[0, 0.6, -1.5]}>
+    <group position={[0, 0.45, -1.5]}>
       {/* Support pylons */}
       <mesh castShadow position={[-0.35, -0.25, 0]}>
         <boxGeometry args={[0.03, 0.5, 0.08]} />
-        <meshStandardMaterial color="#1a1a1a" metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial color='#1a1a1a' metalness={0.8} roughness={0.2} />
       </mesh>
       <mesh castShadow position={[0.35, -0.25, 0]}>
         <boxGeometry args={[0.03, 0.5, 0.08]} />
-        <meshStandardMaterial color="#1a1a1a" metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial color='#1a1a1a' metalness={0.8} roughness={0.2} />
       </mesh>
 
       {/* Main wing plane (fixed) */}
       <mesh castShadow>
         <boxGeometry args={[0.9, 0.02, 0.3]} />
-        <meshStandardMaterial color="#2a2a2a" metalness={0.7} roughness={0.3} />
+        <meshStandardMaterial color='#2a2a2a' metalness={0.7} roughness={0.3} />
       </mesh>
 
       {/* Main flap (middle element) */}
       <group ref={mainFlapRef} position={[0, 0.04, 0]}>
         <mesh castShadow position={[0, 0.015, 0]}>
           <boxGeometry args={[0.85, 0.02, 0.28]} />
-          <meshStandardMaterial color="#3a3a3a" metalness={0.6} roughness={0.4} />
+          <meshStandardMaterial color='#3a3a3a' metalness={0.6} roughness={0.4} />
         </mesh>
       </group>
 
@@ -79,20 +79,20 @@ export function RearWing() {
       <group ref={drsFlapRef} position={[0, 0.08, 0]}>
         <mesh castShadow position={[0, 0.015, 0]}>
           <boxGeometry args={[0.8, 0.02, 0.26]} />
-          <meshStandardMaterial color="#cc0000" metalness={0.7} roughness={0.3} />
+          <meshStandardMaterial color='#ffffff' metalness={0.7} roughness={0.3} />
         </mesh>
       </group>
 
       {/* Left end plate */}
       <mesh castShadow position={[-0.45, 0.04, 0]}>
         <boxGeometry args={[0.015, 0.18, 0.4]} />
-        <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.3} />
+        <meshStandardMaterial color='#111111' metalness={0.8} roughness={0.3} />
       </mesh>
 
       {/* Right end plate */}
       <mesh castShadow position={[0.45, 0.04, 0]}>
         <boxGeometry args={[0.015, 0.18, 0.4]} />
-        <meshStandardMaterial color="#111111" metalness={0.8} roughness={0.3} />
+        <meshStandardMaterial color='#111111' metalness={0.8} roughness={0.3} />
       </mesh>
     </group>
   )

@@ -1,9 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
 import RacePanel from './RacePanel'
-import StatsPanel from './StatsPanel'
-import ErsIndicator from './ErsIndicator'
-import AeroIndicator from './AeroIndicator'
-import BrakeIndicator from './BrakeIndicator'
 import PitStopUI from './PitStopUI'
 import StatusBar from './StatusBar'
 import KeymapModal from './KeymapModal'
@@ -35,15 +31,6 @@ const styles: Record<string, React.CSSProperties> = {
     bottom: 20,
     left: '50%',
     transform: 'translateX(-50%)',
-  },
-  bottomRight: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-    alignItems: 'flex-end',
   },
   bottomLeft: {
     position: 'absolute',
@@ -172,17 +159,11 @@ export default function HUD() {
           {/* Mobile: Centered compact speed/gear display */}
           {isMobile && <MobileSpeedGear />}
 
-          {/* Desktop: Race panel bottom-center, Stats panel bottom-right, Debug panel bottom-left */}
+          {/* Desktop: Unified race panel bottom-center, Debug panel bottom-left */}
           {!isMobile && cameraMode !== 'first-person' && (
             <>
               <div style={styles.bottomCenter}>
                 <RacePanel />
-              </div>
-              <div style={styles.bottomRight as React.CSSProperties}>
-                <AeroIndicator />
-                <ErsIndicator />
-                <BrakeIndicator />
-                <StatsPanel />
               </div>
               {showDebugPanel && (
                 <div style={styles.bottomLeft}>
