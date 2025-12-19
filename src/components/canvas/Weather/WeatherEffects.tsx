@@ -17,7 +17,7 @@ function RainEffect() {
   const windZ = 0.1
 
   // Each drop needs 2 vertices (start and end of line)
-  const { geometry, velocities, basePositions } = useMemo(() => {
+  const { geometry, velocities } = useMemo(() => {
     const positions = new Float32Array(dropCount * 6) // 2 vertices * 3 coords
     const velocities = new Float32Array(dropCount)
     const basePositions = new Float32Array(dropCount * 3) // Store base position for each drop

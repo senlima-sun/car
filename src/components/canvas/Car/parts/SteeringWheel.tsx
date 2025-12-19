@@ -1,77 +1,57 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Text } from '@react-three/drei'
+import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
-import { useCarStore } from '@/stores/useCarStore'
-import { useErsStore } from '@/stores/useErsStore'
-import { useActiveAeroStore } from '@/stores/useActiveAeroStore'
-import { useBrakeStore } from '@/stores/useBrakeStore'
-import { useLapTimeStore } from '@/stores/useLapTimeStore'
+import { createCarbonFiberTexture } from '@/utils/createCarbonFiberTexture'
+import { RPMLights } from './RPMLights'
+import { SteeringWheelDisplay } from './SteeringWheelDisplay'
 
 interface SteeringWheelProps {
   steerAngle: number
   showDisplay: boolean
 }
 
-// Helper functions
-function formatLapTime(ms: number): string {
-  if (ms === 0) return '-:--.---'
-  const minutes = Math.floor(ms / 60000)
-  const seconds = Math.floor((ms % 60000) / 1000)
-  const milliseconds = Math.floor(ms % 1000)
-  return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`
-}
+// --- Materials ---
+const carbonMap = createCarbonFiberTexture()
+const carbonMaterial = new THREE.MeshStandardMaterial({
+  map: carbonMap,
+  roughness: 0.4,
+  metalness: 0.1,
+  color: 0xcccccc,
+})
+const suedeMaterial = new THREE.MeshStandardMaterial({
+  color: 0x111111,
+  roughness: 1.0,
+  metalness: 0.0,
+})
+const housingMaterial = new THREE.MeshStandardMaterial({
+  color: 0x080808,
+  roughness: 0.2,
+  metalness: 0.8,
+})
 
-function getBatteryColor(charge: number): string {
-  if (charge > 50) return '#22c55e'
-  if (charge > 20) return '#f59e0b'
-  return '#ef4444'
-}
+// --- Geometry ---
+const wheelShape = new THREE.Shape()
+const w = 0.16 // Half width, scaled down from example
+const h = 0.09 // Half height
+wheelShape.moveTo(0, -h + 0.025)
+wheelShape.lineTo(w - 0.075, -h + 0.025)
+wheelShape.quadraticCurveTo(w, -h, w, -h + 0.075)
+wheelShape.lineTo(w, h - 0.05)
+wheelShape.quadraticCurveTo(w, h, w - 0.075, h)
+wheelShape.lineTo(-w + 0.075, h)
+wheelShape.quadraticCurveTo(-w, h, -w, h - 0.05)
+wheelShape.lineTo(-w, -h + 0.075)
+wheelShape.quadraticCurveTo(-w, -h, -w + 0.075, -h + 0.025)
+wheelShape.lineTo(0, -h + 0.025)
 
-function getModeAbbreviation(mode: string): string {
-  switch (mode) {
-    case 'Attack':
-      return 'ATK'
-    case 'Balanced':
-      return 'BAL'
-    case 'Harvest':
-      return 'HRV'
-    case 'Overtake':
-      return 'OVT'
-    default:
-      return 'BAL'
-  }
-}
-
-function getModeColor(mode: string): string {
-  switch (mode) {
-    case 'Attack':
-      return '#22c55e'
-    case 'Balanced':
-      return '#ffffff'
-    case 'Harvest':
-      return '#3b82f6'
-    case 'Overtake':
-      return '#f97316'
-    default:
-      return '#ffffff'
-  }
-}
-
-function getAeroColor(mode: string): string {
-  return mode === 'Corner' ? '#3b82f6' : '#22c55e'
-}
-
-function getGearDisplay(gear: number): string {
-  if (gear === -1) return 'R'
-  if (gear === 0) return 'N'
-  return gear.toString()
-}
-
-function getGearColor(gear: number): string {
-  if (gear === -1) return '#ef4444'
-  if (gear === 0) return '#f59e0b'
-  return '#ffffff'
+const extrudeSettings = {
+  depth: 0.02,
+  bevelEnabled: true,
+  bevelSegments: 2,
+  steps: 2,
+  bevelSize: 0.005,
+  bevelThickness: 0.005,
 }
 
 /**
@@ -81,16 +61,6 @@ export function SteeringWheel({ steerAngle, showDisplay }: SteeringWheelProps) {
   const steeringWheelRef = useRef<THREE.Group>(null)
   const smoothSteeringWheel = useRef(0)
 
-  // Store subscriptions
-  const speed = useCarStore(state => state.speed)
-  const gear = useCarStore(state => state.gear)
-  const ersCharge = useErsStore(state => state.batteryCharge)
-  const ersMode = useErsStore(state => state.mode)
-  const aeroMode = useActiveAeroStore(state => state.mode)
-  const brakeBias = useBrakeStore(state => state.frontBias)
-  const currentLapTime = useLapTimeStore(state => state.currentLapTime)
-
-  // Smooth steering wheel transition
   useFrame((_, delta) => {
     const lerpSpeed = 8
     smoothSteeringWheel.current = THREE.MathUtils.lerp(
@@ -98,136 +68,67 @@ export function SteeringWheel({ steerAngle, showDisplay }: SteeringWheelProps) {
       steerAngle,
       lerpSpeed * delta,
     )
+
     if (steeringWheelRef.current) {
-      steeringWheelRef.current.rotation.set(Math.PI / 2, 0, smoothSteeringWheel.current * 3)
+      steeringWheelRef.current.rotation.y = -smoothSteeringWheel.current * 1.5
+      steeringWheelRef.current.rotation.z = -smoothSteeringWheel.current * 0.1
     }
   })
 
+  const chassisGeo = useMemo(() => {
+    const geo = new THREE.ExtrudeGeometry(wheelShape, extrudeSettings)
+    geo.center()
+    return geo
+  }, [])
+
   return (
-    <group position={[0, 0.32, 0.78]} rotation={[2, 0, 0]}>
-      {/* Rotating wheel group - smoothed steering input */}
-      <group ref={steeringWheelRef} rotation={[Math.PI / 2, 0, 0]}>
-        {/* Hub group - tilted to face driver */}
-        <group rotation={[0.9, 0, Math.PI]}>
-          {/* === F1 BUTTERFLY FRAME === */}
+    <group position={[0, 0.32, 0.78]} rotation={[0.85, 0, 0]}>
+      <group rotation={[Math.PI / 2, 0, 0]}>
+        <group ref={steeringWheelRef}>
+          <group rotation={[0.9, 0, Math.PI]}>
+            {/* --- Chassis --- */}
+            <mesh castShadow geometry={chassisGeo} material={carbonMaterial} />
 
-          {/* Top horizontal bar */}
-          <mesh castShadow position={[0, 0.06, 0]}>
-            <boxGeometry args={[0.32, 0.035, 0.018]} />
-            <meshStandardMaterial color='#1a1a1a' metalness={0.7} roughness={0.3} />
-          </mesh>
+            {/* --- Grips --- */}
+            <mesh
+              castShadow
+              position={[-0.155, -0.01, 0]}
+              rotation-z={0.1}
+              material={suedeMaterial}
+            >
+              <capsuleGeometry args={[0.0325, 0.17, 4, 16]} />
+            </mesh>
+            <mesh
+              castShadow
+              position={[0.155, -0.01, 0]}
+              rotation-z={-0.1}
+              material={suedeMaterial}
+            >
+              <capsuleGeometry args={[0.0325, 0.17, 4, 16]} />
+            </mesh>
 
-          {/* Display housing */}
-          <mesh castShadow position={[0, 0.03, 0.008]}>
-            <boxGeometry args={[0.2, 0.055, 0.012]} />
-            <meshStandardMaterial color='#000000' />
-          </mesh>
-
-          {/* Left arm */}
-          <mesh castShadow position={[-0.11, -0.02, 0]} rotation={[0, 0, 0.4]}>
-            <boxGeometry args={[0.03, 0.1, 0.018]} />
-            <meshStandardMaterial color='#1a1a1a' metalness={0.7} roughness={0.3} />
-          </mesh>
-
-          {/* Right arm */}
-          <mesh castShadow position={[0.11, -0.02, 0]} rotation={[0, 0, -0.4]}>
-            <boxGeometry args={[0.03, 0.1, 0.018]} />
-            <meshStandardMaterial color='#1a1a1a' metalness={0.7} roughness={0.3} />
-          </mesh>
-
-          {/* Left grip */}
-          <mesh castShadow position={[-0.14, -0.07, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.022, 0.022, 0.05, 16]} />
-            <meshStandardMaterial color='#0a0a0a' roughness={0.9} />
-          </mesh>
-
-          {/* Right grip */}
-          <mesh castShadow position={[0.14, -0.07, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.022, 0.022, 0.05, 16]} />
-            <meshStandardMaterial color='#0a0a0a' roughness={0.9} />
-          </mesh>
-
-          {/* Bottom connecting bar */}
-          <mesh castShadow position={[0, -0.08, 0]}>
-            <boxGeometry args={[0.12, 0.02, 0.018]} />
-            <meshStandardMaterial color='#1a1a1a' metalness={0.7} roughness={0.3} />
-          </mesh>
-
-          {/* === TELEMETRY DISPLAY === */}
-          {showDisplay && (
-            <group position={[0, 0.03, 0.015]} rotation={[Math.PI / 2, 0, 0]}>
-              {/* Row 1: Speed + Gear */}
-              <Text
-                position={[-0.04, 0.018, 0]}
-                fontSize={0.018}
-                color='#00ff88'
-                anchorX='center'
-                anchorY='middle'
+            {/* --- Monitor Housing & Screen --- */}
+            <group position={[0, 0.015, 0.0125]}>
+              <RoundedBox
+                args={[0.21, 0.13, 0.01]}
+                radius={0.005}
+                material={housingMaterial}
+                castShadow
               >
-                {Math.round(speed)}
-              </Text>
-              <Text
-                position={[0.04, 0.018, 0]}
-                fontSize={0.018}
-                color={getGearColor(gear)}
-                anchorX='center'
-                anchorY='middle'
-              >
-                {getGearDisplay(gear)}
-              </Text>
+                {showDisplay && <SteeringWheelDisplay />}
+              </RoundedBox>
 
-              {/* Row 2: ERS % | ERS Mode | Aero Mode */}
-              <Text
-                position={[-0.05, 0.003, 0]}
-                fontSize={0.01}
-                color={getBatteryColor(ersCharge)}
-                anchorX='center'
-                anchorY='middle'
-              >
-                {`${Math.round(ersCharge)}%`}
-              </Text>
-              <Text
-                position={[0, 0.003, 0]}
-                fontSize={0.01}
-                color={getModeColor(ersMode)}
-                anchorX='center'
-                anchorY='middle'
-              >
-                {getModeAbbreviation(ersMode)}
-              </Text>
-              <Text
-                position={[0.05, 0.003, 0]}
-                fontSize={0.01}
-                color={getAeroColor(aeroMode)}
-                anchorX='center'
-                anchorY='middle'
-              >
-                {aeroMode === 'Corner' ? 'CRN' : 'STR'}
-              </Text>
-
-              {/* Row 3: Brake Bias */}
-              <Text
-                position={[0, -0.01, 0]}
-                fontSize={0.009}
-                color='#ffffff'
-                anchorX='center'
-                anchorY='middle'
-              >
-                {`BB ${Math.round(brakeBias)}|${Math.round(100 - brakeBias)}`}
-              </Text>
-
-              {/* Row 4: Current Lap Time */}
-              <Text
-                position={[0, -0.022, 0]}
-                fontSize={0.009}
-                color='#00ff88'
-                anchorX='center'
-                anchorY='middle'
-              >
-                {formatLapTime(currentLapTime)}
-              </Text>
+              {/* --- RPM LEDs --- */}
+              <group position={[0, 0.07, 0]}>
+                <mesh material={carbonMaterial} castShadow>
+                  <boxGeometry args={[0.21, 0.02, 0.015]} />
+                </mesh>
+                <group position={[0, 0, 0.008]}>
+                  <RPMLights />
+                </group>
+              </group>
             </group>
-          )}
+          </group>
         </group>
       </group>
     </group>

@@ -71,9 +71,9 @@ import {
   PerWheelWear,
   TireCompound,
   SurfaceType,
-  ErsMode,
-  AeroMode,
-  EngineBrakingLevel,
+  // ErsMode,
+  // AeroMode,
+  // EngineBrakingLevel,
 } from './PhysicsBridge'
 
 // Re-export types

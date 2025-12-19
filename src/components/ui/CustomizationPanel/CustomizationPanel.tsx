@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   useCustomizationStore,
   type ObjectType,
-  type SnapSettings,
   isLinearObject,
 } from '../../../stores/useCustomizationStore'
 import { usePitStore } from '../../../stores/usePitStore'

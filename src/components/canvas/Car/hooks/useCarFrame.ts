@@ -86,12 +86,14 @@ export function useCarFrame({
   // ERS mode cycling and sync
   const cycleErsMode = useErsStore(state => state.cycleMode)
   const activateOvertake = useErsStore(state => state.activateOvertake)
-  const ersMode = useErsStore(state => state.mode)
+  // @ts-ignore
+  const _ersMode = useErsStore(state => state.mode)
   const syncErsState = useErsStore(state => state.syncFromPhysics)
 
   // Active Aero mode toggle and sync
   const toggleAeroMode = useActiveAeroStore(state => state.toggleMode)
-  const aeroMode = useActiveAeroStore(state => state.mode)
+  // @ts-ignore
+  const _aeroMode = useActiveAeroStore(state => state.mode)
   const syncAeroState = useActiveAeroStore(state => state.syncFromPhysics)
 
   // Brake mode sync (physics engine is source of truth)
@@ -189,11 +191,7 @@ export function useCarFrame({
     }
 
     // Overtake mode activation with debounce (O key) - testing mode only
-    if (
-      isTestingMode &&
-      overtake &&
-      state.clock.elapsedTime - lastOvertakeToggle.current > 0.3
-    ) {
+    if (isTestingMode && overtake && state.clock.elapsedTime - lastOvertakeToggle.current > 0.3) {
       activateOvertake()
       lastOvertakeToggle.current = state.clock.elapsedTime
     }

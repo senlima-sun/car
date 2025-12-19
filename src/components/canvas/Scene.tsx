@@ -24,7 +24,7 @@ function Ground() {
   )
 }
 
-function FollowingSun({ target }: { target: React.RefObject<Group> }) {
+function FollowingSun({ target }: { target: React.RefObject<Group | null> }) {
   const lightRef = useRef<DirectionalLight>(null)
   const worldPos = useRef(new Vector3())
 

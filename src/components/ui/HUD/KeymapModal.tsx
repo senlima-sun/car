@@ -131,7 +131,8 @@ const styles: Record<string, React.CSSProperties> = {
   connector: {
     flex: 1,
     height: 1,
-    background: 'repeating-linear-gradient(90deg, rgba(255,255,255,0.2) 0px, rgba(255,255,255,0.2) 4px, transparent 4px, transparent 8px)',
+    background:
+      'repeating-linear-gradient(90deg, rgba(255,255,255,0.2) 0px, rgba(255,255,255,0.2) 4px, transparent 4px, transparent 8px)',
     minWidth: 20,
   },
   actionLabel: {
@@ -230,9 +231,7 @@ function ControlRow({ control, isTestingMode }: ControlRowProps) {
       >
         {control.displayName}
       </span>
-      {control.testingModeOnly && !isTestingMode && (
-        <span style={styles.testingBadge}>TEST</span>
-      )}
+      {control.testingModeOnly && !isTestingMode && <span style={styles.testingBadge}>TEST</span>}
     </div>
   )
 }
@@ -259,11 +258,7 @@ function CategorySection({ category, controls, isTestingMode, noMargin }: Catego
         {isLocked && <span style={styles.categoryLock}>LOCKED</span>}
       </div>
       {controls.map(control => (
-        <ControlRow
-          key={control.id}
-          control={control}
-          isTestingMode={isTestingMode}
-        />
+        <ControlRow key={control.id} control={control} isTestingMode={isTestingMode} />
       ))}
     </div>
   )
@@ -307,7 +302,7 @@ export default function KeymapModal() {
       acc[category] = CONTROLS.filter(c => c.category === category)
       return acc
     },
-    {} as Record<ControlCategory, ControlDefinition[]>
+    {} as Record<ControlCategory, ControlDefinition[]>,
   )
 
   return (
@@ -349,14 +344,14 @@ export default function KeymapModal() {
             {/* Movement & Driving Systems - side by side */}
             <div style={styles.twoColumnRow}>
               <CategorySection
-                category="movement"
+                category='movement'
                 controls={controlsByCategory['movement']}
                 isTestingMode={isTestingMode}
                 noMargin
               />
               <div style={styles.columnDivider} />
               <CategorySection
-                category="drivingSystems"
+                category='drivingSystems'
                 controls={controlsByCategory['drivingSystems']}
                 isTestingMode={isTestingMode}
                 noMargin

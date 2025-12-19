@@ -1,5 +1,5 @@
 import { watch } from 'fs'
-import { join, dirname } from 'path'
+import { join } from 'path'
 import { mkdirSync, existsSync } from 'fs'
 import tailwind from 'bun-plugin-tailwind'
 
@@ -134,6 +134,7 @@ const srcWatcher = watch('./src', { recursive: true }, (event, filename) => {
 console.log('\x1b[33m[watch]\x1b[0m Watching src/ for changes...')
 
 // Start the server
+// @ts-ignore
 const server = Bun.serve({
   port: PORT,
   async fetch(req) {

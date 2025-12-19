@@ -149,11 +149,16 @@ const ERS_MODES: ErsMode[] = ['Harvest', 'Balanced', 'Attack', 'Overtake']
 
 function getErsModeColor(mode: ErsMode): string {
   switch (mode) {
-    case 'Harvest': return '#3b82f6'
-    case 'Balanced': return '#ffffff'
-    case 'Attack': return '#22c55e'
-    case 'Overtake': return '#f97316'
-    default: return '#ffffff'
+    case 'Harvest':
+      return '#3b82f6'
+    case 'Balanced':
+      return '#ffffff'
+    case 'Attack':
+      return '#22c55e'
+    case 'Overtake':
+      return '#f97316'
+    default:
+      return '#ffffff'
   }
 }
 
@@ -262,7 +267,11 @@ export default function DebugPanel() {
                 ...styles.compoundButton,
                 background: isActive ? config.color : 'rgba(255, 255, 255, 0.1)',
                 borderColor: isActive ? config.color : 'transparent',
-                color: isActive ? (compound === 'hard' ? '#000' : '#fff') : 'rgba(255, 255, 255, 0.7)',
+                color: isActive
+                  ? compound === 'hard'
+                    ? '#000'
+                    : '#fff'
+                  : 'rgba(255, 255, 255, 0.7)',
               }}
             >
               <span style={styles.compoundIcon}>{config.icon}</span>
@@ -276,10 +285,10 @@ export default function DebugPanel() {
       <div style={styles.row}>
         <span style={styles.label}>Tire Wear</span>
         <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
+          type='range'
+          min='0'
+          max='100'
+          step='1'
           value={averageWear}
           onChange={handleSliderChange}
           style={{
@@ -287,7 +296,9 @@ export default function DebugPanel() {
             background: `linear-gradient(to right, ${getWearColor(averageWear)} ${averageWear}%, rgba(255,255,255,0.15) ${averageWear}%)`,
           }}
         />
-        <span style={{ ...styles.value, color: getWearColor(averageWear) }}>{Math.round(averageWear)}%</span>
+        <span style={{ ...styles.value, color: getWearColor(averageWear) }}>
+          {Math.round(averageWear)}%
+        </span>
       </div>
 
       {/* Tire Life display */}
@@ -336,29 +347,33 @@ export default function DebugPanel() {
       {/* Sync toggle */}
       <div style={styles.syncIndicator}>
         <input
-          type="checkbox"
-          id="debug-sync"
+          type='checkbox'
+          id='debug-sync'
           checked={!debugMode}
           onChange={handleSyncToggle}
           style={styles.checkbox}
         />
-        <label htmlFor="debug-sync" style={styles.checkboxLabel}>
+        <label htmlFor='debug-sync' style={styles.checkboxLabel}>
           {debugMode ? 'Enable wear sync (resume normal)' : 'Wear syncing from physics'}
         </label>
       </div>
 
       {/* ERS Section Separator */}
-      <div style={{
-        height: 1,
-        background: 'rgba(255, 165, 0, 0.3)',
-        margin: '8px 0'
-      }} />
+      <div
+        style={{
+          height: 1,
+          background: 'rgba(255, 165, 0, 0.3)',
+          margin: '8px 0',
+        }}
+      />
 
       {/* ERS Header */}
       <div style={styles.header}>
         <span style={styles.title}>ERS Tuning</span>
         {superClipActive && (
-          <span style={{ ...styles.badge, background: 'rgba(168, 85, 247, 0.3)', color: '#a855f7' }}>
+          <span
+            style={{ ...styles.badge, background: 'rgba(168, 85, 247, 0.3)', color: '#a855f7' }}
+          >
             CLIP
           </span>
         )}
@@ -380,11 +395,21 @@ export default function DebugPanel() {
                 ...styles.compoundButton,
                 background: isActive ? color : 'rgba(255, 255, 255, 0.1)',
                 borderColor: isActive ? color : 'transparent',
-                color: isActive ? (mode === 'Balanced' ? '#000' : '#fff') : 'rgba(255, 255, 255, 0.7)',
+                color: isActive
+                  ? mode === 'Balanced'
+                    ? '#000'
+                    : '#fff'
+                  : 'rgba(255, 255, 255, 0.7)',
               }}
             >
               <span style={styles.compoundIcon}>
-                {mode === 'Harvest' ? '↓' : mode === 'Attack' ? '↑' : mode === 'Overtake' ? '⚡' : '⟷'}
+                {mode === 'Harvest'
+                  ? '↓'
+                  : mode === 'Attack'
+                    ? '↑'
+                    : mode === 'Overtake'
+                      ? '⚡'
+                      : '⟷'}
               </span>
               <span style={styles.compoundName}>{mode.slice(0, 3).toUpperCase()}</span>
             </button>
@@ -396,10 +421,10 @@ export default function DebugPanel() {
       <div style={styles.row}>
         <span style={styles.label}>Battery</span>
         <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
+          type='range'
+          min='0'
+          max='100'
+          step='1'
           value={batteryCharge}
           onChange={handleBatteryChange}
           style={{
@@ -426,10 +451,17 @@ export default function DebugPanel() {
           {powerFlow > 0 ? '↑' : powerFlow < 0 ? '↓' : ''} {Math.abs(Math.round(powerFlow))} kW
         </span>
         {harvestSource !== 'None' && (
-          <span style={{
-            fontSize: 9,
-            color: harvestSource === 'SuperClip' ? '#a855f7' : harvestSource === 'Braking' ? '#ef4444' : '#3b82f6'
-          }}>
+          <span
+            style={{
+              fontSize: 9,
+              color:
+                harvestSource === 'SuperClip'
+                  ? '#a855f7'
+                  : harvestSource === 'Braking'
+                    ? '#ef4444'
+                    : '#3b82f6',
+            }}
+          >
             {harvestSource === 'SuperClip' ? 'CLIP' : harvestSource === 'Braking' ? 'BRK' : 'CST'}
           </span>
         )}

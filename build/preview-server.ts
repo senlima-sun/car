@@ -37,6 +37,7 @@ function getMimeType(path: string): string {
   return mimeTypes[ext] || 'application/octet-stream'
 }
 
+// @ts-ignore
 const server = Bun.serve({
   port: PORT,
   async fetch(req) {

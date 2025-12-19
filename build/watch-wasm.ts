@@ -55,7 +55,7 @@ function debouncedBuild() {
 // Watch for changes in physics-engine/src
 console.log(`[WASM Watch] Watching ${PHYSICS_ENGINE_DIR} for changes...`)
 
-watch(PHYSICS_ENGINE_DIR, { recursive: true }, (event, filename) => {
+watch(PHYSICS_ENGINE_DIR, { recursive: true }, filename => {
   if (filename && filename.endsWith('.rs')) {
     console.log(`[WASM Watch] Detected change in ${filename}`)
     debouncedBuild()

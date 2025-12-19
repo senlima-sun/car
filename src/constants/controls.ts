@@ -19,7 +19,12 @@ export const keyboardMap = [
 ]
 
 // Control categories for KeymapModal
-export type ControlCategory = 'movement' | 'drivingSystems' | 'camera' | 'racingMode' | 'testingMode'
+export type ControlCategory =
+  | 'movement'
+  | 'drivingSystems'
+  | 'camera'
+  | 'racingMode'
+  | 'testingMode'
 
 export interface ControlDefinition {
   id: string
@@ -48,7 +53,13 @@ export const CONTROLS: ControlDefinition[] = [
 
   // Driving Systems
   { id: 'ers', displayName: 'Cycle ERS', keys: ['B'], category: 'drivingSystems' },
-  { id: 'overtake', displayName: 'Overtake', keys: ['O'], category: 'drivingSystems', testingModeOnly: true },
+  {
+    id: 'overtake',
+    displayName: 'Overtake',
+    keys: ['O'],
+    category: 'drivingSystems',
+    testingModeOnly: true,
+  },
   { id: 'aero', displayName: 'Aero Mode', keys: ['V'], category: 'drivingSystems' },
   { id: 'brakeIncr', displayName: 'Brake Bias +', keys: [']'], category: 'drivingSystems' },
   { id: 'brakeDecr', displayName: 'Brake Bias -', keys: ['['], category: 'drivingSystems' },
@@ -56,7 +67,13 @@ export const CONTROLS: ControlDefinition[] = [
 
   // Camera
   { id: 'camera', displayName: 'Toggle Camera', keys: ['C'], category: 'camera' },
-  { id: 'freeCamera', displayName: 'Free Camera', keys: ['F'], category: 'camera', testingModeOnly: true },
+  {
+    id: 'freeCamera',
+    displayName: 'Free Camera',
+    keys: ['F'],
+    category: 'camera',
+    testingModeOnly: true,
+  },
 
   // Racing
   { id: 'lapTimer', displayName: 'Lap Timer', keys: ['R'], category: 'racingMode' },
@@ -64,12 +81,47 @@ export const CONTROLS: ControlDefinition[] = [
   { id: 'trackEditor', displayName: 'Track Editor', keys: ['T'], category: 'racingMode' },
 
   // Testing (gated by testing mode)
-  { id: 'cycleWeather', displayName: 'Cycle Weather', keys: ['Q'], category: 'testingMode', testingModeOnly: true },
-  { id: 'envSettings', displayName: 'Environment', keys: ['M'], category: 'testingMode', testingModeOnly: true },
-  { id: 'heatmap', displayName: 'Heatmap', keys: ['H'], category: 'testingMode', testingModeOnly: true },
-  { id: 'distanceGrid', displayName: 'Distance Grid', keys: ['Alt'], category: 'testingMode', testingModeOnly: true },
-  { id: 'debugPanel', displayName: 'Debug Panel', keys: ['`'], category: 'testingMode', testingModeOnly: true },
-  { id: 'toggleTestingMode', displayName: 'Testing Mode', keys: ['Shift', '\\'], category: 'testingMode' },
+  {
+    id: 'cycleWeather',
+    displayName: 'Cycle Weather',
+    keys: ['Q'],
+    category: 'testingMode',
+    testingModeOnly: true,
+  },
+  {
+    id: 'envSettings',
+    displayName: 'Environment',
+    keys: ['M'],
+    category: 'testingMode',
+    testingModeOnly: true,
+  },
+  {
+    id: 'heatmap',
+    displayName: 'Heatmap',
+    keys: ['H'],
+    category: 'testingMode',
+    testingModeOnly: true,
+  },
+  {
+    id: 'distanceGrid',
+    displayName: 'Distance Grid',
+    keys: ['Alt'],
+    category: 'testingMode',
+    testingModeOnly: true,
+  },
+  {
+    id: 'debugPanel',
+    displayName: 'Debug Panel',
+    keys: ['`'],
+    category: 'testingMode',
+    testingModeOnly: true,
+  },
+  {
+    id: 'toggleTestingMode',
+    displayName: 'Testing Mode',
+    keys: ['Shift', '\\'],
+    category: 'testingMode',
+  },
 ]
 
 export function getControlsByCategory(category: ControlCategory): ControlDefinition[] {
