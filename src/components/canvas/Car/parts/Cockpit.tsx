@@ -3,14 +3,13 @@ import { SteeringWheel } from './SteeringWheel'
 
 interface CockpitProps {
   steerAngle: number
-  speed: number
-  showSpeedDisplay: boolean
+  showDisplay: boolean
 }
 
 /**
  * Driver cockpit with floor, walls, and steering wheel
  */
-export function Cockpit({ steerAngle, speed, showSpeedDisplay }: CockpitProps) {
+export function Cockpit({ steerAngle, showDisplay }: CockpitProps) {
   const cockpitColor = CAR_COLORS.cockpit
 
   return (
@@ -22,7 +21,7 @@ export function Cockpit({ steerAngle, speed, showSpeedDisplay }: CockpitProps) {
       </mesh>
 
       {/* Steering wheel */}
-      <SteeringWheel steerAngle={steerAngle} speed={speed} showSpeedDisplay={showSpeedDisplay} />
+      <SteeringWheel steerAngle={steerAngle} showDisplay={showDisplay} />
     </group>
   )
 }

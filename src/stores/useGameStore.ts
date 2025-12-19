@@ -62,6 +62,7 @@ export const useGameStore = create<GameState>()(
       partialize: state => ({
         cameraMode: state.cameraMode,
         previousCameraMode: state.previousCameraMode,
+        isTestingMode: state.isTestingMode,
       }),
     },
   ),

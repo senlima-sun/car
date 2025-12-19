@@ -18,7 +18,6 @@ export default function CarBody() {
   // Car state
   const steerAngle = useCarStore(state => state.steerAngle)
   const wheelRotations = useCarStore(state => state.wheelRotations)
-  const speed = useCarStore(state => state.speed)
   const cameraMode = useGameStore(state => state.cameraMode)
 
   // Weather state for wet material
@@ -45,11 +44,7 @@ export default function CarBody() {
       />
 
       {/* Driver cockpit with steering wheel */}
-      <Cockpit
-        steerAngle={steerAngle}
-        speed={speed}
-        showSpeedDisplay={cameraMode === 'first-person'}
-      />
+      <Cockpit steerAngle={steerAngle} showDisplay={cameraMode === 'first-person'} />
 
       {/* All four wheels */}
       <WheelsGroup
