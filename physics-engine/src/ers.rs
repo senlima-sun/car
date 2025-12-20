@@ -187,16 +187,17 @@ impl ErsPhysicsState {
         // In target range: balanced operation
         if battery <= target_max {
             let position = (battery - target_min) / (target_max - target_min);
-            let deploy = 0.40 + position * 0.30; // 40-70% deploy
-            let harvest = 0.90 - position * 0.20; // 90-70% harvest
-            return (deploy, harvest, harvest * 0.9, harvest * 0.8);
+            let deploy = 0.35 + position * 0.25; // 35-60% deploy (was 40-70%)
+            let harvest = 0.90 - position * 0.15; // 90-75% harvest (was 90-70%)
+            return (deploy, harvest, harvest * 0.95, harvest * 0.85);
         }
 
-        // Above maximum target: allow more deployment
+        // Above maximum target: moderate deployment, maintain harvest
+        // Reduced aggressiveness to prevent rapid battery drain
         let excess = (battery - target_max) / (1.0 - target_max);
-        let deploy = 0.70 + excess * 0.25; // 70-95% deploy
-        let harvest = 0.50 - excess * 0.30; // 50-20% harvest
-        (deploy, harvest.max(0.2), harvest.max(0.2), harvest.max(0.1))
+        let deploy = 0.50 + excess * 0.20; // 50-70% deploy (was 70-95%)
+        let harvest = 0.65 - excess * 0.15; // 65-50% harvest (was 50-20%)
+        (deploy, harvest, harvest * 0.95, harvest * 0.9)
     }
 
     // ========================================================================
