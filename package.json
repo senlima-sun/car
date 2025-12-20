@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "build:wasm": "cd physics-engine && wasm-pack build --target web --out-dir ../src/wasm/pkg",
     "build:wasm:release": "cd physics-engine && wasm-pack build --target web --out-dir ../src/wasm/pkg --release",
-    "test:wasm": "cd physics-engine && cargo test"
+    "test:wasm": "cd physics-engine && cargo test",
+    "test": "bun test"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

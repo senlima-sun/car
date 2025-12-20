@@ -6,122 +6,27 @@ import { useLapTimeStore } from '@/stores/useLapTimeStore'
 import { useFPSStore } from '@/stores/useFPSStore'
 import { useTireStore } from '@/stores/useTireStore'
 import { useTemperatureStore } from '@/stores/useTemperatureStore'
-import { TIRE_CONFIG, TIRE_WEAR_CRITICAL, TIRE_WEAR_WARNING } from '@/constants/tires'
+import { TIRE_CONFIG } from '@/constants/tires'
 import { engineTempToCelsius } from '@/wasm/PhysicsBridge'
+import {
+  formatLapTime,
+  getBatteryColor,
+  getModeAbbreviation,
+  getAeroAbbreviation,
+  getModeColor,
+  getAeroColor,
+  getGearDisplay,
+  getGearColor,
+  getFPSColor,
+  getEngineTempColor,
+  getTireWearColor,
+  getEngineBrakingAbbrev,
+  getEngineBrakingColor,
+} from '@/utils/steeringDisplayHelpers'
 
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-
-// Helper functions
-function formatLapTime(ms: number): string {
-  if (ms === 0) return '-:--.---'
-  const minutes = Math.floor(ms / 60000)
-  const seconds = Math.floor((ms % 60000) / 1000)
-  const milliseconds = Math.floor(ms % 1000)
-  return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`
-}
-
-function getBatteryColor(charge: number): string {
-  if (charge > 50) return '#22c55e'
-  if (charge > 20) return '#f59e0b'
-  return '#ef4444'
-}
-
-function getModeAbbreviation(mode: string): string {
-  switch (mode) {
-    case 'Attack':
-      return 'ATK'
-    case 'Balanced':
-      return 'BAL'
-    case 'Harvest':
-      return 'HRV'
-    case 'Overtake':
-      return 'OVT'
-    default:
-      return 'BAL'
-  }
-}
-
-function getAeroAbbreviation(mode: string): string {
-  return mode === 'Corner' ? 'CRN' : 'STR'
-}
-
-function getModeColor(mode: string): string {
-  switch (mode) {
-    case 'Attack':
-      return '#22c55e'
-    case 'Balanced':
-      return '#ffffff'
-    case 'Harvest':
-      return '#3b82f6'
-    case 'Overtake':
-      return '#f97316'
-    default:
-      return '#ffffff'
-  }
-}
-
-function getAeroColor(mode: string): string {
-  return mode === 'Corner' ? '#3b82f6' : '#22c55e'
-}
-
-function getGearDisplay(gear: number): string {
-  if (gear === -1) return 'R'
-  if (gear === 0) return 'N'
-  return gear.toString()
-}
-
-function getGearColor(gear: number, rpm: number, maxRpm: number): string {
-  if (rpm > maxRpm * 0.95) return '#ff0000'
-  if (gear === -1) return '#ef4444'
-  if (gear === 0) return '#f59e0b'
-  return '#ffffff'
-}
-
-function getFPSColor(fps: number): string {
-  if (fps >= 50) return '#4ade80' // green
-  if (fps >= 30) return '#facc15' // yellow
-  return '#f87171' // red
-}
-
-function getEngineTempColor(tempNormalized: number): string {
-  if (tempNormalized >= 0.9) return '#ef4444' // Red (critical)
-  if (tempNormalized >= 0.7) return '#f59e0b' // Orange (high)
-  return '#22c55e' // Green (normal)
-}
-
-function getTireWearColor(wear: number): string {
-  if (wear >= TIRE_WEAR_CRITICAL) return '#ef4444' // Red
-  if (wear >= TIRE_WEAR_WARNING) return '#f59e0b' // Orange/Amber
-  return '#22c55e' // Green
-}
-
-function getEngineBrakingAbbrev(level: string): string {
-  switch (level) {
-    case 'Low':
-      return 'L'
-    case 'Medium':
-      return 'M'
-    case 'High':
-      return 'H'
-    default:
-      return 'M'
-  }
-}
-
-function getEngineBrakingColor(level: string): string {
-  switch (level) {
-    case 'Low':
-      return '#3b82f6' // Blue
-    case 'Medium':
-      return '#22c55e' // Green
-    case 'High':
-      return '#f97316' // Orange
-    default:
-      return '#22c55e'
-  }
-}
 
 const CANVAS_WIDTH = 1024
 const CANVAS_HEIGHT = 512
