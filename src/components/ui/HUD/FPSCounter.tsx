@@ -1,4 +1,5 @@
 import { useFPSStore } from '../../../stores/useFPSStore'
+import { PERFORMANCE, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -15,9 +16,9 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 function getFPSColor(fps: number): string {
-  if (fps >= 50) return '#4ade80' // green
-  if (fps >= 30) return '#facc15' // yellow
-  return '#f87171' // red
+  if (fps >= 50) return PERFORMANCE.fpsGood
+  if (fps >= 30) return PERFORMANCE.fpsWarning
+  return PERFORMANCE.fpsBad
 }
 
 export default function FPSCounter() {
@@ -27,7 +28,7 @@ export default function FPSCounter() {
   return (
     <div style={styles.container}>
       <span style={{ color, opacity: 0.9 }}>{fps}</span>
-      <span style={{ color: '#888', marginLeft: 4 }}>FPS</span>
+      <span style={{ color: UI.textMuted, marginLeft: 4 }}>FPS</span>
     </div>
   )
 }

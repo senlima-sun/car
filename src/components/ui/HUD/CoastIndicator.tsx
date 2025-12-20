@@ -1,4 +1,5 @@
 import { useErsStore } from '../../../stores/useErsStore'
+import { STATUS, ERS_MODE, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -32,7 +33,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   presetBadge: {
     background: 'rgba(168, 85, 247, 0.3)',
-    color: '#a855f7',
+    color: ERS_MODE.semiAuto,
     padding: '2px 6px',
     borderRadius: 4,
     fontSize: 9,
@@ -45,7 +46,7 @@ const styles: Record<string, React.CSSProperties> = {
     left: '50%',
     transform: 'translate(-50%, -50%)',
     background: 'rgba(239, 68, 68, 0.9)',
-    color: '#fff',
+    color: UI.textPrimary,
     padding: '12px 24px',
     borderRadius: 8,
     fontSize: 14,
@@ -89,7 +90,7 @@ export default function CoastIndicator() {
 
   // Determine indicator state
   const isCoastActive = coast_recommended && coast_benefit > 0.1
-  const indicatorColor = is_critical ? '#ef4444' : isCoastActive ? '#3b82f6' : '#22c55e'
+  const indicatorColor = is_critical ? STATUS.danger : isCoastActive ? STATUS.info : STATUS.success
   const statusText = is_critical ? 'CRITICAL' : isCoastActive ? 'COAST' : 'DEPLOY'
   const statusIcon = is_critical ? '!' : isCoastActive ? '↓' : '↑'
 

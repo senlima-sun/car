@@ -23,6 +23,7 @@ import {
   getEngineBrakingAbbrev,
   getEngineBrakingColor,
 } from '@/utils/steeringDisplayHelpers'
+import { UI, LAP_TIMER, GEAR } from '@/constants/colors'
 
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
@@ -90,13 +91,13 @@ export function SteeringWheelDisplay() {
     ctx.font = 'bold 250px Arial'
     ctx.fillText(getGearDisplay(gear), w / 2, h / 2 - 20)
 
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = UI.textPrimary
     ctx.font = 'bold 100px Arial'
     ctx.fillText(Math.round(speed).toString(), w / 2, h / 2 + 120)
 
     // --- Left Column: ERS, Lap Time, Tire Info ---
     ctx.textAlign = 'left'
-    ctx.fillStyle = '#aaa'
+    ctx.fillStyle = UI.textSecondary
     ctx.font = 'bold 32px Arial'
     ctx.fillText('ERS', 30, 80)
 
@@ -108,10 +109,10 @@ export function SteeringWheelDisplay() {
     ctx.font = 'bold 50px Arial'
     ctx.fillText(getModeAbbreviation(ersMode), 30, 190)
 
-    ctx.fillStyle = '#aaa'
+    ctx.fillStyle = UI.textSecondary
     ctx.font = 'bold 32px Arial'
     ctx.fillText('LAP', 30, h - 150)
-    ctx.fillStyle = '#00ff88'
+    ctx.fillStyle = LAP_TIMER.bestLap
     ctx.font = 'bold 60px Arial'
     ctx.fillText(formatLapTime(currentLapTime), 30, h - 100)
 
@@ -126,7 +127,7 @@ export function SteeringWheelDisplay() {
 
     // --- Right Column: Aero, Brakes, Engine Braking ---
     ctx.textAlign = 'right'
-    ctx.fillStyle = '#aaa'
+    ctx.fillStyle = UI.textSecondary
     ctx.font = 'bold 32px Arial'
     ctx.fillText('AERO', w - 30, 80)
 
@@ -134,10 +135,10 @@ export function SteeringWheelDisplay() {
     ctx.font = 'bold 50px Arial'
     ctx.fillText(getAeroAbbreviation(aeroMode), w - 30, 130)
 
-    ctx.fillStyle = '#aaa'
+    ctx.fillStyle = UI.textSecondary
     ctx.font = 'bold 32px Arial'
     ctx.fillText('BIAS', w - 30, h - 150)
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = UI.textPrimary
     ctx.font = 'bold 50px Arial'
     ctx.fillText(`${Math.round(brakeBias)} / ${Math.round(100 - brakeBias)}`, w - 30, h - 100)
 
@@ -149,9 +150,9 @@ export function SteeringWheelDisplay() {
     // --- Bottom: RPM Bar ---
     const rpmRatio = rpm / MAX_RPM
     const barWidth = w - 60
-    ctx.fillStyle = '#222'
+    ctx.fillStyle = UI.surface
     ctx.fillRect(30, h - 30, barWidth, 20)
-    ctx.fillStyle = '#ff0000'
+    ctx.fillStyle = GEAR.redline
     ctx.fillRect(30, h - 30, barWidth * rpmRatio, 20)
 
     // Update the texture

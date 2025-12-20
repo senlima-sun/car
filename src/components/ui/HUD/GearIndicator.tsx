@@ -1,4 +1,5 @@
 import { useCarStore } from '../../../stores/useCarStore'
+import { GEAR, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -11,13 +12,13 @@ const styles: Record<string, React.CSSProperties> = {
   gear: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#ff6b6b',
+    color: GEAR.reverse,
     lineHeight: 1,
     textShadow: '0 0 10px rgba(255, 107, 107, 0.5)',
   },
   label: {
     fontSize: 12,
-    color: '#666',
+    color: UI.textDisabled,
     textTransform: 'uppercase' as const,
     letterSpacing: 2,
     marginBottom: 5,
@@ -46,7 +47,7 @@ export default function GearIndicator() {
       <div
         style={{
           ...styles.gear,
-          color: gear === -1 ? '#ff9f43' : '#ff6b6b',
+          color: gear === -1 ? GEAR.reverseAlt : GEAR.reverse,
         }}
       >
         {displayGear}

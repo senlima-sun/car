@@ -1,4 +1,12 @@
 import { TIRE_WEAR_CRITICAL, TIRE_WEAR_WARNING } from '@/constants/tires'
+import {
+  STATUS,
+  ERS_MODE,
+  AERO_MODE,
+  ENGINE_BRAKING,
+  GEAR,
+  PERFORMANCE,
+} from '@/constants/colors'
 
 export function formatLapTime(ms: number): string {
   if (ms === 0) return '-:--.---'
@@ -9,9 +17,9 @@ export function formatLapTime(ms: number): string {
 }
 
 export function getBatteryColor(charge: number): string {
-  if (charge > 50) return '#22c55e'
-  if (charge > 20) return '#f59e0b'
-  return '#ef4444'
+  if (charge > 50) return STATUS.success
+  if (charge > 20) return STATUS.warning
+  return STATUS.danger
 }
 
 export function getModeAbbreviation(mode: string): string {
@@ -36,20 +44,20 @@ export function getAeroAbbreviation(mode: string): string {
 export function getModeColor(mode: string): string {
   switch (mode) {
     case 'Attack':
-      return '#22c55e'
+      return ERS_MODE.attack
     case 'Balanced':
-      return '#ffffff'
+      return ERS_MODE.balanced
     case 'Harvest':
-      return '#3b82f6'
+      return ERS_MODE.harvest
     case 'Overtake':
-      return '#f97316'
+      return ERS_MODE.overtake
     default:
-      return '#ffffff'
+      return ERS_MODE.balanced
   }
 }
 
 export function getAeroColor(mode: string): string {
-  return mode === 'Corner' ? '#3b82f6' : '#22c55e'
+  return mode === 'Corner' ? AERO_MODE.corner : AERO_MODE.straight
 }
 
 export function getGearDisplay(gear: number): string {
@@ -59,28 +67,28 @@ export function getGearDisplay(gear: number): string {
 }
 
 export function getGearColor(gear: number, rpm: number, maxRpm: number): string {
-  if (rpm > maxRpm * 0.95) return '#ff0000'
-  if (gear === -1) return '#ef4444'
-  if (gear === 0) return '#f59e0b'
-  return '#ffffff'
+  if (rpm > maxRpm * 0.95) return GEAR.redline
+  if (gear === -1) return GEAR.reverse
+  if (gear === 0) return GEAR.neutral
+  return GEAR.normal
 }
 
 export function getFPSColor(fps: number): string {
-  if (fps >= 50) return '#4ade80' // green
-  if (fps >= 30) return '#facc15' // yellow
-  return '#f87171' // red
+  if (fps >= 50) return PERFORMANCE.fpsGood
+  if (fps >= 30) return PERFORMANCE.fpsWarning
+  return PERFORMANCE.fpsBad
 }
 
 export function getEngineTempColor(tempNormalized: number): string {
-  if (tempNormalized >= 0.9) return '#ef4444' // Red (critical)
-  if (tempNormalized >= 0.7) return '#f59e0b' // Orange (high)
-  return '#22c55e' // Green (normal)
+  if (tempNormalized >= 0.9) return PERFORMANCE.tempCritical
+  if (tempNormalized >= 0.7) return PERFORMANCE.tempHigh
+  return PERFORMANCE.tempNormal
 }
 
 export function getTireWearColor(wear: number): string {
-  if (wear >= TIRE_WEAR_CRITICAL) return '#ef4444' // Red
-  if (wear >= TIRE_WEAR_WARNING) return '#f59e0b' // Orange/Amber
-  return '#22c55e' // Green
+  if (wear >= TIRE_WEAR_CRITICAL) return PERFORMANCE.wearCritical
+  if (wear >= TIRE_WEAR_WARNING) return PERFORMANCE.wearWarning
+  return PERFORMANCE.wearGood
 }
 
 export function getEngineBrakingAbbrev(level: string): string {
@@ -99,12 +107,12 @@ export function getEngineBrakingAbbrev(level: string): string {
 export function getEngineBrakingColor(level: string): string {
   switch (level) {
     case 'Low':
-      return '#3b82f6' // Blue
+      return ENGINE_BRAKING.low
     case 'Medium':
-      return '#22c55e' // Green
+      return ENGINE_BRAKING.medium
     case 'High':
-      return '#f97316' // Orange
+      return ENGINE_BRAKING.high
     default:
-      return '#22c55e'
+      return ENGINE_BRAKING.medium
   }
 }

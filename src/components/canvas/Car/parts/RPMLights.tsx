@@ -2,18 +2,19 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useCarStore } from '@/stores/useCarStore'
+import { RPM_LIGHTS } from '@/constants/colors'
 
 const LED_COUNT = 15
 const MAX_RPM = 12500 // Based on the example
 
 // Colors for the LEDs: 5 green, 5 red, 5 blue, as in the example
 const LED_COLORS = [
-  ...Array(5).fill(new THREE.Color('#00ff00')), // Green
-  ...Array(5).fill(new THREE.Color('#ff0000')), // Red
-  ...Array(5).fill(new THREE.Color('#0000ff')), // Blue
+  ...Array(5).fill(new THREE.Color(RPM_LIGHTS.green)),
+  ...Array(5).fill(new THREE.Color(RPM_LIGHTS.red)),
+  ...Array(5).fill(new THREE.Color(RPM_LIGHTS.blue)),
 ]
 
-const OFF_COLOR = new THREE.Color('#111111')
+const OFF_COLOR = new THREE.Color(RPM_LIGHTS.off)
 
 export function RPMLights() {
   const rpm = useCarStore(state => state.rpm)

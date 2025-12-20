@@ -1,4 +1,5 @@
 import { useActiveAeroStore } from '../../../stores/useActiveAeroStore'
+import { AERO_MODE, STATUS, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -20,7 +21,7 @@ const styles: Record<string, React.CSSProperties> = {
   modeValue: {
     fontWeight: 'bold',
     fontSize: 16,
-    color: '#fff',
+    color: UI.textPrimary,
     textAlign: 'center' as const,
   },
   multipliers: {
@@ -47,11 +48,11 @@ const styles: Record<string, React.CSSProperties> = {
 function getModeColor(mode: string): string {
   switch (mode) {
     case 'Corner':
-      return '#3b82f6' // Blue for high downforce
+      return AERO_MODE.corner
     case 'Straight':
-      return '#22c55e' // Green for low drag
+      return AERO_MODE.straight
     default:
-      return '#ffffff'
+      return STATUS.neutral
   }
 }
 
@@ -77,7 +78,7 @@ export default function AeroIndicator() {
           <span
             style={{
               ...styles.multiplierValue,
-              color: dragMultiplier > 1 ? '#f59e0b' : '#22c55e',
+              color: dragMultiplier > 1 ? STATUS.warning : STATUS.success,
             }}
           >
             {dragMultiplier.toFixed(1)}x
@@ -90,7 +91,7 @@ export default function AeroIndicator() {
           <span
             style={{
               ...styles.multiplierValue,
-              color: downforceMultiplier > 1 ? '#22c55e' : '#f59e0b',
+              color: downforceMultiplier > 1 ? STATUS.success : STATUS.warning,
             }}
           >
             {downforceMultiplier.toFixed(1)}x

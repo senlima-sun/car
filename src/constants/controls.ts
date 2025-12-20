@@ -1,3 +1,5 @@
+import { CONTROL_CATEGORY } from './colors'
+
 // Keyboard control mappings for the game (used by @react-three/drei KeyboardControls)
 export const keyboardMap = [
   { name: 'forward', keys: ['KeyW', 'ArrowUp'] },
@@ -34,11 +36,11 @@ export interface ControlDefinition {
 }
 
 export const CONTROL_CATEGORIES: Record<ControlCategory, { label: string; color: string }> = {
-  movement: { label: 'Movement', color: '#4ade80' },
-  drivingSystems: { label: 'Driving Systems', color: '#60a5fa' },
-  camera: { label: 'Camera', color: '#c084fc' },
-  racingMode: { label: 'Racing', color: '#f59e0b' },
-  testingMode: { label: 'Testing', color: '#ef4444' },
+  movement: { label: 'Movement', color: CONTROL_CATEGORY.movement },
+  drivingSystems: { label: 'Driving Systems', color: CONTROL_CATEGORY.drivingSystems },
+  camera: { label: 'Camera', color: CONTROL_CATEGORY.camera },
+  racingMode: { label: 'Racing', color: CONTROL_CATEGORY.racingMode },
+  testingMode: { label: 'Testing', color: CONTROL_CATEGORY.testingMode },
 }
 
 export const CONTROLS: ControlDefinition[] = [

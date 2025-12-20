@@ -1,3 +1,5 @@
+import { TIRE_COMPOUND } from './colors'
+
 // Tire compound types - F1-style naming
 export type TireCompound = 'soft' | 'medium' | 'hard' | 'wet' | 'intermediate'
 
@@ -28,7 +30,7 @@ export const TIRE_CONFIG: Record<TireCompound, TireModifiers> = {
     wrongConditionsPenalty: 0.25, // Terrible when conditions don't match
     degradationRate: 0.0015, // Degrades fastest (~1.5% per second at max)
     displayName: 'Soft',
-    color: '#dc2626', // Red
+    color: TIRE_COMPOUND.soft,
     icon: 'S',
   },
   medium: {
@@ -38,7 +40,7 @@ export const TIRE_CONFIG: Record<TireCompound, TireModifiers> = {
     wrongConditionsPenalty: 0.3, // Very bad when conditions don't match
     degradationRate: 0.0008, // Medium degradation
     displayName: 'Medium',
-    color: '#eab308', // Yellow
+    color: TIRE_COMPOUND.medium,
     icon: 'M',
   },
   hard: {
@@ -48,7 +50,7 @@ export const TIRE_CONFIG: Record<TireCompound, TireModifiers> = {
     wrongConditionsPenalty: 0.35, // Bad when conditions don't match
     degradationRate: 0.0004, // Slowest degradation - most durable
     displayName: 'Hard',
-    color: '#ffffff', // White
+    color: TIRE_COMPOUND.hard,
     icon: 'H',
   },
   wet: {
@@ -58,7 +60,7 @@ export const TIRE_CONFIG: Record<TireCompound, TireModifiers> = {
     wrongConditionsPenalty: 0.5, // Bad on dry
     degradationRate: 0.0008,
     displayName: 'Wet',
-    color: '#2563eb', // Blue
+    color: TIRE_COMPOUND.wet,
     icon: 'W',
   },
   intermediate: {
@@ -68,7 +70,7 @@ export const TIRE_CONFIG: Record<TireCompound, TireModifiers> = {
     wrongConditionsPenalty: 0.7, // Less penalty - versatile
     degradationRate: 0.0006,
     displayName: 'Inter',
-    color: '#22c55e', // Green
+    color: TIRE_COMPOUND.intermediate,
     icon: 'I',
   },
 }

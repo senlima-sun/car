@@ -1,5 +1,6 @@
 import { useErsStore } from '../../../stores/useErsStore'
 import type { HarvestSource } from '../../../wasm/PhysicsBridge'
+import { STATUS, ERS_MODE, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -48,7 +49,7 @@ const styles: Record<string, React.CSSProperties> = {
     transform: 'translate(-50%, -50%)',
     fontWeight: 'bold',
     fontSize: 12,
-    color: '#fff',
+    color: UI.textPrimary,
     textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
     zIndex: 1,
   },
@@ -73,7 +74,7 @@ const styles: Record<string, React.CSSProperties> = {
   modeValue: {
     fontWeight: 'bold',
     fontSize: 14,
-    color: '#fff',
+    color: UI.textPrimary,
   },
   // Power flow section
   powerFlow: {
@@ -125,9 +126,9 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 function getBatteryColor(charge: number): string {
-  if (charge > 50) return '#22c55e' // Green
-  if (charge > 20) return '#f59e0b' // Yellow
-  return '#ef4444' // Red
+  if (charge > 50) return STATUS.success
+  if (charge > 20) return STATUS.warning
+  return STATUS.danger
 }
 
 function getModeAbbreviation(mode: string): string {
@@ -150,17 +151,17 @@ function getModeAbbreviation(mode: string): string {
 function getModeColor(mode: string): string {
   switch (mode) {
     case 'Attack':
-      return '#22c55e' // Green
+      return ERS_MODE.attack
     case 'Balanced':
-      return '#ffffff' // White
+      return ERS_MODE.balanced
     case 'Harvest':
-      return '#3b82f6' // Blue
+      return ERS_MODE.harvest
     case 'Overtake':
-      return '#f97316' // Orange
+      return ERS_MODE.overtake
     case 'SemiAuto':
-      return '#a855f7' // Purple
+      return ERS_MODE.semiAuto
     default:
-      return '#ffffff'
+      return ERS_MODE.balanced
   }
 }
 
@@ -180,11 +181,11 @@ function getHarvestSourceAbbrev(source: HarvestSource): string {
 function getHarvestSourceColor(source: HarvestSource): string {
   switch (source) {
     case 'Braking':
-      return '#ef4444' // Red
+      return STATUS.danger
     case 'Coast':
-      return '#3b82f6' // Blue
+      return STATUS.info
     case 'SuperClip':
-      return '#a855f7' // Purple
+      return ERS_MODE.superClip
     default:
       return 'rgba(255, 255, 255, 0.3)'
   }
@@ -210,13 +211,13 @@ export default function ErsIndicator() {
   if (isDeploying && isHarvesting) {
     // Super clipping: deploying and harvesting simultaneously
     powerArrow = '⇅'
-    powerColor = '#a855f7' // Purple for super clip
+    powerColor = ERS_MODE.superClip
   } else if (isDeploying) {
     powerArrow = '↑'
-    powerColor = '#22c55e' // Green for deploying
+    powerColor = ERS_MODE.attack
   } else if (isHarvesting) {
     powerArrow = '↓'
-    powerColor = '#3b82f6' // Blue for harvesting
+    powerColor = ERS_MODE.harvest
   }
 
   const harvestSourceText = getHarvestSourceAbbrev(harvestSource)
@@ -272,8 +273,8 @@ export default function ErsIndicator() {
         <div
           style={{
             ...styles.superClipIndicator,
-            backgroundColor: superClipActive ? '#a855f7' : 'rgba(255, 255, 255, 0.1)',
-            boxShadow: superClipActive ? '0 0 8px #a855f7' : 'none',
+            backgroundColor: superClipActive ? ERS_MODE.superClip : 'rgba(255, 255, 255, 0.1)',
+            boxShadow: superClipActive ? `0 0 8px ${ERS_MODE.superClip}` : 'none',
             animation: superClipActive ? 'pulse 0.5s ease-in-out infinite' : 'none',
           }}
         />

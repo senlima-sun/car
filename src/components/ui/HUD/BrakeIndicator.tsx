@@ -1,4 +1,5 @@
 import { useBrakeStore } from '../../../stores/useBrakeStore'
+import { BRAKE_BIAS, ENGINE_BRAKING, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -46,7 +47,7 @@ const styles: Record<string, React.CSSProperties> = {
     transform: 'translate(-50%, -50%)',
     fontWeight: 'bold',
     fontSize: 10,
-    color: '#fff',
+    color: UI.textPrimary,
     textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
     zIndex: 1,
   },
@@ -74,9 +75,9 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 function getBiasColor(frontBias: number): string {
-  if (frontBias > 60) return '#f97316' // Orange - more front brake
-  if (frontBias < 55) return '#3b82f6' // Blue - more rear brake
-  return '#22c55e' // Green - balanced
+  if (frontBias > 60) return BRAKE_BIAS.front
+  if (frontBias < 55) return BRAKE_BIAS.rear
+  return BRAKE_BIAS.balanced
 }
 
 function getEngineBrakingAbbreviation(level: string): string {
@@ -95,13 +96,13 @@ function getEngineBrakingAbbreviation(level: string): string {
 function getEngineBrakingColor(level: string): string {
   switch (level) {
     case 'Low':
-      return '#3b82f6' // Blue
+      return ENGINE_BRAKING.low
     case 'Medium':
-      return '#22c55e' // Green
+      return ENGINE_BRAKING.medium
     case 'High':
-      return '#f97316' // Orange
+      return ENGINE_BRAKING.high
     default:
-      return '#22c55e'
+      return ENGINE_BRAKING.medium
   }
 }
 

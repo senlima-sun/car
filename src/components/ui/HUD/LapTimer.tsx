@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
+import { LAP_TIMER, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -22,7 +23,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 8,
     padding: '8px 16px',
-    color: '#888',
+    color: UI.textMuted,
     fontSize: 12,
   },
   timeBlock: {
@@ -30,7 +31,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   label: {
     fontSize: 10,
-    color: '#888',
+    color: LAP_TIMER.label,
     textTransform: 'uppercase' as const,
     letterSpacing: 1,
     marginBottom: 2,
@@ -40,7 +41,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 6,
     fontSize: 10,
-    color: '#ff4444',
+    color: LAP_TIMER.recording,
     textTransform: 'uppercase' as const,
     letterSpacing: 1,
   },
@@ -48,35 +49,35 @@ const styles: Record<string, React.CSSProperties> = {
     width: 8,
     height: 8,
     borderRadius: '50%',
-    background: '#ff4444',
+    background: LAP_TIMER.recording,
     animation: 'pulse 1s infinite',
   },
   currentTime: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#00ff88',
+    color: LAP_TIMER.bestLap,
     fontFamily: 'monospace',
     textShadow: '0 0 10px rgba(0, 255, 136, 0.5)',
   },
   lastTime: {
     fontSize: 16,
-    color: '#ffffff',
+    color: LAP_TIMER.currentLap,
     fontFamily: 'monospace',
   },
   bestTime: {
     fontSize: 16,
-    color: '#ff00ff',
+    color: LAP_TIMER.ghost,
     fontFamily: 'monospace',
     textShadow: '0 0 8px rgba(255, 0, 255, 0.5)',
   },
   lapCount: {
     fontSize: 14,
-    color: '#aaa',
+    color: UI.textSecondary,
     fontFamily: 'monospace',
   },
   waiting: {
     fontSize: 12,
-    color: '#666',
+    color: LAP_TIMER.muted,
     fontStyle: 'italic' as const,
   },
 }

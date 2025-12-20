@@ -1,5 +1,6 @@
 import { useTireStore } from '../../../stores/useTireStore'
 import { TIRE_CONFIG, TIRE_WEAR_WARNING, TIRE_WEAR_CRITICAL } from '../../../constants/tires'
+import { PERFORMANCE, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -25,7 +26,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     fontWeight: 'bold',
     fontSize: 16,
-    color: '#000',
+    color: UI.backgroundDark,
     border: '2px solid rgba(255, 255, 255, 0.3)',
   },
   compoundInfo: {
@@ -33,7 +34,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
   },
   compoundName: {
-    color: '#fff',
+    color: UI.textPrimary,
     fontSize: 13,
     fontWeight: 'bold',
     textTransform: 'uppercase',
@@ -79,7 +80,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   wheelPercent: {
     fontSize: 9,
-    color: '#fff',
+    color: UI.textPrimary,
     marginTop: 2,
     fontWeight: 'bold',
   },
@@ -117,9 +118,9 @@ const styles: Record<string, React.CSSProperties> = {
 
 // Get color based on wear percentage
 function getWearColor(wear: number): string {
-  if (wear >= TIRE_WEAR_CRITICAL) return '#ef4444' // Red
-  if (wear >= TIRE_WEAR_WARNING) return '#f59e0b' // Orange/Amber
-  return '#22c55e' // Green
+  if (wear >= TIRE_WEAR_CRITICAL) return PERFORMANCE.wearCritical
+  if (wear >= TIRE_WEAR_WARNING) return PERFORMANCE.wearWarning
+  return PERFORMANCE.wearGood
 }
 
 // Single wheel indicator component

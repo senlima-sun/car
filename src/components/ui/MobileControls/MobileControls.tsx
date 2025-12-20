@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useTouchControlsStore } from '../../../stores/useTouchControlsStore'
 import { useMobileDetection } from '../../../utils/isMobile'
+import { MOBILE, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -35,7 +36,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 10,
     border: '2px solid rgba(255, 255, 255, 0.4)',
     background: 'rgba(0, 0, 0, 0.5)',
-    color: '#fff',
+    color: UI.textPrimary,
     fontSize: 12,
     fontWeight: 'bold',
     display: 'flex',
@@ -52,7 +53,7 @@ const styles: Record<string, React.CSSProperties> = {
   } as React.CSSProperties,
   buttonActive: {
     background: 'rgba(255, 255, 255, 0.3)',
-    borderColor: '#00ff88',
+    borderColor: MOBILE.accelerate,
   },
   brakeButton: {
     width: 80,
@@ -64,7 +65,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   brakeButtonActive: {
     background: 'rgba(255, 100, 100, 0.7)',
-    borderColor: '#ff4444',
+    borderColor: MOBILE.brake,
   },
   dpadRow: {
     display: 'flex',

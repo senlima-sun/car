@@ -5,6 +5,7 @@ import { useGameStore } from '../../../stores/useGameStore'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { TIRE_CONFIG } from '../../../constants/tires'
 import { useMobileDetection } from '../../../utils/isMobile'
+import { UI, PERFORMANCE, LAP_TIMER, STATUS, TIRE_COMPOUND } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -14,7 +15,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(0, 0, 0, 0.7)',
     padding: '10px 16px',
     borderRadius: 8,
-    color: '#fff',
+    color: UI.textPrimary,
     fontSize: 13,
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     display: 'flex',
@@ -55,7 +56,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: 6,
     height: 6,
     borderRadius: '50%',
-    background: '#ff4444',
+    background: LAP_TIMER.recording,
     animation: 'pulse 1s infinite',
   },
   lapTime: {
@@ -77,7 +78,7 @@ const mobileStyles: Record<string, React.CSSProperties> = {
     background: 'rgba(0, 0, 0, 0.75)',
     padding: '6px 10px',
     borderRadius: 6,
-    color: '#fff',
+    color: UI.textPrimary,
     fontSize: 11,
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     display: 'flex',
@@ -103,15 +104,15 @@ const mobileStyles: Record<string, React.CSSProperties> = {
     width: 5,
     height: 5,
     borderRadius: '50%',
-    background: '#ff4444',
+    background: LAP_TIMER.recording,
     animation: 'pulse 1s infinite',
   },
 }
 
 function getFPSColor(fps: number): string {
-  if (fps >= 50) return '#4ade80' // green
-  if (fps >= 30) return '#facc15' // yellow
-  return '#f87171' // red
+  if (fps >= 50) return PERFORMANCE.fpsGood
+  if (fps >= 30) return PERFORMANCE.fpsWarning
+  return PERFORMANCE.fpsBad
 }
 
 function formatTime(ms: number | null): string {
@@ -179,7 +180,7 @@ export default function StatusBar() {
         <span
           style={{
             color: tireConfig.color,
-            textShadow: tireConfig.color === '#ffffff' ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
+            textShadow: tireConfig.color === TIRE_COMPOUND.hard ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
           }}
         >
           {tireConfig.icon}
@@ -196,7 +197,7 @@ export default function StatusBar() {
         <span
           style={{
             fontWeight: 'bold',
-            color: isTestingMode ? '#ef4444' : '#4ade80',
+            color: isTestingMode ? STATUS.danger : STATUS.successLight,
           }}
         >
           {isTestingMode ? 'TST' : 'RCE'}
@@ -208,7 +209,7 @@ export default function StatusBar() {
             <span style={mobileStyles.separator}>|</span>
             <div style={mobileStyles.item}>
               <div style={mobileStyles.recordingDot} />
-              <span style={{ ...mobileStyles.lapTime, color: '#00ff88' }}>
+              <span style={{ ...mobileStyles.lapTime, color: LAP_TIMER.bestLap }}>
                 {hasLapStarted ? formatTime(currentLapTime) : '...'}
               </span>
             </div>
@@ -237,7 +238,7 @@ export default function StatusBar() {
             style={{
               ...styles.value,
               color: tireConfig.color,
-              textShadow: tireConfig.color === '#ffffff' ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
+              textShadow: tireConfig.color === TIRE_COMPOUND.hard ? '0 0 2px rgba(0,0,0,0.5)' : 'none',
             }}
           >
             {tireConfig.icon}
@@ -260,7 +261,7 @@ export default function StatusBar() {
           <span
             style={{
               ...styles.value,
-              color: isTestingMode ? '#ef4444' : '#4ade80',
+              color: isTestingMode ? STATUS.danger : STATUS.successLight,
             }}
           >
             {isTestingMode ? 'TEST' : 'RACE'}
@@ -285,13 +286,13 @@ export default function StatusBar() {
               {/* Recording indicator */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={styles.recordingDot} />
-                <span style={{ ...styles.label, color: '#ff4444' }}>REC</span>
+                <span style={{ ...styles.label, color: LAP_TIMER.recording }}>REC</span>
               </div>
 
               {/* Current time */}
               <div style={styles.item}>
                 <span style={styles.label}>Lap:</span>
-                <span style={{ ...styles.lapTime, color: '#00ff88' }}>
+                <span style={{ ...styles.lapTime, color: LAP_TIMER.bestLap }}>
                   {hasLapStarted ? formatTime(currentLapTime) : 'Waiting...'}
                 </span>
               </div>
@@ -305,7 +306,7 @@ export default function StatusBar() {
               {/* Best lap */}
               <div style={styles.item}>
                 <span style={styles.label}>Best:</span>
-                <span style={{ ...styles.lapTime, color: '#ff00ff' }}>
+                <span style={{ ...styles.lapTime, color: LAP_TIMER.ghost }}>
                   {formatTime(bestLapTime)}
                 </span>
               </div>
