@@ -10,8 +10,9 @@ use crate::tires::{TempInput, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
     AeroMode, AmbientConditions, AquaplaningState, BrakeState, CarInput, CarPhysicsOutput, CurbSide,
-    EngineBrakingLevel, ErsMode, PerWheelWear, SurfaceModifiers, SurfaceType, TemperatureOutput,
-    TireCompound, TireThermalShock, TrackBounds, WeatherModifiers, WindModifiers, WindState,
+    EngineBrakingLevel, ErsMode, PerWheelWear, SemiAutoConfig, SemiAutoPreset, SurfaceModifiers,
+    SurfaceType, TemperatureOutput, TireCompound, TireThermalShock, TrackBounds, WeatherModifiers,
+    WindModifiers, WindState,
 };
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
@@ -156,6 +157,42 @@ impl PhysicsEngine {
 
     pub fn set_ers_overtake_available(&mut self, available: bool) {
         self.ers.set_overtake_available(available);
+    }
+
+    // ========================================================================
+    // Semi-Auto ERS API
+    // ========================================================================
+
+    pub fn set_ers_semi_auto_preset(&mut self, preset: SemiAutoPreset) {
+        self.ers.set_semi_auto_preset(preset);
+    }
+
+    pub fn get_ers_semi_auto_preset(&self) -> SemiAutoPreset {
+        self.ers.get_semi_auto_config().preset
+    }
+
+    pub fn get_ers_semi_auto_config(&self) -> SemiAutoConfig {
+        self.ers.get_semi_auto_config()
+    }
+
+    pub fn set_ers_lap_mode(&mut self, enabled: bool) {
+        self.ers.set_lap_mode(enabled);
+    }
+
+    pub fn set_ers_expert_mode(&mut self, enabled: bool) {
+        self.ers.set_expert_mode(enabled);
+    }
+
+    pub fn activate_ers_overtake(&mut self) {
+        self.ers.activate_overtake_override();
+    }
+
+    pub fn deactivate_ers_overtake(&mut self) {
+        self.ers.deactivate_overtake_override();
+    }
+
+    pub fn is_ers_overtake_override(&self) -> bool {
+        self.ers.is_overtake_override()
     }
 
     // ========================================================================

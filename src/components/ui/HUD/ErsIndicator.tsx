@@ -140,6 +140,8 @@ function getModeAbbreviation(mode: string): string {
       return 'HRV'
     case 'Overtake':
       return 'OVT'
+    case 'SemiAuto':
+      return 'AUTO'
     default:
       return 'BAL'
   }
@@ -155,6 +157,8 @@ function getModeColor(mode: string): string {
       return '#3b82f6' // Blue
     case 'Overtake':
       return '#f97316' // Orange
+    case 'SemiAuto':
+      return '#a855f7' // Purple
     default:
       return '#ffffff'
   }

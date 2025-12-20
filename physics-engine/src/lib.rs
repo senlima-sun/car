@@ -15,7 +15,7 @@ mod wind;
 
 use engine::PhysicsEngine as PhysicsEngineInternal;
 use serde_wasm_bindgen::{from_value, to_value};
-use types::{AeroMode, CarInput, CurbSide, ErsMode, SurfaceType, TireCompound, TrackBounds};
+use types::{AeroMode, CarInput, CurbSide, ErsMode, SemiAutoPreset, SurfaceType, TireCompound, TrackBounds};
 use wasm_bindgen::prelude::*;
 
 // Re-export enums for JavaScript
@@ -194,6 +194,71 @@ impl PhysicsEngine {
     #[wasm_bindgen]
     pub fn set_ers_overtake_available(&mut self, available: bool) {
         self.inner.set_ers_overtake_available(available);
+    }
+
+    // ========================================================================
+    // Semi-Auto ERS API
+    // ========================================================================
+
+    /// Set ERS Semi-Auto preset
+    /// preset: 0 = Balanced, 1 = Aggressive, 2 = Conservative
+    #[wasm_bindgen]
+    pub fn set_ers_semi_auto_preset(&mut self, preset: u8) {
+        let semi_preset = match preset {
+            0 => SemiAutoPreset::Balanced,
+            1 => SemiAutoPreset::Aggressive,
+            2 => SemiAutoPreset::Conservative,
+            _ => SemiAutoPreset::Balanced,
+        };
+        self.inner.set_ers_semi_auto_preset(semi_preset);
+    }
+
+    /// Get current Semi-Auto preset
+    /// Returns: 0 = Balanced, 1 = Aggressive, 2 = Conservative
+    #[wasm_bindgen]
+    pub fn get_ers_semi_auto_preset(&self) -> u8 {
+        match self.inner.get_ers_semi_auto_preset() {
+            SemiAutoPreset::Balanced => 0,
+            SemiAutoPreset::Aggressive => 1,
+            SemiAutoPreset::Conservative => 2,
+        }
+    }
+
+    /// Get ERS Semi-Auto config as JavaScript object
+    /// Returns: { target_min, target_max, preset, lap_mode, expert_mode }
+    #[wasm_bindgen]
+    pub fn get_ers_semi_auto_config(&self) -> JsValue {
+        to_value(&self.inner.get_ers_semi_auto_config()).unwrap_or(JsValue::NULL)
+    }
+
+    /// Set ERS lap mode (race-aware strategy)
+    #[wasm_bindgen]
+    pub fn set_ers_lap_mode(&mut self, enabled: bool) {
+        self.inner.set_ers_lap_mode(enabled);
+    }
+
+    /// Set ERS expert mode (manual control)
+    #[wasm_bindgen]
+    pub fn set_ers_expert_mode(&mut self, enabled: bool) {
+        self.inner.set_ers_expert_mode(enabled);
+    }
+
+    /// Activate ERS overtake override (temporary 100% deploy in SemiAuto mode)
+    #[wasm_bindgen]
+    pub fn activate_ers_overtake(&mut self) {
+        self.inner.activate_ers_overtake();
+    }
+
+    /// Deactivate ERS overtake override
+    #[wasm_bindgen]
+    pub fn deactivate_ers_overtake(&mut self) {
+        self.inner.deactivate_ers_overtake();
+    }
+
+    /// Check if ERS overtake override is active
+    #[wasm_bindgen]
+    pub fn is_ers_overtake_override(&self) -> bool {
+        self.inner.is_ers_overtake_override()
     }
 
     // ========================================================================

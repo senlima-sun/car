@@ -161,10 +161,43 @@ export interface TemperatureOutput {
 // ERS (Energy Recovery System) Types - 2026 F1 Regulations
 // ============================================================================
 
-export type ErsMode = 'Balanced' | 'Attack' | 'Harvest' | 'Overtake'
+export type ErsMode = 'Balanced' | 'Attack' | 'Harvest' | 'Overtake' | 'SemiAuto'
 
 /** Source of energy harvesting (2026 ERS) */
 export type HarvestSource = 'None' | 'Braking' | 'Coast' | 'SuperClip'
+
+/** Semi-Auto ERS preset profiles */
+export type SemiAutoPreset = 'Balanced' | 'Aggressive' | 'Conservative'
+
+/** Semi-Auto configuration for target-based battery management */
+export interface SemiAutoConfig {
+  /** Minimum target battery level (0.0-1.0) */
+  target_min: number
+  /** Maximum target battery level (0.0-1.0) */
+  target_max: number
+  /** Current preset */
+  preset: SemiAutoPreset
+  /** Lap mode enabled (race-aware strategy) */
+  lap_mode: boolean
+  /** Expert mode (disables semi-auto, full manual) */
+  expert_mode: boolean
+}
+
+/** Semi-Auto output state (for UI feedback) */
+export interface SemiAutoState {
+  /** Whether coast regeneration is recommended right now */
+  coast_recommended: boolean
+  /** Coast benefit score (0.0-1.0, how beneficial lifting would be) */
+  coast_benefit: number
+  /** Current deploy efficiency based on speed (0.0-1.0) */
+  deploy_efficiency: number
+  /** Is battery in critical state (<15%) */
+  is_critical: boolean
+  /** Active deploy multiplier being applied */
+  effective_deploy_mult: number
+  /** Active harvest multiplier being applied */
+  effective_harvest_mult: number
+}
 
 export interface ErsState {
   battery_charge: number // 0.0-1.0
@@ -176,6 +209,8 @@ export interface ErsState {
   super_clip_active: boolean // True when harvesting at full throttle
   harvest_source: HarvestSource
   overtake_available: boolean // True when in testing mode
+  // Semi-Auto mode state
+  semi_auto: SemiAutoState
 }
 
 // ============================================================================
@@ -626,10 +661,19 @@ export function getDebugState(): string {
 
 /**
  * Set ERS deployment mode
- * @param mode - 0 = Balanced, 1 = Attack, 2 = Harvest
+ * @param mode - 0 = Balanced, 1 = Attack, 2 = Harvest, 3 = Overtake, 4 = SemiAuto
  */
 export function setErsMode(mode: ErsMode): void {
-  const modeIndex = mode === 'Balanced' ? 0 : mode === 'Attack' ? 1 : 2
+  const modeIndex =
+    mode === 'Balanced'
+      ? 0
+      : mode === 'Attack'
+        ? 1
+        : mode === 'Harvest'
+          ? 2
+          : mode === 'Overtake'
+            ? 3
+            : 4 // SemiAuto
   getPhysicsEngine().set_ers_mode(modeIndex)
 }
 
@@ -638,7 +682,20 @@ export function setErsMode(mode: ErsMode): void {
  */
 export function getErsMode(): ErsMode {
   const modeIndex = getPhysicsEngine().get_ers_mode()
-  return modeIndex === 0 ? 'Balanced' : modeIndex === 1 ? 'Attack' : 'Harvest'
+  switch (modeIndex) {
+    case 0:
+      return 'Balanced'
+    case 1:
+      return 'Attack'
+    case 2:
+      return 'Harvest'
+    case 3:
+      return 'Overtake'
+    case 4:
+      return 'SemiAuto'
+    default:
+      return 'Balanced'
+  }
 }
 
 /**
@@ -676,7 +733,97 @@ export function getErsState(): ErsState {
     super_clip_active: false, // Will be updated from physics output
     harvest_source: 'None', // Will be updated from physics output
     overtake_available: false, // Will be updated from physics output
+    semi_auto: {
+      coast_recommended: false,
+      coast_benefit: 0,
+      deploy_efficiency: 1,
+      is_critical: false,
+      effective_deploy_mult: 0.35,
+      effective_harvest_mult: 0.9,
+    },
   }
+}
+
+// ============================================================================
+// Semi-Auto ERS API
+// ============================================================================
+
+/**
+ * Set Semi-Auto ERS preset
+ * @param preset - 'Balanced', 'Aggressive', or 'Conservative'
+ */
+export function setErsSemiAutoPreset(preset: SemiAutoPreset): void {
+  const presetIndex = preset === 'Balanced' ? 0 : preset === 'Aggressive' ? 1 : 2
+  getPhysicsEngine().set_ers_semi_auto_preset(presetIndex)
+}
+
+/**
+ * Get current Semi-Auto preset
+ */
+export function getErsSemiAutoPreset(): SemiAutoPreset {
+  const presetIndex = getPhysicsEngine().get_ers_semi_auto_preset()
+  switch (presetIndex) {
+    case 0:
+      return 'Balanced'
+    case 1:
+      return 'Aggressive'
+    case 2:
+      return 'Conservative'
+    default:
+      return 'Balanced'
+  }
+}
+
+/**
+ * Get Semi-Auto ERS configuration
+ */
+export function getErsSemiAutoConfig(): SemiAutoConfig {
+  const config = getPhysicsEngine().get_ers_semi_auto_config()
+  // Map preset number to string
+  const presetMap: Record<number, SemiAutoPreset> = {
+    0: 'Balanced',
+    1: 'Aggressive',
+    2: 'Conservative',
+  }
+  return {
+    ...config,
+    preset: presetMap[config.preset] ?? 'Balanced',
+  }
+}
+
+/**
+ * Set ERS lap mode (race-aware strategy)
+ */
+export function setErsLapMode(enabled: boolean): void {
+  getPhysicsEngine().set_ers_lap_mode(enabled)
+}
+
+/**
+ * Set ERS expert mode (manual control in SemiAuto mode)
+ */
+export function setErsExpertMode(enabled: boolean): void {
+  getPhysicsEngine().set_ers_expert_mode(enabled)
+}
+
+/**
+ * Activate ERS overtake override (temporary 100% deploy in SemiAuto mode)
+ */
+export function activateErsOvertake(): void {
+  getPhysicsEngine().activate_ers_overtake()
+}
+
+/**
+ * Deactivate ERS overtake override
+ */
+export function deactivateErsOvertake(): void {
+  getPhysicsEngine().deactivate_ers_overtake()
+}
+
+/**
+ * Check if ERS overtake override is active
+ */
+export function isErsOvertakeOverride(): boolean {
+  return getPhysicsEngine().is_ers_overtake_override()
 }
 
 // ============================================================================

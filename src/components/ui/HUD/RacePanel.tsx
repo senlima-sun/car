@@ -244,6 +244,8 @@ function getErsModeAbbrev(mode: string): string {
       return 'HRV'
     case 'Overtake':
       return 'OVT'
+    case 'SemiAuto':
+      return 'AUTO'
     default:
       return 'BAL'
   }
@@ -259,6 +261,8 @@ function getErsModeColor(mode: string): string {
       return '#3b82f6'
     case 'Overtake':
       return '#f97316'
+    case 'SemiAuto':
+      return '#a855f7'
     default:
       return '#ffffff'
   }
@@ -307,6 +311,7 @@ export default function RacePanel() {
   // ERS state
   const batteryCharge = useErsStore(state => state.batteryCharge)
   const ersMode = useErsStore(state => state.mode)
+  const semiAutoConfig = useErsStore(state => state.semiAutoConfig)
 
   // Tire state
   const currentCompound = useTireStore(state => state.currentCompound)
@@ -339,13 +344,56 @@ export default function RacePanel() {
         {/* Compact ERS */}
         <div style={styles.ersBox as React.CSSProperties}>
           <div style={styles.ersBatteryContainer}>
+            {/* Target range zone (only visible in SemiAuto mode) */}
+            {ersMode === 'SemiAuto' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  bottom: `${semiAutoConfig.targetMin}%`,
+                  height: `${semiAutoConfig.targetMax - semiAutoConfig.targetMin}%`,
+                  background: 'rgba(168, 85, 247, 0.2)',
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
             <div
               style={{
                 ...styles.ersBatteryFill,
                 height: `${batteryPercent}%`,
-                backgroundColor: getBatteryColor(batteryPercent),
+                backgroundColor: ersMode === 'SemiAuto' ? '#a855f7' : getBatteryColor(batteryPercent),
               }}
             />
+            {/* Target range markers (only visible in SemiAuto mode) */}
+            {ersMode === 'SemiAuto' && (
+              <>
+                {/* Min marker */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: `${semiAutoConfig.targetMin}%`,
+                    height: 1,
+                    background: '#a855f7',
+                    boxShadow: '0 0 2px #a855f7',
+                  }}
+                />
+                {/* Max marker */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: `${semiAutoConfig.targetMax}%`,
+                    height: 1,
+                    background: '#a855f7',
+                    boxShadow: '0 0 2px #a855f7',
+                  }}
+                />
+              </>
+            )}
             <span style={styles.ersBatteryText}>{Math.round(batteryPercent)}</span>
           </div>
           <div style={styles.ersInfo as React.CSSProperties}>

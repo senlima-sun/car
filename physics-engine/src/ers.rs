@@ -1,4 +1,4 @@
-use crate::types::{ErsMode, ErsState, HarvestSource};
+use crate::types::{ErsMode, ErsState, HarvestSource, SemiAutoConfig, SemiAutoPreset, SemiAutoState};
 
 // ============================================================================
 // 2026 F1 ERS Constants
@@ -49,10 +49,37 @@ const SUPER_CLIP_MIN_SPEED: f32 = 35.0; // ~126 km/h for super clipping (was 50/
 const SUPER_CLIP_OPTIMAL_SPEED: f32 = 55.0; // ~198 km/h for max super clipping (was 70/250)
 const OPTIMAL_HARVEST_SPEED: f32 = 80.0; // ~288 km/h for max brake harvest
 
+// ============================================================================
+// Semi-Auto Mode Constants
+// ============================================================================
+
+// Critical battery protection
+const CRITICAL_BATTERY_THRESHOLD: f32 = 0.15; // 15% critical
+const CRITICAL_DEPLOY_MULT: f32 = 0.20; // 20% deploy when critical
+
+// Speed efficiency curve for deploy (efficiency peaks at 40-70 m/s)
+const DEPLOY_EFFICIENCY_MIN_SPEED: f32 = 10.0; // ~36 km/h
+const DEPLOY_EFFICIENCY_OPTIMAL_MIN: f32 = 40.0; // ~144 km/h
+const DEPLOY_EFFICIENCY_OPTIMAL_MAX: f32 = 70.0; // ~252 km/h
+const DEPLOY_EFFICIENCY_MAX_SPEED: f32 = 90.0; // ~324 km/h
+
+// Coast recommendation thresholds
+const COAST_RECOMMEND_SPEED_MIN: f32 = 25.0; // ~90 km/h minimum for coast benefit
+
 /// ERS Physics State Machine
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ErsPhysicsState {
     current: ErsState,
+    /// Semi-Auto configuration
+    semi_auto_config: SemiAutoConfig,
+    /// Temporary overtake override (O key in SemiAuto mode)
+    overtake_override: bool,
+}
+
+impl Default for ErsPhysicsState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ErsPhysicsState {
@@ -67,8 +94,153 @@ impl ErsPhysicsState {
                 super_clip_active: false,
                 harvest_source: HarvestSource::None,
                 overtake_available: false,
+                semi_auto: SemiAutoState::default(),
             },
+            semi_auto_config: SemiAutoConfig::default(),
+            overtake_override: false,
         }
+    }
+
+    // ========================================================================
+    // Semi-Auto Helper Methods
+    // ========================================================================
+
+    /// Calculate speed-based deploy efficiency (0.0-1.0)
+    /// Efficiency peaks at 40-70 m/s, lower at low speeds (wasted energy)
+    /// and slightly reduced at very high speeds (aero dominates)
+    fn calculate_deploy_efficiency(&self, speed_ms: f32) -> f32 {
+        if speed_ms < DEPLOY_EFFICIENCY_MIN_SPEED {
+            // Low speed: poor efficiency (wasted at low speed)
+            return 0.3;
+        }
+        if speed_ms < DEPLOY_EFFICIENCY_OPTIMAL_MIN {
+            // Ramp up to optimal range
+            let t = (speed_ms - DEPLOY_EFFICIENCY_MIN_SPEED)
+                / (DEPLOY_EFFICIENCY_OPTIMAL_MIN - DEPLOY_EFFICIENCY_MIN_SPEED);
+            return 0.3 + t * 0.7;
+        }
+        if speed_ms <= DEPLOY_EFFICIENCY_OPTIMAL_MAX {
+            // Optimal range: full efficiency
+            return 1.0;
+        }
+        if speed_ms < DEPLOY_EFFICIENCY_MAX_SPEED {
+            // Diminishing returns at very high speed
+            let t = (speed_ms - DEPLOY_EFFICIENCY_OPTIMAL_MAX)
+                / (DEPLOY_EFFICIENCY_MAX_SPEED - DEPLOY_EFFICIENCY_OPTIMAL_MAX);
+            return 1.0 - t * 0.3;
+        }
+        // Very high speed: capped efficiency
+        0.7
+    }
+
+    /// Calculate coast recommendation based on current state
+    /// Returns (recommended, benefit_score)
+    fn calculate_coast_recommendation(&self, speed_ms: f32, is_coasting: bool) -> (bool, f32) {
+        let battery = self.current.battery_charge;
+
+        // No recommendation if already coasting or at low speed
+        if is_coasting || speed_ms < COAST_RECOMMEND_SPEED_MIN {
+            return (false, 0.0);
+        }
+
+        // Calculate coast benefit score based on battery need
+        let battery_need = if battery < self.semi_auto_config.target_min {
+            // Below target: high benefit
+            1.0 - (battery / self.semi_auto_config.target_min)
+        } else if battery < self.semi_auto_config.target_max {
+            // In target range: moderate benefit
+            0.3
+        } else {
+            // Above target: low benefit
+            0.1
+        };
+
+        // Speed factor: higher speed = more regen potential
+        let speed_factor = ((speed_ms - COAST_RECOMMEND_SPEED_MIN) / 50.0).min(1.0);
+
+        let benefit = battery_need * speed_factor;
+        let recommended = benefit > 0.4 && battery < self.semi_auto_config.target_max;
+
+        (recommended, benefit)
+    }
+
+    /// Calculate Semi-Auto multipliers based on battery state
+    /// Returns (deploy_mult, harvest_mult, coast_mult, clip_mult)
+    fn calculate_semi_auto_multipliers(&self, _speed_ms: f32) -> (f32, f32, f32, f32) {
+        let battery = self.current.battery_charge;
+        let target_min = self.semi_auto_config.target_min;
+        let target_max = self.semi_auto_config.target_max;
+
+        // Critical protection: minimal deploy, max harvest
+        if battery < CRITICAL_BATTERY_THRESHOLD {
+            return (CRITICAL_DEPLOY_MULT, 1.0, 1.0, 1.0);
+        }
+
+        // Below minimum target: prioritize charging
+        if battery < target_min {
+            let urgency = 1.0 - (battery / target_min);
+            let deploy = 0.15 + (1.0 - urgency) * 0.35; // 15-50% deploy
+            let harvest = 0.8 + urgency * 0.2; // 80-100% harvest
+            return (deploy, harvest, harvest, harvest);
+        }
+
+        // In target range: balanced operation
+        if battery <= target_max {
+            let position = (battery - target_min) / (target_max - target_min);
+            let deploy = 0.40 + position * 0.30; // 40-70% deploy
+            let harvest = 0.90 - position * 0.20; // 90-70% harvest
+            return (deploy, harvest, harvest * 0.9, harvest * 0.8);
+        }
+
+        // Above maximum target: allow more deployment
+        let excess = (battery - target_max) / (1.0 - target_max);
+        let deploy = 0.70 + excess * 0.25; // 70-95% deploy
+        let harvest = 0.50 - excess * 0.30; // 50-20% harvest
+        (deploy, harvest.max(0.2), harvest.max(0.2), harvest.max(0.1))
+    }
+
+    // ========================================================================
+    // Semi-Auto Public API
+    // ========================================================================
+
+    /// Set Semi-Auto configuration
+    pub fn set_semi_auto_config(&mut self, config: SemiAutoConfig) {
+        self.semi_auto_config = config;
+    }
+
+    /// Get Semi-Auto configuration
+    pub fn get_semi_auto_config(&self) -> SemiAutoConfig {
+        self.semi_auto_config
+    }
+
+    /// Set preset (updates target_min/target_max)
+    pub fn set_semi_auto_preset(&mut self, preset: SemiAutoPreset) {
+        self.semi_auto_config = SemiAutoConfig::for_preset(preset);
+    }
+
+    /// Set lap mode
+    pub fn set_lap_mode(&mut self, enabled: bool) {
+        self.semi_auto_config.lap_mode = enabled;
+    }
+
+    /// Set expert mode
+    pub fn set_expert_mode(&mut self, enabled: bool) {
+        self.semi_auto_config.expert_mode = enabled;
+    }
+
+    /// Activate overtake override (temporary 100% deploy)
+    pub fn activate_overtake_override(&mut self) {
+        self.overtake_override = true;
+    }
+
+    /// Deactivate overtake override
+    pub fn deactivate_overtake_override(&mut self) {
+        self.overtake_override = false;
+    }
+
+    /// Check if overtake override is active
+    pub fn is_overtake_override(&self) -> bool {
+        self.overtake_override
     }
 
     /// Update ERS state based on driving conditions (2026 F1 regulations)
@@ -86,6 +258,14 @@ impl ErsPhysicsState {
         speed_ms: f32,
     ) -> f32 {
         let dt = delta.min(0.05);
+
+        let is_coasting = !is_accelerating && !is_braking;
+
+        // Calculate Semi-Auto state for UI (even when not in SemiAuto mode)
+        let deploy_efficiency = self.calculate_deploy_efficiency(speed_ms);
+        let (coast_recommended, coast_benefit) =
+            self.calculate_coast_recommendation(speed_ms, is_coasting);
+        let is_critical = self.current.battery_charge < CRITICAL_BATTERY_THRESHOLD;
 
         // Get mode multipliers (deploy, harvest, coast, super_clip)
         let (deploy_mult, harvest_mult, coast_mult, clip_mult) = match self.current.mode {
@@ -113,6 +293,33 @@ impl ErsPhysicsState {
                 OVERTAKE_COAST_MULT,
                 OVERTAKE_CLIP_MULT,
             ),
+            ErsMode::SemiAuto => {
+                if self.overtake_override {
+                    // Overtake override: full deploy, no harvest
+                    (1.0, 0.0, 0.0, 0.0)
+                } else if self.semi_auto_config.expert_mode {
+                    // Expert mode: use Balanced multipliers
+                    (
+                        BALANCED_DEPLOY_MULT,
+                        BALANCED_HARVEST_MULT,
+                        BALANCED_COAST_MULT,
+                        BALANCED_CLIP_MULT,
+                    )
+                } else {
+                    // Smart Semi-Auto multipliers based on battery state
+                    self.calculate_semi_auto_multipliers(speed_ms)
+                }
+            }
+        };
+
+        // Apply speed efficiency gating to deploy in SemiAuto mode
+        let effective_deploy_mult = if self.current.mode == ErsMode::SemiAuto
+            && !self.overtake_override
+            && !self.semi_auto_config.expert_mode
+        {
+            deploy_mult * deploy_efficiency
+        } else {
+            deploy_mult
         };
 
         let mut power_flow_kw = 0.0;
@@ -121,7 +328,6 @@ impl ErsPhysicsState {
         let mut super_clip_active = false;
         let mut harvest_source = HarvestSource::None;
         let mut force_boost = 0.0;
-        let is_coasting = !is_accelerating && !is_braking;
 
         // ========================================================================
         // HARVESTING (multiple sources can contribute)
@@ -190,7 +396,7 @@ impl ErsPhysicsState {
         // ========================================================================
 
         if is_accelerating && !is_braking && self.current.battery_charge > 0.0 {
-            let deploy_power = MAX_DEPLOY_POWER_KW * deploy_mult;
+            let deploy_power = MAX_DEPLOY_POWER_KW * effective_deploy_mult;
 
             let energy_deployed = deploy_power * dt;
             let battery_needed = energy_deployed / BATTERY_CAPACITY_KJ;
@@ -216,6 +422,16 @@ impl ErsPhysicsState {
         self.current.is_harvesting = is_harvesting;
         self.current.super_clip_active = super_clip_active;
         self.current.harvest_source = harvest_source;
+
+        // Update Semi-Auto state (for UI feedback)
+        self.current.semi_auto = SemiAutoState {
+            coast_recommended,
+            coast_benefit,
+            deploy_efficiency,
+            is_critical,
+            effective_deploy_mult,
+            effective_harvest_mult: harvest_mult,
+        };
 
         force_boost
     }

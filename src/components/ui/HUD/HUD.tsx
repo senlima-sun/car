@@ -7,6 +7,7 @@ import WeatherControlModal from './WeatherControlModal'
 import HeatmapLegend from './HeatmapLegend'
 import AquaplaningIndicator from './AquaplaningIndicator'
 import DebugPanel from './DebugPanel'
+import CoastIndicator from './CoastIndicator'
 import { useGameStore } from '../../../stores/useGameStore'
 import { usePitStore } from '../../../stores/usePitStore'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
@@ -37,6 +38,12 @@ const styles: Record<string, React.CSSProperties> = {
     bottom: 20,
     left: 20,
     pointerEvents: 'auto',
+  },
+  coastIndicator: {
+    position: 'absolute',
+    bottom: 100,
+    left: '50%',
+    transform: 'translateX(-50%)',
   },
   trackSelectorContainer: {
     position: 'absolute',
@@ -162,6 +169,10 @@ export default function HUD() {
           {/* Desktop: Unified race panel bottom-center, Debug panel bottom-left */}
           {!isMobile && cameraMode !== 'first-person' && (
             <>
+              {/* Coast indicator above RacePanel (only visible in SemiAuto mode) */}
+              <div style={styles.coastIndicator}>
+                <CoastIndicator />
+              </div>
               <div style={styles.bottomCenter}>
                 <RacePanel />
               </div>

@@ -86,8 +86,9 @@ export function useCarFrame({
   // ERS mode cycling and sync
   const cycleErsMode = useErsStore(state => state.cycleMode)
   const activateOvertake = useErsStore(state => state.activateOvertake)
-  // @ts-ignore
-  const _ersMode = useErsStore(state => state.mode)
+  const cycleSemiAutoPreset = useErsStore(state => state.cycleSemiAutoPreset)
+  const ersMode = useErsStore(state => state.mode)
+  const semiAutoConfig = useErsStore(state => state.semiAutoConfig)
   const syncErsState = useErsStore(state => state.syncFromPhysics)
 
   // Active Aero mode toggle and sync
@@ -116,6 +117,7 @@ export function useCarFrame({
   const lastHeatmapToggle = useRef(0)
   const lastGridToggle = useRef(0)
   const lastErsModeToggle = useRef(0)
+  const lastErsPresetToggle = useRef(0)
   const lastOvertakeToggle = useRef(0)
   const lastAeroModeToggle = useRef(0)
   const lastBrakeIncrToggle = useRef(0)
@@ -146,6 +148,7 @@ export function useCarFrame({
       brake,
       handbrake,
       ers,
+      ersPreset,
       overtake,
       aero,
       brakeIncr,
@@ -190,6 +193,20 @@ export function useCarFrame({
       lastErsModeToggle.current = state.clock.elapsedTime
     }
 
+    // ERS Semi-Auto preset cycle with debounce (G key) - only in SemiAuto mode
+    if (
+      ersPreset &&
+      ersMode === 'SemiAuto' &&
+      state.clock.elapsedTime - lastErsPresetToggle.current > 0.3
+    ) {
+      cycleSemiAutoPreset()
+      // Sync preset to physics engine
+      const presetIndex =
+        semiAutoConfig.preset === 'Balanced' ? 0 : semiAutoConfig.preset === 'Aggressive' ? 1 : 2
+      physics.setErsSemiAutoPreset(presetIndex)
+      lastErsPresetToggle.current = state.clock.elapsedTime
+    }
+
     // Overtake mode activation with debounce (O key) - testing mode only
     if (isTestingMode && overtake && state.clock.elapsedTime - lastOvertakeToggle.current > 0.3) {
       activateOvertake()
@@ -202,14 +219,14 @@ export function useCarFrame({
       lastAeroModeToggle.current = state.clock.elapsedTime
     }
 
-    // Brake bias increase with debounce (] key) - call physics directly
-    if (brakeIncr && state.clock.elapsedTime - lastBrakeIncrToggle.current > 0.3) {
+    // Brake bias increase with debounce (] key) - testing mode only
+    if (isTestingMode && brakeIncr && state.clock.elapsedTime - lastBrakeIncrToggle.current > 0.3) {
       physics.increaseBrakeBias()
       lastBrakeIncrToggle.current = state.clock.elapsedTime
     }
 
-    // Brake bias decrease with debounce ([ key) - call physics directly
-    if (brakeDecr && state.clock.elapsedTime - lastBrakeDecrToggle.current > 0.3) {
+    // Brake bias decrease with debounce ([ key) - testing mode only
+    if (isTestingMode && brakeDecr && state.clock.elapsedTime - lastBrakeDecrToggle.current > 0.3) {
       physics.decreaseBrakeBias()
       lastBrakeDecrToggle.current = state.clock.elapsedTime
     }

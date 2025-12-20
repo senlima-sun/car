@@ -5,13 +5,12 @@ export const keyboardMap = [
   { name: 'left', keys: ['KeyA', 'ArrowLeft'] },
   { name: 'right', keys: ['KeyD', 'ArrowRight'] },
   { name: 'brake', keys: ['Space'] },
-  { name: 'handbrake', keys: ['ShiftLeft', 'ShiftRight'] },
   { name: 'ers', keys: ['KeyB'] },
-  { name: 'overtake', keys: ['KeyO'] },
+  { name: 'ersPreset', keys: ['KeyG'] },
+  { name: 'overtake', keys: ['KeyR'] },
   { name: 'aero', keys: ['KeyV'] },
   { name: 'brakeIncr', keys: ['BracketRight'] },
   { name: 'brakeDecr', keys: ['BracketLeft'] },
-  { name: 'engineBrake', keys: ['KeyN'] },
   { name: 'camera', keys: ['KeyC'] },
   { name: 'heatmap', keys: ['KeyH'] },
   { name: 'distanceGrid', keys: ['AltLeft', 'AltRight'] },
@@ -49,21 +48,32 @@ export const CONTROLS: ControlDefinition[] = [
   { id: 'left', displayName: 'Steer Left', keys: ['A', '←'], category: 'movement' },
   { id: 'right', displayName: 'Steer Right', keys: ['D', '→'], category: 'movement' },
   { id: 'brake', displayName: 'Handbrake', keys: ['Space'], category: 'movement' },
-  { id: 'handbrake', displayName: 'E-Brake', keys: ['Shift'], category: 'movement' },
 
   // Driving Systems
   { id: 'ers', displayName: 'Cycle ERS', keys: ['B'], category: 'drivingSystems' },
+  { id: 'ersPreset', displayName: 'ERS Preset', keys: ['G'], category: 'drivingSystems' },
   {
     id: 'overtake',
     displayName: 'Overtake',
-    keys: ['O'],
+    keys: ['R'],
     category: 'drivingSystems',
     testingModeOnly: true,
   },
   { id: 'aero', displayName: 'Aero Mode', keys: ['V'], category: 'drivingSystems' },
-  { id: 'brakeIncr', displayName: 'Brake Bias +', keys: [']'], category: 'drivingSystems' },
-  { id: 'brakeDecr', displayName: 'Brake Bias -', keys: ['['], category: 'drivingSystems' },
-  { id: 'engineBrake', displayName: 'Engine Brake', keys: ['N'], category: 'drivingSystems' },
+  {
+    id: 'brakeIncr',
+    displayName: 'Brake Bias +',
+    keys: [']'],
+    category: 'drivingSystems',
+    testingModeOnly: true,
+  },
+  {
+    id: 'brakeDecr',
+    displayName: 'Brake Bias -',
+    keys: ['['],
+    category: 'drivingSystems',
+    testingModeOnly: true,
+  },
 
   // Camera
   { id: 'camera', displayName: 'Toggle Camera', keys: ['C'], category: 'camera' },
@@ -76,7 +86,7 @@ export const CONTROLS: ControlDefinition[] = [
   },
 
   // Racing
-  { id: 'lapTimer', displayName: 'Lap Timer', keys: ['R'], category: 'racingMode' },
+  { id: 'lapTimer', displayName: 'Lap Timer', keys: ['L'], category: 'racingMode' },
   { id: 'pitStop', displayName: 'Pit Stop', keys: ['P'], category: 'racingMode' },
   { id: 'trackEditor', displayName: 'Track Editor', keys: ['T'], category: 'racingMode' },
 
@@ -91,7 +101,7 @@ export const CONTROLS: ControlDefinition[] = [
   {
     id: 'envSettings',
     displayName: 'Environment',
-    keys: ['M'],
+    keys: ['Shift', 'E'],
     category: 'testingMode',
     testingModeOnly: true,
   },

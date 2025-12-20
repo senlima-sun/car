@@ -218,6 +218,7 @@ pub enum ErsMode {
     Attack,
     Harvest,
     Overtake, // 2026: Max deploy burst, testing mode only
+    SemiAuto, // Smart automatic battery management
 }
 
 /// Source of energy harvesting (2026 ERS)
@@ -231,6 +232,86 @@ pub enum HarvestSource {
     SuperClip, // 2026: Harvesting at full throttle when engine has surplus
 }
 
+/// Semi-Auto ERS preset profiles
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum SemiAutoPreset {
+    #[default]
+    Balanced,     // 40-70% target range
+    Aggressive,   // 25-50% target range (more deploy)
+    Conservative, // 60-85% target range (more harvest)
+}
+
+/// Semi-Auto configuration for target-based battery management
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct SemiAutoConfig {
+    /// Minimum target battery level (0.0-1.0)
+    pub target_min: f32,
+    /// Maximum target battery level (0.0-1.0)
+    pub target_max: f32,
+    /// Current preset
+    pub preset: SemiAutoPreset,
+    /// Lap mode enabled (race-aware strategy)
+    pub lap_mode: bool,
+    /// Expert mode (disables semi-auto, full manual)
+    pub expert_mode: bool,
+}
+
+impl Default for SemiAutoConfig {
+    fn default() -> Self {
+        Self {
+            target_min: 0.40,
+            target_max: 0.70,
+            preset: SemiAutoPreset::Balanced,
+            lap_mode: false,
+            expert_mode: false,
+        }
+    }
+}
+
+impl SemiAutoConfig {
+    /// Create config for a specific preset
+    pub fn for_preset(preset: SemiAutoPreset) -> Self {
+        match preset {
+            SemiAutoPreset::Balanced => Self {
+                target_min: 0.40,
+                target_max: 0.70,
+                preset,
+                ..Default::default()
+            },
+            SemiAutoPreset::Aggressive => Self {
+                target_min: 0.25,
+                target_max: 0.50,
+                preset,
+                ..Default::default()
+            },
+            SemiAutoPreset::Conservative => Self {
+                target_min: 0.60,
+                target_max: 0.85,
+                preset,
+                ..Default::default()
+            },
+        }
+    }
+}
+
+/// Semi-Auto output state (for UI feedback)
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct SemiAutoState {
+    /// Whether coast regeneration is recommended right now
+    pub coast_recommended: bool,
+    /// Coast benefit score (0.0-1.0, how beneficial lifting would be)
+    pub coast_benefit: f32,
+    /// Current deploy efficiency based on speed (0.0-1.0)
+    pub deploy_efficiency: f32,
+    /// Is battery in critical state (<15%)
+    pub is_critical: bool,
+    /// Active deploy multiplier being applied
+    pub effective_deploy_mult: f32,
+    /// Active harvest multiplier being applied
+    pub effective_harvest_mult: f32,
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct ErsState {
     pub battery_charge: f32,       // 0.0-1.0
@@ -242,6 +323,8 @@ pub struct ErsState {
     pub super_clip_active: bool,   // True when harvesting at full throttle
     pub harvest_source: HarvestSource,
     pub overtake_available: bool,  // True when in testing mode
+    // Semi-Auto mode state
+    pub semi_auto: SemiAutoState,
 }
 
 // ============================================================================

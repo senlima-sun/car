@@ -49,6 +49,15 @@ import {
   setErsBatteryCharge,
   setErsOvertakeAvailable,
   getErsState,
+  // Semi-Auto ERS API
+  setErsSemiAutoPreset,
+  getErsSemiAutoPreset,
+  getErsSemiAutoConfig,
+  setErsLapMode,
+  setErsExpertMode,
+  activateErsOvertake,
+  deactivateErsOvertake,
+  isErsOvertakeOverride,
   // Active Aero API
   setAeroMode,
   getAeroMode,
@@ -134,6 +143,15 @@ interface PhysicsContextValue {
   setErsBatteryCharge: typeof setErsBatteryCharge
   setErsOvertakeAvailable: typeof setErsOvertakeAvailable
   getErsState: typeof getErsState
+  // Semi-Auto ERS API
+  setErsSemiAutoPreset: typeof setErsSemiAutoPreset
+  getErsSemiAutoPreset: typeof getErsSemiAutoPreset
+  getErsSemiAutoConfig: typeof getErsSemiAutoConfig
+  setErsLapMode: typeof setErsLapMode
+  setErsExpertMode: typeof setErsExpertMode
+  activateErsOvertake: typeof activateErsOvertake
+  deactivateErsOvertake: typeof deactivateErsOvertake
+  isErsOvertakeOverride: typeof isErsOvertakeOverride
   // Active Aero API
   setAeroMode: typeof setAeroMode
   getAeroMode: typeof getAeroMode
@@ -243,6 +261,15 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     setErsBatteryCharge,
     setErsOvertakeAvailable,
     getErsState,
+    // Semi-Auto ERS API
+    setErsSemiAutoPreset,
+    getErsSemiAutoPreset,
+    getErsSemiAutoConfig,
+    setErsLapMode,
+    setErsExpertMode,
+    activateErsOvertake,
+    deactivateErsOvertake,
+    isErsOvertakeOverride,
     // Active Aero API
     setAeroMode,
     getAeroMode,
