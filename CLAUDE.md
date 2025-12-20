@@ -111,24 +111,23 @@ All core physics calculations run in Rust/WASM for performance:
 
 ### Controls
 
-| Key           | Action                             |
-| ------------- | ---------------------------------- |
-| W/Arrow Up    | Accelerate                         |
-| S/Arrow Down  | Brake/Reverse                      |
-| A/D or Arrows | Steer                              |
-| Space         | Handbrake                          |
-| V             | Toggle Aero Mode (Corner/Straight) |
-| B             | Cycle ERS Mode (HRV/BAL/ATK/AUTO)  |
-| G             | Cycle ERS Preset (in AUTO mode)    |
-| ]             | Brake Bias + (testing mode)        |
-| [             | Brake Bias - (testing mode)        |
-| O             | Activate Overtake (testing mode)   |
-| C             | Toggle camera (third/first person) |
-| T             | Toggle customize mode              |
-| Q             | Cycle weather                      |
-| R             | Toggle lap recording               |
-| P             | Pit stop menu (when in pit box)    |
-| H             | Toggle surface condition heatmap   |
+| Key           | Action                               |
+| ------------- | ------------------------------------ |
+| W/Arrow Up    | Accelerate                           |
+| S/Arrow Down  | Brake/Reverse                        |
+| A/D or Arrows | Steer                                |
+| Space         | Handbrake                            |
+| E             | Toggle Aero Mode (Corner/Straight)   |
+| G             | Cycle ERS Preset (BAL/AGR/CON)       |
+| ]             | Brake Bias + (testing mode)          |
+| [             | Brake Bias - (testing mode)          |
+| O             | Activate Overtake (testing mode)     |
+| C             | Toggle camera (third/first person)   |
+| T             | Toggle customize mode                |
+| Q             | Cycle weather                        |
+| R             | Toggle lap recording                 |
+| P             | Pit stop menu (when in pit box)      |
+| H             | Toggle surface condition heatmap     |
 
 ### Path Aliases
 

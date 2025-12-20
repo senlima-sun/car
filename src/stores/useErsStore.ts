@@ -53,15 +53,14 @@ interface ErsStoreState {
   toggleCoastIndicator: () => void
 }
 
-// Standard mode cycle (Overtake is manual activation only, SemiAuto is included)
-const MODE_CYCLE: ErsMode[] = ['Balanced', 'Attack', 'Harvest', 'SemiAuto']
+// SemiAuto is now the default-only mode (no cycling needed)
 
 // Preset cycle order
 const PRESET_CYCLE: SemiAutoPreset[] = ['Balanced', 'Aggressive', 'Conservative']
 
 export const useErsStore = create<ErsStoreState>((set, get) => ({
   batteryCharge: 100,
-  mode: 'Balanced',
+  mode: 'SemiAuto',
   powerFlow: 0,
   isDeploying: false,
   isHarvesting: false,
@@ -92,16 +91,8 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
   },
 
   cycleMode: () => {
-    const currentMode = get().mode
-    // If in Overtake, cycle back to Balanced
-    if (currentMode === 'Overtake') {
-      set({ mode: 'Balanced' })
-      return
-    }
-    const currentIndex = MODE_CYCLE.indexOf(currentMode)
-    const nextIndex = (currentIndex + 1) % MODE_CYCLE.length
-    const nextMode = MODE_CYCLE[nextIndex]
-    set({ mode: nextMode })
+    // SemiAuto is the only mode - cycle presets instead
+    get().cycleSemiAutoPreset()
   },
 
   activateOvertake: () => {

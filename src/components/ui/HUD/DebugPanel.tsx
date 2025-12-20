@@ -5,8 +5,6 @@ import {
   TireCompound as TireCompoundWasm,
   setTireCompound as setTireCompoundWasm,
   setErsBatteryCharge,
-  setErsMode,
-  type ErsMode,
 } from '../../../wasm/PhysicsBridge'
 
 // Map string compound to WASM enum
@@ -145,18 +143,17 @@ function getWearColor(wear: number): string {
   return '#22c55e'
 }
 
-const ERS_MODES: ErsMode[] = ['Harvest', 'Balanced', 'Attack', 'Overtake']
+const ERS_PRESETS = ['Balanced', 'Aggressive', 'Conservative'] as const
+type ErsPreset = (typeof ERS_PRESETS)[number]
 
-function getErsModeColor(mode: ErsMode): string {
-  switch (mode) {
-    case 'Harvest':
+function getErsPresetColor(preset: ErsPreset): string {
+  switch (preset) {
+    case 'Aggressive':
+      return '#ef4444'
+    case 'Conservative':
       return '#3b82f6'
     case 'Balanced':
-      return '#ffffff'
-    case 'Attack':
-      return '#22c55e'
-    case 'Overtake':
-      return '#f97316'
+      return '#f59e0b'
     default:
       return '#ffffff'
   }
@@ -178,8 +175,8 @@ export default function DebugPanel() {
 
   // ERS state
   const batteryCharge = useErsStore(state => state.batteryCharge)
-  const ersMode = useErsStore(state => state.mode)
-  const setErsModeStore = useErsStore(state => state.setMode)
+  const semiAutoConfig = useErsStore(state => state.semiAutoConfig)
+  const setSemiAutoPreset = useErsStore(state => state.setSemiAutoPreset)
   const powerFlow = useErsStore(state => state.powerFlow)
   const superClipActive = useErsStore(state => state.superClipActive)
   const harvestSource = useErsStore(state => state.harvestSource)
@@ -226,13 +223,8 @@ export default function DebugPanel() {
     }
   }
 
-  const handleErsModeChange = (mode: ErsMode) => {
-    setErsModeStore(mode)
-    try {
-      setErsMode(mode)
-    } catch {
-      // WASM may not be initialized yet
-    }
+  const handlePresetChange = (preset: ErsPreset) => {
+    setSemiAutoPreset(preset)
   }
 
   const handleBatteryPreset = (charge: number) => {
@@ -379,39 +371,33 @@ export default function DebugPanel() {
         )}
       </div>
 
-      {/* ERS Mode Selector */}
+      {/* ERS Preset Selector */}
       <div style={styles.row}>
-        <span style={styles.label}>Mode</span>
+        <span style={styles.label}>Preset</span>
       </div>
       <div style={styles.compoundRow}>
-        {ERS_MODES.map(mode => {
-          const isActive = ersMode === mode
-          const color = getErsModeColor(mode)
+        {ERS_PRESETS.map(preset => {
+          const isActive = semiAutoConfig.preset === preset
+          const color = getErsPresetColor(preset)
           return (
             <button
-              key={mode}
-              onClick={() => handleErsModeChange(mode)}
+              key={preset}
+              onClick={() => handlePresetChange(preset)}
               style={{
                 ...styles.compoundButton,
                 background: isActive ? color : 'rgba(255, 255, 255, 0.1)',
                 borderColor: isActive ? color : 'transparent',
-                color: isActive
-                  ? mode === 'Balanced'
-                    ? '#000'
-                    : '#fff'
-                  : 'rgba(255, 255, 255, 0.7)',
+                color: isActive ? '#fff' : 'rgba(255, 255, 255, 0.7)',
               }}
             >
               <span style={styles.compoundIcon}>
-                {mode === 'Harvest'
-                  ? '↓'
-                  : mode === 'Attack'
-                    ? '↑'
-                    : mode === 'Overtake'
-                      ? '⚡'
-                      : '⟷'}
+                {preset === 'Aggressive'
+                  ? '↑'
+                  : preset === 'Conservative'
+                    ? '↓'
+                    : '⟷'}
               </span>
-              <span style={styles.compoundName}>{mode.slice(0, 3).toUpperCase()}</span>
+              <span style={styles.compoundName}>{preset.slice(0, 3).toUpperCase()}</span>
             </button>
           )
         })}

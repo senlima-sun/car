@@ -11,9 +11,7 @@ import { engineTempToCelsius } from '@/wasm/PhysicsBridge'
 import {
   formatLapTime,
   getBatteryColor,
-  getModeAbbreviation,
   getAeroAbbreviation,
-  getModeColor,
   getAeroColor,
   getGearDisplay,
   getGearColor,
@@ -22,6 +20,8 @@ import {
   getTireWearColor,
   getEngineBrakingAbbrev,
   getEngineBrakingColor,
+  getPresetAbbreviation,
+  getPresetColor,
 } from '@/utils/steeringDisplayHelpers'
 import { UI, LAP_TIMER, GEAR } from '@/constants/colors'
 
@@ -38,7 +38,7 @@ export function SteeringWheelDisplay() {
   const gear = useCarStore(state => state.gear)
   const rpm = useCarStore(state => state.rpm)
   const ersCharge = useErsStore(state => state.batteryCharge)
-  const ersMode = useErsStore(state => state.mode)
+  const ersPreset = useErsStore(state => state.semiAutoConfig.preset)
   const aeroMode = useActiveAeroStore(state => state.mode)
   const brakeBias = useBrakeStore(state => state.frontBias)
   const engineBraking = useBrakeStore(state => state.engineBraking)
@@ -105,9 +105,9 @@ export function SteeringWheelDisplay() {
     ctx.font = 'bold 70px Arial'
     ctx.fillText(`${Math.round(ersCharge)}%`, 30, 130)
 
-    ctx.fillStyle = getModeColor(ersMode)
+    ctx.fillStyle = getPresetColor(ersPreset)
     ctx.font = 'bold 50px Arial'
-    ctx.fillText(getModeAbbreviation(ersMode), 30, 190)
+    ctx.fillText(getPresetAbbreviation(ersPreset), 30, 190)
 
     ctx.fillStyle = UI.textSecondary
     ctx.font = 'bold 32px Arial'

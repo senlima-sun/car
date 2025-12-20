@@ -228,43 +228,28 @@ function getAeroModeColor(mode: string): string {
   return mode === 'Corner' ? '#3b82f6' : '#22c55e'
 }
 
-function getBatteryColor(charge: number): string {
-  if (charge > 50) return '#22c55e'
-  if (charge > 20) return '#f59e0b'
-  return '#ef4444'
-}
 
-function getErsModeAbbrev(mode: string): string {
-  switch (mode) {
-    case 'Attack':
-      return 'ATK'
+function getErsPresetAbbrev(preset: string): string {
+  switch (preset) {
+    case 'Aggressive':
+      return 'AGR'
+    case 'Conservative':
+      return 'CON'
     case 'Balanced':
-      return 'BAL'
-    case 'Harvest':
-      return 'HRV'
-    case 'Overtake':
-      return 'OVT'
-    case 'SemiAuto':
-      return 'AUTO'
     default:
       return 'BAL'
   }
 }
 
-function getErsModeColor(mode: string): string {
-  switch (mode) {
-    case 'Attack':
-      return '#22c55e'
+function getErsPresetColor(preset: string): string {
+  switch (preset) {
+    case 'Aggressive':
+      return '#ef4444' // Red for aggressive
+    case 'Conservative':
+      return '#3b82f6' // Blue for conservative
     case 'Balanced':
-      return '#ffffff'
-    case 'Harvest':
-      return '#3b82f6'
-    case 'Overtake':
-      return '#f97316'
-    case 'SemiAuto':
-      return '#a855f7'
     default:
-      return '#ffffff'
+      return '#f59e0b' // Yellow/amber for balanced
   }
 }
 
@@ -310,7 +295,6 @@ export default function RacePanel() {
 
   // ERS state
   const batteryCharge = useErsStore(state => state.batteryCharge)
-  const ersMode = useErsStore(state => state.mode)
   const semiAutoConfig = useErsStore(state => state.semiAutoConfig)
 
   // Tire state
@@ -344,62 +328,56 @@ export default function RacePanel() {
         {/* Compact ERS */}
         <div style={styles.ersBox as React.CSSProperties}>
           <div style={styles.ersBatteryContainer}>
-            {/* Target range zone (only visible in SemiAuto mode) */}
-            {ersMode === 'SemiAuto' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  bottom: `${semiAutoConfig.targetMin}%`,
-                  height: `${semiAutoConfig.targetMax - semiAutoConfig.targetMin}%`,
-                  background: 'rgba(168, 85, 247, 0.2)',
-                  pointerEvents: 'none',
-                }}
-              />
-            )}
+            {/* Target range zone */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: `${semiAutoConfig.targetMin}%`,
+                height: `${semiAutoConfig.targetMax - semiAutoConfig.targetMin}%`,
+                background: 'rgba(168, 85, 247, 0.2)',
+                pointerEvents: 'none',
+              }}
+            />
             <div
               style={{
                 ...styles.ersBatteryFill,
                 height: `${batteryPercent}%`,
-                backgroundColor: ersMode === 'SemiAuto' ? '#a855f7' : getBatteryColor(batteryPercent),
+                backgroundColor: '#a855f7',
               }}
             />
-            {/* Target range markers (only visible in SemiAuto mode) */}
-            {ersMode === 'SemiAuto' && (
-              <>
-                {/* Min marker */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    bottom: `${semiAutoConfig.targetMin}%`,
-                    height: 1,
-                    background: '#a855f7',
-                    boxShadow: '0 0 2px #a855f7',
-                  }}
-                />
-                {/* Max marker */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    bottom: `${semiAutoConfig.targetMax}%`,
-                    height: 1,
-                    background: '#a855f7',
-                    boxShadow: '0 0 2px #a855f7',
-                  }}
-                />
-              </>
-            )}
+            {/* Target range markers */}
+            {/* Min marker */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: `${semiAutoConfig.targetMin}%`,
+                height: 1,
+                background: '#a855f7',
+                boxShadow: '0 0 2px #a855f7',
+              }}
+            />
+            {/* Max marker */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: `${semiAutoConfig.targetMax}%`,
+                height: 1,
+                background: '#a855f7',
+                boxShadow: '0 0 2px #a855f7',
+              }}
+            />
             <span style={styles.ersBatteryText}>{Math.round(batteryPercent)}</span>
           </div>
           <div style={styles.ersInfo as React.CSSProperties}>
             <span style={styles.ersLabel}>ERS</span>
-            <span style={{ ...styles.ersMode, color: getErsModeColor(ersMode) }}>
-              {getErsModeAbbrev(ersMode)}
+            <span style={{ ...styles.ersMode, color: getErsPresetColor(semiAutoConfig.preset) }}>
+              {getErsPresetAbbrev(semiAutoConfig.preset)}
             </span>
           </div>
         </div>

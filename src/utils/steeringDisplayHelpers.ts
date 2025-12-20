@@ -56,6 +56,30 @@ export function getModeColor(mode: string): string {
   }
 }
 
+export function getPresetAbbreviation(preset: string): string {
+  switch (preset) {
+    case 'Aggressive':
+      return 'AGR'
+    case 'Conservative':
+      return 'CON'
+    case 'Balanced':
+    default:
+      return 'BAL'
+  }
+}
+
+export function getPresetColor(preset: string): string {
+  switch (preset) {
+    case 'Aggressive':
+      return ERS_MODE.attack // Red for aggressive
+    case 'Conservative':
+      return ERS_MODE.harvest // Blue for conservative
+    case 'Balanced':
+    default:
+      return ERS_MODE.balanced // Yellow for balanced
+  }
+}
+
 export function getAeroColor(mode: string): string {
   return mode === 'Corner' ? AERO_MODE.corner : AERO_MODE.straight
 }

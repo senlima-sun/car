@@ -83,12 +83,9 @@ export function useCarFrame({
   const setAquaplaning = useAquaplaningStore(state => state.setAquaplaning)
   const setThermalShock = useAquaplaningStore(state => state.setThermalShock)
 
-  // ERS mode cycling and sync
-  const cycleErsMode = useErsStore(state => state.cycleMode)
+  // ERS sync (SemiAuto is default-only mode)
   const activateOvertake = useErsStore(state => state.activateOvertake)
   const cycleSemiAutoPreset = useErsStore(state => state.cycleSemiAutoPreset)
-  const ersMode = useErsStore(state => state.mode)
-  const semiAutoConfig = useErsStore(state => state.semiAutoConfig)
   const syncErsState = useErsStore(state => state.syncFromPhysics)
 
   // Active Aero mode toggle and sync
@@ -116,7 +113,6 @@ export function useCarFrame({
   const lastFreeCamToggle = useRef(0)
   const lastHeatmapToggle = useRef(0)
   const lastGridToggle = useRef(0)
-  const lastErsModeToggle = useRef(0)
   const lastErsPresetToggle = useRef(0)
   const lastOvertakeToggle = useRef(0)
   const lastAeroModeToggle = useRef(0)
@@ -147,7 +143,6 @@ export function useCarFrame({
       right,
       brake,
       handbrake,
-      ers,
       ersPreset,
       overtake,
       aero,
@@ -187,23 +182,12 @@ export function useCarFrame({
       lastFreeCamToggle.current = state.clock.elapsedTime
     }
 
-    // ERS mode cycle with debounce (B key)
-    if (ers && state.clock.elapsedTime - lastErsModeToggle.current > 0.3) {
-      cycleErsMode()
-      lastErsModeToggle.current = state.clock.elapsedTime
-    }
-
-    // ERS Semi-Auto preset cycle with debounce (G key) - only in SemiAuto mode
-    if (
-      ersPreset &&
-      ersMode === 'SemiAuto' &&
-      state.clock.elapsedTime - lastErsPresetToggle.current > 0.3
-    ) {
+    // ERS preset cycle with debounce (G key)
+    if (ersPreset && state.clock.elapsedTime - lastErsPresetToggle.current > 0.3) {
       cycleSemiAutoPreset()
-      // Sync preset to physics engine
-      const presetIndex =
-        semiAutoConfig.preset === 'Balanced' ? 0 : semiAutoConfig.preset === 'Aggressive' ? 1 : 2
-      physics.setErsSemiAutoPreset(presetIndex)
+      // Sync preset to physics engine (get fresh state after cycling)
+      const freshPreset = useErsStore.getState().semiAutoConfig.preset
+      physics.setErsSemiAutoPreset(freshPreset)
       lastErsPresetToggle.current = state.clock.elapsedTime
     }
 

@@ -7,10 +7,9 @@ export const keyboardMap = [
   { name: 'left', keys: ['KeyA', 'ArrowLeft'] },
   { name: 'right', keys: ['KeyD', 'ArrowRight'] },
   { name: 'brake', keys: ['Space'] },
-  { name: 'ers', keys: ['KeyB'] },
   { name: 'ersPreset', keys: ['KeyG'] },
   { name: 'overtake', keys: ['KeyR'] },
-  { name: 'aero', keys: ['KeyV'] },
+  { name: 'aero', keys: ['KeyE'] },
   { name: 'brakeIncr', keys: ['BracketRight'] },
   { name: 'brakeDecr', keys: ['BracketLeft'] },
   { name: 'camera', keys: ['KeyC'] },
@@ -52,7 +51,6 @@ export const CONTROLS: ControlDefinition[] = [
   { id: 'brake', displayName: 'Handbrake', keys: ['Space'], category: 'movement' },
 
   // Driving Systems
-  { id: 'ers', displayName: 'Cycle ERS', keys: ['B'], category: 'drivingSystems' },
   { id: 'ersPreset', displayName: 'ERS Preset', keys: ['G'], category: 'drivingSystems' },
   {
     id: 'overtake',
@@ -61,7 +59,7 @@ export const CONTROLS: ControlDefinition[] = [
     category: 'drivingSystems',
     testingModeOnly: true,
   },
-  { id: 'aero', displayName: 'Aero Mode', keys: ['V'], category: 'drivingSystems' },
+  { id: 'aero', displayName: 'Aero Mode', keys: ['E'], category: 'drivingSystems' },
   {
     id: 'brakeIncr',
     displayName: 'Brake Bias +',
