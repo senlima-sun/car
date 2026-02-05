@@ -6,6 +6,7 @@ import KeymapModal from './KeymapModal'
 import WeatherControlModal from './WeatherControlModal'
 import HeatmapLegend from './HeatmapLegend'
 import AquaplaningIndicator from './AquaplaningIndicator'
+import TrackLimitsIndicator from './TrackLimitsIndicator'
 import DebugPanel from './DebugPanel'
 import CoastIndicator from './CoastIndicator'
 import { useGameStore } from '../../../stores/useGameStore'
@@ -216,6 +217,9 @@ export default function HUD() {
 
           {/* Aquaplaning/Thermal shock warning overlay */}
           <AquaplaningIndicator />
+
+          {/* Track limits violation warning */}
+          <TrackLimitsIndicator />
         </>
       )}
     </div>

@@ -355,3 +355,12 @@ export const AQUAPLANING = {
     subtext: '#ccccff',
   },
 } as const
+
+// =============================================================================
+// TRACK LIMITS COLORS - Off-track warning indicator
+// =============================================================================
+export const TRACK_LIMITS = {
+  warningBorder: '#ff4444', // Red border flash
+  warningText: '#ffffff', // White text
+  warningGlow: 'rgba(255, 68, 68, 0.3)', // Red glow overlay
+} as const
