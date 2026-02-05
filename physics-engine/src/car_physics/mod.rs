@@ -82,7 +82,7 @@ impl CarPhysicsState {
         &mut self,
         delta: f32,
         input: &CarInput,
-        position: Vec3,
+        _position: Vec3,
         rotation: Quat,
         current_linvel: Vec3,
         current_angvel: Vec3,

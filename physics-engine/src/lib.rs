@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod active_aero;
 mod brakes;
 mod car_physics;
