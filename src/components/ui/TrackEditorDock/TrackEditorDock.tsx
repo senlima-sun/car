@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useCustomizationStore, isLinearObject } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import ObjectToolbar from './ObjectToolbar'
 import DeleteTools from './DeleteTools'
@@ -48,9 +49,9 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 export default function TrackEditorDock() {
-  const selectedObjectType = useCustomizationStore(s => s.selectedObjectType)
+  const selectedObjectType = useEditorStore(s => s.selectedObjectType)
   const placedObjects = useCustomizationStore(s => s.placedObjects)
-  const selectedObjectId = useCustomizationStore(s => s.selectedObjectId)
+  const selectedObjectId = useEditorStore(s => s.selectedObjectId)
   const removeObject = useCustomizationStore(s => s.removeObject)
   const markDirty = useTrackStore(s => s.markDirty)
   const isDirty = useTrackStore(s => s.isDirty)

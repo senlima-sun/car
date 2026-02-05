@@ -1,4 +1,5 @@
-import { useCustomizationStore, type ObjectType } from '../../../stores/useCustomizationStore'
+import type { ObjectType } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 import { OBJECT_TYPES, OBJECT_CONFIGS } from '../../../constants/trackObjects'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -92,12 +93,12 @@ function ObjectButton({ type, isSelected, onClick }: ObjectButtonProps) {
 }
 
 export default function ObjectToolbar() {
-  const selectedObjectType = useCustomizationStore(s => s.selectedObjectType)
-  const selectObjectType = useCustomizationStore(s => s.selectObjectType)
-  const deleteMode = useCustomizationStore(s => s.deleteMode)
-  const partialDeleteMode = useCustomizationStore(s => s.partialDeleteMode)
-  const setDeleteMode = useCustomizationStore(s => s.setDeleteMode)
-  const setPartialDeleteMode = useCustomizationStore(s => s.setPartialDeleteMode)
+  const selectedObjectType = useEditorStore(s => s.selectedObjectType)
+  const selectObjectType = useEditorStore(s => s.selectObjectType)
+  const deleteMode = useEditorStore(s => s.deleteMode)
+  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
+  const setDeleteMode = useEditorStore(s => s.setDeleteMode)
+  const setPartialDeleteMode = useEditorStore(s => s.setPartialDeleteMode)
 
   const handleSelectType = (type: ObjectType) => {
     // Turn off delete modes when selecting an object type

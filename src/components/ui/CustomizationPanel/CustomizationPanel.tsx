@@ -4,6 +4,7 @@ import {
   type ObjectType,
   isLinearObject,
 } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 import { usePitStore } from '../../../stores/usePitStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import { OBJECT_TYPES } from '../../../constants/trackObjects'
@@ -196,31 +197,29 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 export default function CustomizationPanel() {
-  const selectedObjectType = useCustomizationStore(s => s.selectedObjectType)
-  const trackMode = useCustomizationStore(s => s.trackMode)
-  const placementState = useCustomizationStore(s => s.placementState)
   const placedObjects = useCustomizationStore(s => s.placedObjects)
-  const selectedObjectId = useCustomizationStore(s => s.selectedObjectId)
-  const deleteMode = useCustomizationStore(s => s.deleteMode)
-  const selectObjectType = useCustomizationStore(s => s.selectObjectType)
-  const setTrackMode = useCustomizationStore(s => s.setTrackMode)
-  const setDeleteMode = useCustomizationStore(s => s.setDeleteMode)
   const removeObject = useCustomizationStore(s => s.removeObject)
   const clearAll = useCustomizationStore(s => s.clearAll)
-  // Partial delete state and actions
-  const partialDeleteMode = useCustomizationStore(s => s.partialDeleteMode)
-  const partialDeleteState = useCustomizationStore(s => s.partialDeleteState)
-  const setPartialDeleteMode = useCustomizationStore(s => s.setPartialDeleteMode)
-  const cancelPartialDelete = useCustomizationStore(s => s.cancelPartialDelete)
-  // Auto curb state
-  const autoCurbMode = useCustomizationStore(s => s.autoCurbMode)
-  const selectedRoadIds = useCustomizationStore(s => s.selectedRoadIds)
-  const setAutoCurbMode = useCustomizationStore(s => s.setAutoCurbMode)
-  const clearRoadSelection = useCustomizationStore(s => s.clearRoadSelection)
   const addGeneratedCurbs = useCustomizationStore(s => s.addGeneratedCurbs)
-  // Snap settings
-  const snapSettings = useCustomizationStore(s => s.snapSettings)
-  const setSnapSettings = useCustomizationStore(s => s.setSnapSettings)
+
+  const selectedObjectType = useEditorStore(s => s.selectedObjectType)
+  const trackMode = useEditorStore(s => s.trackMode)
+  const placementState = useEditorStore(s => s.placementState)
+  const selectedObjectId = useEditorStore(s => s.selectedObjectId)
+  const deleteMode = useEditorStore(s => s.deleteMode)
+  const selectObjectType = useEditorStore(s => s.selectObjectType)
+  const setTrackMode = useEditorStore(s => s.setTrackMode)
+  const setDeleteMode = useEditorStore(s => s.setDeleteMode)
+  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
+  const partialDeleteState = useEditorStore(s => s.partialDeleteState)
+  const setPartialDeleteMode = useEditorStore(s => s.setPartialDeleteMode)
+  const cancelPartialDelete = useEditorStore(s => s.cancelPartialDelete)
+  const autoCurbMode = useEditorStore(s => s.autoCurbMode)
+  const selectedRoadIds = useEditorStore(s => s.selectedRoadIds)
+  const setAutoCurbMode = useEditorStore(s => s.setAutoCurbMode)
+  const clearRoadSelection = useEditorStore(s => s.clearRoadSelection)
+  const snapSettings = useEditorStore(s => s.snapSettings)
+  const setSnapSettings = useEditorStore(s => s.setSnapSettings)
 
   // Track store
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)

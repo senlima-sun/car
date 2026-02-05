@@ -1,4 +1,5 @@
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -48,13 +49,13 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 export default function DeleteTools() {
-  const deleteMode = useCustomizationStore(s => s.deleteMode)
-  const partialDeleteMode = useCustomizationStore(s => s.partialDeleteMode)
-  const selectedObjectId = useCustomizationStore(s => s.selectedObjectId)
-  const selectObjectType = useCustomizationStore(s => s.selectObjectType)
-  const setDeleteMode = useCustomizationStore(s => s.setDeleteMode)
-  const setPartialDeleteMode = useCustomizationStore(s => s.setPartialDeleteMode)
-  const cancelPartialDelete = useCustomizationStore(s => s.cancelPartialDelete)
+  const deleteMode = useEditorStore(s => s.deleteMode)
+  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
+  const selectedObjectId = useEditorStore(s => s.selectedObjectId)
+  const selectObjectType = useEditorStore(s => s.selectObjectType)
+  const setDeleteMode = useEditorStore(s => s.setDeleteMode)
+  const setPartialDeleteMode = useEditorStore(s => s.setPartialDeleteMode)
+  const cancelPartialDelete = useEditorStore(s => s.cancelPartialDelete)
   const removeObject = useCustomizationStore(s => s.removeObject)
 
   const handleToggleDeleteMode = () => {

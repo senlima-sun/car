@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 import { usePitStore } from '../../../stores/usePitStore'
 import { generatePitLane } from '../../../utils/pitLaneGenerator'
 import { generateCurbsForRoads } from '../../../utils/autoCurbGenerator'
@@ -74,16 +75,16 @@ export default function GenerationTools() {
   const [pitLaneError, setPitLaneError] = useState<string | null>(null)
 
   const placedObjects = useCustomizationStore(s => s.placedObjects)
-  const autoCurbMode = useCustomizationStore(s => s.autoCurbMode)
-  const selectedRoadIds = useCustomizationStore(s => s.selectedRoadIds)
-  const setAutoCurbMode = useCustomizationStore(s => s.setAutoCurbMode)
-  const clearRoadSelection = useCustomizationStore(s => s.clearRoadSelection)
   const addGeneratedCurbs = useCustomizationStore(s => s.addGeneratedCurbs)
-  const deleteMode = useCustomizationStore(s => s.deleteMode)
-  const partialDeleteMode = useCustomizationStore(s => s.partialDeleteMode)
-  const selectObjectType = useCustomizationStore(s => s.selectObjectType)
-  const setDeleteMode = useCustomizationStore(s => s.setDeleteMode)
-  const setPartialDeleteMode = useCustomizationStore(s => s.setPartialDeleteMode)
+  const autoCurbMode = useEditorStore(s => s.autoCurbMode)
+  const selectedRoadIds = useEditorStore(s => s.selectedRoadIds)
+  const setAutoCurbMode = useEditorStore(s => s.setAutoCurbMode)
+  const clearRoadSelection = useEditorStore(s => s.clearRoadSelection)
+  const deleteMode = useEditorStore(s => s.deleteMode)
+  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
+  const selectObjectType = useEditorStore(s => s.selectObjectType)
+  const setDeleteMode = useEditorStore(s => s.setDeleteMode)
+  const setPartialDeleteMode = useEditorStore(s => s.setPartialDeleteMode)
 
   const pitLaneData = usePitStore(s => s.pitLaneData)
   const setPitLaneData = usePitStore(s => s.setPitLaneData)

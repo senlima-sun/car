@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useCustomizationStore } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 import ToolSection, { popoverStyles } from './ToolSection'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -50,10 +50,10 @@ const styles: Record<string, React.CSSProperties> = {
 
 export default function TrackSettings() {
   const [showSettings, setShowSettings] = useState(false)
-  const trackMode = useCustomizationStore(s => s.trackMode)
-  const setTrackMode = useCustomizationStore(s => s.setTrackMode)
-  const snapSettings = useCustomizationStore(s => s.snapSettings)
-  const setSnapSettings = useCustomizationStore(s => s.setSnapSettings)
+  const trackMode = useEditorStore(s => s.trackMode)
+  const setTrackMode = useEditorStore(s => s.setTrackMode)
+  const snapSettings = useEditorStore(s => s.snapSettings)
+  const setSnapSettings = useEditorStore(s => s.setSnapSettings)
 
   const hasActiveSnap = snapSettings.angleSnap || snapSettings.tangentSnap
 

@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { ThreeEvent } from '@react-three/fiber'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import { TrackObjectWrapper } from '../TrackObjects'
 
@@ -12,14 +13,13 @@ export default function PlacedObjectsRenderer({
   enablePhysics = true,
 }: PlacedObjectsRendererProps) {
   const placedObjects = useCustomizationStore(s => s.placedObjects)
-  const selectedObjectId = useCustomizationStore(s => s.selectedObjectId)
-  const deleteMode = useCustomizationStore(s => s.deleteMode)
-  const selectObject = useCustomizationStore(s => s.selectObject)
+  const selectedObjectId = useEditorStore(s => s.selectedObjectId)
+  const deleteMode = useEditorStore(s => s.deleteMode)
+  const selectObject = useEditorStore(s => s.selectObject)
   const loadLibrary = useTrackStore(s => s.loadLibrary)
-  // Auto curb mode state
-  const autoCurbMode = useCustomizationStore(s => s.autoCurbMode)
-  const selectedRoadIds = useCustomizationStore(s => s.selectedRoadIds)
-  const toggleRoadSelection = useCustomizationStore(s => s.toggleRoadSelection)
+  const autoCurbMode = useEditorStore(s => s.autoCurbMode)
+  const selectedRoadIds = useEditorStore(s => s.selectedRoadIds)
+  const toggleRoadSelection = useEditorStore(s => s.toggleRoadSelection)
 
   // Load track library on mount (handles migration from legacy storage)
   useEffect(() => {

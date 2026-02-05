@@ -1,4 +1,5 @@
-import { useCustomizationStore, isLinearObject } from '../../../stores/useCustomizationStore'
+import { isLinearObject } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -25,15 +26,15 @@ const styles: Record<string, React.CSSProperties> = {
 }
 
 export default function ContextHint() {
-  const selectedObjectType = useCustomizationStore(s => s.selectedObjectType)
-  const trackMode = useCustomizationStore(s => s.trackMode)
-  const placementState = useCustomizationStore(s => s.placementState)
-  const deleteMode = useCustomizationStore(s => s.deleteMode)
-  const partialDeleteMode = useCustomizationStore(s => s.partialDeleteMode)
-  const partialDeleteState = useCustomizationStore(s => s.partialDeleteState)
-  const autoCurbMode = useCustomizationStore(s => s.autoCurbMode)
-  const selectedRoadIds = useCustomizationStore(s => s.selectedRoadIds)
-  const selectedObjectId = useCustomizationStore(s => s.selectedObjectId)
+  const selectedObjectType = useEditorStore(s => s.selectedObjectType)
+  const trackMode = useEditorStore(s => s.trackMode)
+  const placementState = useEditorStore(s => s.placementState)
+  const deleteMode = useEditorStore(s => s.deleteMode)
+  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
+  const partialDeleteState = useEditorStore(s => s.partialDeleteState)
+  const autoCurbMode = useEditorStore(s => s.autoCurbMode)
+  const selectedRoadIds = useEditorStore(s => s.selectedRoadIds)
+  const selectedObjectId = useEditorStore(s => s.selectedObjectId)
 
   // Determine hint based on current state
   const getHint = (): { step?: string; text: string } | null => {

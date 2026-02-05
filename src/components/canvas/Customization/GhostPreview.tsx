@@ -12,6 +12,7 @@ import {
   RoadSurfaceHitResult,
   SnapPointWithDirection,
 } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 import {
   Cone,
   Ramp,
@@ -164,25 +165,23 @@ export default function GhostPreview({
   curbEdgeHover,
   partialDeleteHover,
 }: GhostPreviewProps) {
-  const selectedObjectType = useCustomizationStore(s => s.selectedObjectType)
-  const previewPosition = useCustomizationStore(s => s.previewPosition)
-  const previewRotation = useCustomizationStore(s => s.previewRotation)
-  const dragStartPoint = useCustomizationStore(s => s.dragStartPoint)
-  const controlPoint = useCustomizationStore(s => s.controlPoint)
-  const placementState = useCustomizationStore(s => s.placementState)
-  const trackMode = useCustomizationStore(s => s.trackMode)
+  const selectedObjectType = useEditorStore(s => s.selectedObjectType)
+  const previewPosition = useEditorStore(s => s.previewPosition)
+  const previewRotation = useEditorStore(s => s.previewRotation)
+  const dragStartPoint = useEditorStore(s => s.dragStartPoint)
+  const controlPoint = useEditorStore(s => s.controlPoint)
+  const placementState = useEditorStore(s => s.placementState)
+  const trackMode = useEditorStore(s => s.trackMode)
   const placedObjects = useCustomizationStore(s => s.placedObjects)
-  const curbDragState = useCustomizationStore(s => s.curbDragState)
-  const curbPreviewEndT = useCustomizationStore(s => s.curbPreviewEndT)
-  const curbPreviewEndPosition = useCustomizationStore(s => s.curbPreviewEndPosition)
-  // Partial delete state
-  const partialDeleteMode = useCustomizationStore(s => s.partialDeleteMode)
-  const partialDeleteState = useCustomizationStore(s => s.partialDeleteState)
-  const partialDeletePreviewT = useCustomizationStore(s => s.partialDeletePreviewT)
-  // Snap settings
-  const snapSettings = useCustomizationStore(s => s.snapSettings)
-  const connectedTangent = useCustomizationStore(s => s.connectedTangent)
-  const snappedAngle = useCustomizationStore(s => s.snappedAngle)
+  const curbDragState = useEditorStore(s => s.curbDragState)
+  const curbPreviewEndT = useEditorStore(s => s.curbPreviewEndT)
+  const curbPreviewEndPosition = useEditorStore(s => s.curbPreviewEndPosition)
+  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
+  const partialDeleteState = useEditorStore(s => s.partialDeleteState)
+  const partialDeletePreviewT = useEditorStore(s => s.partialDeletePreviewT)
+  const snapSettings = useEditorStore(s => s.snapSettings)
+  const connectedTangent = useEditorStore(s => s.connectedTangent)
+  const snappedAngle = useEditorStore(s => s.snappedAngle)
 
   // Get snap points for visual indicators
   const snapPoints = getSnapPoints(placedObjects)

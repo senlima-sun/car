@@ -13,6 +13,7 @@ import {
   RoadEdgeHitResult,
   RoadSurfaceHitResult,
 } from '../../../stores/useCustomizationStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 import { MIN_SEGMENT_LENGTH } from '../../../constants/trackObjects'
 import { calculateSnappedPosition } from '../../../utils/roadSnapping'
 import GhostPreview from './GhostPreview'
@@ -29,38 +30,35 @@ export default function ObjectPlacer() {
   const [currentPartialDeleteHover, setCurrentPartialDeleteHover] =
     useState<RoadSurfaceHitResult | null>(null)
 
-  const selectedObjectType = useCustomizationStore(s => s.selectedObjectType)
-  const placementState = useCustomizationStore(s => s.placementState)
-  const trackMode = useCustomizationStore(s => s.trackMode)
-  const dragStartPoint = useCustomizationStore(s => s.dragStartPoint)
-  const controlPoint = useCustomizationStore(s => s.controlPoint)
+  const selectedObjectType = useEditorStore(s => s.selectedObjectType)
+  const placementState = useEditorStore(s => s.placementState)
+  const trackMode = useEditorStore(s => s.trackMode)
+  const dragStartPoint = useEditorStore(s => s.dragStartPoint)
+  const controlPoint = useEditorStore(s => s.controlPoint)
   const placedObjects = useCustomizationStore(s => s.placedObjects)
-  const curbDragState = useCustomizationStore(s => s.curbDragState)
-  const setPreviewPosition = useCustomizationStore(s => s.setPreviewPosition)
-  const startDrag = useCustomizationStore(s => s.startDrag)
-  const setControlPoint = useCustomizationStore(s => s.setControlPoint)
-  const setEndSnapEdges = useCustomizationStore(s => s.setEndSnapEdges)
-  const confirmPlacement = useCustomizationStore(s => s.confirmPlacement)
-  const confirmCheckpointPlacement = useCustomizationStore(s => s.confirmCheckpointPlacement)
-  const cancelPlacement = useCustomizationStore(s => s.cancelPlacement)
-  const rotatePreviewCW = useCustomizationStore(s => s.rotatePreviewCW)
-  // Curb placement actions
-  const startCurbDrag = useCustomizationStore(s => s.startCurbDrag)
-  const updateCurbDrag = useCustomizationStore(s => s.updateCurbDrag)
-  const confirmCurbPlacement = useCustomizationStore(s => s.confirmCurbPlacement)
-  const cancelCurbPlacement = useCustomizationStore(s => s.cancelCurbPlacement)
-  // Partial delete state and actions
-  const partialDeleteMode = useCustomizationStore(s => s.partialDeleteMode)
-  const partialDeleteState = useCustomizationStore(s => s.partialDeleteState)
-  const startPartialDelete = useCustomizationStore(s => s.startPartialDelete)
-  const updatePartialDeletePreview = useCustomizationStore(s => s.updatePartialDeletePreview)
-  const confirmPartialDelete = useCustomizationStore(s => s.confirmPartialDelete)
-  const cancelPartialDelete = useCustomizationStore(s => s.cancelPartialDelete)
-  // Snap settings
-  const snapSettings = useCustomizationStore(s => s.snapSettings)
-  const connectedTangent = useCustomizationStore(s => s.connectedTangent)
-  const setConnectedTangent = useCustomizationStore(s => s.setConnectedTangent)
-  const setSnappedAngle = useCustomizationStore(s => s.setSnappedAngle)
+  const curbDragState = useEditorStore(s => s.curbDragState)
+  const setPreviewPosition = useEditorStore(s => s.setPreviewPosition)
+  const startDrag = useEditorStore(s => s.startDrag)
+  const setControlPoint = useEditorStore(s => s.setControlPoint)
+  const setEndSnapEdges = useEditorStore(s => s.setEndSnapEdges)
+  const confirmPlacement = useEditorStore(s => s.confirmPlacement)
+  const confirmCheckpointPlacement = useEditorStore(s => s.confirmCheckpointPlacement)
+  const cancelPlacement = useEditorStore(s => s.cancelPlacement)
+  const rotatePreviewCW = useEditorStore(s => s.rotatePreviewCW)
+  const startCurbDrag = useEditorStore(s => s.startCurbDrag)
+  const updateCurbDrag = useEditorStore(s => s.updateCurbDrag)
+  const confirmCurbPlacement = useEditorStore(s => s.confirmCurbPlacement)
+  const cancelCurbPlacement = useEditorStore(s => s.cancelCurbPlacement)
+  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
+  const partialDeleteState = useEditorStore(s => s.partialDeleteState)
+  const startPartialDelete = useEditorStore(s => s.startPartialDelete)
+  const updatePartialDeletePreview = useEditorStore(s => s.updatePartialDeletePreview)
+  const confirmPartialDelete = useEditorStore(s => s.confirmPartialDelete)
+  const cancelPartialDelete = useEditorStore(s => s.cancelPartialDelete)
+  const snapSettings = useEditorStore(s => s.snapSettings)
+  const connectedTangent = useEditorStore(s => s.connectedTangent)
+  const setConnectedTangent = useEditorStore(s => s.setConnectedTangent)
+  const setSnappedAngle = useEditorStore(s => s.setSnappedAngle)
 
   // Get snap points from existing road/barrier segments
   const snapPoints = getSnapPoints(placedObjects)
