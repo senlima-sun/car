@@ -19,6 +19,9 @@ import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { useBrakeStore } from '../../../../stores/useBrakeStore'
 import { useLapTimeStore } from '../../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../../stores/usePitStore'
+import { useSurfaceStore } from '../../../../stores/useSurfaceStore'
+import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
+import { useAudioBridgeStore } from '../../../../stores/useAudioBridgeStore'
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 
@@ -505,6 +508,30 @@ export function useCarFrame({
       if (wheelIntensities.some(v => v > 0.01)) {
         physics.updateRubberDeposits(wheelPositions, wheelIntensities, dt)
       }
+    }
+
+    const audioUpdate = useAudioBridgeStore.getState().updateFrame
+    if (audioUpdate) {
+      const ersState = useErsStore.getState()
+      const brakeStoreState = useBrakeStore.getState()
+      audioUpdate({
+        rpm: output.speed_kmh > 0 ? 800 + (output.speed_kmh / 310) * 8200 : 800,
+        speed: output.speed_kmh,
+        gear: output.gear,
+        slipAngle: Math.abs(output.slip_angle),
+        isDrifting: output.is_drifting,
+        skidIntensity: output.skid_intensity,
+        isAquaplaning: output.aquaplaning?.is_aquaplaning ?? false,
+        aquaplaningIntensity: output.aquaplaning?.intensity ?? 0,
+        surface: useSurfaceStore.getState().currentSurface,
+        rainIntensity: useEnvironmentStore.getState().rainIntensity,
+        windSpeed: useWindStore.getState().currentSpeed,
+        isDeploying: ersState.isDeploying,
+        isHarvesting: ersState.isHarvesting,
+        powerFlow: ersState.powerFlow,
+        harvestSource: ersState.harvestSource,
+        engineBraking: brakeStoreState.engineBraking,
+      })
     }
 
     // Update car state for spray effect
