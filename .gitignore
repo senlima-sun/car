@@ -1,6 +1,6 @@
 .envrc
 node_modules
-.claude/settings.local.json
+.claude
 .env
 
 # Build artifacts
