@@ -114,28 +114,6 @@ export default function AquaplaningIndicator() {
   return (
     <div style={{ ...styles.overlay, opacity: pulseOpacity }}>
       <div>
-        {isAquaplaning && (
-          <div style={styles.warning}>
-            <div style={styles.title}>AQUAPLANING</div>
-            <div style={styles.subtitle}>
-              Reduce Speed - Grip Loss {Math.round(intensity * 100)}%
-            </div>
-            <div style={styles.wheels}>
-              {affectedWheels.map((affected, i) => (
-                <div
-                  key={i}
-                  style={{
-                    ...styles.wheel,
-                    background: affected ? 'rgba(255, 100, 100, 0.9)' : 'rgba(100, 255, 100, 0.5)',
-                  }}
-                >
-                  {wheelLabels[i]}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {isThermalShock && (
           <div style={styles.thermalShock}>
             <div style={styles.shockTitle}>Tire Thermal Shock</div>
