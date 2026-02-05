@@ -11,7 +11,9 @@ import WeatherEffects from './Weather/WeatherEffects'
 import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
 import { ObjectPlacer, GhostPreview, PlacedObjectsRenderer } from './Customization'
+import PitLane from './TrackObjects/PitLane'
 import { useGameStore } from '@/stores/useGameStore'
+import { usePitStore } from '@/stores/usePitStore'
 
 function Ground() {
   return (
@@ -64,6 +66,7 @@ export default function Scene() {
   const carRef = useRef<Group>(null)
   const status = useGameStore(state => state.status)
   const isCustomizeMode = status === 'customize'
+  const pitLaneData = usePitStore(s => s.pitLaneData)
 
   return (
     <>
@@ -75,6 +78,9 @@ export default function Scene() {
 
       {/* Placed objects (roads, barriers, etc.) - always visible */}
       <PlacedObjectsRenderer />
+
+      {/* Pit lane (generated from checkpoint) */}
+      {pitLaneData && <PitLane data={pitLaneData} />}
 
       {/* Customization components - only in edit mode */}
       {isCustomizeMode && (
