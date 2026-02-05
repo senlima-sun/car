@@ -1,11 +1,8 @@
-import { SynthEngine, registerAllVoices } from './synthesis'
+import { Howl, Howler } from 'howler'
 import type { SoundCategory, SoundConfig, FrameAudioParams, VolumeConfig } from './types'
 
-interface SoundEntry {
-  config: SoundConfig
-}
-
 interface LoopEntry {
+  howl: Howl
   category: SoundCategory
   baseVolume: number
 }
@@ -13,8 +10,7 @@ interface LoopEntry {
 export class AudioManager {
   private static instance: AudioManager | null = null
 
-  private synthEngine = new SynthEngine()
-  private sounds = new Map<string, SoundEntry>()
+  private sounds = new Map<string, { howl: Howl; config: SoundConfig }>()
   private loops = new Map<string, LoopEntry>()
   private volumeConfig: VolumeConfig = {
     master: 0.8,
@@ -46,8 +42,12 @@ export class AudioManager {
   async init(): Promise<void> {
     if (this._initialized) return
 
-    await this.synthEngine.init()
-    registerAllVoices(this.synthEngine)
+    const ctx = Howler.ctx
+    if (ctx && ctx.state === 'suspended') {
+      await ctx.resume()
+    }
+
+    Howler.volume(this.computeMasterVolume())
     this._initialized = true
   }
 
@@ -57,6 +57,7 @@ export class AudioManager {
 
   setMasterVolume(v: number): void {
     this.volumeConfig.master = Math.max(0, Math.min(1, v))
+    this.syncGlobalVolume()
     this.syncAllLoopVolumes()
   }
 
@@ -67,6 +68,7 @@ export class AudioManager {
 
   setMuted(muted: boolean): void {
     this.muted = muted
+    this.syncGlobalVolume()
     this.syncAllLoopVolumes()
   }
 
@@ -78,11 +80,25 @@ export class AudioManager {
     if (config.music !== undefined) this.volumeConfig.music = config.music
     if (config.muted !== undefined) this.muted = config.muted
 
+    this.syncGlobalVolume()
     this.syncAllLoopVolumes()
   }
 
   registerSound(id: string, config: SoundConfig): void {
-    this.sounds.set(id, { config })
+    if (this.sounds.has(id)) {
+      this.sounds.get(id)!.howl.unload()
+    }
+
+    const howl = new Howl({
+      src: Array.isArray(config.src) ? config.src : [config.src],
+      loop: config.loop ?? false,
+      volume: config.volume ?? 1,
+      rate: config.rate ?? 1,
+      sprite: config.sprite as unknown as Record<string, [number, number] | [number, number, boolean]> | undefined,
+      preload: true,
+    })
+
+    this.sounds.set(id, { howl, config })
   }
 
   play(id: string): void {
@@ -93,32 +109,45 @@ export class AudioManager {
       entry.config.category,
       entry.config.volume ?? 1
     )
-    this.synthEngine.play(id, effectiveVolume)
+    entry.howl.volume(effectiveVolume)
+    entry.howl.play()
   }
 
-  playLoop(id: string): void {
+  playLoop(id: string): Howl {
     const existing = this.loops.get(id)
-    if (existing) return
+    if (existing) {
+      if (!existing.howl.playing()) {
+        existing.howl.play()
+      }
+      return existing.howl
+    }
 
     const entry = this.sounds.get(id)
-    if (!entry) return
+    if (!entry) {
+      throw new Error(`Sound "${id}" not registered. Call registerSound first.`)
+    }
 
     const baseVolume = entry.config.volume ?? 1
     const effectiveVolume = this.computeEffectiveVolume(entry.config.category, baseVolume)
 
-    this.synthEngine.playLoop(id, effectiveVolume)
+    entry.howl.loop(true)
+    entry.howl.volume(effectiveVolume)
+    entry.howl.play()
 
     this.loops.set(id, {
+      howl: entry.howl,
       category: entry.config.category,
       baseVolume,
     })
+
+    return entry.howl
   }
 
   stopLoop(id: string): void {
     const loop = this.loops.get(id)
     if (!loop) return
 
-    this.synthEngine.stopLoop(id)
+    loop.howl.stop()
     this.loops.delete(id)
   }
 
@@ -128,32 +157,44 @@ export class AudioManager {
 
     loop.baseVolume = Math.max(0, Math.min(1, v))
     const effectiveVolume = this.computeEffectiveVolume(loop.category, loop.baseVolume)
-    this.synthEngine.setLoopVolume(id, effectiveVolume)
+    loop.howl.volume(effectiveVolume)
   }
 
   setLoopRate(id: string, rate: number): void {
     const loop = this.loops.get(id)
     if (!loop) return
 
-    this.synthEngine.setLoopRate(id, Math.max(0.1, Math.min(4, rate)))
+    loop.howl.rate(Math.max(0.1, Math.min(4, rate)))
   }
 
   updatePerFrame(_params: FrameAudioParams): void {
     this.frameCount++
 
     if (this.frameCount % 4 === 0) {
-      this.syncAllLoopVolumes()
+      this.updateThrottled()
     }
   }
 
   dispose(): void {
-    for (const [id] of this.loops) {
-      this.synthEngine.stopLoop(id)
+    for (const [, loop] of this.loops) {
+      loop.howl.stop()
     }
     this.loops.clear()
+
+    for (const [, entry] of this.sounds) {
+      entry.howl.unload()
+    }
     this.sounds.clear()
-    this.synthEngine.dispose()
+
     this._initialized = false
+  }
+
+  private updateThrottled(): void {
+    this.syncAllLoopVolumes()
+  }
+
+  private computeMasterVolume(): number {
+    return this.muted ? 0 : this.volumeConfig.master
   }
 
   private computeEffectiveVolume(category: SoundCategory, baseVolume: number): number {
@@ -161,10 +202,14 @@ export class AudioManager {
     return baseVolume * this.volumeConfig[category] * this.volumeConfig.master
   }
 
+  private syncGlobalVolume(): void {
+    Howler.volume(this.computeMasterVolume())
+  }
+
   private syncAllLoopVolumes(): void {
-    for (const [id, loop] of this.loops) {
+    for (const [, loop] of this.loops) {
       const effectiveVolume = this.computeEffectiveVolume(loop.category, loop.baseVolume)
-      this.synthEngine.setLoopVolume(id, effectiveVolume)
+      loop.howl.volume(effectiveVolume)
     }
   }
 }

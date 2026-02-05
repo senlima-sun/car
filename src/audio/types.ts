@@ -1,7 +1,7 @@
 export type SoundCategory = 'engine' | 'effects' | 'ui' | 'music'
 
 export interface SoundConfig {
-  src?: string | string[]
+  src: string | string[]
   category: SoundCategory
   loop?: boolean
   volume?: number
