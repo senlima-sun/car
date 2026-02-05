@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect } from 'react'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { Vector3 } from 'three'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
@@ -29,6 +29,14 @@ export default function Checkpoint({
 
   // Lap timing
   const crossCheckpoint = useLapTimeStore(state => state.crossCheckpoint)
+  const setActive = useLapTimeStore(state => state.setActive)
+
+  // Set lap timer as active when a non-ghost checkpoint mounts
+  useEffect(() => {
+    if (!isGhost) {
+      setActive(true)
+    }
+  }, [isGhost, setActive])
 
   const handleCrossing = useCallback(() => {
     if (!isGhost) {
