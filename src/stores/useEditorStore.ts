@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { type ObjectType, type TrackMode, type PlacementState, type CurbDragState, type PartialDeleteState, type PlacedObject, isLinearObject } from '../types/trackObjects'
+import type { EditorCommand } from '../types/editor'
 import { SnapSettings, DEFAULT_SNAP_SETTINGS } from '../utils/roadSnapping'
 import { splitRoadAtSegment } from '../utils/roadGeometry'
+import { editorCommandStack } from '../utils/commandStack'
 import { useCustomizationStore } from './useCustomizationStore'
 
 export type { SnapSettings }
@@ -36,7 +38,13 @@ interface EditorState {
   snapSettings: SnapSettings
   connectedTangent: [number, number, number] | null
   snappedAngle: number | null
+  canUndo: boolean
+  canRedo: boolean
+  undoDescription: string | null
+  redoDescription: string | null
 
+  undo: () => void
+  redo: () => void
   selectObjectType: (type: ObjectType | null) => void
   setTrackMode: (mode: TrackMode) => void
   setDeleteMode: (enabled: boolean) => void
@@ -111,6 +119,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   snapSettings: DEFAULT_SNAP_SETTINGS,
   connectedTangent: null,
   snappedAngle: null,
+  canUndo: false,
+  canRedo: false,
+  undoDescription: null,
+  redoDescription: null,
+
+  undo: () => {
+    editorCommandStack.undo()
+  },
+
+  redo: () => {
+    editorCommandStack.redo()
+  },
 
   selectObjectType: type => {
     if (type === null) {
@@ -245,7 +265,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     }
 
-    useCustomizationStore.getState().addObject(newObject)
+    const command: EditorCommand = {
+      execute: () => useCustomizationStore.getState().addObject(newObject),
+      undo: () => useCustomizationStore.getState().removeObject(newObject.id),
+      description: `Place ${newObject.type}`,
+    }
+    editorCommandStack.push(command)
 
     set({
       placementState: 'selecting',
@@ -259,6 +284,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   confirmCheckpointPlacement: (startPoint, endPoint) => {
+    const customStore = useCustomizationStore.getState()
+    const previousCheckpoint = customStore.placedObjects.find(o => o.type === 'checkpoint') || null
+
     const newObject: PlacedObject = {
       id: generateId(),
       type: 'checkpoint',
@@ -268,7 +296,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       endPoint,
     }
 
-    useCustomizationStore.getState().replaceCheckpoint(newObject)
+    const command: EditorCommand = {
+      execute: () => useCustomizationStore.getState().replaceCheckpoint(newObject),
+      undo: () => {
+        useCustomizationStore.getState().removeObject(newObject.id)
+        if (previousCheckpoint) {
+          useCustomizationStore.getState().addObject(previousCheckpoint)
+        }
+      },
+      description: 'Place checkpoint',
+    }
+    editorCommandStack.push(command)
 
     set({
       placementState: 'selecting',
@@ -330,7 +368,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       endT,
     }
 
-    useCustomizationStore.getState().addObject(newCurb)
+    const command: EditorCommand = {
+      execute: () => useCustomizationStore.getState().addObject(newCurb),
+      undo: () => useCustomizationStore.getState().removeObject(newCurb.id),
+      description: 'Place curb',
+    }
+    editorCommandStack.push(command)
 
     set({
       placementState: 'selecting',
@@ -394,12 +437,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       generateId,
     )
 
-    useCustomizationStore.getState().performPartialDelete(
-      partialDeleteState.roadId,
-      newRoads,
-      deleteStartT,
-      deleteEndT,
-    )
+    const snapshotBefore = [...useCustomizationStore.getState().placedObjects]
+
+    const command: EditorCommand = {
+      execute: () => {
+        useCustomizationStore.getState().performPartialDelete(
+          partialDeleteState.roadId,
+          newRoads,
+          deleteStartT,
+          deleteEndT,
+        )
+      },
+      undo: () => {
+        useCustomizationStore.getState().setPlacedObjects(snapshotBefore)
+      },
+      description: 'Partial delete road',
+    }
+    editorCommandStack.push(command)
 
     set({
       partialDeleteState: null,
@@ -443,3 +497,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setSnappedAngle: angle => set({ snappedAngle: angle }),
 }))
+
+editorCommandStack.subscribe(() => {
+  useEditorStore.setState({
+    canUndo: editorCommandStack.canUndo,
+    canRedo: editorCommandStack.canRedo,
+    undoDescription: editorCommandStack.undoDescription,
+    redoDescription: editorCommandStack.redoDescription,
+  })
+})

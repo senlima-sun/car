@@ -59,6 +59,8 @@ export default function ObjectPlacer() {
   const connectedTangent = useEditorStore(s => s.connectedTangent)
   const setConnectedTangent = useEditorStore(s => s.setConnectedTangent)
   const setSnappedAngle = useEditorStore(s => s.setSnappedAngle)
+  const undo = useEditorStore(s => s.undo)
+  const redo = useEditorStore(s => s.redo)
 
   // Get snap points from existing road/barrier segments
   const snapPoints = getSnapPoints(placedObjects)
@@ -278,6 +280,16 @@ export default function ObjectPlacer() {
   // Handle keyboard
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyZ') {
+        event.preventDefault()
+        if (event.shiftKey) {
+          redo()
+        } else {
+          undo()
+        }
+        return
+      }
+
       switch (event.code) {
         case 'KeyR':
           rotatePreviewCW()
@@ -301,6 +313,8 @@ export default function ObjectPlacer() {
       placementState,
       partialDeleteMode,
       partialDeleteState,
+      undo,
+      redo,
     ],
   )
 

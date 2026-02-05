@@ -46,6 +46,23 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     whiteSpace: 'nowrap',
   },
+  undoRedoButton: {
+    width: 32,
+    height: 32,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: 6,
+    background: 'rgba(255, 255, 255, 0.05)',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    padding: 0,
+  },
+  undoRedoDisabled: {
+    opacity: 0.3,
+    cursor: 'default',
+  },
 }
 
 export default function TrackEditorDock() {
@@ -53,6 +70,12 @@ export default function TrackEditorDock() {
   const placedObjects = useCustomizationStore(s => s.placedObjects)
   const selectedObjectId = useEditorStore(s => s.selectedObjectId)
   const removeObject = useCustomizationStore(s => s.removeObject)
+  const canUndo = useEditorStore(s => s.canUndo)
+  const canRedo = useEditorStore(s => s.canRedo)
+  const undo = useEditorStore(s => s.undo)
+  const redo = useEditorStore(s => s.redo)
+  const undoDescription = useEditorStore(s => s.undoDescription)
+  const redoDescription = useEditorStore(s => s.redoDescription)
   const markDirty = useTrackStore(s => s.markDirty)
   const isDirty = useTrackStore(s => s.isDirty)
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
@@ -123,6 +146,32 @@ export default function TrackEditorDock() {
 
         {/* Utility Section */}
         <div style={styles.utilitySection}>
+          <button
+            style={{
+              ...styles.undoRedoButton,
+              ...(!canUndo ? styles.undoRedoDisabled : {}),
+            }}
+            onClick={canUndo ? undo : undefined}
+            title={undoDescription ? `Undo: ${undoDescription}` : 'Nothing to undo'}
+          >
+            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke={canUndo ? '#fff' : '#666'} strokeWidth='2'>
+              <path d='M3 10h10a5 5 0 015 5v2' />
+              <polyline points='7 14 3 10 7 6' />
+            </svg>
+          </button>
+          <button
+            style={{
+              ...styles.undoRedoButton,
+              ...(!canRedo ? styles.undoRedoDisabled : {}),
+            }}
+            onClick={canRedo ? redo : undefined}
+            title={redoDescription ? `Redo: ${redoDescription}` : 'Nothing to redo'}
+          >
+            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke={canRedo ? '#fff' : '#666'} strokeWidth='2'>
+              <path d='M21 10H11a5 5 0 00-5 5v2' />
+              <polyline points='17 14 21 10 17 6' />
+            </svg>
+          </button>
           <span style={styles.objectCount}>{placedObjects.length} objects</span>
           <EditorHelpModal />
         </div>
