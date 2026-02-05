@@ -9,8 +9,8 @@ const BATTERY_CAPACITY_KJ: f32 = 4000.0; // 4 MJ = 4000 kJ
 // 2026 Power levels (350kW MGU-K, up from 120kW)
 const MAX_DEPLOY_POWER_KW: f32 = 350.0; // 2026: 350kW max deployment
 const MAX_HARVEST_POWER_KW: f32 = 350.0; // 2026: 350kW max brake harvest
-const MAX_COAST_POWER_KW: f32 = 120.0; // Increased coast regen (was 100)
-const MAX_SUPER_CLIP_POWER_KW: f32 = 120.0; // 2026: Super clipping (was 50, now significant)
+const MAX_COAST_POWER_KW: f32 = 160.0; // Increased coast regen for time imbalance
+const MAX_SUPER_CLIP_POWER_KW: f32 = 150.0; // 2026: Super clipping (was 50, now significant)
 
 // Mode multipliers (deploy / harvest / coast / super_clip)
 // Harvest mode: maximum recovery, no deploy
@@ -171,33 +171,39 @@ impl ErsPhysicsState {
         let target_min = self.semi_auto_config.target_min;
         let target_max = self.semi_auto_config.target_max;
 
+        // Preset-specific deploy scaling (AGR deploys more, CON deploys less)
+        let preset_deploy_scale = match self.semi_auto_config.preset {
+            SemiAutoPreset::Aggressive => 1.4,   // 40% more deploy
+            SemiAutoPreset::Balanced => 1.0,
+            SemiAutoPreset::Conservative => 0.7, // 30% less deploy
+        };
+
         // Critical protection: minimal deploy, max harvest
         if battery < CRITICAL_BATTERY_THRESHOLD {
-            return (CRITICAL_DEPLOY_MULT, 1.0, 1.0, 1.0);
+            return (CRITICAL_DEPLOY_MULT * preset_deploy_scale, 1.0, 1.0, 1.0);
         }
 
         // Below minimum target: prioritize charging
         if battery < target_min {
             let urgency = 1.0 - (battery / target_min);
-            let deploy = 0.15 + (1.0 - urgency) * 0.35; // 15-50% deploy
+            let deploy = (0.15 + (1.0 - urgency) * 0.35) * preset_deploy_scale; // 15-50% * scale
             let harvest = 0.8 + urgency * 0.2; // 80-100% harvest
-            return (deploy, harvest, harvest, harvest);
+            return (deploy.min(1.0), harvest, harvest, harvest);
         }
 
         // In target range: balanced operation
         if battery <= target_max {
             let position = (battery - target_min) / (target_max - target_min);
-            let deploy = 0.35 + position * 0.25; // 35-60% deploy (was 40-70%)
-            let harvest = 0.90 - position * 0.15; // 90-75% harvest (was 90-70%)
-            return (deploy, harvest, harvest * 0.95, harvest * 0.85);
+            let deploy = (0.30 + position * 0.20) * preset_deploy_scale; // 30-50% * scale
+            let harvest = 1.0 - position * 0.10; // 100-90% harvest (increased)
+            return (deploy.min(1.0), harvest, harvest, harvest * 0.95);
         }
 
-        // Above maximum target: moderate deployment, maintain harvest
-        // Reduced aggressiveness to prevent rapid battery drain
+        // Above maximum target: push deploy harder, maintain good harvest
         let excess = (battery - target_max) / (1.0 - target_max);
-        let deploy = 0.50 + excess * 0.20; // 50-70% deploy (was 70-95%)
-        let harvest = 0.65 - excess * 0.15; // 65-50% harvest (was 50-20%)
-        (deploy, harvest, harvest * 0.95, harvest * 0.9)
+        let deploy = (0.55 + excess * 0.30) * preset_deploy_scale; // 55-85% * scale
+        let harvest = 0.85 - excess * 0.15; // 85-70% harvest (maintain recovery)
+        (deploy.min(1.0), harvest, harvest * 0.95, harvest * 0.9)
     }
 
     // ========================================================================
