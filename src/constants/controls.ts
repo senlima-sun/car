@@ -9,13 +9,15 @@ export const keyboardMap = [
   { name: 'brake', keys: ['Space'] },
   { name: 'ersPreset', keys: ['KeyG'] },
   { name: 'overtake', keys: ['KeyR'] },
-  { name: 'aero', keys: ['KeyE'] },
+  { name: 'aero', keys: ['KeyK'] },
   { name: 'brakeIncr', keys: ['BracketRight'] },
   { name: 'brakeDecr', keys: ['BracketLeft'] },
   { name: 'camera', keys: ['KeyC'] },
   { name: 'heatmap', keys: ['KeyH'] },
   { name: 'distanceGrid', keys: ['AltLeft', 'AltRight'] },
   { name: 'freeCamera', keys: ['KeyF'] },
+  { name: 'lapTimer', keys: ['KeyL'] },
+  { name: 'pitStop', keys: ['KeyP'] },
 ]
 
 // Control categories for KeymapModal
@@ -59,7 +61,7 @@ export const CONTROLS: ControlDefinition[] = [
     category: 'drivingSystems',
     testingModeOnly: true,
   },
-  { id: 'aero', displayName: 'Aero Mode', keys: ['E'], category: 'drivingSystems' },
+  { id: 'aero', displayName: 'Aero Mode', keys: ['K'], category: 'drivingSystems' },
   {
     id: 'brakeIncr',
     displayName: 'Brake Bias +',

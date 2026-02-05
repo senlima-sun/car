@@ -17,6 +17,8 @@ import { useAquaplaningStore } from '../../../../stores/useAquaplaningStore'
 import { useErsStore } from '../../../../stores/useErsStore'
 import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { useBrakeStore } from '../../../../stores/useBrakeStore'
+import { useLapTimeStore } from '../../../../stores/useLapTimeStore'
+import { usePitStore } from '../../../../stores/usePitStore'
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 
@@ -97,6 +99,12 @@ export function useCarFrame({
   // Brake mode sync (physics engine is source of truth)
   const syncBrakeState = useBrakeStore(state => state.syncFromPhysics)
 
+  // Lap timer toggle
+  const toggleLapRecording = useLapTimeStore(state => state.toggleRecording)
+
+  // Pit stop
+  const startPitStop = usePitStore(state => state.startPitStop)
+
   // Curb state
   const isOnCurb = useCurbStore(state => state.isOnCurb)
   const curbSide = useCurbStore(state => state.curbSide)
@@ -119,6 +127,8 @@ export function useCarFrame({
   const lastBrakeIncrToggle = useRef(0)
   const lastBrakeDecrToggle = useRef(0)
   const lastEngineBrakeToggle = useRef(0)
+  const lastLapTimerToggle = useRef(0)
+  const lastPitStopToggle = useRef(0)
   const tempCarPosRef = useRef(new Vector3())
 
   // Pre-allocated arrays for rubber deposit updates (avoid GC)
@@ -153,6 +163,8 @@ export function useCarFrame({
       heatmap,
       distanceGrid,
       freeCamera,
+      lapTimer,
+      pitStop,
     } = getKeys()
     const chassis = chassisRef.current
 
@@ -219,6 +231,18 @@ export function useCarFrame({
     if (engineBrake && state.clock.elapsedTime - lastEngineBrakeToggle.current > 0.3) {
       physics.cycleEngineBrakingLevel()
       lastEngineBrakeToggle.current = state.clock.elapsedTime
+    }
+
+    // Lap timer toggle with debounce (L key)
+    if (lapTimer && state.clock.elapsedTime - lastLapTimerToggle.current > 0.3) {
+      toggleLapRecording()
+      lastLapTimerToggle.current = state.clock.elapsedTime
+    }
+
+    // Pit stop toggle with debounce (P key)
+    if (pitStop && state.clock.elapsedTime - lastPitStopToggle.current > 0.3) {
+      startPitStop()
+      lastPitStopToggle.current = state.clock.elapsedTime
     }
 
     // Skip physics when in free camera mode or customize mode (freeze car)

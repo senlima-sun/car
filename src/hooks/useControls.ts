@@ -18,6 +18,8 @@ interface ControlsState {
   heatmap: boolean
   distanceGrid: boolean
   freeCamera: boolean
+  lapTimer: boolean
+  pitStop: boolean
 }
 
 // Unified controls hook that merges keyboard and touch inputs
@@ -47,6 +49,8 @@ export function useControls(): () => ControlsState {
       heatmap: keyboard.heatmap || false,
       distanceGrid: keyboard.distanceGrid || false,
       freeCamera: keyboard.freeCamera || false,
+      lapTimer: keyboard.lapTimer || false,
+      pitStop: keyboard.pitStop || false,
     }
   }
 }
