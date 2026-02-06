@@ -82,13 +82,27 @@ export default function TrackObjectWrapper({
       }
       break
     case 'road':
-      // Check if it's a curved road
       if (object.trackMode === 'curve' && object.controlPoint) {
         component = (
-          <CurvedRoadSegment {...(curvedProps as any)} width={object.width} isSelectedForCurb={isSelectedForCurb} />
+          <CurvedRoadSegment
+            {...(curvedProps as any)}
+            width={object.width}
+            isSelectedForCurb={isSelectedForCurb}
+            startElevation={object.startElevation}
+            endElevation={object.endElevation}
+            banking={object.banking}
+          />
         )
       } else {
-        component = <RoadSegment {...linearProps} width={object.width} isSelectedForCurb={isSelectedForCurb} />
+        component = (
+          <RoadSegment
+            {...linearProps}
+            width={object.width}
+            isSelectedForCurb={isSelectedForCurb}
+            startElevation={object.startElevation}
+            endElevation={object.endElevation}
+          />
+        )
       }
       break
     case 'curb':
@@ -141,6 +155,8 @@ export default function TrackObjectWrapper({
           controlPoint={object.controlPoint}
           flowDirection={object.flowDirection!}
           isCurve={object.trackMode === 'curve' && !!object.controlPoint}
+          startElevation={object.startElevation}
+          endElevation={object.endElevation}
         />
       )}
     </group>

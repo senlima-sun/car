@@ -1,5 +1,5 @@
 import { useMemo, useCallback, useEffect } from 'react'
-import { Vector3 } from 'three'
+import { Vector3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
@@ -14,6 +14,8 @@ interface RoadSegmentProps {
   isGhost?: boolean
   isSelectedForCurb?: boolean
   width?: number
+  startElevation?: number
+  endElevation?: number
 }
 
 const config = OBJECT_CONFIGS.road
@@ -27,6 +29,8 @@ export default function RoadSegment({
   isGhost = false,
   isSelectedForCurb = false,
   width: widthProp,
+  startElevation,
+  endElevation,
 }: RoadSegmentProps) {
   const width = widthProp ?? config.defaultSize.width
   const enterSurface = useSurfaceStore(s => s.enterSurface)
@@ -34,25 +38,64 @@ export default function RoadSegment({
   const physics = usePhysicsOptional()
   const setRoadRegionTS = useTrackTemperatureStore(s => s.setRoadRegion)
 
-  // Calculate length and rotation from start/end points if provided
-  const { length, calculatedRotation, midpoint } = useMemo(() => {
+  const { length, calculatedRotation, midpoint, startElev, endElev, midElev } = useMemo(() => {
+    const startElevValue = startElevation ?? 0
+    const endElevValue = endElevation ?? 0
+    const midElevValue = (startElevValue + endElevValue) / 2
+
     if (startPoint && endPoint) {
       const start = new Vector3(...startPoint)
       const end = new Vector3(...endPoint)
       const direction = end.clone().sub(start)
       const len = direction.length()
       const rot = Math.atan2(direction.x, direction.z)
-      const mid: [number, number, number] = [(start.x + end.x) / 2, 0, (start.z + end.z) / 2]
-      return { length: len, calculatedRotation: rot, midpoint: mid }
+      const mid: [number, number, number] = [(start.x + end.x) / 2, midElevValue, (start.z + end.z) / 2]
+      return {
+        length: len,
+        calculatedRotation: rot,
+        midpoint: mid,
+        startElev: startElevValue,
+        endElev: endElevValue,
+        midElev: midElevValue,
+      }
     }
-    return { length: 10, calculatedRotation: rotation, midpoint: position }
-  }, [startPoint, endPoint, rotation, position])
+    return {
+      length: 10,
+      calculatedRotation: rotation,
+      midpoint: position,
+      startElev: startElevValue,
+      endElev: endElevValue,
+      midElev: midElevValue,
+    }
+  }, [startPoint, endPoint, rotation, position, startElevation, endElevation])
 
   const finalRotation = startPoint && endPoint ? calculatedRotation : rotation
   const finalPosition = startPoint && endPoint ? midpoint : position
 
-  // Number of center line dashes
   const dashCount = Math.max(1, Math.floor(length / 3))
+
+  const slopeGeometry = useMemo(() => {
+    const geo = new BufferGeometry()
+    const hw = width / 2
+    const hl = length / 2
+    const startY = (startElev - midElev) + ROAD_THICKNESS
+    const endY = (endElev - midElev) + ROAD_THICKNESS
+
+    const vertices = new Float32Array([
+      -hw, startY, -hl,
+       hw, startY, -hl,
+      -hw, endY,    hl,
+       hw, endY,    hl,
+    ])
+    const indices = [0, 2, 1, 1, 2, 3]
+    const uvs = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1])
+
+    geo.setAttribute('position', new Float32BufferAttribute(vertices, 3))
+    geo.setAttribute('uv', new Float32BufferAttribute(uvs, 2))
+    geo.setIndex(indices)
+    geo.computeVertexNormals()
+    return geo
+  }, [width, length, startElev, endElev, midElev])
 
   // Surface detection callbacks
   const handleEnterRoad = useCallback(() => {
@@ -111,12 +154,9 @@ export default function RoadSegment({
     }
   }, [isGhost, physics, setRoadRegionTS, finalPosition, finalRotation, width, length])
 
-  // Visual meshes
   const roadVisuals = (
     <>
-      {/* Main road surface - box geometry with thickness */}
-      <mesh position={[0, ROAD_THICKNESS / 2, 0]} receiveShadow={!isGhost} castShadow={!isGhost}>
-        <boxGeometry args={[width, ROAD_THICKNESS, length]} />
+      <mesh geometry={slopeGeometry} receiveShadow={!isGhost} castShadow={!isGhost}>
         <meshStandardMaterial
           color={config.color}
           transparent={isGhost}
@@ -125,52 +165,29 @@ export default function RoadSegment({
         />
       </mesh>
 
-      {/* Road edges - white lines */}
-      <mesh
-        position={[-width / 2 + 0.15, ROAD_THICKNESS + 0.001, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        <planeGeometry args={[0.2, length]} />
-        <meshStandardMaterial
-          color='#ffffff'
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-        />
-      </mesh>
-      <mesh
-        position={[width / 2 - 0.15, ROAD_THICKNESS + 0.001, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
-        <planeGeometry args={[0.2, length]} />
-        <meshStandardMaterial
-          color='#ffffff'
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-        />
-      </mesh>
+      {Array.from({ length: dashCount }).map((_, i) => {
+        const t = (i + 0.5) / dashCount
+        const dashY = (startElev - midElev) + (endElev - startElev) * t + ROAD_THICKNESS + 0.001
+        const dashZ = -length / 2 + (i + 0.5) * (length / dashCount)
+        return (
+          <mesh
+            key={i}
+            position={[0, dashY, dashZ]}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            <planeGeometry args={[0.15, (length / dashCount) * 0.6]} />
+            <meshStandardMaterial
+              color='#ffcc00'
+              transparent={isGhost}
+              opacity={isGhost ? GHOST_OPACITY : 1}
+              depthWrite={!isGhost}
+            />
+          </mesh>
+        )
+      })}
 
-      {/* Center line dashes - yellow */}
-      {Array.from({ length: dashCount }).map((_, i) => (
-        <mesh
-          key={i}
-          position={[0, ROAD_THICKNESS + 0.001, -length / 2 + (i + 0.5) * (length / dashCount)]}
-          rotation={[-Math.PI / 2, 0, 0]}
-        >
-          <planeGeometry args={[0.15, (length / dashCount) * 0.6]} />
-          <meshStandardMaterial
-            color='#ffcc00'
-            transparent={isGhost}
-            opacity={isGhost ? GHOST_OPACITY : 1}
-            depthWrite={!isGhost}
-          />
-        </mesh>
-      ))}
-
-      {/* Selection highlight for auto curb mode */}
       {isSelectedForCurb && (
-        <mesh position={[0, ROAD_THICKNESS + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[0, (startElev + endElev) / 2 - midElev + ROAD_THICKNESS + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[width + 0.5, length + 0.5]} />
           <meshBasicMaterial color='#22c55e' transparent opacity={0.3} depthWrite={false} />
         </mesh>
@@ -178,24 +195,21 @@ export default function RoadSegment({
     </>
   )
 
-  // Ghost mode - no physics
   if (isGhost) {
     return (
-      <group position={[finalPosition[0], 0.02, finalPosition[2]]} rotation={[0, finalRotation, 0]}>
+      <group position={finalPosition} rotation={[0, finalRotation, 0]}>
         {roadVisuals}
       </group>
     )
   }
 
-  // Normal mode - with physics (ground provides collision, road only has sensor)
   return (
     <RigidBody
       type='fixed'
-      position={[finalPosition[0], 0.01, finalPosition[2]]}
+      position={finalPosition}
       rotation={[0, finalRotation, 0]}
       colliders={false}
     >
-      {/* Surface detection sensor (slightly taller to catch jumping cars) */}
       <CuboidCollider
         args={[width / 2, 0.5, length / 2]}
         position={[0, 0.5, 0]}

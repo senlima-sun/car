@@ -28,12 +28,12 @@ export const getSnapPoints = (placedObjects: PlacedObject[]): SnapPointWithDirec
 
       const startLeft: [number, number, number] = [
         obj.startPoint[0] + startPerpX * halfWidth,
-        0,
+        obj.startElevation ?? 0,
         obj.startPoint[2] + startPerpZ * halfWidth,
       ]
       const startRight: [number, number, number] = [
         obj.startPoint[0] - startPerpX * halfWidth,
-        0,
+        obj.startElevation ?? 0,
         obj.startPoint[2] - startPerpZ * halfWidth,
       ]
       points.push({
@@ -46,12 +46,12 @@ export const getSnapPoints = (placedObjects: PlacedObject[]): SnapPointWithDirec
 
       const endLeft: [number, number, number] = [
         obj.endPoint[0] + endPerpX * halfWidth,
-        0,
+        obj.endElevation ?? 0,
         obj.endPoint[2] + endPerpZ * halfWidth,
       ]
       const endRight: [number, number, number] = [
         obj.endPoint[0] - endPerpX * halfWidth,
-        0,
+        obj.endElevation ?? 0,
         obj.endPoint[2] - endPerpZ * halfWidth,
       ]
       points.push({
@@ -128,11 +128,12 @@ export const findRoadAtPosition = (
           const perpX = -tangentZ / tangentLen
           const perpZ = tangentX / tangentLen
 
+          const elevY = getElevationAtT(obj, t)
           bestResult = {
             roadId: obj.id,
-            leftEdge: [curveX + perpX * halfWidth, 0, curveZ + perpZ * halfWidth],
-            rightEdge: [curveX - perpX * halfWidth, 0, curveZ - perpZ * halfWidth],
-            centerPoint: [curveX, 0, curveZ],
+            leftEdge: [curveX + perpX * halfWidth, elevY, curveZ + perpZ * halfWidth],
+            rightEdge: [curveX - perpX * halfWidth, elevY, curveZ - perpZ * halfWidth],
+            centerPoint: [curveX, elevY, curveZ],
           }
         }
       }
@@ -166,14 +167,17 @@ export const findRoadAtPosition = (
         const perpX = -dirZ
         const perpZ = dirX
 
+        const t = projection / length
+        const elevY = getElevationAtT(obj, t)
+
         const leftEdge: [number, number, number] = [
           closestX + perpX * halfWidth,
-          0,
+          elevY,
           closestZ + perpZ * halfWidth,
         ]
         const rightEdge: [number, number, number] = [
           closestX - perpX * halfWidth,
-          0,
+          elevY,
           closestZ - perpZ * halfWidth,
         ]
 
@@ -181,7 +185,7 @@ export const findRoadAtPosition = (
           roadId: obj.id,
           leftEdge,
           rightEdge,
-          centerPoint: [closestX, 0, closestZ],
+          centerPoint: [closestX, elevY, closestZ],
         }
       }
     }
@@ -233,6 +237,8 @@ const findCurvedRoadEdge = (
       Math.pow(pos[0] - rightEdgeX, 2) + Math.pow(pos[2] - rightEdgeZ, 2),
     )
 
+    const elevY = getElevationAtT(road, t)
+
     if (distToLeft < bestDist) {
       bestDist = distToLeft
       bestResult = {
@@ -240,7 +246,7 @@ const findCurvedRoadEdge = (
         road,
         edge: 'left',
         t,
-        worldPosition: [leftEdgeX, 0, leftEdgeZ],
+        worldPosition: [leftEdgeX, elevY, leftEdgeZ],
       }
     }
     if (distToRight < bestDist) {
@@ -250,7 +256,7 @@ const findCurvedRoadEdge = (
         road,
         edge: 'right',
         t,
-        worldPosition: [rightEdgeX, 0, rightEdgeZ],
+        worldPosition: [rightEdgeX, elevY, rightEdgeZ],
       }
     }
   }
@@ -311,13 +317,16 @@ export const findRoadEdgeAtPosition = (
         Math.pow(pos[0] - rightEdgeX, 2) + Math.pow(pos[2] - rightEdgeZ, 2),
       )
 
+      const t = projection / length
+      const elevY = getElevationAtT(obj, t)
+
       if (distToLeft <= edgeThreshold) {
         return {
           roadId: obj.id,
           road: obj,
           edge: 'left',
-          t: projection / length,
-          worldPosition: [leftEdgeX, 0, leftEdgeZ],
+          t,
+          worldPosition: [leftEdgeX, elevY, leftEdgeZ],
         }
       }
       if (distToRight <= edgeThreshold) {
@@ -325,8 +334,8 @@ export const findRoadEdgeAtPosition = (
           roadId: obj.id,
           road: obj,
           edge: 'right',
-          t: projection / length,
-          worldPosition: [rightEdgeX, 0, rightEdgeZ],
+          t,
+          worldPosition: [rightEdgeX, elevY, rightEdgeZ],
         }
       }
     }
@@ -360,7 +369,8 @@ export const getRoadEdgePositionAt = (
       const perpX = -tangentZ / tangentLen
       const perpZ = tangentX / tangentLen
       const sign = edge === 'left' ? 1 : -1
-      return [curveX + perpX * halfWidth * sign, 0, curveZ + perpZ * halfWidth * sign]
+      const elevY = getElevationAtT(road, t)
+      return [curveX + perpX * halfWidth * sign, elevY, curveZ + perpZ * halfWidth * sign]
     }
   }
 
@@ -378,8 +388,9 @@ export const getRoadEdgePositionAt = (
       const posX = road.startPoint[0] + dx * t
       const posZ = road.startPoint[2] + dz * t
       const sign = edge === 'left' ? 1 : -1
+      const elevY = getElevationAtT(road, t)
 
-      return [posX + perpX * halfWidth * sign, 0, posZ + perpZ * halfWidth * sign]
+      return [posX + perpX * halfWidth * sign, elevY, posZ + perpZ * halfWidth * sign]
     }
   }
 
@@ -410,11 +421,12 @@ const findCurvedRoadSurface = (
 
     if (dist < bestDist) {
       bestDist = dist
+      const elevY = getElevationAtT(road, t)
       bestResult = {
         roadId: road.id,
         road,
         t,
-        centerPosition: [curveX, 0, curveZ],
+        centerPosition: [curveX, elevY, curveZ],
       }
     }
   }
@@ -462,11 +474,13 @@ export const findRoadSurfaceAtPosition = (
       const perpDist = Math.sqrt(Math.pow(pos[0] - closestX, 2) + Math.pow(pos[2] - closestZ, 2))
 
       if (perpDist <= halfWidth) {
+        const t = projection / length
+        const elevY = getElevationAtT(obj, t)
         return {
           roadId: obj.id,
           road: obj,
-          t: projection / length,
-          centerPosition: [closestX, 0, closestZ],
+          t,
+          centerPosition: [closestX, elevY, closestZ],
         }
       }
     }
@@ -481,18 +495,20 @@ export const getRoadCenterPositionAt = (
 ): [number, number, number] => {
   if (!road.startPoint || !road.endPoint) return [0, 0, 0]
 
+  const elevY = getElevationAtT(road, t)
+
   if (road.trackMode === 'curve' && road.controlPoint) {
     const t1 = 1 - t
     return [
       t1 * t1 * road.startPoint[0] + 2 * t1 * t * road.controlPoint[0] + t * t * road.endPoint[0],
-      0,
+      elevY,
       t1 * t1 * road.startPoint[2] + 2 * t1 * t * road.controlPoint[2] + t * t * road.endPoint[2],
     ]
   }
 
   return [
     road.startPoint[0] + (road.endPoint[0] - road.startPoint[0]) * t,
-    0,
+    elevY,
     road.startPoint[2] + (road.endPoint[2] - road.startPoint[2]) * t,
   ]
 }

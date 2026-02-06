@@ -7,11 +7,12 @@ interface FlowArrowsProps {
   controlPoint?: [number, number, number]
   flowDirection: 'forward' | 'backward' | null
   isCurve?: boolean
+  startElevation?: number
+  endElevation?: number
 }
 
 const ARROW_SPACING = 10
 const ARROW_SIZE = 0.6
-const ARROW_Y = 0.08
 
 export default function FlowArrows({
   startPoint,
@@ -19,11 +20,15 @@ export default function FlowArrows({
   controlPoint,
   flowDirection,
   isCurve = false,
+  startElevation,
+  endElevation,
 }: FlowArrowsProps) {
   if (!flowDirection) return null
 
   const arrows = useMemo(() => {
     const result: { position: [number, number, number]; rotation: number }[] = []
+    const startElev = startElevation ?? 0
+    const endElev = endElevation ?? 0
 
     if (isCurve && controlPoint) {
       const start = new Vector3(...startPoint)
@@ -42,8 +47,9 @@ export default function FlowArrows({
           tangent.negate()
         }
         const rot = Math.atan2(tangent.x, tangent.z)
+        const y = startElev + (endElev - startElev) * effectiveT + 0.08
         result.push({
-          position: [pos.x, ARROW_Y, pos.z],
+          position: [pos.x, y, pos.z],
           rotation: rot,
         })
       }
@@ -59,10 +65,11 @@ export default function FlowArrows({
 
       for (let i = 0; i < count; i++) {
         const t = (i + 0.5) / count
+        const y = startElev + (endElev - startElev) * t + 0.08
         result.push({
           position: [
             startPoint[0] + dx * t,
-            ARROW_Y,
+            y,
             startPoint[2] + dz * t,
           ],
           rotation: rot,
@@ -71,7 +78,7 @@ export default function FlowArrows({
     }
 
     return result
-  }, [startPoint, endPoint, controlPoint, flowDirection, isCurve])
+  }, [startPoint, endPoint, controlPoint, flowDirection, isCurve, startElevation, endElevation])
 
   return (
     <>
