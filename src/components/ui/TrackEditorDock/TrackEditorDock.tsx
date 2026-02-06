@@ -6,6 +6,7 @@ import ObjectToolbar from './ObjectToolbar'
 import DeleteTools from './DeleteTools'
 import TrackSettings from './TrackSettings'
 import GenerationTools from './GenerationTools'
+import ElevationTools from './ElevationTools'
 import TrackManagement from './TrackManagement'
 import ContextHint from './ContextHint'
 import EditorHelpModal from './EditorHelpModal'
@@ -130,6 +131,11 @@ export default function TrackEditorDock() {
             <TrackSettings />
           </>
         )}
+
+        <div style={styles.divider} />
+
+        {/* Elevation Tools */}
+        <ElevationTools />
 
         <div style={styles.divider} />
 
