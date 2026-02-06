@@ -1148,10 +1148,19 @@ export default function CustomizationPanel() {
           <span style={styles.key}>WASD</span> Pan camera
         </div>
         <div style={styles.controlLine}>
+          <span style={styles.key}>Right drag</span> Rotate
+        </div>
+        <div style={styles.controlLine}>
+          <span style={styles.key}>Mid drag</span> Pan
+        </div>
+        <div style={styles.controlLine}>
           <span style={styles.key}>Scroll</span> Zoom
         </div>
         <div style={styles.controlLine}>
-          <span style={styles.key}>V</span> Toggle 3D view
+          <span style={styles.key}>Q/E</span> Rotate 45°
+        </div>
+        <div style={styles.controlLine}>
+          <span style={styles.key}>1/2/3</span> View presets
         </div>
         <div style={styles.controlLine}>
           <span style={styles.key}>Y</span> Elevation mode

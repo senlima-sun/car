@@ -73,7 +73,6 @@ export default function Scene() {
   const status = useGameStore(state => state.status)
   const isCustomizeMode = status === 'customize'
   const pitLaneData = usePitStore(s => s.pitLaneData)
-  const isObliqueView = useEditorStore(s => s.isObliqueView)
   const elevationEditMode = useEditorStore(s => s.elevationEditMode)
 
   return (
@@ -98,7 +97,7 @@ export default function Scene() {
           <ObjectPlacer />
           <GhostPreview />
           <ValidationOverlay />
-          <ElevationGrid visible={isObliqueView} />
+          <ElevationGrid visible={elevationEditMode} />
           {elevationEditMode && <ElevationHandles />}
         </>
       )}

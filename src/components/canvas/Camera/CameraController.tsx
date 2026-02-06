@@ -5,7 +5,7 @@ import { useGameStore } from '../../../stores/useGameStore'
 import ThirdPersonCamera from './ThirdPersonCamera'
 import FirstPersonCamera from './FirstPersonCamera'
 import FreeCamera from './FreeCamera'
-import TopDownCamera from './TopDownCamera'
+import EditorCamera from './EditorCamera'
 
 interface CameraControllerProps {
   target: RefObject<Group | null>
@@ -18,7 +18,7 @@ export default function CameraController({ target }: CameraControllerProps) {
 
   // In customize mode, always use top-down camera
   if (isCustomizeMode) {
-    return <TopDownCamera />
+    return <EditorCamera />
   }
 
   return (
