@@ -3,7 +3,7 @@ import type { PlacedObject } from '../types/trackObjects'
 
 export type { ObjectType, TrackMode, CheckpointType, PlacedObject, CurbDragState, PartialDeleteState, SnapPointWithDirection, RoadEdgeResult, RoadEdgeHitResult, RoadSurfaceHitResult } from '../types/trackObjects'
 export { isLinearObject } from '../types/trackObjects'
-export { getSnapPoints, findNearestSnapPoint, findRoadAtPosition, findRoadEdgeAtPosition, getRoadEdgePositionAt, findRoadSurfaceAtPosition, getRoadCenterPositionAt, splitRoadAtSegment } from '../utils/roadGeometry'
+export { getSnapPoints, findNearestSnapPoint, findRoadAtPosition, findRoadEdgeAtPosition, getRoadEdgePositionAt, findRoadSurfaceAtPosition, getRoadCenterPositionAt, splitRoadAtSegment, getElevationAtWorldPosition } from '../utils/roadGeometry'
 export type { SnapSettings } from '../utils/roadSnapping'
 
 const STORAGE_KEY = 'car-racing-track'

@@ -17,6 +17,7 @@ export default function TopDownCamera() {
   const setObliqueView = useEditorStore(s => s.setObliqueView)
   const isObliqueView = useEditorStore(s => s.isObliqueView)
 
+  const elevationEditMode = useEditorStore(s => s.elevationEditMode)
   const isOblique = useRef(false)
   const azimuth = useRef(0)
   const targetAzimuth = useRef(0)
@@ -32,6 +33,13 @@ export default function TopDownCamera() {
     lastMouseX: 0,
     lastMouseY: 0,
   })
+
+  useEffect(() => {
+    if (elevationEditMode && !isOblique.current) {
+      isOblique.current = true
+      setObliqueView(true)
+    }
+  }, [elevationEditMode, setObliqueView])
 
   // Handle mouse wheel for zoom
   useEffect(() => {

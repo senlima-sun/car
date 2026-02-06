@@ -659,6 +659,70 @@ export const splitRoadAtSegment = (
   return results
 }
 
+export const getElevationAtWorldPosition = (
+  x: number,
+  z: number,
+  placedObjects: PlacedObject[],
+  roadWidth: number = 16,
+): number => {
+  const halfWidth = roadWidth / 2
+  let bestElev = 0
+  let found = false
+
+  for (const obj of placedObjects) {
+    if (obj.type !== 'road' || !obj.startPoint || !obj.endPoint) continue
+
+    if (obj.trackMode === 'curve' && obj.controlPoint) {
+      const SAMPLES = 16
+      let bestDist = halfWidth
+      let bestT = -1
+
+      for (let i = 0; i <= SAMPLES; i++) {
+        const t = i / SAMPLES
+        const t1 = 1 - t
+        const cx = t1 * t1 * obj.startPoint[0] + 2 * t1 * t * obj.controlPoint[0] + t * t * obj.endPoint[0]
+        const cz = t1 * t1 * obj.startPoint[2] + 2 * t1 * t * obj.controlPoint[2] + t * t * obj.endPoint[2]
+        const dist = Math.sqrt((x - cx) ** 2 + (z - cz) ** 2)
+        if (dist < bestDist) {
+          bestDist = dist
+          bestT = t
+        }
+      }
+      if (bestT >= 0) {
+        const elev = getElevationAtT(obj, bestT)
+        if (!found || elev > bestElev) {
+          bestElev = elev
+          found = true
+        }
+      }
+    } else {
+      const dx = obj.endPoint[0] - obj.startPoint[0]
+      const dz = obj.endPoint[2] - obj.startPoint[2]
+      const len = Math.sqrt(dx * dx + dz * dz)
+      if (len === 0) continue
+      const dirX = dx / len
+      const dirZ = dz / len
+      const tox = x - obj.startPoint[0]
+      const toz = z - obj.startPoint[2]
+      const proj = tox * dirX + toz * dirZ
+      if (proj < 0 || proj > len) continue
+      const closestX = obj.startPoint[0] + dirX * proj
+      const closestZ = obj.startPoint[2] + dirZ * proj
+      const perpDist = Math.sqrt((x - closestX) ** 2 + (z - closestZ) ** 2)
+      if (perpDist <= halfWidth) {
+        const t = proj / len
+        const elev = getElevationAtT(obj, t)
+        if (!found || elev > bestElev) {
+          bestElev = elev
+          found = true
+        }
+      }
+    }
+  }
+
+  return bestElev
+}
+
 export const getElevationAtT = (road: PlacedObject, t: number): number => {
   const startElev = road.startElevation ?? 0
   const endElev = road.endElevation ?? 0

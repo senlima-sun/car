@@ -20,6 +20,7 @@ import { useBrakeStore } from '../../../../stores/useBrakeStore'
 import { useLapTimeStore } from '../../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../../stores/usePitStore'
 import { useElevationStore } from '../../../../stores/useElevationStore'
+import { useCustomizationStore, getElevationAtWorldPosition } from '../../../../stores/useCustomizationStore'
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 
@@ -351,17 +352,23 @@ export function useCarFrame({
       true,
     )
 
-    if (onRoad && targetElev > 0.1) {
-      const currentY = chassis.translation().y
-      const targetY = targetElev + 0.5
-      const diff = targetY - currentY
+    {
+      const placedObjects = useCustomizationStore.getState().placedObjects
+      const liveElev = getElevationAtWorldPosition(pos.x, pos.z, placedObjects)
+      const effectiveElev = liveElev > 0.1 ? liveElev : (onRoad ? targetElev : 0)
 
-      const k = 500
-      const d = 100
-      const vy = chassis.linvel().y
-      const force = k * diff - d * vy
+      if (effectiveElev > 0.1) {
+        const currentY = chassis.translation().y
+        const targetY = effectiveElev + 0.5
+        const diff = targetY - currentY
 
-      chassis.applyImpulse({ x: 0, y: force * dt, z: 0 }, true)
+        const k = 800
+        const d = 150
+        const vy = chassis.linvel().y
+        const force = k * diff - d * vy
+
+        chassis.applyImpulse({ x: 0, y: force * dt, z: 0 }, true)
+      }
     }
 
     // Sync tire wear from WASM to UI store

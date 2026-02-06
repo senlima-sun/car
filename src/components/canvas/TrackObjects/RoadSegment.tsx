@@ -218,8 +218,8 @@ export default function RoadSegment({
       colliders={false}
     >
       <CuboidCollider
-        args={[width / 2, 0.5, length / 2]}
-        position={[0, 0.5, 0]}
+        args={[width / 2, midElev > 0.1 ? midElev + 1 : 0.5, length / 2]}
+        position={[0, midElev > 0.1 ? 1 - midElev : 0.5, 0]}
         sensor
         onIntersectionEnter={handleEnterRoad}
         onIntersectionExit={handleExitRoad}
