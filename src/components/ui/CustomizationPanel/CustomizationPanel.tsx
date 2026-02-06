@@ -12,6 +12,7 @@ import { OBJECT_TYPES } from '../../../constants/trackObjects'
 import { generatePitLane } from '../../../utils/pitLaneGenerator'
 import { generateCurbsForRoads } from '../../../utils/autoCurbGenerator'
 import ObjectButton from './ObjectButton'
+import TrackValidationPanel from './TrackValidationPanel'
 
 const styles: Record<string, React.CSSProperties> = {
   panel: {
@@ -757,6 +758,8 @@ export default function CustomizationPanel() {
           </>
         )}
       </div>
+
+      <TrackValidationPanel />
 
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Track</div>
