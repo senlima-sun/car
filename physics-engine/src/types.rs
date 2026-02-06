@@ -604,6 +604,7 @@ pub struct CarPhysicsOutput {
     pub ers: ErsState,
     pub active_aero: ActiveAeroState,
     pub grip_breakdown: GripBreakdown,
+    pub tire_material: TireMaterialOutput,
 }
 
 // ============================================================================
@@ -1005,6 +1006,100 @@ impl PerWheelThermalShock {
             || self.rear_left.is_shocked
             || self.rear_right.is_shocked
     }
+}
+
+// ============================================================================
+// Tire Material Science Types
+// ============================================================================
+
+#[derive(Clone, Copy, Debug)]
+pub struct TireMaterialProperties {
+    pub optimal_temp_celsius: f32,
+    pub temp_sigma_celsius: f32,
+    pub peak_grip_amplitude: f32,
+    pub base_shore_hardness: f32,
+    pub hardness_temp_coefficient: f32,
+    pub graining_onset_delta: f32,
+    pub blistering_onset_delta: f32,
+}
+
+impl TireMaterialProperties {
+    pub fn for_compound(compound: TireCompound) -> Self {
+        match compound {
+            TireCompound::Soft => Self {
+                optimal_temp_celsius: 95.0,
+                temp_sigma_celsius: 15.0,
+                peak_grip_amplitude: 1.15,
+                base_shore_hardness: 55.0,
+                hardness_temp_coefficient: 0.2,
+                graining_onset_delta: 20.0,
+                blistering_onset_delta: 30.0,
+            },
+            TireCompound::Medium => Self {
+                optimal_temp_celsius: 100.0,
+                temp_sigma_celsius: 20.0,
+                peak_grip_amplitude: 1.0,
+                base_shore_hardness: 62.0,
+                hardness_temp_coefficient: 0.15,
+                graining_onset_delta: 25.0,
+                blistering_onset_delta: 35.0,
+            },
+            TireCompound::Hard => Self {
+                optimal_temp_celsius: 110.0,
+                temp_sigma_celsius: 25.0,
+                peak_grip_amplitude: 0.92,
+                base_shore_hardness: 70.0,
+                hardness_temp_coefficient: 0.1,
+                graining_onset_delta: 30.0,
+                blistering_onset_delta: 40.0,
+            },
+            TireCompound::Wet => Self {
+                optimal_temp_celsius: 60.0,
+                temp_sigma_celsius: 20.0,
+                peak_grip_amplitude: 0.75,
+                base_shore_hardness: 50.0,
+                hardness_temp_coefficient: 0.18,
+                graining_onset_delta: 15.0,
+                blistering_onset_delta: 25.0,
+            },
+            TireCompound::Intermediate => Self {
+                optimal_temp_celsius: 80.0,
+                temp_sigma_celsius: 18.0,
+                peak_grip_amplitude: 0.88,
+                base_shore_hardness: 58.0,
+                hardness_temp_coefficient: 0.16,
+                graining_onset_delta: 20.0,
+                blistering_onset_delta: 30.0,
+            },
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct TireMaterialState {
+    pub graining_severity: f32,
+    pub blistering_damage: f32,
+    pub viscoelastic_grip: f32,
+    pub shore_hardness: f32,
+}
+
+impl Default for TireMaterialState {
+    fn default() -> Self {
+        Self {
+            graining_severity: 0.0,
+            blistering_damage: 0.0,
+            viscoelastic_grip: 1.0,
+            shore_hardness: 62.0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct TireMaterialOutput {
+    pub per_wheel_graining: [f32; 4],
+    pub per_wheel_blistering: [f32; 4],
+    pub per_wheel_viscoelastic_grip: [f32; 4],
+    pub per_wheel_shore_hardness: [f32; 4],
 }
 
 // ============================================================================

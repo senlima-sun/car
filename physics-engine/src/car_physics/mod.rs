@@ -330,6 +330,7 @@ impl CarPhysicsState {
             ers: Default::default(),
             active_aero: Default::default(),
             grip_breakdown: Default::default(),
+            tire_material: Default::default(),
         }
     }
 

@@ -1,7 +1,8 @@
 use crate::car_physics::weight_transfer::WeightTransferResult;
 use crate::types::{
     AmbientConditions, PerWheelTemperature, PerWheelThermalShock, PerWheelWear, TireCompound,
-    TireConfig, TireDegradationModifiers, TireTemperatureWindow, TireThermalShock,
+    TireConfig, TireDegradationModifiers, TireMaterialOutput, TireMaterialProperties,
+    TireMaterialState, TireTemperatureWindow, TireThermalShock,
 };
 
 /// Wheel position indices
@@ -788,6 +789,137 @@ impl TireTemperatureState {
     }
 }
 
+// ============================================================================
+// Tire Material Science System
+// ============================================================================
+
+const REFERENCE_TEMP_CELSIUS: f32 = 25.0;
+const GRAINING_BUILDUP_RATE: f32 = 0.05;
+const GRAINING_RECOVERY_RATE: f32 = 0.03;
+const GRAINING_MAX_GRIP_PENALTY: f32 = 0.15;
+const BLISTERING_BUILDUP_RATE: f32 = 0.02;
+const BLISTERING_MAX_GRIP_PENALTY: f32 = 0.25;
+const SHORE_WEAR_RATE_FACTOR: f32 = 0.01;
+
+pub struct TireMaterialSystem {
+    properties: TireMaterialProperties,
+    wheels: [TireMaterialState; 4],
+}
+
+impl TireMaterialSystem {
+    pub fn new(compound: TireCompound) -> Self {
+        Self {
+            properties: TireMaterialProperties::for_compound(compound),
+            wheels: [TireMaterialState::default(); 4],
+        }
+    }
+
+    pub fn set_compound(&mut self, compound: TireCompound) {
+        self.properties = TireMaterialProperties::for_compound(compound);
+        self.wheels = [TireMaterialState::default(); 4];
+    }
+
+    pub fn update(&mut self, dt: f32, tire_temps_normalized: &[f32; 4]) {
+        let dt = dt.min(0.05);
+        for i in 0..4 {
+            let temp_celsius = tire_temps_normalized[i] * 130.0 + 20.0;
+            self.update_wheel(i, dt, temp_celsius);
+        }
+    }
+
+    fn update_wheel(&mut self, wheel: usize, dt: f32, temp_celsius: f32) {
+        let props = &self.properties;
+        let state = &mut self.wheels[wheel];
+
+        let delta_t = temp_celsius - props.optimal_temp_celsius;
+        let sigma_sq = props.temp_sigma_celsius * props.temp_sigma_celsius;
+        let gaussian = (-delta_t * delta_t / (2.0 * sigma_sq)).exp();
+        let min_grip_floor = props.peak_grip_amplitude * 0.4;
+        state.viscoelastic_grip = min_grip_floor + (props.peak_grip_amplitude - min_grip_floor) * gaussian;
+
+        let delta_from_ref = temp_celsius - REFERENCE_TEMP_CELSIUS;
+        state.shore_hardness = (props.base_shore_hardness - props.hardness_temp_coefficient * delta_from_ref).max(20.0);
+
+        let graining_threshold = props.optimal_temp_celsius - props.graining_onset_delta;
+        if temp_celsius < graining_threshold {
+            let cold_excess = (graining_threshold - temp_celsius) / props.graining_onset_delta;
+            let severity_target = cold_excess.clamp(0.0, 1.0);
+            state.graining_severity = (state.graining_severity + GRAINING_BUILDUP_RATE * severity_target * dt).min(1.0);
+        } else {
+            state.graining_severity = (state.graining_severity - GRAINING_RECOVERY_RATE * dt).max(0.0);
+        }
+
+        let blistering_threshold = props.optimal_temp_celsius + props.blistering_onset_delta;
+        if temp_celsius > blistering_threshold {
+            let hot_excess = (temp_celsius - blistering_threshold) / props.blistering_onset_delta;
+            let damage_rate = hot_excess.clamp(0.0, 1.0);
+            state.blistering_damage = (state.blistering_damage + BLISTERING_BUILDUP_RATE * damage_rate * dt).min(1.0);
+        }
+    }
+
+    pub fn get_effective_grip(&self, wheel: usize) -> f32 {
+        let state = &self.wheels[wheel.min(3)];
+        let graining_penalty = state.graining_severity * GRAINING_MAX_GRIP_PENALTY;
+        let blistering_penalty = state.blistering_damage * BLISTERING_MAX_GRIP_PENALTY;
+        (state.viscoelastic_grip - graining_penalty - blistering_penalty).max(0.1)
+    }
+
+    pub fn get_average_effective_grip(&self) -> f32 {
+        (self.get_effective_grip(0) + self.get_effective_grip(1) + self.get_effective_grip(2) + self.get_effective_grip(3)) / 4.0
+    }
+
+    pub fn get_wear_rate_modifier(&self, wheel: usize) -> f32 {
+        let hardness = self.wheels[wheel.min(3)].shore_hardness;
+        1.0 + (62.0 - hardness) * SHORE_WEAR_RATE_FACTOR
+    }
+
+    pub fn get_output(&self) -> TireMaterialOutput {
+        TireMaterialOutput {
+            per_wheel_graining: [
+                self.wheels[0].graining_severity,
+                self.wheels[1].graining_severity,
+                self.wheels[2].graining_severity,
+                self.wheels[3].graining_severity,
+            ],
+            per_wheel_blistering: [
+                self.wheels[0].blistering_damage,
+                self.wheels[1].blistering_damage,
+                self.wheels[2].blistering_damage,
+                self.wheels[3].blistering_damage,
+            ],
+            per_wheel_viscoelastic_grip: [
+                self.get_effective_grip(0),
+                self.get_effective_grip(1),
+                self.get_effective_grip(2),
+                self.get_effective_grip(3),
+            ],
+            per_wheel_shore_hardness: [
+                self.wheels[0].shore_hardness,
+                self.wheels[1].shore_hardness,
+                self.wheels[2].shore_hardness,
+                self.wheels[3].shore_hardness,
+            ],
+        }
+    }
+
+    pub fn get_wheel_state(&self, wheel: usize) -> &TireMaterialState {
+        &self.wheels[wheel.min(3)]
+    }
+
+    pub fn get_properties(&self) -> &TireMaterialProperties {
+        &self.properties
+    }
+}
+
+impl std::fmt::Debug for TireMaterialSystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TireMaterialSystem")
+            .field("properties", &self.properties)
+            .field("wheels", &self.wheels)
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1223,5 +1355,330 @@ mod tests {
 
         // Hard acceleration should cause more wear
         assert!(state2.get_wear() > state1.get_wear() * 1.3);
+    }
+
+    // ========================================================================
+    // Phase 7: Tire Material Science Tests
+    // ========================================================================
+
+    fn temp_celsius_to_normalized(celsius: f32) -> f32 {
+        (celsius - 20.0) / 130.0
+    }
+
+    #[test]
+    fn test_material_viscoelastic_grip_bell_curve_shape() {
+        let sys = TireMaterialSystem::new(TireCompound::Soft);
+        let props = sys.get_properties();
+
+        let mut grips = Vec::new();
+        for temp_c in (20..=150).step_by(5) {
+            let norm = temp_celsius_to_normalized(temp_c as f32);
+            let mut sys_copy = TireMaterialSystem::new(TireCompound::Soft);
+            sys_copy.update(1.0, &[norm; 4]);
+            grips.push((temp_c, sys_copy.get_effective_grip(0)));
+        }
+
+        let peak_idx = grips.iter().enumerate()
+            .max_by(|a, b| a.1.1.partial_cmp(&b.1.1).unwrap())
+            .unwrap().0;
+
+        let peak_temp = grips[peak_idx].0;
+        assert!(
+            (peak_temp as f32 - props.optimal_temp_celsius).abs() <= 5.0,
+            "Peak grip should be near optimal temp {}°C, got {}°C",
+            props.optimal_temp_celsius, peak_temp
+        );
+
+        if peak_idx > 0 {
+            assert!(grips[peak_idx].1 > grips[0].1, "Peak should be higher than coldest");
+        }
+        if peak_idx < grips.len() - 1 {
+            assert!(grips[peak_idx].1 > grips[grips.len() - 1].1, "Peak should be higher than hottest");
+        }
+    }
+
+    #[test]
+    fn test_material_soft_vs_hard_peak_and_width() {
+        let mut soft = TireMaterialSystem::new(TireCompound::Soft);
+        let mut hard = TireMaterialSystem::new(TireCompound::Hard);
+
+        let soft_opt = temp_celsius_to_normalized(95.0);
+        let hard_opt = temp_celsius_to_normalized(110.0);
+
+        soft.update(1.0, &[soft_opt; 4]);
+        hard.update(1.0, &[hard_opt; 4]);
+
+        let soft_peak = soft.get_effective_grip(0);
+        let hard_peak = hard.get_effective_grip(0);
+
+        assert!(
+            soft_peak > hard_peak,
+            "Soft peak grip ({}) should exceed hard peak grip ({})",
+            soft_peak, hard_peak
+        );
+
+        let off_by_30 = temp_celsius_to_normalized(95.0 + 30.0);
+        let off_by_30_hard = temp_celsius_to_normalized(110.0 + 30.0);
+
+        let mut soft_off = TireMaterialSystem::new(TireCompound::Soft);
+        let mut hard_off = TireMaterialSystem::new(TireCompound::Hard);
+        soft_off.update(1.0, &[off_by_30; 4]);
+        hard_off.update(1.0, &[off_by_30_hard; 4]);
+
+        let soft_drop = (soft_peak - soft_off.get_effective_grip(0)) / soft_peak;
+        let hard_drop = (hard_peak - hard_off.get_effective_grip(0)) / hard_peak;
+
+        assert!(
+            soft_drop > hard_drop,
+            "Soft tires should drop more off-peak ({:.2}%) vs hard ({:.2}%)",
+            soft_drop * 100.0, hard_drop * 100.0
+        );
+    }
+
+    #[test]
+    fn test_material_graining_triggers_below_threshold() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Soft);
+        let cold_temp = temp_celsius_to_normalized(50.0);
+
+        for _ in 0..200 {
+            sys.update(0.05, &[cold_temp; 4]);
+        }
+
+        let state = sys.get_wheel_state(0);
+        assert!(
+            state.graining_severity > 0.0,
+            "Graining should trigger at 50°C (threshold ~75°C for soft), got severity {}",
+            state.graining_severity
+        );
+    }
+
+    #[test]
+    fn test_material_graining_recovers_at_optimal_temp() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Soft);
+
+        let cold_temp = temp_celsius_to_normalized(50.0);
+        for _ in 0..200 {
+            sys.update(0.05, &[cold_temp; 4]);
+        }
+        let graining_before = sys.get_wheel_state(0).graining_severity;
+        assert!(graining_before > 0.0);
+
+        let optimal_temp = temp_celsius_to_normalized(95.0);
+        for _ in 0..400 {
+            sys.update(0.05, &[optimal_temp; 4]);
+        }
+        let graining_after = sys.get_wheel_state(0).graining_severity;
+        assert!(
+            graining_after < graining_before,
+            "Graining should recover at optimal temp: before={}, after={}",
+            graining_before, graining_after
+        );
+    }
+
+    #[test]
+    fn test_material_blistering_triggers_above_threshold() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Soft);
+        let hot_temp = temp_celsius_to_normalized(140.0);
+
+        for _ in 0..200 {
+            sys.update(0.05, &[hot_temp; 4]);
+        }
+
+        let state = sys.get_wheel_state(0);
+        assert!(
+            state.blistering_damage > 0.0,
+            "Blistering should trigger at 140°C (threshold 125°C for soft), got damage {}",
+            state.blistering_damage
+        );
+    }
+
+    #[test]
+    fn test_material_blistering_is_permanent() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Soft);
+
+        let hot_temp = temp_celsius_to_normalized(140.0);
+        for _ in 0..200 {
+            sys.update(0.05, &[hot_temp; 4]);
+        }
+        let damage_after_heat = sys.get_wheel_state(0).blistering_damage;
+        assert!(damage_after_heat > 0.0);
+
+        let cool_temp = temp_celsius_to_normalized(95.0);
+        for _ in 0..400 {
+            sys.update(0.05, &[cool_temp; 4]);
+        }
+        let damage_after_cool = sys.get_wheel_state(0).blistering_damage;
+
+        assert!(
+            (damage_after_cool - damage_after_heat).abs() < 0.001,
+            "Blistering damage should not recover: before={}, after={}",
+            damage_after_heat, damage_after_cool
+        );
+    }
+
+    #[test]
+    fn test_material_shore_hardness_decreases_with_temperature() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Medium);
+
+        let cold_temp = temp_celsius_to_normalized(30.0);
+        sys.update(1.0, &[cold_temp; 4]);
+        let cold_hardness = sys.get_wheel_state(0).shore_hardness;
+
+        let hot_temp = temp_celsius_to_normalized(120.0);
+        sys.update(1.0, &[hot_temp; 4]);
+        let hot_hardness = sys.get_wheel_state(0).shore_hardness;
+
+        assert!(
+            cold_hardness > hot_hardness,
+            "Shore hardness should decrease with temperature: cold={}, hot={}",
+            cold_hardness, hot_hardness
+        );
+    }
+
+    #[test]
+    fn test_material_shore_hardness_linear() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Hard);
+
+        let t1 = temp_celsius_to_normalized(50.0);
+        sys.update(1.0, &[t1; 4]);
+        let h1 = sys.get_wheel_state(0).shore_hardness;
+
+        let t2 = temp_celsius_to_normalized(100.0);
+        sys.update(1.0, &[t2; 4]);
+        let h2 = sys.get_wheel_state(0).shore_hardness;
+
+        let expected_diff = 0.1 * (100.0 - 50.0);
+        let actual_diff = h1 - h2;
+        assert!(
+            (actual_diff - expected_diff).abs() < 0.5,
+            "Shore hardness drop should be linear: expected ~{}, got {}",
+            expected_diff, actual_diff
+        );
+    }
+
+    #[test]
+    fn test_material_compound_change_resets_state() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Soft);
+
+        let hot_temp = temp_celsius_to_normalized(140.0);
+        for _ in 0..200 {
+            sys.update(0.05, &[hot_temp; 4]);
+        }
+        assert!(sys.get_wheel_state(0).blistering_damage > 0.0);
+
+        sys.set_compound(TireCompound::Hard);
+        assert!(
+            sys.get_wheel_state(0).blistering_damage == 0.0,
+            "Compound change should reset blistering damage"
+        );
+        assert!(
+            sys.get_wheel_state(0).graining_severity == 0.0,
+            "Compound change should reset graining"
+        );
+    }
+
+    #[test]
+    fn test_material_no_nan_or_infinity() {
+        for compound in [TireCompound::Soft, TireCompound::Medium, TireCompound::Hard, TireCompound::Wet, TireCompound::Intermediate] {
+            let mut sys = TireMaterialSystem::new(compound);
+
+            for norm_temp in [0.0_f32, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0] {
+                sys.update(0.016, &[norm_temp; 4]);
+                for w in 0..4 {
+                    let state = sys.get_wheel_state(w);
+                    assert!(!state.viscoelastic_grip.is_nan(), "NaN grip for {:?} at temp {}", compound, norm_temp);
+                    assert!(!state.viscoelastic_grip.is_infinite(), "Inf grip for {:?} at temp {}", compound, norm_temp);
+                    assert!(!state.shore_hardness.is_nan(), "NaN hardness for {:?} at temp {}", compound, norm_temp);
+                    assert!(!state.graining_severity.is_nan(), "NaN graining for {:?} at temp {}", compound, norm_temp);
+                    assert!(!state.blistering_damage.is_nan(), "NaN blistering for {:?} at temp {}", compound, norm_temp);
+                    assert!(sys.get_effective_grip(w) >= 0.1, "Grip too low for {:?} at temp {}", compound, norm_temp);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_material_wear_rate_modifier() {
+        let mut soft_sys = TireMaterialSystem::new(TireCompound::Soft);
+        let mut hard_sys = TireMaterialSystem::new(TireCompound::Hard);
+
+        let temp = temp_celsius_to_normalized(95.0);
+        soft_sys.update(1.0, &[temp; 4]);
+        hard_sys.update(1.0, &[temp; 4]);
+
+        let soft_rate = soft_sys.get_wear_rate_modifier(0);
+        let hard_rate = hard_sys.get_wear_rate_modifier(0);
+
+        assert!(
+            soft_rate > hard_rate,
+            "Soft tires should wear faster: soft_rate={}, hard_rate={}",
+            soft_rate, hard_rate
+        );
+    }
+
+    #[test]
+    fn test_material_output_structure() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Medium);
+        let temp = temp_celsius_to_normalized(100.0);
+        sys.update(1.0, &[temp; 4]);
+
+        let output = sys.get_output();
+        for w in 0..4 {
+            assert!(output.per_wheel_viscoelastic_grip[w] > 0.0);
+            assert!(output.per_wheel_shore_hardness[w] > 0.0);
+            assert!(output.per_wheel_graining[w] >= 0.0);
+            assert!(output.per_wheel_blistering[w] >= 0.0);
+        }
+    }
+
+    #[test]
+    fn test_material_wet_compound_lower_optimal_temp() {
+        let wet_props = TireMaterialProperties::for_compound(TireCompound::Wet);
+        let soft_props = TireMaterialProperties::for_compound(TireCompound::Soft);
+
+        assert!(
+            wet_props.optimal_temp_celsius < soft_props.optimal_temp_celsius,
+            "Wet tires should have lower optimal temp: wet={}°C, soft={}°C",
+            wet_props.optimal_temp_celsius, soft_props.optimal_temp_celsius
+        );
+    }
+
+    #[test]
+    fn test_material_all_compounds_have_valid_properties() {
+        for compound in [TireCompound::Soft, TireCompound::Medium, TireCompound::Hard, TireCompound::Wet, TireCompound::Intermediate] {
+            let props = TireMaterialProperties::for_compound(compound);
+            assert!(props.optimal_temp_celsius > 20.0 && props.optimal_temp_celsius < 150.0,
+                "Invalid optimal temp for {:?}: {}°C", compound, props.optimal_temp_celsius);
+            assert!(props.temp_sigma_celsius > 5.0 && props.temp_sigma_celsius < 50.0,
+                "Invalid sigma for {:?}: {}°C", compound, props.temp_sigma_celsius);
+            assert!(props.peak_grip_amplitude > 0.5 && props.peak_grip_amplitude < 2.0,
+                "Invalid peak grip for {:?}: {}", compound, props.peak_grip_amplitude);
+            assert!(props.base_shore_hardness > 30.0 && props.base_shore_hardness < 100.0,
+                "Invalid Shore A for {:?}: {}", compound, props.base_shore_hardness);
+            assert!(props.hardness_temp_coefficient > 0.0 && props.hardness_temp_coefficient < 1.0,
+                "Invalid hardness coefficient for {:?}: {}", compound, props.hardness_temp_coefficient);
+            assert!(props.graining_onset_delta > 5.0 && props.graining_onset_delta < 50.0,
+                "Invalid graining onset for {:?}: {}°C", compound, props.graining_onset_delta);
+            assert!(props.blistering_onset_delta > 10.0 && props.blistering_onset_delta < 60.0,
+                "Invalid blistering onset for {:?}: {}°C", compound, props.blistering_onset_delta);
+        }
+    }
+
+    #[test]
+    fn test_material_grip_at_extreme_cold() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Medium);
+        sys.update(1.0, &[0.0; 4]);
+        let grip = sys.get_effective_grip(0);
+        assert!(grip >= 0.1, "Grip should not go below minimum floor even at 20°C");
+        assert!(grip < 0.8, "Grip should be significantly reduced at 20°C for medium compound");
+    }
+
+    #[test]
+    fn test_material_grip_at_extreme_hot() {
+        let mut sys = TireMaterialSystem::new(TireCompound::Medium);
+        sys.update(1.0, &[1.0; 4]);
+        let grip = sys.get_effective_grip(0);
+        assert!(grip >= 0.1, "Grip should not go below minimum floor even at 150°C");
+        assert!(grip < 0.8, "Grip should be significantly reduced at 150°C for medium compound");
     }
 }

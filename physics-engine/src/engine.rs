@@ -6,7 +6,7 @@ use crate::curb::CurbState;
 use crate::engine_temp::EngineTemperatureState;
 use crate::ers::ErsPhysicsState;
 use crate::surface::SurfaceState;
-use crate::tires::{TempInput, TireState, TireTemperatureState, WearInput};
+use crate::tires::{TempInput, TireMaterialSystem, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
     AeroMode, AmbientConditions, AmbientEnvironment, AquaplaningState, BrakeState, CarInput,
@@ -33,6 +33,7 @@ pub struct PhysicsEngine {
     curb: CurbState,
     surface: SurfaceState,
     car: CarPhysicsState,
+    tire_material: TireMaterialSystem,
 }
 
 impl Default for PhysicsEngine {
@@ -56,6 +57,7 @@ impl PhysicsEngine {
             curb: CurbState::new(),
             surface: SurfaceState::new(),
             car: CarPhysicsState::new(),
+            tire_material: TireMaterialSystem::new(TireCompound::Medium),
         }
     }
 
@@ -125,6 +127,7 @@ impl PhysicsEngine {
 
     pub fn set_tire_compound(&mut self, compound: TireCompound) {
         self.tires.set_compound(compound);
+        self.tire_material.set_compound(compound);
     }
 
     pub fn get_tire_compound(&self) -> TireCompound {
@@ -519,9 +522,20 @@ impl PhysicsEngine {
         // Update thermal shock recovery
         self.tire_temperature.update_thermal_shock(dt);
 
-        // Get temperature-based grip multiplier
+        // Update tire material science
+        let tire_temps_for_material = [
+            (self.tire_temperature.get_temperatures().front_left_inner + self.tire_temperature.get_temperatures().front_left_outer) / 2.0,
+            (self.tire_temperature.get_temperatures().front_right_inner + self.tire_temperature.get_temperatures().front_right_outer) / 2.0,
+            (self.tire_temperature.get_temperatures().rear_left_inner + self.tire_temperature.get_temperatures().rear_left_outer) / 2.0,
+            (self.tire_temperature.get_temperatures().rear_right_inner + self.tire_temperature.get_temperatures().rear_right_outer) / 2.0,
+        ];
+        self.tire_material.update(dt, &tire_temps_for_material);
+
+        // Integrate material grip into combined_grip
+        let material_grip_avg = self.tire_material.get_average_effective_grip();
+
+        // Get temperature-based grip multiplier (kept for output/diagnostics)
         let temp_window = self.tires.get_temp_window();
-        let avg_temp_grip = self.tire_temperature.get_average_temp_grip(&temp_window);
 
         // Calculate aquaplaning grip penalty (0.1-0.5x grip during aquaplaning)
         let aquaplaning_grip = if aquaplaning.is_aquaplaning {
@@ -542,7 +556,7 @@ impl PhysicsEngine {
 
         let combined_grip = surface_modifiers.grip_multiplier
             * curb_turn_grip
-            * avg_temp_grip
+            * material_grip_avg
             * aquaplaning_grip
             * thermal_shock_grip;
 
@@ -670,11 +684,13 @@ impl PhysicsEngine {
             tire_wear_grip_mult,
             surface_grip_mult: surface_modifiers.grip_multiplier,
             curb_turn_grip_mult: curb_turn_grip,
-            tire_temp_grip_mult: avg_temp_grip,
+            tire_temp_grip_mult: material_grip_avg,
             aquaplaning_grip_mult: aquaplaning_grip,
             thermal_shock_grip_mult: thermal_shock_grip,
             final_effective_grip: output.effective_grip,
         };
+
+        output.tire_material = self.tire_material.get_output();
 
         // Update track temperature with skid marks
         if output.skid_intensity > 0.01 {
