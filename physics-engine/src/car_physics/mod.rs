@@ -167,18 +167,16 @@ impl CarPhysicsState {
 
         // Braking / Reverse
         if input.backward || input.brake {
-            // If going forward fast enough, apply brakes
-            if forward_speed > 1.0 {
+            if forward_speed > 0.5 {
                 let brake_force = BASE_BRAKE_FORCE
                     * weather_modifiers.brake_efficiency_multiplier
                     * tire_degradation.brake_efficiency;
                 let handbrake_mult = if input.handbrake { 1.2 } else { 1.0 };
                 longitudinal_force -= brake_force * handbrake_mult;
-            } else if input.backward && !input.brake {
-                // If slow or stopped and backward is pressed (not just brake), apply reverse force
-                let reverse_force = aerodynamics::get_engine_force(self.speed_ms, 0.0)
+            } else if input.backward {
+                let reverse_force = aerodynamics::get_engine_force(0.0, 0.0)
                     * weather_modifiers.engine_efficiency_multiplier
-                    * 0.4; // Reverse is weaker than forward (no ERS in reverse)
+                    * 0.4;
                 longitudinal_force -= reverse_force;
             }
         }

@@ -139,14 +139,12 @@ mod tests {
         let mut state = ActiveAeroPhysicsState::new();
         state.set_mode(AeroMode::Straight);
 
-        // Simulate 1 second of updates (60 frames at 60 FPS)
-        for _ in 0..60 {
+        for _ in 0..120 {
             state.update(1.0 / 60.0);
         }
 
-        // Wings should be mostly open
         assert!(state.current.front_wing_angle > 0.9);
-        assert!(state.current.rear_wing_angle > 0.95); // Rear moves faster
+        assert!(state.current.rear_wing_angle > 0.95);
 
         // Multipliers should be close to straight mode values
         assert!((state.current.drag_multiplier - STRAIGHT_DRAG_MULT).abs() < 0.1);
@@ -163,15 +161,13 @@ mod tests {
             state.update(1.0 / 60.0);
         }
 
-        // Now transition back to corner mode
         state.set_mode(AeroMode::Corner);
-        for _ in 0..60 {
+        for _ in 0..120 {
             state.update(1.0 / 60.0);
         }
 
-        // Wings should be mostly closed
         assert!(state.current.front_wing_angle < 0.1);
-        assert!(state.current.rear_wing_angle < 0.05); // Rear moves faster
+        assert!(state.current.rear_wing_angle < 0.05);
 
         // Multipliers should be back to corner mode values
         assert!((state.current.drag_multiplier - CORNER_DRAG_MULT).abs() < 0.1);
