@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { type ObjectType, type TrackMode, type PlacementState, type CurbDragState, type PartialDeleteState, type PlacedObject, type CheckpointType, isLinearObject } from '../types/trackObjects'
+import { type ObjectType, type TrackMode, type PlacementState, type CurbDragState, type PartialDeleteState, type PlacedObject, type CheckpointType, type ElevationDragState, type ElevationTool, type SlopeAnchor, isLinearObject } from '../types/trackObjects'
 import type { EditorCommand } from '../types/editor'
 import { SnapSettings, DEFAULT_SNAP_SETTINGS } from '../utils/roadSnapping'
 import { splitRoadAtSegment } from '../utils/roadGeometry'
@@ -48,7 +48,23 @@ interface EditorState {
   clipboard: PlacedObject[]
   cameraTarget: [number, number, number] | null
   isObliqueView: boolean
+  elevationEditMode: boolean
+  elevationTool: ElevationTool
+  elevationDragState: ElevationDragState | null
+  targetLevelHeight: number
+  slopeAnchor: SlopeAnchor | null
+  smoothSelectedRoadIds: string[]
 
+  setElevationEditMode: (enabled: boolean) => void
+  setElevationTool: (tool: ElevationTool) => void
+  startElevationDrag: (roadId: string, endpoint: 'start' | 'end', currentHeight: number, screenY: number, connectedEndpoints: import('../types/trackObjects').ElevationControlPoint[]) => void
+  updateElevationDrag: (screenY: number) => void
+  confirmElevationDrag: () => void
+  cancelElevationDrag: () => void
+  setTargetLevelHeight: (h: number) => void
+  setSlopeAnchor: (anchor: SlopeAnchor | null) => void
+  toggleSmoothRoadSelection: (roadId: string) => void
+  clearSmoothSelection: () => void
   setSymmetricCurve: (enabled: boolean) => void
   setObliqueView: (v: boolean) => void
   undo: () => void
@@ -144,6 +160,138 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   clipboard: [],
   cameraTarget: null,
   isObliqueView: false,
+  elevationEditMode: false,
+  elevationTool: 'raise' as ElevationTool,
+  elevationDragState: null,
+  targetLevelHeight: 0,
+  slopeAnchor: null,
+  smoothSelectedRoadIds: [],
+
+  setElevationEditMode: (enabled) => {
+    if (enabled) {
+      set({
+        elevationEditMode: true,
+        deleteMode: false,
+        partialDeleteMode: false,
+        autoCurbMode: false,
+        selectedObjectType: null,
+        selectedObjectId: null,
+        placementState: 'idle' as PlacementState,
+        slopeAnchor: null,
+        smoothSelectedRoadIds: [],
+      })
+    } else {
+      set({
+        elevationEditMode: false,
+        elevationDragState: null,
+        slopeAnchor: null,
+        smoothSelectedRoadIds: [],
+      })
+    }
+  },
+
+  setElevationTool: (tool) => set({
+    elevationTool: tool,
+    elevationDragState: null,
+    slopeAnchor: null,
+    smoothSelectedRoadIds: [],
+  }),
+
+  startElevationDrag: (roadId, endpoint, currentHeight, screenY, connectedEndpoints) =>
+    set({
+      elevationDragState: {
+        roadId,
+        endpoint,
+        initialHeight: currentHeight,
+        currentHeight,
+        screenStartY: screenY,
+        connectedEndpoints,
+      },
+    }),
+
+  updateElevationDrag: (screenY) => {
+    const state = get()
+    if (!state.elevationDragState) return
+    const deltaHeight = (state.elevationDragState.screenStartY - screenY) * 0.05
+    const rawHeight = state.elevationDragState.initialHeight + deltaHeight
+    const snapped = Math.round(rawHeight / 0.25) * 0.25
+    const clamped = Math.max(0, Math.min(20, snapped))
+    set({
+      elevationDragState: {
+        ...state.elevationDragState,
+        currentHeight: clamped,
+      },
+    })
+  },
+
+  confirmElevationDrag: () => {
+    const state = get()
+    if (!state.elevationDragState) return
+    const { roadId, endpoint, initialHeight, currentHeight, connectedEndpoints } = state.elevationDragState
+    if (initialHeight === currentHeight) {
+      set({ elevationDragState: null })
+      return
+    }
+
+    const customStore = useCustomizationStore.getState()
+    const elevProp = endpoint === 'start' ? 'startElevation' : 'endElevation'
+
+    const allUpdates: { id: string; prop: string; before: number; after: number }[] = []
+    allUpdates.push({ id: roadId, prop: elevProp, before: initialHeight, after: currentHeight })
+
+    for (const cp of connectedEndpoints) {
+      if (cp.roadId === roadId && cp.endpoint === endpoint) continue
+      const cpProp = cp.endpoint === 'start' ? 'startElevation' : 'endElevation'
+      allUpdates.push({ id: cp.roadId, prop: cpProp, before: cp.elevation, after: currentHeight })
+    }
+
+    const command: EditorCommand = {
+      execute: () => {
+        const store = useCustomizationStore.getState()
+        for (const u of allUpdates) {
+          store.updateObject(u.id, { [u.prop]: u.after })
+        }
+      },
+      undo: () => {
+        const store = useCustomizationStore.getState()
+        for (const u of allUpdates) {
+          store.updateObject(u.id, { [u.prop]: u.before })
+        }
+      },
+      description: `Adjust elevation`,
+    }
+    editorCommandStack.push(command)
+
+    set({ elevationDragState: null })
+  },
+
+  cancelElevationDrag: () => {
+    const state = get()
+    if (!state.elevationDragState) return
+    const { roadId, endpoint, initialHeight, connectedEndpoints } = state.elevationDragState
+    const customStore = useCustomizationStore.getState()
+    const elevProp = endpoint === 'start' ? 'startElevation' : 'endElevation'
+    customStore.updateObject(roadId, { [elevProp]: initialHeight })
+    for (const cp of connectedEndpoints) {
+      if (cp.roadId === roadId && cp.endpoint === endpoint) continue
+      const cpProp = cp.endpoint === 'start' ? 'startElevation' : 'endElevation'
+      customStore.updateObject(cp.roadId, { [cpProp]: cp.elevation })
+    }
+    set({ elevationDragState: null })
+  },
+
+  setTargetLevelHeight: (h) => set({ targetLevelHeight: h }),
+
+  setSlopeAnchor: (anchor) => set({ slopeAnchor: anchor }),
+
+  toggleSmoothRoadSelection: (roadId) =>
+    set(state => ({
+      smoothSelectedRoadIds: state.smoothSelectedRoadIds.includes(roadId)
+        ? state.smoothSelectedRoadIds.filter(id => id !== roadId)
+        : [...state.smoothSelectedRoadIds, roadId],
+    })),
+
+  clearSmoothSelection: () => set({ smoothSelectedRoadIds: [] }),
 
   setSymmetricCurve: (enabled) => set({ symmetricCurve: enabled }),
 

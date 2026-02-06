@@ -81,6 +81,31 @@ export interface RoadSurfaceHitResult {
   centerPosition: [number, number, number]
 }
 
+export interface ElevationControlPoint {
+  roadId: string
+  road: PlacedObject
+  endpoint: 'start' | 'end'
+  worldPosition: [number, number, number]
+  elevation: number
+}
+
+export interface ElevationDragState {
+  roadId: string
+  endpoint: 'start' | 'end'
+  initialHeight: number
+  currentHeight: number
+  screenStartY: number
+  connectedEndpoints: ElevationControlPoint[]
+}
+
+export type ElevationTool = 'raise' | 'level' | 'slope' | 'smooth'
+
+export interface SlopeAnchor {
+  roadId: string
+  endpoint: 'start' | 'end'
+  height: number
+}
+
 export const isLinearObject = (type: ObjectType): boolean => {
   return type === 'barrier' || type === 'road'
 }

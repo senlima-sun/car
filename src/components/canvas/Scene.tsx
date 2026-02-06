@@ -10,7 +10,7 @@ import WindVisualization from './Weather/WindVisualization'
 import WeatherEffects from './Weather/WeatherEffects'
 import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
-import { ObjectPlacer, GhostPreview, PlacedObjectsRenderer, ValidationOverlay, ElevationGrid } from './Customization'
+import { ObjectPlacer, GhostPreview, PlacedObjectsRenderer, ValidationOverlay, ElevationGrid, ElevationHandles } from './Customization'
 import PitLane from './TrackObjects/PitLane'
 import StartGrid from './TrackObjects/StartGrid'
 import { useGameStore } from '@/stores/useGameStore'
@@ -70,6 +70,7 @@ export default function Scene() {
   const isCustomizeMode = status === 'customize'
   const pitLaneData = usePitStore(s => s.pitLaneData)
   const isObliqueView = useEditorStore(s => s.isObliqueView)
+  const elevationEditMode = useEditorStore(s => s.elevationEditMode)
 
   return (
     <>
@@ -94,6 +95,7 @@ export default function Scene() {
           <GhostPreview />
           <ValidationOverlay />
           <ElevationGrid visible={isObliqueView} />
+          {elevationEditMode && <ElevationHandles />}
         </>
       )}
 

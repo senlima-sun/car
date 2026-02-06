@@ -64,6 +64,8 @@ export default function ObjectPlacer() {
   const copySelected = useEditorStore(s => s.copySelected)
   const pasteAtPosition = useEditorStore(s => s.pasteAtPosition)
   const previewPositionForPaste = useEditorStore(s => s.previewPosition)
+  const elevationEditMode = useEditorStore(s => s.elevationEditMode)
+  const setElevationEditMode = useEditorStore(s => s.setElevationEditMode)
 
   // Get snap points from existing road/barrier segments
   const snapPoints = getSnapPoints(placedObjects)
@@ -86,6 +88,7 @@ export default function ObjectPlacer() {
   // Handle click for placement (not used for curbs which use pointer down/up)
   const handleClick = useCallback(
     (event: MouseEvent) => {
+      if (elevationEditMode) return
       if (!selectedObjectType) return
       if (event.button !== 0) return // Left click only
       // Curbs use pointer down/up for drag interaction
@@ -183,6 +186,7 @@ export default function ObjectPlacer() {
       }
     },
     [
+      elevationEditMode,
       selectedObjectType,
       placementState,
       trackMode,
@@ -310,8 +314,13 @@ export default function ObjectPlacer() {
         case 'KeyR':
           rotatePreviewCW()
           break
+        case 'KeyY':
+          setElevationEditMode(!useEditorStore.getState().elevationEditMode)
+          break
         case 'Escape':
-          if (partialDeleteMode && partialDeleteState) {
+          if (elevationEditMode) {
+            setElevationEditMode(false)
+          } else if (partialDeleteMode && partialDeleteState) {
             cancelPartialDelete()
           } else if (placementState === 'curbDragging') {
             cancelCurbPlacement()
@@ -329,6 +338,8 @@ export default function ObjectPlacer() {
       placementState,
       partialDeleteMode,
       partialDeleteState,
+      elevationEditMode,
+      setElevationEditMode,
       undo,
       redo,
       copySelected,

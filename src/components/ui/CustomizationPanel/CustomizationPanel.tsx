@@ -13,6 +13,9 @@ import { generatePitLane } from '../../../utils/pitLaneGenerator'
 import { generateCurbsForRoads } from '../../../utils/autoCurbGenerator'
 import ObjectButton from './ObjectButton'
 import TrackValidationPanel from './TrackValidationPanel'
+import { smoothElevations } from '../../../utils/elevationHandles'
+import { editorCommandStack } from '../../../utils/commandStack'
+import type { EditorCommand } from '../../../types/editor'
 
 const styles: Record<string, React.CSSProperties> = {
   panel: {
@@ -230,6 +233,15 @@ export default function CustomizationPanel() {
   const setCheckpointPlacementType = useEditorStore(s => s.setCheckpointPlacementType)
   const symmetricCurve = useEditorStore(s => s.symmetricCurve)
   const setSymmetricCurve = useEditorStore(s => s.setSymmetricCurve)
+  const elevationEditMode = useEditorStore(s => s.elevationEditMode)
+  const setElevationEditMode = useEditorStore(s => s.setElevationEditMode)
+  const elevationTool = useEditorStore(s => s.elevationTool)
+  const setElevationTool = useEditorStore(s => s.setElevationTool)
+  const targetLevelHeight = useEditorStore(s => s.targetLevelHeight)
+  const setTargetLevelHeight = useEditorStore(s => s.setTargetLevelHeight)
+  const slopeAnchor = useEditorStore(s => s.slopeAnchor)
+  const smoothSelectedRoadIds = useEditorStore(s => s.smoothSelectedRoadIds)
+  const clearSmoothSelection = useEditorStore(s => s.clearSmoothSelection)
 
   // Track store
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
@@ -762,6 +774,166 @@ export default function CustomizationPanel() {
         )}
       </div>
 
+      {/* Elevation Edit Mode Section */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Elevation</div>
+        <button
+          style={{
+            ...styles.deleteButton,
+            ...(elevationEditMode
+              ? {
+                  background: 'rgba(59, 130, 246, 0.3)',
+                  borderColor: '#3b82f6',
+                  color: '#60a5fa',
+                }
+              : styles.deleteButtonInactive),
+          }}
+          onClick={() => {
+            if (elevationEditMode) {
+              setElevationEditMode(false)
+            } else {
+              if (deleteMode) setDeleteMode(false)
+              if (partialDeleteMode) setPartialDeleteMode(false)
+              if (autoCurbMode) { clearRoadSelection(); setAutoCurbMode(false) }
+              setElevationEditMode(true)
+            }
+          }}
+        >
+          {elevationEditMode ? 'Exit Elevation Mode' : 'Edit Elevation (Y)'}
+        </button>
+
+        {elevationEditMode && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, marginBottom: 8 }}>
+              {([
+                { tool: 'raise' as const, label: 'Raise' },
+                { tool: 'level' as const, label: 'Level' },
+                { tool: 'slope' as const, label: 'Slope' },
+                { tool: 'smooth' as const, label: 'Smooth' },
+              ]).map(({ tool, label }) => (
+                <button
+                  key={tool}
+                  style={{
+                    ...styles.modeButton,
+                    ...(elevationTool === tool
+                      ? { background: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', color: '#3b82f6' }
+                      : styles.modeButtonInactive),
+                  }}
+                  onClick={() => setElevationTool(tool)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {elevationTool === 'raise' && (
+              <div style={styles.placementHint}>
+                Click and drag road endpoints up/down to change elevation.
+              </div>
+            )}
+
+            {elevationTool === 'level' && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ color: '#aaa', fontSize: 11, minWidth: 50 }}>Height</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={20}
+                    step={0.25}
+                    value={targetLevelHeight}
+                    onChange={(e) => setTargetLevelHeight(Number(e.target.value))}
+                    style={{ flex: 1, accentColor: '#3b82f6' }}
+                  />
+                  <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 36 }}>
+                    {targetLevelHeight.toFixed(1)}m
+                  </span>
+                </div>
+                <div style={styles.placementHint}>
+                  Click endpoints to set to target height. Shift+Click sets both endpoints.
+                </div>
+              </>
+            )}
+
+            {elevationTool === 'slope' && (
+              <div style={styles.placementHint}>
+                {slopeAnchor
+                  ? `Anchor set at ${slopeAnchor.height.toFixed(1)}m. Click second endpoint.`
+                  : 'Click first endpoint to set slope anchor.'}
+              </div>
+            )}
+
+            {elevationTool === 'smooth' && (
+              <>
+                <div style={styles.placementHint}>
+                  {smoothSelectedRoadIds.length > 0
+                    ? `${smoothSelectedRoadIds.length} road(s) selected. Click Apply or press Enter.`
+                    : 'Click roads to select for smoothing.'}
+                </div>
+                {smoothSelectedRoadIds.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                    <button
+                      style={{
+                        ...styles.actionButton,
+                        background: '#3b82f6',
+                        color: '#fff',
+                        flex: 1,
+                      }}
+                      onClick={() => {
+                        const customStore = useCustomizationStore.getState()
+                        const result = smoothElevations(smoothSelectedRoadIds, customStore.placedObjects, 1)
+                        const before = new Map<string, { startElevation: number; endElevation: number }>()
+                        for (const [id, vals] of result) {
+                          const obj = customStore.placedObjects.find(o => o.id === id)
+                          if (obj) {
+                            before.set(id, {
+                              startElevation: obj.startElevation ?? 0,
+                              endElevation: obj.endElevation ?? 0,
+                            })
+                          }
+                        }
+                        const resultCopy = new Map(result)
+                        const beforeCopy = new Map(before)
+                        const command: EditorCommand = {
+                          execute: () => {
+                            const store = useCustomizationStore.getState()
+                            for (const [id, vals] of resultCopy) {
+                              store.updateObject(id, vals)
+                            }
+                          },
+                          undo: () => {
+                            const store = useCustomizationStore.getState()
+                            for (const [id, vals] of beforeCopy) {
+                              store.updateObject(id, vals)
+                            }
+                          },
+                          description: 'Smooth elevations',
+                        }
+                        editorCommandStack.push(command)
+                        clearSmoothSelection()
+                      }}
+                    >
+                      Apply
+                    </button>
+                    <button
+                      style={{
+                        ...styles.actionButton,
+                        background: '#666',
+                        color: '#fff',
+                        flex: 1,
+                      }}
+                      onClick={clearSmoothSelection}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Track Direction Section */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>Track Direction</div>
@@ -958,6 +1130,9 @@ export default function CustomizationPanel() {
         </div>
         <div style={styles.controlLine}>
           <span style={styles.key}>V</span> Toggle 3D view
+        </div>
+        <div style={styles.controlLine}>
+          <span style={styles.key}>Y</span> Elevation mode
         </div>
       </div>
 
