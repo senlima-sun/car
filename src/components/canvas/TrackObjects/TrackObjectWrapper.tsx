@@ -64,8 +64,14 @@ export default function TrackObjectWrapper({
       component = <Ramp {...commonProps} />
       break
     case 'checkpoint':
-      // Checkpoint uses start/end points for road-spanning stroke
-      component = <Checkpoint {...linearProps} checkpointId={object.id} />
+      component = (
+        <Checkpoint
+          {...linearProps}
+          checkpointId={object.id}
+          checkpointType={object.checkpointType ?? 'start-finish'}
+          checkpointOrder={object.checkpointOrder ?? 0}
+        />
+      )
       break
     case 'barrier':
       // Check if it's a curved barrier

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { type ObjectType, type TrackMode, type PlacementState, type CurbDragState, type PartialDeleteState, type PlacedObject, isLinearObject } from '../types/trackObjects'
+import { type ObjectType, type TrackMode, type PlacementState, type CurbDragState, type PartialDeleteState, type PlacedObject, type CheckpointType, isLinearObject } from '../types/trackObjects'
 import type { EditorCommand } from '../types/editor'
 import { SnapSettings, DEFAULT_SNAP_SETTINGS } from '../utils/roadSnapping'
 import { splitRoadAtSegment } from '../utils/roadGeometry'
@@ -38,6 +38,7 @@ interface EditorState {
   snapSettings: SnapSettings
   connectedTangent: [number, number, number] | null
   snappedAngle: number | null
+  checkpointPlacementType: CheckpointType
   canUndo: boolean
   canRedo: boolean
   undoDescription: string | null
@@ -65,6 +66,7 @@ interface EditorState {
     startPoint: [number, number, number],
     endPoint: [number, number, number],
   ) => void
+  setCheckpointPlacementType: (type: CheckpointType) => void
   cancelPlacement: () => void
   selectObject: (id: string | null) => void
   startCurbDrag: (
@@ -119,6 +121,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   snapSettings: DEFAULT_SNAP_SETTINGS,
   connectedTangent: null,
   snappedAngle: null,
+  checkpointPlacementType: 'start-finish' as CheckpointType,
   canUndo: false,
   canRedo: false,
   undoDescription: null,
@@ -284,8 +287,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   confirmCheckpointPlacement: (startPoint, endPoint) => {
+    const state = get()
     const customStore = useCustomizationStore.getState()
-    const previousCheckpoint = customStore.placedObjects.find(o => o.type === 'checkpoint') || null
+    const cpType = state.checkpointPlacementType
+
+    const sectorCheckpoints = customStore.placedObjects.filter(
+      o => o.type === 'checkpoint' && o.checkpointType === 'sector',
+    )
+    const nextOrder = cpType === 'sector' ? sectorCheckpoints.length + 1 : 0
 
     const newObject: PlacedObject = {
       id: generateId(),
@@ -294,23 +303,42 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       rotation: Math.atan2(endPoint[0] - startPoint[0], endPoint[2] - startPoint[2]),
       startPoint,
       endPoint,
+      checkpointType: cpType,
+      checkpointOrder: nextOrder,
     }
 
-    const command: EditorCommand = {
-      execute: () => useCustomizationStore.getState().replaceCheckpoint(newObject),
-      undo: () => {
-        useCustomizationStore.getState().removeObject(newObject.id)
-        if (previousCheckpoint) {
-          useCustomizationStore.getState().addObject(previousCheckpoint)
-        }
-      },
-      description: 'Place checkpoint',
+    if (cpType === 'start-finish') {
+      const previousStartFinish = customStore.placedObjects.find(
+        o => o.type === 'checkpoint' && (o.checkpointType ?? 'start-finish') === 'start-finish',
+      ) || null
+
+      const command: EditorCommand = {
+        execute: () => useCustomizationStore.getState().replaceCheckpoint(newObject),
+        undo: () => {
+          useCustomizationStore.getState().removeObject(newObject.id)
+          if (previousStartFinish) {
+            useCustomizationStore.getState().addObject(previousStartFinish)
+          }
+        },
+        description: 'Place start-finish',
+      }
+      editorCommandStack.push(command)
+    } else {
+      const command: EditorCommand = {
+        execute: () => useCustomizationStore.getState().addObject(newObject),
+        undo: () => useCustomizationStore.getState().removeObject(newObject.id),
+        description: `Place sector ${nextOrder}`,
+      }
+      editorCommandStack.push(command)
     }
-    editorCommandStack.push(command)
 
     set({
       placementState: 'selecting',
     })
+  },
+
+  setCheckpointPlacementType: (type) => {
+    set({ checkpointPlacementType: type })
   },
 
   cancelPlacement: () =>

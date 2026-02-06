@@ -221,6 +221,8 @@ export default function CustomizationPanel() {
   const clearRoadSelection = useEditorStore(s => s.clearRoadSelection)
   const snapSettings = useEditorStore(s => s.snapSettings)
   const setSnapSettings = useEditorStore(s => s.setSnapSettings)
+  const checkpointPlacementType = useEditorStore(s => s.checkpointPlacementType)
+  const setCheckpointPlacementType = useEditorStore(s => s.setCheckpointPlacementType)
 
   // Track store
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
@@ -474,6 +476,42 @@ export default function CustomizationPanel() {
           </div>
         )}
       </div>
+
+      {/* Checkpoint Type Selector */}
+      {selectedObjectType === 'checkpoint' && (
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>Checkpoint Type</div>
+          <div style={styles.modeToggle}>
+            <button
+              style={{
+                ...styles.modeButton,
+                ...(checkpointPlacementType === 'start-finish'
+                  ? styles.modeButtonActive
+                  : styles.modeButtonInactive),
+              }}
+              onClick={() => setCheckpointPlacementType('start-finish')}
+            >
+              Start/Finish
+            </button>
+            <button
+              style={{
+                ...styles.modeButton,
+                ...(checkpointPlacementType === 'sector'
+                  ? { background: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', color: '#3b82f6' }
+                  : styles.modeButtonInactive),
+              }}
+              onClick={() => setCheckpointPlacementType('sector')}
+            >
+              Sector
+            </button>
+          </div>
+          <div style={styles.placementHint}>
+            {checkpointPlacementType === 'start-finish'
+              ? 'Only one start/finish line allowed. Replaces existing.'
+              : `Sector ${placedObjects.filter(o => o.type === 'checkpoint' && o.checkpointType === 'sector').length + 1} — placed in order along track.`}
+          </div>
+        </div>
+      )}
 
       {/* Track Mode Toggle - only show for linear objects */}
       {showTrackModeToggle && (

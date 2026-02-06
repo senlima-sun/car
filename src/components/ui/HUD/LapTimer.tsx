@@ -99,6 +99,10 @@ export default function LapTimer() {
   const bestLapTime = useLapTimeStore(state => state.bestLapTime)
   const lapCount = useLapTimeStore(state => state.lapCount)
   const updateCurrentTime = useLapTimeStore(state => state.updateCurrentTime)
+  const currentSector = useLapTimeStore(state => state.currentSector)
+  const totalCheckpoints = useLapTimeStore(state => state.totalCheckpoints)
+  const lastSectorSplit = useLapTimeStore(state => state.lastSectorSplit)
+  const currentLapInvalid = useLapTimeStore(state => state.currentLapInvalid)
 
   // Update current lap time every frame
   useEffect(() => {
@@ -163,6 +167,40 @@ export default function LapTimer() {
         <div style={styles.label}>Lap</div>
         <div style={styles.lapCount}>{lapCount}</div>
       </div>
+
+      {/* Sector indicator */}
+      {totalCheckpoints > 0 && hasStarted && (
+        <div style={styles.timeBlock}>
+          <div style={styles.label}>Sector</div>
+          <div style={{ fontSize: 14, color: currentLapInvalid ? '#ef4444' : '#fff', fontFamily: 'monospace' }}>
+            {currentLapInvalid ? 'INV' : `${currentSector}/${totalCheckpoints}`}
+          </div>
+        </div>
+      )}
+
+      {/* Last sector split */}
+      {lastSectorSplit && (
+        <div style={styles.timeBlock}>
+          <div style={styles.label}>S{lastSectorSplit.sectorNumber}</div>
+          <div style={{
+            fontSize: 14,
+            fontFamily: 'monospace',
+            color: lastSectorSplit.delta === null
+              ? '#fff'
+              : lastSectorSplit.delta <= 0
+                ? '#22c55e'
+                : '#ef4444',
+          }}>
+            {formatTime(lastSectorSplit.time)}
+            {lastSectorSplit.delta !== null && (
+              <span style={{ fontSize: 10, marginLeft: 4 }}>
+                {lastSectorSplit.delta <= 0 ? '-' : '+'}
+                {formatTime(Math.abs(lastSectorSplit.delta))}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

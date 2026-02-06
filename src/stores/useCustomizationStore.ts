@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { PlacedObject } from '../types/trackObjects'
 
-export type { ObjectType, TrackMode, PlacedObject, CurbDragState, PartialDeleteState, SnapPointWithDirection, RoadEdgeResult, RoadEdgeHitResult, RoadSurfaceHitResult } from '../types/trackObjects'
+export type { ObjectType, TrackMode, CheckpointType, PlacedObject, CurbDragState, PartialDeleteState, SnapPointWithDirection, RoadEdgeResult, RoadEdgeHitResult, RoadSurfaceHitResult } from '../types/trackObjects'
 export { isLinearObject } from '../types/trackObjects'
 export { getSnapPoints, findNearestSnapPoint, findRoadAtPosition, findRoadEdgeAtPosition, getRoadEdgePositionAt, findRoadSurfaceAtPosition, getRoadCenterPositionAt, splitRoadAtSegment } from '../utils/roadGeometry'
 export type { SnapSettings } from '../utils/roadSnapping'
@@ -43,7 +43,12 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
 
   replaceCheckpoint: (obj: PlacedObject) => {
     set(state => ({
-      placedObjects: [...state.placedObjects.filter(o => o.type !== 'checkpoint'), obj],
+      placedObjects: [
+        ...state.placedObjects.filter(
+          o => !(o.type === 'checkpoint' && (o.checkpointType ?? 'start-finish') === 'start-finish'),
+        ),
+        obj,
+      ],
     }))
     setTimeout(() => get().saveToStorage(), 0)
   },

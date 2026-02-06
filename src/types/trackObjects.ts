@@ -1,5 +1,6 @@
 export type ObjectType = 'cone' | 'ramp' | 'checkpoint' | 'barrier' | 'road' | 'curb'
 export type TrackMode = 'straight' | 'curve'
+export type CheckpointType = 'start-finish' | 'sector'
 
 export interface PlacedObject {
   id: string
@@ -19,6 +20,8 @@ export interface PlacedObject {
   startT?: number
   endT?: number
   flowDirection?: 'forward' | 'backward' | null
+  checkpointType?: CheckpointType
+  checkpointOrder?: number
 }
 
 export type PlacementState =
