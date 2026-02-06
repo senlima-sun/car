@@ -226,8 +226,6 @@ export default function PitStopUI() {
           {TIRE_ORDER.map(compound => {
             const config = TIRE_CONFIG[compound]
             const isSelected = selectedNewTire === compound
-            const gripPercent = Math.round(config.gripMultiplier * 100)
-
             return (
               <button
                 key={compound}
@@ -247,7 +245,6 @@ export default function PitStopUI() {
                   {config.icon}
                 </div>
                 <div style={styles.tireName}>{config.displayName}</div>
-                <div style={styles.tireGrip}>Grip: {gripPercent}%</div>
               </button>
             )
           })}

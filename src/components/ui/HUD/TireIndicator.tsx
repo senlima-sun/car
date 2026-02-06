@@ -114,16 +114,23 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 3,
     transition: 'width 0.3s ease, background-color 0.3s ease',
   },
+  materialWarning: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '4px 8px',
+    borderRadius: 4,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
 }
 
-// Get color based on wear percentage
 function getWearColor(wear: number): string {
   if (wear >= TIRE_WEAR_CRITICAL) return PERFORMANCE.wearCritical
   if (wear >= TIRE_WEAR_WARNING) return PERFORMANCE.wearWarning
   return PERFORMANCE.wearGood
 }
 
-// Single wheel indicator component
 function WheelIndicator({
   label,
   wear,
@@ -163,12 +170,12 @@ export default function TireIndicator() {
   const perWheelWear = useTireStore(state => state.perWheelWear)
   const averageWear = useTireStore(state => state.averageWear)
   const effectiveGrip = useTireStore(state => state.effectiveGripMultiplier)
+  const tireMaterial = useTireStore(state => state.tireMaterial)
 
   const config = TIRE_CONFIG[currentCompound]
   const avgRemaining = Math.max(0, 100 - averageWear)
   const gripPercent = Math.round(effectiveGrip * 100)
 
-  // Flash animation for critical wear on any wheel
   const maxWear = Math.max(
     perWheelWear.frontLeft,
     perWheelWear.frontRight,
@@ -176,6 +183,15 @@ export default function TireIndicator() {
     perWheelWear.rearRight,
   )
   const isFlashing = maxWear >= TIRE_WEAR_CRITICAL
+
+  const maxGraining = tireMaterial
+    ? Math.max(...tireMaterial.per_wheel_graining)
+    : 0
+  const maxBlistering = tireMaterial
+    ? Math.max(...tireMaterial.per_wheel_blistering)
+    : 0
+  const hasGrainingWarn = maxGraining > 0.3
+  const hasBlisteringWarn = maxBlistering > 0.1
 
   return (
     <div
@@ -193,7 +209,6 @@ export default function TireIndicator() {
         `}
       </style>
 
-      {/* Compound badge and info */}
       <div style={styles.header}>
         <div
           style={{
@@ -209,25 +224,20 @@ export default function TireIndicator() {
         </div>
       </div>
 
-      {/* 4-wheel display (car top-down view) */}
       <div style={styles.wheelsContainer}>
-        {/* Left wheels */}
         <div style={styles.wheelColumn}>
           <WheelIndicator label='FL' wear={perWheelWear.frontLeft} compoundColor={config.color} />
           <WheelIndicator label='RL' wear={perWheelWear.rearLeft} compoundColor={config.color} />
         </div>
 
-        {/* Car body silhouette */}
         <div style={styles.carBody} />
 
-        {/* Right wheels */}
         <div style={styles.wheelColumn}>
           <WheelIndicator label='FR' wear={perWheelWear.frontRight} compoundColor={config.color} />
           <WheelIndicator label='RR' wear={perWheelWear.rearRight} compoundColor={config.color} />
         </div>
       </div>
 
-      {/* Average wear bar */}
       <div style={styles.avgContainer}>
         <div style={styles.avgLabel}>
           <span>AVG TIRE LIFE</span>
@@ -243,6 +253,32 @@ export default function TireIndicator() {
           />
         </div>
       </div>
+
+      {hasGrainingWarn && (
+        <div
+          style={{
+            ...styles.materialWarning,
+            background: 'rgba(245, 158, 11, 0.2)',
+            color: '#f59e0b',
+            border: '1px solid rgba(245, 158, 11, 0.4)',
+          }}
+        >
+          GRAINING {Math.round(maxGraining * 100)}%
+        </div>
+      )}
+
+      {hasBlisteringWarn && (
+        <div
+          style={{
+            ...styles.materialWarning,
+            background: 'rgba(239, 68, 68, 0.2)',
+            color: '#ef4444',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+          }}
+        >
+          BLISTERING {Math.round(maxBlistering * 100)}%
+        </div>
+      )}
     </div>
   )
 }

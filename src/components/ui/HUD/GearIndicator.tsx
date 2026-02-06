@@ -23,6 +23,31 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: 2,
     marginBottom: 5,
   },
+  rpmContainer: {
+    marginTop: 8,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    gap: 3,
+  },
+  rpmValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: UI.textPrimary,
+    fontFamily: 'monospace',
+  },
+  rpmBarBg: {
+    width: '100%',
+    height: 4,
+    background: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  rpmBarFill: {
+    height: '100%',
+    borderRadius: 2,
+    transition: 'width 0.05s linear, background-color 0.1s ease',
+  },
 }
 
 const gearLabels: Record<number, string> = {
@@ -35,11 +60,23 @@ const gearLabels: Record<number, string> = {
   5: '5',
   6: '6',
   7: '7',
+  8: '8',
+}
+
+const MAX_RPM = 15000
+
+function getRpmColor(rpmPercent: number): string {
+  if (rpmPercent >= 0.95) return GEAR.redline
+  if (rpmPercent >= 0.8) return '#ff6600'
+  return '#22c55e'
 }
 
 export default function GearIndicator() {
   const gear = useCarStore(state => state.gear)
+  const rpm = useCarStore(state => state.rpm)
   const displayGear = gearLabels[gear] ?? gear.toString()
+  const rpmPercent = Math.min(rpm / MAX_RPM, 1)
+  const rpmColor = getRpmColor(rpmPercent)
 
   return (
     <div style={styles.container}>
@@ -51,6 +88,20 @@ export default function GearIndicator() {
         }}
       >
         {displayGear}
+      </div>
+      <div style={styles.rpmContainer}>
+        <span style={{ ...styles.rpmValue, color: rpmColor }}>
+          {Math.round(rpm).toLocaleString()}
+        </span>
+        <div style={styles.rpmBarBg}>
+          <div
+            style={{
+              ...styles.rpmBarFill,
+              width: `${rpmPercent * 100}%`,
+              backgroundColor: rpmColor,
+            }}
+          />
+        </div>
       </div>
     </div>
   )

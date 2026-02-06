@@ -13,6 +13,10 @@ export {
   // Weather API
   setCustomWeather,
   getRainIntensity,
+  // Environment API
+  setEnvironment,
+  getAirDensity,
+  getSurfaceFrictionBreakdown,
   // Wind API
   setWind,
   setWindEnabled,
@@ -78,6 +82,9 @@ export {
 export type {
   CarInput,
   CarPhysicsOutput,
+  GripBreakdown,
+  TireMaterialOutput,
+  SurfaceFrictionBreakdown,
   WeatherModifiers,
   SurfaceModifiers,
   TrackBounds,

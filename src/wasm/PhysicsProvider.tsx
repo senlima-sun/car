@@ -12,6 +12,10 @@ import {
   // Weather API
   setCustomWeather,
   getRainIntensity,
+  // Environment API
+  setEnvironment,
+  getAirDensity,
+  getSurfaceFrictionBreakdown,
   // Wind API
   setWind,
   setWindEnabled,
@@ -106,6 +110,10 @@ interface PhysicsContextValue {
   // Weather API
   setCustomWeather: typeof setCustomWeather
   getRainIntensity: typeof getRainIntensity
+  // Environment API
+  setEnvironment: typeof setEnvironment
+  getAirDensity: typeof getAirDensity
+  getSurfaceFrictionBreakdown: typeof getSurfaceFrictionBreakdown
   // Wind API
   setWind: typeof setWind
   setWindEnabled: typeof setWindEnabled
@@ -227,6 +235,10 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     // Weather API
     setCustomWeather,
     getRainIntensity,
+    // Environment API
+    setEnvironment,
+    getAirDensity,
+    getSurfaceFrictionBreakdown,
     // Wind API
     setWind,
     setWindEnabled,

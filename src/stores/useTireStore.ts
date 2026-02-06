@@ -1,14 +1,9 @@
 import { create } from 'zustand'
-import {
-  TireCompound,
-  TireModifiers,
-  TIRE_CONFIG,
-  DEFAULT_TIRE,
-  getWearGripMultiplier,
-} from '../constants/tires'
+import type { TireCompound, TireDisplayConfig } from '../constants/tires'
+import { TIRE_CONFIG, DEFAULT_TIRE } from '../constants/tires'
 import { setTireWear as setTireWearWasm } from '../wasm/PhysicsBridge'
+import type { GripBreakdown, TireMaterialOutput } from '../wasm/PhysicsBridge'
 
-// Per-wheel wear data (0-100 percentage)
 export interface PerWheelWear {
   frontLeft: number
   frontRight: number
@@ -17,36 +12,22 @@ export interface PerWheelWear {
 }
 
 interface TireState {
-  // Current tire compound
   currentCompound: TireCompound
-
-  // Per-wheel tire wear (0-100, where 100 = fully worn)
   perWheelWear: PerWheelWear
-
-  // Average wear across all wheels
   averageWear: number
-
-  // Computed effective grip based on compound, conditions, and wear
   effectiveGripMultiplier: number
-
-  // Current conditions for grip calculations
-  currentTemperature: number // Celsius
-  currentRainIntensity: number // 0-1
-
-  // Debug mode - when true, syncFromWasm is skipped
+  gripBreakdown: GripBreakdown | null
+  tireMaterial: TireMaterialOutput | null
   debugMode: boolean
 
-  // Actions
   setTireCompound: (compound: TireCompound) => void
-  syncFromWasm: (wear: PerWheelWear) => void
+  syncFromWasm: (wear: PerWheelWear, effectiveGrip: number) => void
+  syncGripBreakdown: (breakdown: GripBreakdown) => void
+  syncTireMaterial: (material: TireMaterialOutput) => void
   resetWear: () => void
-  updateConditions: (temperature: number, rainIntensity: number) => void
   setWearDebug: (wearPercentage: number) => void
   disableDebugMode: () => void
-
-  // Computed getters
-  getTireConfig: () => TireModifiers
-  calculateEffectiveGrip: () => number
+  getTireConfig: () => TireDisplayConfig
   getWorstWheel: () => { position: string; wear: number }
 }
 
@@ -62,8 +43,8 @@ export const useTireStore = create<TireState>((set, get) => ({
   perWheelWear: { ...initialPerWheelWear },
   averageWear: 0,
   effectiveGripMultiplier: 1.0,
-  currentTemperature: 20, // Default 20°C
-  currentRainIntensity: 0, // Default no rain
+  gripBreakdown: null,
+  tireMaterial: null,
   debugMode: false,
 
   setTireCompound: compound => {
@@ -72,15 +53,9 @@ export const useTireStore = create<TireState>((set, get) => ({
       perWheelWear: { ...initialPerWheelWear },
       averageWear: 0,
     })
-    // Recalculate grip after compound change
-    const newGrip = get().calculateEffectiveGrip()
-    set({ effectiveGripMultiplier: newGrip })
   },
 
-  // Sync tire wear from WASM engine (called every frame)
-  // Skipped when debugMode is true to allow manual wear adjustment
-  syncFromWasm: wear => {
-    // Skip sync when in debug mode
+  syncFromWasm: (wear, effectiveGrip) => {
     if (get().debugMode) return
 
     const avgWear = (wear.frontLeft + wear.frontRight + wear.rearLeft + wear.rearRight) / 4
@@ -88,32 +63,26 @@ export const useTireStore = create<TireState>((set, get) => ({
     set({
       perWheelWear: wear,
       averageWear: avgWear,
+      effectiveGripMultiplier: effectiveGrip,
     })
+  },
 
-    // Recalculate effective grip
-    const newGrip = get().calculateEffectiveGrip()
-    set({ effectiveGripMultiplier: newGrip })
+  syncGripBreakdown: breakdown => {
+    set({ gripBreakdown: breakdown })
+  },
+
+  syncTireMaterial: material => {
+    set({ tireMaterial: material })
   },
 
   resetWear: () => {
     set({
       perWheelWear: { ...initialPerWheelWear },
       averageWear: 0,
+      effectiveGripMultiplier: 1.0,
     })
-    // Recalculate grip after reset
-    const newGrip = get().calculateEffectiveGrip()
-    set({ effectiveGripMultiplier: newGrip })
   },
 
-  updateConditions: (temperature, rainIntensity) => {
-    set({ currentTemperature: temperature, currentRainIntensity: rainIntensity })
-    // Recalculate grip when conditions change
-    const newGrip = get().calculateEffectiveGrip()
-    set({ effectiveGripMultiplier: newGrip })
-  },
-
-  // Set tire wear directly (debug/testing)
-  // Enables debug mode to prevent frame sync from overwriting
   setWearDebug: wearPercentage => {
     const clamped = Math.max(0, Math.min(100, wearPercentage))
     const wear: PerWheelWear = {
@@ -123,7 +92,6 @@ export const useTireStore = create<TireState>((set, get) => ({
       rearRight: clamped,
     }
 
-    // Update WASM physics engine
     try {
       setTireWearWasm(clamped)
     } catch {
@@ -135,46 +103,14 @@ export const useTireStore = create<TireState>((set, get) => ({
       perWheelWear: wear,
       averageWear: clamped,
     })
-
-    // Recalculate effective grip
-    const newGrip = get().calculateEffectiveGrip()
-    set({ effectiveGripMultiplier: newGrip })
   },
 
-  // Disable debug mode to resume normal wear accumulation
   disableDebugMode: () => {
     set({ debugMode: false })
   },
 
   getTireConfig: () => {
-    const state = get()
-    return TIRE_CONFIG[state.currentCompound]
-  },
-
-  calculateEffectiveGrip: () => {
-    const state = get()
-    const config = TIRE_CONFIG[state.currentCompound]
-
-    // Start with base grip multiplier from tire compound
-    let grip = config.gripMultiplier
-
-    // Check temperature compatibility
-    const [minTemp, maxTemp] = config.optimalTempRange
-    const tempInRange = state.currentTemperature >= minTemp && state.currentTemperature <= maxTemp
-
-    // Check rain compatibility
-    const hasRain = state.currentRainIntensity > 0.01
-    const rainCompatible = hasRain ? config.rainSuitability >= 0.5 : config.rainSuitability <= 0.5
-
-    // Apply conditions penalty if not optimal
-    if (!tempInRange || !rainCompatible) {
-      grip *= config.wrongConditionsPenalty
-    }
-
-    // Apply wear degradation using average wear
-    grip *= getWearGripMultiplier(state.averageWear)
-
-    return grip
+    return TIRE_CONFIG[get().currentCompound]
   },
 
   getWorstWheel: () => {

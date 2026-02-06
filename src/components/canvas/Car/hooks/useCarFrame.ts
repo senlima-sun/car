@@ -82,6 +82,8 @@ export function useCarFrame({
 
   // Tire/temperature sync
   const syncTireWear = useTireStore(state => state.syncFromWasm)
+  const syncGripBreakdown = useTireStore(state => state.syncGripBreakdown)
+  const syncTireMaterial = useTireStore(state => state.syncTireMaterial)
   const syncTemperature = useTemperatureStore(state => state.syncFromWasm)
 
   // Aquaplaning sync
@@ -435,12 +437,25 @@ export function useCarFrame({
 
     // Sync tire wear from WASM to UI store
     if (output.tire_wear) {
-      syncTireWear({
-        frontLeft: output.tire_wear.front_left * 100,
-        frontRight: output.tire_wear.front_right * 100,
-        rearLeft: output.tire_wear.rear_left * 100,
-        rearRight: output.tire_wear.rear_right * 100,
-      })
+      syncTireWear(
+        {
+          frontLeft: output.tire_wear.front_left * 100,
+          frontRight: output.tire_wear.front_right * 100,
+          rearLeft: output.tire_wear.rear_left * 100,
+          rearRight: output.tire_wear.rear_right * 100,
+        },
+        output.effective_grip,
+      )
+    }
+
+    // Sync grip breakdown from WASM to UI store
+    if (output.grip_breakdown) {
+      syncGripBreakdown(output.grip_breakdown)
+    }
+
+    // Sync tire material from WASM to UI store
+    if (output.tire_material) {
+      syncTireMaterial(output.tire_material)
     }
 
     // Sync temperature from WASM to UI store
@@ -485,6 +500,7 @@ export function useCarFrame({
     updateTelemetry({
       speed: output.speed_kmh,
       gear: output.gear,
+      rpm: output.rpm ?? 0,
       position: [pos.x, pos.y, pos.z],
       rotation: [rot.x, rot.y, rot.z, rot.w],
       steerAngle: left ? 0.3 : right ? -0.3 : 0,

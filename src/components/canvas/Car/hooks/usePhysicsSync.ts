@@ -6,33 +6,27 @@ import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import { usePhysics } from '../../../../wasm'
 import { mapTireToWasm, mapSurfaceToWasm } from './wasmMappings'
 
-/**
- * Hook to synchronize JS stores with WASM physics engine
- * Handles tire compound, surface, wind, and environment settings
- */
 export function usePhysicsSync() {
   const physics = usePhysics()
 
-  // Tire system
   const currentCompound = useTireStore(state => state.currentCompound)
   const lastCompoundRef = useRef<string>('')
 
-  // Surface system
   const currentSurface = useSurfaceStore(state => state.currentSurface)
   const lastSurfaceRef = useRef<SurfaceType>('grass')
 
-  // Wind system
   const windDirection = useWindStore(state => state.direction)
   const windSpeed = useWindStore(state => state.speed)
   const windEnabled = useWindStore(state => state.enabled)
   const lastWindRef = useRef({ direction: -999, speed: -1, enabled: !windEnabled })
 
-  // Environment system (dynamic weather)
   const envTemperature = useEnvironmentStore(state => state.temperature)
-  const envRainIntensity = useEnvironmentStore(state => state.rainIntensity)
-  const lastEnvRef = useRef({ temperature: -999, rainIntensity: -1 })
+  const envHumidity = useEnvironmentStore(state => state.humidity)
+  const envPrecipitationRate = useEnvironmentStore(state => state.precipitationRate)
+  const envPressure = useEnvironmentStore(state => state.pressure)
+  const envCloudCover = useEnvironmentStore(state => state.cloudCover)
+  const lastEnvRef = useRef({ temperature: -999, humidity: -1, precipitationRate: -1, pressure: -1, cloudCover: -1 })
 
-  // Sync tire compound with WASM engine
   useEffect(() => {
     if (currentCompound !== lastCompoundRef.current) {
       physics.setTireCompound(mapTireToWasm(currentCompound))
@@ -40,7 +34,6 @@ export function usePhysicsSync() {
     }
   }, [currentCompound, physics])
 
-  // Sync surface type with WASM engine
   useEffect(() => {
     if (currentSurface !== lastSurfaceRef.current) {
       physics.setSurface(mapSurfaceToWasm(currentSurface))
@@ -48,7 +41,6 @@ export function usePhysicsSync() {
     }
   }, [currentSurface, physics])
 
-  // Sync wind direction/speed with WASM engine
   useEffect(() => {
     if (
       windDirection !== lastWindRef.current.direction ||
@@ -60,7 +52,6 @@ export function usePhysicsSync() {
     }
   }, [windDirection, windSpeed, physics])
 
-  // Sync wind enabled state with WASM engine
   useEffect(() => {
     if (windEnabled !== lastWindRef.current.enabled) {
       physics.setWindEnabled(windEnabled)
@@ -68,19 +59,25 @@ export function usePhysicsSync() {
     }
   }, [windEnabled, physics])
 
-  // Sync environment settings with WASM engine (custom weather mode)
   useEffect(() => {
-    if (
+    const envChanged =
       envTemperature !== lastEnvRef.current.temperature ||
-      envRainIntensity !== lastEnvRef.current.rainIntensity
-    ) {
-      // Calculate humidity based on rain intensity (more rain = more humidity)
-      const humidity = 0.3 + envRainIntensity * 0.6 // 30% to 90%
-      physics.setCustomWeather(envTemperature, humidity, envRainIntensity)
-      lastEnvRef.current.temperature = envTemperature
-      lastEnvRef.current.rainIntensity = envRainIntensity
+      envHumidity !== lastEnvRef.current.humidity ||
+      envPrecipitationRate !== lastEnvRef.current.precipitationRate ||
+      envPressure !== lastEnvRef.current.pressure ||
+      envCloudCover !== lastEnvRef.current.cloudCover
+
+    if (envChanged) {
+      physics.setEnvironment(envTemperature, envHumidity, envPrecipitationRate, envPressure, envCloudCover)
+      lastEnvRef.current = {
+        temperature: envTemperature,
+        humidity: envHumidity,
+        precipitationRate: envPrecipitationRate,
+        pressure: envPressure,
+        cloudCover: envCloudCover,
+      }
     }
-  }, [envTemperature, envRainIntensity, physics])
+  }, [envTemperature, envHumidity, envPrecipitationRate, envPressure, envCloudCover, physics])
 
   return { physics, windEnabled }
 }

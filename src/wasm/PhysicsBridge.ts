@@ -27,11 +27,40 @@ export interface PerWheelWear {
   rear_right: number
 }
 
+export interface GripBreakdown {
+  base_compound_grip: number
+  weather_friction_mult: number
+  tire_wear_grip_mult: number
+  surface_grip_mult: number
+  curb_turn_grip_mult: number
+  tire_temp_grip_mult: number
+  aquaplaning_grip_mult: number
+  thermal_shock_grip_mult: number
+  final_effective_grip: number
+}
+
+export interface TireMaterialOutput {
+  per_wheel_graining: [number, number, number, number]
+  per_wheel_blistering: [number, number, number, number]
+  per_wheel_viscoelastic_grip: [number, number, number, number]
+  per_wheel_shore_hardness: [number, number, number, number]
+}
+
+export interface SurfaceFrictionBreakdown {
+  water_film_mm: number
+  ice_thickness: number
+  snow_depth: number
+  base_mu: number
+  effective_mu: number
+}
+
 export interface CarPhysicsOutput {
   linear_velocity: [number, number, number]
   angular_velocity: [number, number, number]
   speed_kmh: number
   gear: number
+  rpm: number
+  current_gear_ratio: number
   slip_angle: number
   is_drifting: boolean
   effective_grip: number
@@ -45,6 +74,8 @@ export interface CarPhysicsOutput {
   tire_thermal_shock: TireThermalShock
   ers: ErsState
   active_aero: ActiveAeroState
+  grip_breakdown: GripBreakdown
+  tire_material: TireMaterialOutput
 }
 
 export interface WeatherModifiers {
@@ -392,6 +423,38 @@ export function setCustomWeather(celsius: number, humidity: number, rainIntensit
  */
 export function getRainIntensity(): number {
   return getPhysicsEngine().get_rain_intensity()
+}
+
+/**
+ * Set environment with full continuous parameters
+ * @param celsius Temperature in Celsius
+ * @param humidity Humidity 0.0 to 1.0
+ * @param precipitationRateMmh Precipitation rate in mm/h (0-50)
+ * @param pressureHpa Atmospheric pressure in hPa (default 1013.25)
+ * @param cloudCover Cloud cover 0.0 to 1.0
+ */
+export function setEnvironment(
+  celsius: number,
+  humidity: number,
+  precipitationRateMmh: number,
+  pressureHpa: number,
+  cloudCover: number,
+): void {
+  getPhysicsEngine().set_environment(celsius, humidity, precipitationRateMmh, pressureHpa, cloudCover)
+}
+
+/**
+ * Get current air density (kg/m³)
+ */
+export function getAirDensity(): number {
+  return getPhysicsEngine().get_air_density()
+}
+
+/**
+ * Get surface friction breakdown
+ */
+export function getSurfaceFrictionBreakdown(): SurfaceFrictionBreakdown {
+  return getPhysicsEngine().get_surface_friction_breakdown() as SurfaceFrictionBreakdown
 }
 
 // ============================================================================
