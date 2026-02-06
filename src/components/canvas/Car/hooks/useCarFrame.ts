@@ -19,6 +19,7 @@ import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { useBrakeStore } from '../../../../stores/useBrakeStore'
 import { useLapTimeStore } from '../../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../../stores/usePitStore'
+import { useElevationStore } from '../../../../stores/useElevationStore'
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 
@@ -109,7 +110,9 @@ export function useCarFrame({
   const isOnCurb = useCurbStore(state => state.isOnCurb)
   const curbSide = useCurbStore(state => state.curbSide)
 
-  // Track temperature update
+  const targetElev = useElevationStore(state => state.targetElevation)
+  const onRoad = useElevationStore(state => state.onRoad)
+
   const updateCarPosition = useTrackTemperatureStore(state => state.updateCarPosition)
 
   // Controls
@@ -347,6 +350,19 @@ export function useCarFrame({
       },
       true,
     )
+
+    if (onRoad && targetElev > 0.1) {
+      const currentY = chassis.translation().y
+      const targetY = targetElev + 0.5
+      const diff = targetY - currentY
+
+      const k = 500
+      const d = 100
+      const vy = chassis.linvel().y
+      const force = k * diff - d * vy
+
+      chassis.applyImpulse({ x: 0, y: force * dt, z: 0 }, true)
+    }
 
     // Sync tire wear from WASM to UI store
     if (output.tire_wear) {

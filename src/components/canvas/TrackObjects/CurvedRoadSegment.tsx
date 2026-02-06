@@ -4,6 +4,7 @@ import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
+import { useElevationStore } from '../../../stores/useElevationStore'
 import { usePhysicsOptional } from '../../../wasm'
 
 interface CurvedRoadSegmentProps {
@@ -46,17 +47,27 @@ export default function CurvedRoadSegment({
   const halfWidth = width / 2
   const enterSurface = useSurfaceStore(s => s.enterSurface)
   const exitSurface = useSurfaceStore(s => s.exitSurface)
+  const enterElevation = useElevationStore(s => s.enterRoad)
+  const exitElevation = useElevationStore(s => s.exitRoad)
   const physics = usePhysicsOptional()
   const setRoadRegionTS = useTrackTemperatureStore(s => s.setRoadRegion)
 
   // Surface detection callbacks
   const handleEnterRoad = useCallback(() => {
     enterSurface('road')
-  }, [enterSurface])
+    const midElev = ((startElevation ?? 0) + (endElevation ?? 0)) / 2
+    const startVec = new Vector3(...startPoint)
+    const endVec = new Vector3(...endPoint)
+    const curveLength = startVec.distanceTo(endVec)
+    const slopeAngle = Math.atan2((endElevation ?? 0) - (startElevation ?? 0), curveLength)
+    const bankingRad = ((banking ?? 0) * Math.PI) / 180
+    enterElevation(midElev, slopeAngle, bankingRad)
+  }, [enterSurface, startElevation, endElevation, startPoint, endPoint, banking, enterElevation])
 
   const handleExitRoad = useCallback(() => {
     exitSurface('road')
-  }, [exitSurface])
+    exitElevation()
+  }, [exitSurface, exitElevation])
 
   const {
     roadGeometry,

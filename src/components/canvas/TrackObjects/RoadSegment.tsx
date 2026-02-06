@@ -4,6 +4,7 @@ import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
+import { useElevationStore } from '../../../stores/useElevationStore'
 import { usePhysicsOptional } from '../../../wasm'
 
 interface RoadSegmentProps {
@@ -35,6 +36,8 @@ export default function RoadSegment({
   const width = widthProp ?? config.defaultSize.width
   const enterSurface = useSurfaceStore(s => s.enterSurface)
   const exitSurface = useSurfaceStore(s => s.exitSurface)
+  const enterElevation = useElevationStore(s => s.enterRoad)
+  const exitElevation = useElevationStore(s => s.exitRoad)
   const physics = usePhysicsOptional()
   const setRoadRegionTS = useTrackTemperatureStore(s => s.setRoadRegion)
 
@@ -100,11 +103,15 @@ export default function RoadSegment({
   // Surface detection callbacks
   const handleEnterRoad = useCallback(() => {
     enterSurface('road')
-  }, [enterSurface])
+    const midElev = ((startElevation ?? 0) + (endElevation ?? 0)) / 2
+    const slopeAngle = Math.atan2((endElevation ?? 0) - (startElevation ?? 0), length)
+    enterElevation(midElev, slopeAngle, 0)
+  }, [enterSurface, startElevation, endElevation, length, enterElevation])
 
   const handleExitRoad = useCallback(() => {
     exitSurface('road')
-  }, [exitSurface])
+    exitElevation()
+  }, [exitSurface, exitElevation])
 
   // Register road cells for temperature tracking
   // Roads retain heat better than non-road surfaces

@@ -34,11 +34,12 @@ export function useStartPosition(): StartTransform {
         const spawnX = checkpoint.position[0] - normX * 5
         const spawnZ = checkpoint.position[2] - normZ * 5
 
-        // Calculate rotation to face direction of travel
+        const spawnElev = ((checkpoint.startPoint[1] ?? 0) + (checkpoint.endPoint[1] ?? 0)) / 2
+
         const rotation = Math.atan2(normX, normZ)
 
         return {
-          startPosition: [spawnX, 1, spawnZ] as [number, number, number],
+          startPosition: [spawnX, spawnElev + 1, spawnZ] as [number, number, number],
           startRotation: [0, rotation, 0] as [number, number, number],
         }
       }
