@@ -154,6 +154,39 @@ export function findRoadPath(
   return null
 }
 
+export function computeRoadGrade(road: PlacedObject): number {
+  if (!road.startPoint || !road.endPoint) return 0
+  const startElev = road.startElevation ?? 0
+  const endElev = road.endElevation ?? 0
+  const elevDiff = Math.abs(endElev - startElev)
+  if (elevDiff < 0.01) return 0
+
+  let length: number
+  if (road.trackMode === 'curve' && road.controlPoint) {
+    let arcLength = 0
+    const SAMPLES = 20
+    let prevX = road.startPoint[0]
+    let prevZ = road.startPoint[2]
+    for (let i = 1; i <= SAMPLES; i++) {
+      const t = i / SAMPLES
+      const t1 = 1 - t
+      const x = t1 * t1 * road.startPoint[0] + 2 * t1 * t * road.controlPoint[0] + t * t * road.endPoint[0]
+      const z = t1 * t1 * road.startPoint[2] + 2 * t1 * t * road.controlPoint[2] + t * t * road.endPoint[2]
+      arcLength += Math.sqrt((x - prevX) ** 2 + (z - prevZ) ** 2)
+      prevX = x
+      prevZ = z
+    }
+    length = arcLength
+  } else {
+    const dx = road.endPoint[0] - road.startPoint[0]
+    const dz = road.endPoint[2] - road.startPoint[2]
+    length = Math.sqrt(dx * dx + dz * dz)
+  }
+
+  if (length < 0.01) return 0
+  return (elevDiff / length) * 100
+}
+
 export function smoothElevations(
   roadIds: string[],
   placedObjects: PlacedObject[],
@@ -201,6 +234,68 @@ export function smoothElevations(
           } else {
             entry.endElevation = Math.round(smoothed / 0.25) * 0.25
           }
+        }
+      }
+    }
+  }
+
+  return result
+}
+
+export function propagateElevation(
+  changedRoadId: string,
+  changedEndpoint: 'start' | 'end',
+  newHeight: number,
+  placedObjects: PlacedObject[],
+  maxDepth: number = 3,
+): { id: string; prop: string; height: number }[] {
+  const result: { id: string; prop: string; height: number }[] = []
+  const visited = new Set<string>()
+  visited.add(`${changedRoadId}:${changedEndpoint}`)
+
+  type QueueItem = { roadId: string; endpoint: 'start' | 'end'; height: number; depth: number }
+  const queue: QueueItem[] = [{ roadId: changedRoadId, endpoint: changedEndpoint, height: newHeight, depth: 0 }]
+
+  while (queue.length > 0) {
+    const { roadId, endpoint, height, depth } = queue.shift()!
+
+    const oppositeEndpoint: 'start' | 'end' = endpoint === 'start' ? 'end' : 'start'
+    const oppositeKey = `${roadId}:${oppositeEndpoint}`
+    if (!visited.has(oppositeKey)) {
+      visited.add(oppositeKey)
+      const road = placedObjects.find(o => o.id === roadId)
+      if (road) {
+        const currentH = oppositeEndpoint === 'start' ? (road.startElevation ?? 0) : (road.endElevation ?? 0)
+        const blended = Math.round(((currentH + height) / 2) / 0.25) * 0.25
+        const prop = oppositeEndpoint === 'start' ? 'startElevation' : 'endElevation'
+        result.push({ id: roadId, prop, height: blended })
+
+        if (depth + 1 < maxDepth) {
+          const connected = getConnectedEndpoints(roadId, oppositeEndpoint, placedObjects)
+          for (const cp of connected) {
+            const cpKey = `${cp.roadId}:${cp.endpoint}`
+            if (!visited.has(cpKey)) {
+              visited.add(cpKey)
+              const cpProp = cp.endpoint === 'start' ? 'startElevation' : 'endElevation'
+              result.push({ id: cp.roadId, prop: cpProp, height: blended })
+              queue.push({ roadId: cp.roadId, endpoint: cp.endpoint, height: blended, depth: depth + 1 })
+            }
+          }
+        }
+      }
+    }
+
+    if (depth < maxDepth) {
+      const connected = getConnectedEndpoints(roadId, endpoint, placedObjects)
+      for (const cp of connected) {
+        const cpKey = `${cp.roadId}:${cp.endpoint}`
+        if (!visited.has(cpKey)) {
+          visited.add(cpKey)
+          const falloff = 1 - (depth + 1) / (maxDepth + 1)
+          const blended = Math.round((height * falloff) / 0.25) * 0.25
+          const cpProp = cp.endpoint === 'start' ? 'startElevation' : 'endElevation'
+          result.push({ id: cp.roadId, prop: cpProp, height: blended })
+          queue.push({ roadId: cp.roadId, endpoint: cp.endpoint, height: blended, depth: depth + 1 })
         }
       }
     }

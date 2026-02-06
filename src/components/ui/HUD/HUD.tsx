@@ -18,6 +18,7 @@ import { TrackEditorDock } from '../TrackEditorDock'
 import { TrackSelector } from '../TrackSelector'
 import { MobileControls, MobileSpeedGear } from '../MobileControls'
 import TrackMinimap from '../CustomizationPanel/TrackMinimap'
+import ElevationProfile from '../ElevationProfile/ElevationProfile'
 import { useMobileDetection } from '../../../utils/isMobile'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -162,6 +163,7 @@ export default function HUD() {
             <TrackSelector />
           </div>
           <TrackEditorDock />
+          <ElevationProfile />
         </>
       ) : (
         /* Race mode UI */

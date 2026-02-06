@@ -1,11 +1,11 @@
 import { useMemo, useState, useCallback, useRef } from 'react'
-import { useThree, useFrame } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import { Billboard, Text } from '@react-three/drei'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
-import { getElevationControlPoints, getConnectedEndpoints, findRoadPath } from '../../../utils/elevationHandles'
+import { getElevationControlPoints, getConnectedEndpoints, findRoadPath, computeRoadGrade } from '../../../utils/elevationHandles'
 import { editorCommandStack } from '../../../utils/commandStack'
-import type { ElevationControlPoint } from '../../../types/trackObjects'
+import type { ElevationControlPoint, PlacedObject } from '../../../types/trackObjects'
 import type { EditorCommand } from '../../../types/editor'
 
 function ElevationHandle({
@@ -13,12 +13,14 @@ function ElevationHandle({
   isDragging,
   isSlopeAnchor,
   isSmoothSelected,
+  grade,
   onClick,
 }: {
   point: ElevationControlPoint
   isDragging: boolean
   isSlopeAnchor: boolean
   isSmoothSelected: boolean
+  grade: number
   onClick: (point: ElevationControlPoint, screenY: number, shiftKey: boolean) => void
 }) {
   const [hovered, setHovered] = useState(false)
@@ -31,6 +33,8 @@ function ElevationHandle({
   else if (hovered) color = '#06b6d4'
 
   const radius = isDragging ? 0.7 : hovered ? 0.6 : 0.5
+
+  const gradeWarning = grade > 15 ? '#ef4444' : grade > 10 ? '#f59e0b' : null
 
   return (
     <group position={[point.worldPosition[0], 0, point.worldPosition[2]]}>
@@ -66,6 +70,21 @@ function ElevationHandle({
           {elevation.toFixed(1)}m
         </Text>
       </Billboard>
+
+      {gradeWarning && (
+        <Billboard position={[0, elevation + 2.0, 0]}>
+          <Text
+            fontSize={0.45}
+            color={gradeWarning}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.04}
+            outlineColor="#000"
+          >
+            {grade.toFixed(1)}%
+          </Text>
+        </Billboard>
+      )}
     </group>
   )
 }
@@ -88,6 +107,15 @@ export default function ElevationHandles() {
     () => getElevationControlPoints(placedObjects),
     [placedObjects],
   )
+
+  const roadGrades = useMemo(() => {
+    const grades = new Map<string, number>()
+    for (const obj of placedObjects) {
+      if (obj.type !== 'road') continue
+      grades.set(obj.id, computeRoadGrade(obj))
+    }
+    return grades
+  }, [placedObjects])
 
   const applyLevelTool = useCallback(
     (point: ElevationControlPoint, shiftKey: boolean) => {
@@ -282,6 +310,7 @@ export default function ElevationHandles() {
             isDragging={isDragging}
             isSlopeAnchor={isSlopeAnchor}
             isSmoothSelected={isSmoothSelected}
+            grade={roadGrades.get(point.roadId) ?? 0}
             onClick={handleClick}
           />
         )

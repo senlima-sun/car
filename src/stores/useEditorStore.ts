@@ -54,7 +54,9 @@ interface EditorState {
   targetLevelHeight: number
   slopeAnchor: SlopeAnchor | null
   smoothSelectedRoadIds: string[]
+  propagateToNeighbors: boolean
 
+  setPropagateToNeighbors: (enabled: boolean) => void
   setElevationEditMode: (enabled: boolean) => void
   setElevationTool: (tool: ElevationTool) => void
   startElevationDrag: (roadId: string, endpoint: 'start' | 'end', currentHeight: number, screenY: number, connectedEndpoints: import('../types/trackObjects').ElevationControlPoint[]) => void
@@ -166,6 +168,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   targetLevelHeight: 0,
   slopeAnchor: null,
   smoothSelectedRoadIds: [],
+  propagateToNeighbors: false,
+
+  setPropagateToNeighbors: (enabled) => set({ propagateToNeighbors: enabled }),
 
   setElevationEditMode: (enabled) => {
     if (enabled) {

@@ -242,6 +242,8 @@ export default function CustomizationPanel() {
   const slopeAnchor = useEditorStore(s => s.slopeAnchor)
   const smoothSelectedRoadIds = useEditorStore(s => s.smoothSelectedRoadIds)
   const clearSmoothSelection = useEditorStore(s => s.clearSmoothSelection)
+  const propagateToNeighbors = useEditorStore(s => s.propagateToNeighbors)
+  const setPropagateToNeighbors = useEditorStore(s => s.setPropagateToNeighbors)
 
   // Track store
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
@@ -826,6 +828,26 @@ export default function CustomizationPanel() {
               ))}
             </div>
 
+            <div
+              style={styles.snapToggle}
+              onClick={() => setPropagateToNeighbors(!propagateToNeighbors)}
+            >
+              <span style={styles.snapToggleLabel}>Propagate to neighbors</span>
+              <div
+                style={{
+                  ...styles.snapToggleSwitch,
+                  background: propagateToNeighbors ? '#22c55e' : '#444',
+                }}
+              >
+                <div
+                  style={{
+                    ...styles.snapToggleKnob,
+                    left: propagateToNeighbors ? 20 : 2,
+                  }}
+                />
+              </div>
+            </div>
+
             {elevationTool === 'raise' && (
               <div style={styles.placementHint}>
                 Click and drag road endpoints up/down to change elevation.
@@ -1133,6 +1155,9 @@ export default function CustomizationPanel() {
         </div>
         <div style={styles.controlLine}>
           <span style={styles.key}>Y</span> Elevation mode
+        </div>
+        <div style={styles.controlLine}>
+          <span style={styles.key}>B</span> Elevation profile
         </div>
       </div>
 
