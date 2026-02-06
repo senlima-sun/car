@@ -588,6 +588,8 @@ pub struct CarPhysicsOutput {
     pub angular_velocity: [f32; 3],
     pub speed_kmh: f32,
     pub gear: i8,
+    pub rpm: f32,
+    pub current_gear_ratio: f32,
     pub slip_angle: f32,
     pub is_drifting: bool,
     pub effective_grip: f32,

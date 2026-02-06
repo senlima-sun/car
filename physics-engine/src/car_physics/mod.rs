@@ -1,5 +1,6 @@
 pub mod aerodynamics;
 pub mod drift;
+pub mod powertrain;
 pub mod steering;
 pub mod tire_model;
 pub mod weight_transfer;
@@ -34,24 +35,17 @@ pub const MIN_DRIFT_SPEED: f32 = 30.0; // km/h
 
 #[derive(Debug)]
 pub struct CarPhysicsState {
-    // Smoothed values
     steer_angle: f32,
     slip_angle_smoothed: f32,
-
-    // Drift state
     drift: drift::DriftState,
-
-    // Cached calculations
+    powertrain: powertrain::PowertrainState,
     speed_kmh: f32,
     speed_ms: f32,
     gear: i8,
+    rpm: f32,
     effective_grip: f32,
-
-    // Previous frame values for G-force calculation
     prev_forward_speed: f32,
     prev_lateral_speed: f32,
-
-    // Angular velocity smoothing
     target_angular_velocity: f32,
 }
 
@@ -61,9 +55,11 @@ impl Default for CarPhysicsState {
             steer_angle: 0.0,
             slip_angle_smoothed: 0.0,
             drift: drift::DriftState::default(),
+            powertrain: powertrain::PowertrainState::new(),
             speed_kmh: 0.0,
             speed_ms: 0.0,
             gear: 1,
+            rpm: 0.0,
             effective_grip: 1.0,
             prev_forward_speed: 0.0,
             prev_lateral_speed: 0.0,
@@ -108,14 +104,21 @@ impl CarPhysicsState {
         let forward_dir = rotation.forward();
         let right_dir = rotation.right();
 
-        // Calculate speeds
         let forward_speed = current_linvel.dot(forward_dir);
         let lateral_speed = current_linvel.dot(right_dir);
         self.speed_ms = forward_speed.abs();
         self.speed_kmh = self.speed_ms * 3.6;
 
-        // Calculate gear
-        self.gear = self.calculate_gear(self.speed_kmh);
+        let pt_out = self.powertrain.update(
+            dt,
+            self.speed_ms,
+            input.forward && !input.brake,
+            ers_boost,
+            weather_modifiers.engine_efficiency_multiplier * engine_power_multiplier,
+            1.0,
+        );
+        self.gear = pt_out.gear;
+        self.rpm = pt_out.rpm;
 
         // Calculate effective grip (tire_degradation.grip_multiplier already includes compound and weather)
         let grip_coefficient = BASE_TIRE_GRIP_COEFFICIENT
@@ -160,18 +163,12 @@ impl CarPhysicsState {
             self.steer_angle = lerp(self.steer_angle, 0.0, dt * center_speed);
         }
 
-        // Calculate forces
         let mut longitudinal_force = 0.0;
 
-        // Engine force
         if input.forward && !input.brake {
-            let engine_force = aerodynamics::get_engine_force(self.speed_ms, ers_boost)
-                * weather_modifiers.engine_efficiency_multiplier
-                * engine_power_multiplier;
-            longitudinal_force += engine_force;
+            longitudinal_force += pt_out.drive_force;
         }
 
-        // Braking / Reverse
         if input.backward || input.brake {
             if forward_speed > 0.5 {
                 let total_brake = (front_brake_force + rear_brake_force)
@@ -180,16 +177,15 @@ impl CarPhysicsState {
                 let handbrake_mult = if input.handbrake { 1.2 } else { 1.0 };
                 longitudinal_force -= total_brake * handbrake_mult;
             } else if input.backward {
-                let reverse_force = aerodynamics::get_engine_force(0.0, 0.0)
-                    * weather_modifiers.engine_efficiency_multiplier
-                    * 0.4;
-                longitudinal_force -= reverse_force;
+                let reverse_force = pt_out.drive_force.abs() * 0.4;
+                longitudinal_force -= reverse_force.max(2000.0);
             }
         }
 
-        // Engine braking (use configured level from brake system)
         if !input.forward && !input.backward && !input.brake && self.speed_ms > 1.0 {
-            longitudinal_force -= engine_braking_force * forward_speed.signum();
+            let rpm_engine_brake = pt_out.engine_brake_force;
+            let configured_brake = engine_braking_force;
+            longitudinal_force -= rpm_engine_brake.max(configured_brake) * forward_speed.signum();
         }
 
         let drag = aerodynamics::get_drag_force_with_density(self.speed_ms, active_aero_drag_mult, air_density)
@@ -318,6 +314,8 @@ impl CarPhysicsState {
             ],
             speed_kmh: self.speed_kmh,
             gear: self.gear,
+            rpm: self.rpm,
+            current_gear_ratio: pt_out.gear_ratio,
             slip_angle: self.slip_angle_smoothed,
             is_drifting: self.drift.is_drifting(),
             effective_grip: combined_grip,
@@ -335,20 +333,8 @@ impl CarPhysicsState {
         }
     }
 
-    fn calculate_gear(&self, speed_kmh: f32) -> i8 {
-        if speed_kmh < 0.0 {
-            return -1;
-        }
-
-        match speed_kmh as i32 {
-            0..=30 => 1,
-            31..=60 => 2,
-            61..=100 => 3,
-            101..=150 => 4,
-            151..=210 => 5,
-            211..=260 => 6,
-            _ => 7,
-        }
+    pub fn get_rpm(&self) -> f32 {
+        self.rpm
     }
 
     pub fn get_speed_kmh(&self) -> f32 {
