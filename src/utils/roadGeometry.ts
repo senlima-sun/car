@@ -94,53 +94,95 @@ export const findRoadAtPosition = (
   const halfWidth = roadWidth / 2
 
   for (const obj of placedObjects) {
-    if (obj.type !== 'road' || !obj.startPoint || !obj.endPoint || obj.trackMode === 'curve') {
+    if (obj.type !== 'road' || !obj.startPoint || !obj.endPoint) {
       continue
     }
 
-    const start = obj.startPoint
-    const end = obj.endPoint
+    if (obj.trackMode === 'curve' && obj.controlPoint) {
+      const SAMPLES = 32
+      let bestDist = halfWidth
+      let bestResult: RoadEdgeResult | null = null
 
-    const dx = end[0] - start[0]
-    const dz = end[2] - start[2]
-    const length = Math.sqrt(dx * dx + dz * dz)
-    if (length === 0) continue
+      for (let i = 0; i <= SAMPLES; i++) {
+        const t = i / SAMPLES
+        const t1 = 1 - t
+        const curveX =
+          t1 * t1 * obj.startPoint[0] + 2 * t1 * t * obj.controlPoint[0] + t * t * obj.endPoint[0]
+        const curveZ =
+          t1 * t1 * obj.startPoint[2] + 2 * t1 * t * obj.controlPoint[2] + t * t * obj.endPoint[2]
 
-    const dirX = dx / length
-    const dirZ = dz / length
+        const dist = Math.sqrt(Math.pow(pos[0] - curveX, 2) + Math.pow(pos[2] - curveZ, 2))
 
-    const toClickX = pos[0] - start[0]
-    const toClickZ = pos[2] - start[2]
+        if (dist < bestDist) {
+          bestDist = dist
 
-    const projection = toClickX * dirX + toClickZ * dirZ
+          const tangentX =
+            2 * t1 * (obj.controlPoint[0] - obj.startPoint[0]) +
+            2 * t * (obj.endPoint[0] - obj.controlPoint[0])
+          const tangentZ =
+            2 * t1 * (obj.controlPoint[2] - obj.startPoint[2]) +
+            2 * t * (obj.endPoint[2] - obj.controlPoint[2])
+          const tangentLen = Math.sqrt(tangentX * tangentX + tangentZ * tangentZ)
+          if (tangentLen === 0) continue
 
-    if (projection < 0 || projection > length) continue
+          const perpX = -tangentZ / tangentLen
+          const perpZ = tangentX / tangentLen
 
-    const closestX = start[0] + dirX * projection
-    const closestZ = start[2] + dirZ * projection
+          bestResult = {
+            roadId: obj.id,
+            leftEdge: [curveX + perpX * halfWidth, 0, curveZ + perpZ * halfWidth],
+            rightEdge: [curveX - perpX * halfWidth, 0, curveZ - perpZ * halfWidth],
+            centerPoint: [curveX, 0, curveZ],
+          }
+        }
+      }
 
-    const perpDist = Math.sqrt(Math.pow(pos[0] - closestX, 2) + Math.pow(pos[2] - closestZ, 2))
+      if (bestResult) return bestResult
+    } else {
+      const start = obj.startPoint
+      const end = obj.endPoint
 
-    if (perpDist <= halfWidth) {
-      const perpX = -dirZ
-      const perpZ = dirX
+      const dx = end[0] - start[0]
+      const dz = end[2] - start[2]
+      const length = Math.sqrt(dx * dx + dz * dz)
+      if (length === 0) continue
 
-      const leftEdge: [number, number, number] = [
-        closestX + perpX * halfWidth,
-        0,
-        closestZ + perpZ * halfWidth,
-      ]
-      const rightEdge: [number, number, number] = [
-        closestX - perpX * halfWidth,
-        0,
-        closestZ - perpZ * halfWidth,
-      ]
+      const dirX = dx / length
+      const dirZ = dz / length
 
-      return {
-        roadId: obj.id,
-        leftEdge,
-        rightEdge,
-        centerPoint: [closestX, 0, closestZ],
+      const toClickX = pos[0] - start[0]
+      const toClickZ = pos[2] - start[2]
+
+      const projection = toClickX * dirX + toClickZ * dirZ
+
+      if (projection < 0 || projection > length) continue
+
+      const closestX = start[0] + dirX * projection
+      const closestZ = start[2] + dirZ * projection
+
+      const perpDist = Math.sqrt(Math.pow(pos[0] - closestX, 2) + Math.pow(pos[2] - closestZ, 2))
+
+      if (perpDist <= halfWidth) {
+        const perpX = -dirZ
+        const perpZ = dirX
+
+        const leftEdge: [number, number, number] = [
+          closestX + perpX * halfWidth,
+          0,
+          closestZ + perpZ * halfWidth,
+        ]
+        const rightEdge: [number, number, number] = [
+          closestX - perpX * halfWidth,
+          0,
+          closestZ - perpZ * halfWidth,
+        ]
+
+        return {
+          roadId: obj.id,
+          leftEdge,
+          rightEdge,
+          centerPoint: [closestX, 0, closestZ],
+        }
       }
     }
   }

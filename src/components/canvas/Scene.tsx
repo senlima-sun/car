@@ -10,8 +10,9 @@ import WindVisualization from './Weather/WindVisualization'
 import WeatherEffects from './Weather/WeatherEffects'
 import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
-import { ObjectPlacer, GhostPreview, PlacedObjectsRenderer } from './Customization'
+import { ObjectPlacer, GhostPreview, PlacedObjectsRenderer, ValidationOverlay } from './Customization'
 import PitLane from './TrackObjects/PitLane'
+import StartGrid from './TrackObjects/StartGrid'
 import { useGameStore } from '@/stores/useGameStore'
 import { usePitStore } from '@/stores/usePitStore'
 
@@ -79,6 +80,9 @@ export default function Scene() {
       {/* Placed objects (roads, barriers, etc.) - always visible */}
       <PlacedObjectsRenderer />
 
+      {/* Start grid behind start-finish line */}
+      <StartGrid />
+
       {/* Pit lane (generated from checkpoint) */}
       {pitLaneData && <PitLane data={pitLaneData} />}
 
@@ -87,6 +91,7 @@ export default function Scene() {
         <>
           <ObjectPlacer />
           <GhostPreview />
+          <ValidationOverlay />
         </>
       )}
 
