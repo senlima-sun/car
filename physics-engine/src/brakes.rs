@@ -246,4 +246,27 @@ mod tests {
         assert!((state.front_brake_force - 11600.0).abs() < 0.1); // 58% of 20000
         assert!((state.rear_brake_force - 8400.0).abs() < 0.1);   // 42% of 20000
     }
+
+    #[test]
+    fn test_brake_bias_affects_total_force() {
+        let total = 35000.0;
+
+        let biases = [0.50, 0.55, 0.58, 0.65, 0.70];
+        for bias in biases {
+            let mut brakes = BrakePhysicsState::new();
+            brakes.set_brake_bias(bias);
+            let (front, rear) = brakes.calculate_forces(total);
+
+            assert!(
+                (front + rear - total).abs() < 0.01,
+                "Front + rear ({} + {} = {}) should equal total force ({}) at bias {}",
+                front, rear, front + rear, total, bias
+            );
+            assert!(
+                (front / total - bias).abs() < 0.001,
+                "Front ratio {} should match bias {} at bias {}",
+                front / total, bias, bias
+            );
+        }
+    }
 }

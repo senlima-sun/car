@@ -10,9 +10,9 @@ use crate::tires::{TempInput, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
     AeroMode, AmbientConditions, AquaplaningState, BrakeState, CarInput, CarPhysicsOutput, CurbSide,
-    EngineBrakingLevel, ErsMode, PerWheelWear, SemiAutoConfig, SemiAutoPreset, SurfaceModifiers,
-    SurfaceType, TemperatureOutput, TireCompound, TireThermalShock, TrackBounds, WeatherModifiers,
-    WindModifiers, WindState,
+    EngineBrakingLevel, ErsMode, GripBreakdown, PerWheelWear, SemiAutoConfig, SemiAutoPreset,
+    SurfaceModifiers, SurfaceType, TemperatureOutput, TireCompound, TireThermalShock, TrackBounds,
+    WeatherModifiers, WindModifiers, WindState,
 };
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
@@ -517,7 +517,12 @@ impl PhysicsEngine {
         let thermal_shock_penalty = self.tire_temperature.get_thermal_shock_penalty();
         let thermal_shock_grip = 1.0 - thermal_shock_penalty;
 
-        // Combined grip: surface * curb turn bonus * tire temperature * aquaplaning * thermal shock
+        let tire_config = crate::types::TireConfig::for_compound(self.tires.get_compound());
+        let base_compound_grip = tire_config.grip_multiplier;
+        let weather_friction_mult = weather_modifiers.friction_slip_multiplier;
+        let tire_wear_grip_mult = tire_degradation.grip_multiplier
+            / (base_compound_grip * if self.tires.is_optimal_conditions(&ambient) { 1.0 } else { tire_config.wrong_conditions_penalty }).max(0.001);
+
         let combined_grip = surface_modifiers.grip_multiplier
             * curb_turn_grip
             * avg_temp_grip
@@ -634,6 +639,18 @@ impl PhysicsEngine {
         // Fill in active aero state
         output.active_aero = self.active_aero.get_state();
 
+        output.grip_breakdown = GripBreakdown {
+            base_compound_grip,
+            weather_friction_mult,
+            tire_wear_grip_mult,
+            surface_grip_mult: surface_modifiers.grip_multiplier,
+            curb_turn_grip_mult: curb_turn_grip,
+            tire_temp_grip_mult: avg_temp_grip,
+            aquaplaning_grip_mult: aquaplaning_grip,
+            thermal_shock_grip_mult: thermal_shock_grip,
+            final_effective_grip: output.effective_grip,
+        };
+
         // Update track temperature with skid marks
         if output.skid_intensity > 0.01 {
             self.track_temperature.update_car_position(
@@ -745,5 +762,79 @@ mod tests {
         engine.set_tire_compound(TireCompound::Soft);
         assert_eq!(engine.get_tire_compound(), TireCompound::Soft);
         assert!((engine.get_tire_wear() - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_power_multiplier_affects_acceleration() {
+        let input = CarInput {
+            forward: true,
+            ..Default::default()
+        };
+
+        let mut normal_engine = PhysicsEngine::new();
+        let mut linvel = [0.0, 0.0, 0.0];
+        for _ in 0..120 {
+            let output = normal_engine.step(
+                1.0 / 60.0, input,
+                [0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0],
+                linvel, [0.0, 0.0, 0.0],
+            );
+            linvel = output.linear_velocity;
+        }
+        let normal_speed = normal_engine.get_debug_info().speed_kmh;
+
+        let mut overheated_engine = PhysicsEngine::new();
+        let ambient = overheated_engine.get_ambient_conditions();
+        for _ in 0..3000 {
+            overheated_engine.engine_temperature.update(1.0 / 60.0, true, 80.0, &ambient);
+        }
+        assert!(
+            overheated_engine.engine_temperature.get_state().power_multiplier < 1.0,
+            "Engine should be power-limited after sustained heat, got {}",
+            overheated_engine.engine_temperature.get_state().power_multiplier
+        );
+
+        let mut linvel2 = [0.0, 0.0, 0.0];
+        for _ in 0..120 {
+            let output = overheated_engine.step(
+                1.0 / 60.0, input,
+                [0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0],
+                linvel2, [0.0, 0.0, 0.0],
+            );
+            linvel2 = output.linear_velocity;
+        }
+        let overheated_speed = overheated_engine.get_debug_info().speed_kmh;
+
+        assert!(
+            overheated_speed < normal_speed,
+            "Overheated engine ({}km/h) should be slower than normal ({}km/h)",
+            overheated_speed, normal_speed
+        );
+    }
+
+    #[test]
+    fn test_grip_breakdown_populated() {
+        let mut engine = PhysicsEngine::new();
+
+        let input = CarInput {
+            forward: true,
+            ..Default::default()
+        };
+
+        let output = engine.step(
+            1.0 / 60.0, input,
+            [0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0],
+            [0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
+        );
+
+        assert!(output.grip_breakdown.base_compound_grip > 0.0);
+        assert!(output.grip_breakdown.weather_friction_mult > 0.0);
+        assert!(output.grip_breakdown.tire_wear_grip_mult > 0.0);
+        assert!(output.grip_breakdown.surface_grip_mult > 0.0);
+        assert!((output.grip_breakdown.curb_turn_grip_mult - 1.0).abs() < 0.01);
+        assert!(output.grip_breakdown.tire_temp_grip_mult > 0.0);
+        assert!((output.grip_breakdown.aquaplaning_grip_mult - 1.0).abs() < 0.01);
+        assert!((output.grip_breakdown.thermal_shock_grip_mult - 1.0).abs() < 0.01);
+        assert!(output.grip_breakdown.final_effective_grip > 0.0);
     }
 }

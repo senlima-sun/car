@@ -145,4 +145,19 @@ mod tests {
         assert!(state.current.is_overheating);
         assert!(state.current.power_multiplier < 1.0);
     }
+
+    #[test]
+    fn test_power_multiplier_affects_acceleration() {
+        let normal = EngineTemperatureState::new();
+        assert!((normal.get_state().power_multiplier - 1.0).abs() < 0.01);
+
+        let mut overheated = EngineTemperatureState::new();
+        overheated.current.temperature = 0.98;
+        let ambient = AmbientConditions::default();
+        overheated.update(0.0, false, 0.0, &ambient);
+
+        assert!(overheated.get_state().power_multiplier < 0.95);
+        assert!(overheated.get_state().power_multiplier > 0.0);
+        assert!(overheated.get_state().power_multiplier < normal.get_state().power_multiplier);
+    }
 }

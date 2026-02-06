@@ -326,13 +326,14 @@ impl CarPhysicsState {
             lateral_g: sanitize(lat_g, 0.0),
             longitudinal_g: sanitize(long_g, 0.0),
             skid_intensity,
-            tire_wear: Default::default(),       // Will be filled in by engine
+            tire_wear: Default::default(),
             steer_angle: self.steer_angle,
-            temperature: Default::default(),     // Will be filled in by engine
-            aquaplaning: Default::default(),     // Will be filled in by engine
-            tire_thermal_shock: Default::default(), // Will be filled in by engine
-            ers: Default::default(),             // Will be filled in by engine
-            active_aero: Default::default(),     // Will be filled in by engine
+            temperature: Default::default(),
+            aquaplaning: Default::default(),
+            tire_thermal_shock: Default::default(),
+            ers: Default::default(),
+            active_aero: Default::default(),
+            grip_breakdown: Default::default(),
         }
     }
 

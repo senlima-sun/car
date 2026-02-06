@@ -492,6 +492,19 @@ pub struct CarInput {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct GripBreakdown {
+    pub base_compound_grip: f32,
+    pub weather_friction_mult: f32,
+    pub tire_wear_grip_mult: f32,
+    pub surface_grip_mult: f32,
+    pub curb_turn_grip_mult: f32,
+    pub tire_temp_grip_mult: f32,
+    pub aquaplaning_grip_mult: f32,
+    pub thermal_shock_grip_mult: f32,
+    pub final_effective_grip: f32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct CarPhysicsOutput {
     pub linear_velocity: [f32; 3],
     pub angular_velocity: [f32; 3],
@@ -506,14 +519,11 @@ pub struct CarPhysicsOutput {
     pub tire_wear: PerWheelWear,
     pub steer_angle: f32,
     pub temperature: TemperatureOutput,
-    /// Current aquaplaning state
     pub aquaplaning: AquaplaningState,
-    /// Current tire thermal shock state (from puddle cooling)
     pub tire_thermal_shock: TireThermalShock,
-    /// Current ERS state
     pub ers: ErsState,
-    /// Current active aero state
     pub active_aero: ActiveAeroState,
+    pub grip_breakdown: GripBreakdown,
 }
 
 // ============================================================================

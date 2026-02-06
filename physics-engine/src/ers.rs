@@ -686,4 +686,29 @@ mod tests {
         assert!(!state.current.is_harvesting);
         assert!((state.current.battery_charge - initial_charge).abs() < 0.001);
     }
+
+    #[test]
+    fn test_harvest_produces_deceleration() {
+        let mut state = ErsPhysicsState::new();
+        state.set_mode(ErsMode::Harvest);
+        state.set_battery_charge(0.5);
+
+        state.update(1.0 / 60.0, false, true, 60.0);
+
+        assert!(state.is_harvesting());
+        assert!(state.current.power_flow < 0.0);
+    }
+
+    #[test]
+    fn test_harvest_power_watts_conversion() {
+        let mut state = ErsPhysicsState::new();
+        state.set_mode(ErsMode::Harvest);
+        state.set_battery_charge(0.5);
+
+        state.update(1.0 / 60.0, false, true, 60.0);
+
+        let watts = state.get_harvest_power_watts();
+        assert!(watts > 0.0);
+        assert!((watts - state.current.power_flow.abs() * 1000.0).abs() < 0.1);
+    }
 }

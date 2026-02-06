@@ -111,4 +111,42 @@ mod tests {
         assert!(result.rear_load_change > 0.0);
         assert!(result.left_load_change > 0.0);
     }
+
+    #[test]
+    fn test_static_weight_distribution_47_53() {
+        let result = calculate_weight_transfer(0.0, 0.0);
+
+        assert!(
+            (result.front_load_pct - 0.47).abs() < 0.001,
+            "Static front load should be 47%, got {}",
+            result.front_load_pct
+        );
+        assert!(
+            (result.rear_load_pct - 0.53).abs() < 0.001,
+            "Static rear load should be 53%, got {}",
+            result.rear_load_pct
+        );
+    }
+
+    #[test]
+    fn test_weight_distribution_asymmetric_under_braking() {
+        let static_result = calculate_weight_transfer(0.0, 0.0);
+        let braking_result = calculate_weight_transfer(-1.5, 0.0);
+
+        assert!(
+            braking_result.front_load_pct > static_result.front_load_pct,
+            "Braking should shift load forward: braking front={}, static front={}",
+            braking_result.front_load_pct, static_result.front_load_pct
+        );
+        assert!(
+            braking_result.rear_load_pct < static_result.rear_load_pct,
+            "Braking should reduce rear load: braking rear={}, static rear={}",
+            braking_result.rear_load_pct, static_result.rear_load_pct
+        );
+        assert!(
+            braking_result.front_load_change > 0.0,
+            "Front load change should be positive under braking, got {}",
+            braking_result.front_load_change
+        );
+    }
 }
