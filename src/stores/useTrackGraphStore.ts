@@ -1,24 +1,33 @@
 import { create } from 'zustand'
 import type { TrackGraph } from '../types/trackGraph'
-import type { SnapPointWithDirection } from '../types/trackObjects'
-import { buildFromObjects, findBranchPoints, isCircuit, findConnectedRoads } from '../utils/trackGraph'
+import type { SnapPointWithDirection, PlacedObject } from '../types/trackObjects'
+import { buildFromObjects, findBranchPoints, isCircuit, findConnectedRoads, propagateFlowDirection, type FlowPropagationResult } from '../utils/trackGraph'
 import { getSnapPoints, findNearestSnapPoint } from '../utils/roadGeometry'
 import { useCustomizationStore } from './useCustomizationStore'
 
 interface TrackGraphState {
   graph: TrackGraph
   snapPoints: SnapPointWithDirection[]
+  flowDirections: Map<string, 'forward' | 'backward'>
+  flowWarnings: string[]
+  hasFlow: boolean
 
   rebuildGraph: () => void
   findNearestSnap: (pos: [number, number, number]) => SnapPointWithDirection | null
   getBranchPoints: () => string[]
   checkCircuit: (startNodeKey?: string) => ReturnType<typeof isCircuit>
   getConnectedRoads: (roadId: string) => string[]
+  setTrackFlow: () => FlowPropagationResult | null
+  clearTrackFlow: () => void
+  getFlowDirection: (roadId: string) => 'forward' | 'backward' | null
 }
 
 export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
   graph: { nodes: new Map(), edges: new Map(), adjacency: new Map() },
   snapPoints: [],
+  flowDirections: new Map(),
+  flowWarnings: [],
+  hasFlow: false,
 
   rebuildGraph: () => {
     const { placedObjects } = useCustomizationStore.getState()
@@ -41,6 +50,53 @@ export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
 
   getConnectedRoads: (roadId) => {
     return findConnectedRoads(get().graph, roadId)
+  },
+
+  setTrackFlow: () => {
+    const { placedObjects } = useCustomizationStore.getState()
+    const checkpoint = placedObjects.find((o: PlacedObject) => o.type === 'checkpoint')
+    if (!checkpoint) return null
+
+    const result = propagateFlowDirection(get().graph, checkpoint, placedObjects)
+
+    const updatedObjects = placedObjects.map((obj: PlacedObject) => {
+      if (obj.type === 'road') {
+        const dir = result.directions.get(obj.id)
+        return { ...obj, flowDirection: dir ?? null }
+      }
+      return obj
+    })
+    useCustomizationStore.getState().setPlacedObjects(updatedObjects)
+
+    set({
+      flowDirections: result.directions,
+      flowWarnings: result.unvisitedRoadIds,
+      hasFlow: true,
+    })
+
+    return result
+  },
+
+  clearTrackFlow: () => {
+    const { placedObjects } = useCustomizationStore.getState()
+    const updatedObjects = placedObjects.map((obj: PlacedObject) => {
+      if (obj.type === 'road' && obj.flowDirection) {
+        const { flowDirection: _, ...rest } = obj
+        return rest as PlacedObject
+      }
+      return obj
+    })
+    useCustomizationStore.getState().setPlacedObjects(updatedObjects)
+
+    set({
+      flowDirections: new Map(),
+      flowWarnings: [],
+      hasFlow: false,
+    })
+  },
+
+  getFlowDirection: (roadId) => {
+    return get().flowDirections.get(roadId) ?? null
   },
 }))
 

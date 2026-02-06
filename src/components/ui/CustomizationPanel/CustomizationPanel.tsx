@@ -7,6 +7,7 @@ import {
 import { useEditorStore } from '../../../stores/useEditorStore'
 import { usePitStore } from '../../../stores/usePitStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
+import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
 import { OBJECT_TYPES } from '../../../constants/trackObjects'
 import { generatePitLane } from '../../../utils/pitLaneGenerator'
 import { generateCurbsForRoads } from '../../../utils/autoCurbGenerator'
@@ -232,6 +233,12 @@ export default function CustomizationPanel() {
   const setPitLaneData = usePitStore(s => s.setPitLaneData)
   const clearPitLane = usePitStore(s => s.clearPitLane)
   const [pitLaneError, setPitLaneError] = useState<string | null>(null)
+
+  // Track direction
+  const hasFlow = useTrackGraphStore(s => s.hasFlow)
+  const flowWarnings = useTrackGraphStore(s => s.flowWarnings)
+  const setTrackFlow = useTrackGraphStore(s => s.setTrackFlow)
+  const clearTrackFlow = useTrackGraphStore(s => s.clearTrackFlow)
 
   // Check if checkpoint exists
   const checkpoint = placedObjects.find(obj => obj.type === 'checkpoint')
@@ -657,6 +664,59 @@ export default function CustomizationPanel() {
           >
             Generate Curbs
           </button>
+        )}
+      </div>
+
+      {/* Track Direction Section */}
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>Track Direction</div>
+        {hasFlow ? (
+          <>
+            <div
+              style={{
+                color: '#22c55e',
+                fontSize: 11,
+                marginBottom: 8,
+                padding: '6px 8px',
+                background: 'rgba(34, 197, 94, 0.1)',
+                borderRadius: 4,
+              }}
+            >
+              Direction set{flowWarnings.length > 0 ? ` (${flowWarnings.length} unconnected)` : ''}
+            </div>
+            <button
+              style={{
+                ...styles.actionButton,
+                ...styles.clearButton,
+                width: '100%',
+              }}
+              onClick={clearTrackFlow}
+            >
+              Clear Direction
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              style={{
+                ...styles.actionButton,
+                background: hasCheckpoint ? '#3b82f6' : '#666',
+                color: '#fff',
+                width: '100%',
+                opacity: hasCheckpoint ? 1 : 0.5,
+                cursor: hasCheckpoint ? 'pointer' : 'not-allowed',
+              }}
+              onClick={() => setTrackFlow()}
+              disabled={!hasCheckpoint}
+            >
+              Set Track Direction
+            </button>
+            {!hasCheckpoint && (
+              <div style={{ color: '#888', fontSize: 10, marginTop: 6 }}>
+                Place a checkpoint first
+              </div>
+            )}
+          </>
         )}
       </div>
 

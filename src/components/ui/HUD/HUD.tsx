@@ -7,6 +7,7 @@ import WeatherControlModal from './WeatherControlModal'
 import HeatmapLegend from './HeatmapLegend'
 import AquaplaningIndicator from './AquaplaningIndicator'
 import TrackLimitsIndicator from './TrackLimitsIndicator'
+import WrongWayIndicator from './WrongWayIndicator'
 import DebugPanel from './DebugPanel'
 import CoastIndicator from './CoastIndicator'
 import { useGameStore } from '../../../stores/useGameStore'
@@ -220,6 +221,9 @@ export default function HUD() {
 
           {/* Track limits violation warning */}
           <TrackLimitsIndicator />
+
+          {/* Wrong-way warning */}
+          <WrongWayIndicator />
         </>
       )}
     </div>

@@ -18,6 +18,7 @@ export interface PlacedObject {
   edgeSide?: 'left' | 'right'
   startT?: number
   endT?: number
+  flowDirection?: 'forward' | 'backward' | null
 }
 
 export type PlacementState =

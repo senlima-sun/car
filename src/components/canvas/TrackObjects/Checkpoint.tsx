@@ -1,8 +1,10 @@
 import { useMemo, useCallback, useEffect } from 'react'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
-import { Vector3 } from 'three'
+import { Vector3, Quaternion } from 'three'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
+import { useCarStore } from '../../../stores/useCarStore'
+import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
 import TracksideBoard from './TracksideBoard'
 
 interface CheckpointProps {
@@ -15,6 +17,7 @@ interface CheckpointProps {
 }
 
 const config = OBJECT_CONFIGS.checkpoint
+const CHECKPOINT_Y_OFFSET = 0.25
 
 export default function Checkpoint({
   position,
@@ -24,31 +27,18 @@ export default function Checkpoint({
   isGhost = false,
   checkpointId: _checkpointId,
 }: CheckpointProps) {
-  const strokeWidth = 0.8 // Width of the checkpoint stroke
-  const strokeHeight = 0.15 // Height above ground
+  const strokeWidth = 0.8
+  const strokeHeight = 0.15
 
-  // Lap timing
   const crossCheckpoint = useLapTimeStore(state => state.crossCheckpoint)
   const setActive = useLapTimeStore(state => state.setActive)
 
-  // Set lap timer as active when a non-ghost checkpoint mounts
   useEffect(() => {
     if (!isGhost) {
       setActive(true)
     }
   }, [isGhost, setActive])
 
-  const handleCrossing = useCallback(() => {
-    if (!isGhost) {
-      console.log('Checkpoint crossed!')
-      crossCheckpoint()
-    }
-  }, [isGhost, crossCheckpoint])
-
-  // Height offset to render above road surface (road is at Y=0.2)
-  const CHECKPOINT_Y_OFFSET = 0.25
-
-  // Calculate stroke geometry from start/end points
   const { length, calculatedRotation, midpoint } = useMemo(() => {
     if (startPoint && endPoint) {
       const start = new Vector3(...startPoint)
@@ -63,7 +53,6 @@ export default function Checkpoint({
       ]
       return { length: len, calculatedRotation: rot, midpoint: mid }
     }
-    // Fallback for legacy/preview without start/end points
     return {
       length: config.defaultSize.width,
       calculatedRotation: rotation,
@@ -72,16 +61,41 @@ export default function Checkpoint({
   }, [startPoint, endPoint, rotation, position])
 
   const finalRotation = startPoint && endPoint ? calculatedRotation : rotation
-  // Always use midpoint which has the correct Y offset applied
   const finalPosition = midpoint
 
-  // Number of checkered segments
+  const handleCrossing = useCallback(() => {
+    if (isGhost) return
+
+    const hasFlow = useTrackGraphStore.getState().hasFlow
+    if (!hasFlow) {
+      crossCheckpoint(false)
+      return
+    }
+
+    const carRotation = useCarStore.getState().rotation
+    const carSpeed = useCarStore.getState().speed
+
+    if (Math.abs(carSpeed) < 1) {
+      crossCheckpoint(false)
+      return
+    }
+
+    const quat = new Quaternion(carRotation[0], carRotation[1], carRotation[2], carRotation[3])
+    const carForward = new Vector3(0, 0, 1).applyQuaternion(quat)
+
+    const checkpointNormalX = Math.sin(finalRotation)
+    const checkpointNormalZ = Math.cos(finalRotation)
+
+    const dot = carForward.x * checkpointNormalX + carForward.z * checkpointNormalZ
+
+    crossCheckpoint(dot < 0)
+  }, [isGhost, crossCheckpoint, finalRotation])
+
   const numSegments = Math.max(4, Math.floor(length / 2))
   const segmentWidth = length / numSegments
 
   const mesh = (
     <group position={finalPosition} rotation={[0, finalRotation, 0]}>
-      {/* Main stroke base */}
       <mesh position={[0, strokeHeight / 2, 0]} castShadow={!isGhost} receiveShadow={!isGhost}>
         <boxGeometry args={[strokeWidth, strokeHeight, length]} />
         <meshStandardMaterial
@@ -92,7 +106,6 @@ export default function Checkpoint({
         />
       </mesh>
 
-      {/* Checkered pattern on top */}
       {Array.from({ length: numSegments }).map((_, i) => (
         <mesh
           key={i}
@@ -112,7 +125,6 @@ export default function Checkpoint({
         </mesh>
       ))}
 
-      {/* Edge markers at start and end */}
       <mesh position={[0, strokeHeight / 2 + 0.2, -length / 2]} castShadow={!isGhost}>
         <boxGeometry args={[strokeWidth + 0.1, 0.4, 0.1]} />
         <meshStandardMaterial
@@ -136,7 +148,6 @@ export default function Checkpoint({
         />
       </mesh>
 
-      {/* Trackside boards at checkpoint edges */}
       <TracksideBoard
         position={[0, 0, -length / 2 - 1.5]}
         rotation={Math.PI / 2}
@@ -156,7 +167,6 @@ export default function Checkpoint({
 
   return (
     <group>
-      {/* Sensor for lap timing - positioned at checkpoint center */}
       <RigidBody
         type='fixed'
         position={[finalPosition[0], 1, finalPosition[2]]}

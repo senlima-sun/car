@@ -1,26 +1,27 @@
 import { create } from 'zustand'
 
-// Minimum time between checkpoint crossings (prevents double-triggers)
 const CROSSING_COOLDOWN_MS = 2000
+const WRONG_WAY_DISMISS_MS = 3000
 
 interface LapTimeState {
-  // System state
-  isActive: boolean // True when checkpoints exist
-  isRecording: boolean // True when user has enabled recording (R key)
+  isActive: boolean
+  isRecording: boolean
 
-  // Timing data
-  currentLapStart: number | null // performance.now() timestamp
-  currentLapTime: number // Live elapsed time (ms)
-  lastLapTime: number | null // Most recent completed lap (ms)
-  bestLapTime: number | null // Session best (ms)
-  lapCount: number // Completed laps
-  lastCrossingTime: number // Timestamp of last crossing (for debounce)
+  currentLapStart: number | null
+  currentLapTime: number
+  lastLapTime: number | null
+  bestLapTime: number | null
+  lapCount: number
+  lastCrossingTime: number
 
-  // Actions
+  wrongWay: boolean
+  currentLapInvalid: boolean
+
   setActive: (active: boolean) => void
-  toggleRecording: () => void // Toggle recording on/off (R key)
-  crossCheckpoint: () => void // Called when car crosses checkpoint
-  updateCurrentTime: () => void // Called each frame to update live timing
+  toggleRecording: () => void
+  crossCheckpoint: (isWrongWay?: boolean) => void
+  updateCurrentTime: () => void
+  setWrongWay: (wrongWay: boolean) => void
   reset: () => void
 }
 
@@ -33,10 +34,11 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
   bestLapTime: null,
   lapCount: 0,
   lastCrossingTime: 0,
+  wrongWay: false,
+  currentLapInvalid: false,
 
   setActive: active => {
     if (!active) {
-      // Reset timing when deactivated
       set({
         isActive: false,
         isRecording: false,
@@ -46,6 +48,8 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         bestLapTime: null,
         lapCount: 0,
         lastCrossingTime: 0,
+        wrongWay: false,
+        currentLapInvalid: false,
       })
     } else {
       set({ isActive: true })
@@ -54,19 +58,9 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
 
   toggleRecording: () => {
     const state = get()
-    console.log('toggleRecording called', {
-      isActive: state.isActive,
-      isRecording: state.isRecording,
-    })
-
-    if (!state.isActive) {
-      console.log('toggleRecording ignored - no checkpoints')
-      return // Can't record without checkpoints
-    }
+    if (!state.isActive) return
 
     if (state.isRecording) {
-      // Stop recording - reset timing data
-      console.log('Stopping recording')
       set({
         isRecording: false,
         currentLapStart: null,
@@ -75,57 +69,64 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         bestLapTime: null,
         lapCount: 0,
         lastCrossingTime: 0,
+        wrongWay: false,
+        currentLapInvalid: false,
       })
     } else {
-      // Start recording
-      console.log('Starting recording')
       set({ isRecording: true })
     }
   },
 
-  crossCheckpoint: () => {
+  crossCheckpoint: (isWrongWay = false) => {
     const state = get()
-    console.log('crossCheckpoint called', {
-      isActive: state.isActive,
-      isRecording: state.isRecording,
-    })
+    if (!state.isActive || !state.isRecording) return
 
-    if (!state.isActive || !state.isRecording) {
-      console.log('crossCheckpoint ignored - not active or not recording')
+    if (isWrongWay) {
+      set({ wrongWay: true, currentLapInvalid: true })
+      setTimeout(() => {
+        if (get().wrongWay) {
+          set({ wrongWay: false })
+        }
+      }, WRONG_WAY_DISMISS_MS)
       return
     }
 
     const now = performance.now()
 
-    // Debounce: ignore crossings within cooldown period
-    if (now - state.lastCrossingTime < CROSSING_COOLDOWN_MS) {
-      console.log('crossCheckpoint ignored - cooldown')
-      return
-    }
+    if (now - state.lastCrossingTime < CROSSING_COOLDOWN_MS) return
 
     if (state.currentLapStart === null) {
-      // First crossing - start the first lap
-      console.log('Starting first lap')
       set({
         currentLapStart: now,
         currentLapTime: 0,
         lastCrossingTime: now,
+        currentLapInvalid: false,
       })
     } else {
-      // Complete the current lap and start a new one
       const lapTime = now - state.currentLapStart
-      const newBest =
-        state.bestLapTime === null || lapTime < state.bestLapTime ? lapTime : state.bestLapTime
 
-      console.log('Lap completed', { lapTime, newBest, lapCount: state.lapCount + 1 })
-      set({
-        lastLapTime: lapTime,
-        bestLapTime: newBest,
-        lapCount: state.lapCount + 1,
-        currentLapStart: now,
-        currentLapTime: 0,
-        lastCrossingTime: now,
-      })
+      if (!state.currentLapInvalid) {
+        const newBest =
+          state.bestLapTime === null || lapTime < state.bestLapTime ? lapTime : state.bestLapTime
+        set({
+          lastLapTime: lapTime,
+          bestLapTime: newBest,
+          lapCount: state.lapCount + 1,
+          currentLapStart: now,
+          currentLapTime: 0,
+          lastCrossingTime: now,
+          currentLapInvalid: false,
+        })
+      } else {
+        set({
+          lastLapTime: null,
+          lapCount: state.lapCount + 1,
+          currentLapStart: now,
+          currentLapTime: 0,
+          lastCrossingTime: now,
+          currentLapInvalid: false,
+        })
+      }
     }
   },
 
@@ -137,6 +138,18 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
     set({ currentLapTime: now - state.currentLapStart })
   },
 
+  setWrongWay: (wrongWay) => {
+    set({ wrongWay })
+    if (wrongWay) {
+      set({ currentLapInvalid: true })
+      setTimeout(() => {
+        if (get().wrongWay) {
+          set({ wrongWay: false })
+        }
+      }, WRONG_WAY_DISMISS_MS)
+    }
+  },
+
   reset: () =>
     set({
       isRecording: false,
@@ -146,5 +159,7 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
       bestLapTime: null,
       lapCount: 0,
       lastCrossingTime: 0,
+      wrongWay: false,
+      currentLapInvalid: false,
     }),
 }))

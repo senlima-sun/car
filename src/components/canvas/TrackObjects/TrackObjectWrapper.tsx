@@ -1,5 +1,6 @@
 import type { PlacedObject } from '../../../stores/useCustomizationStore'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
+import { useGameStore } from '../../../stores/useGameStore'
 import Cone from './Cone'
 import Ramp from './Ramp'
 import Checkpoint from './Checkpoint'
@@ -10,6 +11,7 @@ import CurvedBarrier from './CurvedBarrier'
 import CurbSegment from './CurbSegment'
 import CurvedCurbSegment from './CurvedCurbSegment'
 import SelectionHighlight from './SelectionHighlight'
+import FlowArrows from './FlowArrows'
 
 interface TrackObjectWrapperProps {
   object: PlacedObject
@@ -26,8 +28,8 @@ export default function TrackObjectWrapper({
   isSelected = false,
   isSelectedForCurb = false,
 }: TrackObjectWrapperProps) {
-  // Get placedObjects for finding parent roads (used by curbs)
   const placedObjects = useCustomizationStore(s => s.placedObjects)
+  const isCustomizeMode = useGameStore(s => s.status) === 'customize'
 
   const commonProps = {
     position: object.position,
@@ -114,10 +116,27 @@ export default function TrackObjectWrapper({
       return null
   }
 
+  const showFlowArrows =
+    isCustomizeMode &&
+    !isGhost &&
+    object.type === 'road' &&
+    object.flowDirection &&
+    object.startPoint &&
+    object.endPoint
+
   return (
     <group>
       {component}
       {isSelected && <SelectionHighlight object={object} />}
+      {showFlowArrows && (
+        <FlowArrows
+          startPoint={object.startPoint!}
+          endPoint={object.endPoint!}
+          controlPoint={object.controlPoint}
+          flowDirection={object.flowDirection!}
+          isCurve={object.trackMode === 'curve' && !!object.controlPoint}
+        />
+      )}
     </group>
   )
 }

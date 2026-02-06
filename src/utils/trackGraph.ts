@@ -408,3 +408,135 @@ export const findBranchPoints = (graph: TrackGraph): string[] => {
 
   return branchPoints
 }
+
+export interface FlowPropagationResult {
+  directions: Map<string, 'forward' | 'backward'>
+  unvisitedRoadIds: string[]
+}
+
+export const propagateFlowDirection = (
+  graph: TrackGraph,
+  checkpoint: PlacedObject,
+  objects: PlacedObject[],
+): FlowPropagationResult => {
+  const directions = new Map<string, 'forward' | 'backward'>()
+  const allRoadEdgeIds = new Set<string>()
+
+  for (const [edgeId, edge] of graph.edges) {
+    const road = objects.find(o => o.id === edge.roadId)
+    if (road && road.type === 'road') {
+      allRoadEdgeIds.add(edgeId)
+    }
+  }
+
+  if (!checkpoint.startPoint || !checkpoint.endPoint || allRoadEdgeIds.size === 0) {
+    return {
+      directions,
+      unvisitedRoadIds: Array.from(allRoadEdgeIds).map(
+        eId => graph.edges.get(eId)!.roadId,
+      ),
+    }
+  }
+
+  const checkpointCenter: [number, number, number] = [
+    (checkpoint.startPoint[0] + checkpoint.endPoint[0]) / 2,
+    0,
+    (checkpoint.startPoint[2] + checkpoint.endPoint[2]) / 2,
+  ]
+
+  const checkpointNormal: [number, number] = [
+    Math.sin(checkpoint.rotation),
+    Math.cos(checkpoint.rotation),
+  ]
+
+  let closestEdgeId: string | null = null
+  let closestDist = Infinity
+  for (const edgeId of allRoadEdgeIds) {
+    const edge = graph.edges.get(edgeId)!
+    const startNode = graph.nodes.get(edge.startNodeKey)
+    const endNode = graph.nodes.get(edge.endNodeKey)
+    if (!startNode || !endNode) continue
+
+    const midX = (startNode.position[0] + endNode.position[0]) / 2
+    const midZ = (startNode.position[2] + endNode.position[2]) / 2
+    const dist = Math.sqrt(
+      (midX - checkpointCenter[0]) ** 2 + (midZ - checkpointCenter[2]) ** 2,
+    )
+    if (dist < closestDist) {
+      closestDist = dist
+      closestEdgeId = edgeId
+    }
+  }
+
+  if (!closestEdgeId) {
+    return {
+      directions,
+      unvisitedRoadIds: Array.from(allRoadEdgeIds).map(
+        eId => graph.edges.get(eId)!.roadId,
+      ),
+    }
+  }
+
+  const startEdge = graph.edges.get(closestEdgeId)!
+  const startNode = graph.nodes.get(startEdge.startNodeKey)!
+  const endNode = graph.nodes.get(startEdge.endNodeKey)!
+
+  const roadDirX = endNode.position[0] - startNode.position[0]
+  const roadDirZ = endNode.position[2] - startNode.position[2]
+  const dot = roadDirX * checkpointNormal[0] + roadDirZ * checkpointNormal[1]
+  const initialDirection: 'forward' | 'backward' = dot >= 0 ? 'forward' : 'backward'
+
+  directions.set(startEdge.roadId, initialDirection)
+
+  const visitedEdges = new Set<string>([closestEdgeId])
+  const queue: Array<{ nodeKey: string; incomingEdgeId: string }> = []
+
+  const entryNodeKey =
+    initialDirection === 'forward' ? startEdge.endNodeKey : startEdge.startNodeKey
+  const exitNodeKey =
+    initialDirection === 'forward' ? startEdge.startNodeKey : startEdge.endNodeKey
+
+  queue.push({ nodeKey: entryNodeKey, incomingEdgeId: closestEdgeId })
+  queue.push({ nodeKey: exitNodeKey, incomingEdgeId: closestEdgeId })
+
+  while (queue.length > 0) {
+    const { nodeKey, incomingEdgeId } = queue.shift()!
+    const node = graph.nodes.get(nodeKey)
+    if (!node) continue
+
+    const incomingEdge = graph.edges.get(incomingEdgeId)!
+    const incomingDir = directions.get(incomingEdge.roadId)!
+    const arrivedFromStart =
+      (incomingDir === 'forward' && incomingEdge.endNodeKey === nodeKey) ||
+      (incomingDir === 'backward' && incomingEdge.startNodeKey === nodeKey)
+
+    for (const edgeId of node.edges) {
+      if (visitedEdges.has(edgeId)) continue
+      if (!allRoadEdgeIds.has(edgeId)) continue
+      visitedEdges.add(edgeId)
+
+      const edge = graph.edges.get(edgeId)!
+      let dir: 'forward' | 'backward'
+
+      if (arrivedFromStart) {
+        dir = edge.startNodeKey === nodeKey ? 'forward' : 'backward'
+      } else {
+        dir = edge.startNodeKey === nodeKey ? 'forward' : 'backward'
+      }
+
+      directions.set(edge.roadId, dir)
+
+      const nextNodeKey = edge.startNodeKey === nodeKey ? edge.endNodeKey : edge.startNodeKey
+      queue.push({ nodeKey: nextNodeKey, incomingEdgeId: edgeId })
+    }
+  }
+
+  const unvisitedRoadIds: string[] = []
+  for (const edgeId of allRoadEdgeIds) {
+    if (!visitedEdges.has(edgeId)) {
+      unvisitedRoadIds.push(graph.edges.get(edgeId)!.roadId)
+    }
+  }
+
+  return { directions, unvisitedRoadIds }
+}
