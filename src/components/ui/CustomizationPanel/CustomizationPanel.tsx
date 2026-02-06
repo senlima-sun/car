@@ -203,6 +203,7 @@ export default function CustomizationPanel() {
   const removeObject = useCustomizationStore(s => s.removeObject)
   const clearAll = useCustomizationStore(s => s.clearAll)
   const addGeneratedCurbs = useCustomizationStore(s => s.addGeneratedCurbs)
+  const updateObject = useCustomizationStore(s => s.updateObject)
 
   const selectedObjectType = useEditorStore(s => s.selectedObjectType)
   const trackMode = useEditorStore(s => s.trackMode)
@@ -222,6 +223,9 @@ export default function CustomizationPanel() {
   const clearRoadSelection = useEditorStore(s => s.clearRoadSelection)
   const snapSettings = useEditorStore(s => s.snapSettings)
   const setSnapSettings = useEditorStore(s => s.setSnapSettings)
+  const multiSelectedIds = useEditorStore(s => s.multiSelectedIds)
+  const deleteMultiSelected = useEditorStore(s => s.deleteMultiSelected)
+  const clearMultiSelection = useEditorStore(s => s.clearMultiSelection)
   const checkpointPlacementType = useEditorStore(s => s.checkpointPlacementType)
   const setCheckpointPlacementType = useEditorStore(s => s.setCheckpointPlacementType)
 
@@ -474,6 +478,35 @@ export default function CustomizationPanel() {
             >
               Delete Selected
             </button>
+          </div>
+        )}
+
+        {multiSelectedIds.length > 0 && (
+          <div style={styles.selectedInfo}>
+            {multiSelectedIds.length} objects selected (Shift+Click)
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <button
+                style={{
+                  ...styles.actionButton,
+                  ...styles.clearButton,
+                  flex: 1,
+                }}
+                onClick={deleteMultiSelected}
+              >
+                Delete All
+              </button>
+              <button
+                style={{
+                  ...styles.actionButton,
+                  background: '#666',
+                  color: '#fff',
+                  flex: 1,
+                }}
+                onClick={clearMultiSelection}
+              >
+                Clear
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -759,6 +792,27 @@ export default function CustomizationPanel() {
         )}
       </div>
 
+      {/* Road Width - show when road is selected */}
+      {selectedObject && selectedObject.type === 'road' && !deleteMode && (
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>Road Width</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="range"
+              min={8}
+              max={24}
+              step={2}
+              value={selectedObject.width ?? 16}
+              onChange={(e) => updateObject(selectedObject.id, { width: Number(e.target.value) })}
+              style={{ flex: 1, accentColor: '#3b82f6' }}
+            />
+            <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 28 }}>
+              {selectedObject.width ?? 16}
+            </span>
+          </div>
+        </div>
+      )}
+
       <TrackValidationPanel />
 
       <div style={styles.section}>
@@ -827,7 +881,13 @@ export default function CustomizationPanel() {
         </div>
       </div>
 
-      <div style={styles.stats}>Objects placed: {placedObjects.length}</div>
+      <div style={{
+        ...styles.stats,
+        color: placedObjects.length > 200 ? '#f59e0b' : '#666',
+      }}>
+        Objects: {placedObjects.length}
+        {placedObjects.length > 200 && ' (performance may be affected)'}
+      </div>
     </div>
   )
 }

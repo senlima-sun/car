@@ -17,6 +17,7 @@ import { ModeToggle } from '../CustomizationPanel'
 import { TrackEditorDock } from '../TrackEditorDock'
 import { TrackSelector } from '../TrackSelector'
 import { MobileControls, MobileSpeedGear } from '../MobileControls'
+import TrackMinimap from '../CustomizationPanel/TrackMinimap'
 import { useMobileDetection } from '../../../utils/isMobile'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -119,6 +120,9 @@ export default function HUD() {
 
   return (
     <div style={styles.container}>
+      {/* Track minimap - visible in both edit and race mode */}
+      <TrackMinimap />
+
       {/* Keymap modal trigger - always visible */}
       <KeymapModal />
 

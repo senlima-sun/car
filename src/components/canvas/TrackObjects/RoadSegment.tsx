@@ -13,6 +13,7 @@ interface RoadSegmentProps {
   endPoint?: [number, number, number]
   isGhost?: boolean
   isSelectedForCurb?: boolean
+  width?: number
 }
 
 const config = OBJECT_CONFIGS.road
@@ -25,8 +26,9 @@ export default function RoadSegment({
   endPoint,
   isGhost = false,
   isSelectedForCurb = false,
+  width: widthProp,
 }: RoadSegmentProps) {
-  const { width } = config.defaultSize
+  const width = widthProp ?? config.defaultSize.width
   const enterSurface = useSurfaceStore(s => s.enterSurface)
   const exitSurface = useSurfaceStore(s => s.exitSurface)
   const physics = usePhysicsOptional()

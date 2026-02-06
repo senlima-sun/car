@@ -85,10 +85,10 @@ export default function TrackObjectWrapper({
       // Check if it's a curved road
       if (object.trackMode === 'curve' && object.controlPoint) {
         component = (
-          <CurvedRoadSegment {...(curvedProps as any)} isSelectedForCurb={isSelectedForCurb} />
+          <CurvedRoadSegment {...(curvedProps as any)} width={object.width} isSelectedForCurb={isSelectedForCurb} />
         )
       } else {
-        component = <RoadSegment {...linearProps} isSelectedForCurb={isSelectedForCurb} />
+        component = <RoadSegment {...linearProps} width={object.width} isSelectedForCurb={isSelectedForCurb} />
       }
       break
     case 'curb':

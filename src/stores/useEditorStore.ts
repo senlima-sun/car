@@ -43,9 +43,16 @@ interface EditorState {
   canRedo: boolean
   undoDescription: string | null
   redoDescription: string | null
+  multiSelectedIds: string[]
+  clipboard: PlacedObject[]
 
   undo: () => void
   redo: () => void
+  toggleMultiSelect: (id: string) => void
+  clearMultiSelection: () => void
+  deleteMultiSelected: () => void
+  copySelected: () => void
+  pasteAtPosition: (pos: [number, number, number]) => void
   selectObjectType: (type: ObjectType | null) => void
   setTrackMode: (mode: TrackMode) => void
   setDeleteMode: (enabled: boolean) => void
@@ -126,6 +133,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   canRedo: false,
   undoDescription: null,
   redoDescription: null,
+  multiSelectedIds: [],
+  clipboard: [],
 
   undo: () => {
     editorCommandStack.undo()
@@ -524,6 +533,77 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setConnectedTangent: tangent => set({ connectedTangent: tangent }),
 
   setSnappedAngle: angle => set({ snappedAngle: angle }),
+
+  toggleMultiSelect: (id) => {
+    set(state => ({
+      multiSelectedIds: state.multiSelectedIds.includes(id)
+        ? state.multiSelectedIds.filter(i => i !== id)
+        : [...state.multiSelectedIds, id],
+    }))
+  },
+
+  clearMultiSelection: () => set({ multiSelectedIds: [] }),
+
+  deleteMultiSelected: () => {
+    const ids = get().multiSelectedIds
+    if (ids.length === 0) return
+    const customStore = useCustomizationStore.getState()
+    for (const id of ids) {
+      customStore.removeObject(id)
+    }
+    set({ multiSelectedIds: [] })
+  },
+
+  copySelected: () => {
+    const state = get()
+    const customStore = useCustomizationStore.getState()
+    const ids = state.multiSelectedIds.length > 0
+      ? state.multiSelectedIds
+      : state.selectedObjectId
+        ? [state.selectedObjectId]
+        : []
+
+    if (ids.length === 0) return
+
+    const objects = customStore.placedObjects.filter(o => ids.includes(o.id))
+    set({ clipboard: objects })
+  },
+
+  pasteAtPosition: (pos) => {
+    const { clipboard } = get()
+    if (clipboard.length === 0) return
+
+    const customStore = useCustomizationStore.getState()
+
+    let cx = 0, cz = 0
+    for (const obj of clipboard) {
+      cx += obj.position[0]
+      cz += obj.position[2]
+    }
+    cx /= clipboard.length
+    cz /= clipboard.length
+
+    const dx = pos[0] - cx
+    const dz = pos[2] - cz
+
+    for (const obj of clipboard) {
+      const newObj: PlacedObject = {
+        ...obj,
+        id: generateId(),
+        position: [obj.position[0] + dx, obj.position[1], obj.position[2] + dz],
+      }
+      if (newObj.startPoint) {
+        newObj.startPoint = [newObj.startPoint[0] + dx, newObj.startPoint[1], newObj.startPoint[2] + dz]
+      }
+      if (newObj.endPoint) {
+        newObj.endPoint = [newObj.endPoint[0] + dx, newObj.endPoint[1], newObj.endPoint[2] + dz]
+      }
+      if (newObj.controlPoint) {
+        newObj.controlPoint = [newObj.controlPoint[0] + dx, newObj.controlPoint[1], newObj.controlPoint[2] + dz]
+      }
+      customStore.addObject(newObj)
+    }
+  },
 }))
 
 editorCommandStack.subscribe(() => {

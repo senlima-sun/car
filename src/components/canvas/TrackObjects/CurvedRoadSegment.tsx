@@ -13,7 +13,7 @@ interface CurvedRoadSegmentProps {
   endPoint: [number, number, number]
   isGhost?: boolean
   isSelectedForCurb?: boolean
-  // Edge positions of connected road at start/end for seamless alignment
+  width?: number
   startLeftEdge?: [number, number, number]
   startRightEdge?: [number, number, number]
   endLeftEdge?: [number, number, number]
@@ -30,12 +30,13 @@ export default function CurvedRoadSegment({
   endPoint,
   isGhost = false,
   isSelectedForCurb = false,
+  width: widthProp,
   startLeftEdge,
   startRightEdge,
   endLeftEdge,
   endRightEdge,
 }: CurvedRoadSegmentProps) {
-  const { width } = config.defaultSize
+  const width = widthProp ?? config.defaultSize.width
   const halfWidth = width / 2
   const enterSurface = useSurfaceStore(s => s.enterSurface)
   const exitSurface = useSurfaceStore(s => s.exitSurface)

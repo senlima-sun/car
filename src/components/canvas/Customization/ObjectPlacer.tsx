@@ -61,6 +61,9 @@ export default function ObjectPlacer() {
   const setSnappedAngle = useEditorStore(s => s.setSnappedAngle)
   const undo = useEditorStore(s => s.undo)
   const redo = useEditorStore(s => s.redo)
+  const copySelected = useEditorStore(s => s.copySelected)
+  const pasteAtPosition = useEditorStore(s => s.pasteAtPosition)
+  const previewPositionForPaste = useEditorStore(s => s.previewPosition)
 
   // Get snap points from existing road/barrier segments
   const snapPoints = getSnapPoints(placedObjects)
@@ -290,6 +293,19 @@ export default function ObjectPlacer() {
         return
       }
 
+      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyC') {
+        event.preventDefault()
+        copySelected()
+        return
+      }
+      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyV') {
+        event.preventDefault()
+        if (previewPositionForPaste) {
+          pasteAtPosition(previewPositionForPaste)
+        }
+        return
+      }
+
       switch (event.code) {
         case 'KeyR':
           rotatePreviewCW()
@@ -315,6 +331,9 @@ export default function ObjectPlacer() {
       partialDeleteState,
       undo,
       redo,
+      copySelected,
+      pasteAtPosition,
+      previewPositionForPaste,
     ],
   )
 

@@ -22,6 +22,7 @@ export interface PlacedObject {
   flowDirection?: 'forward' | 'backward' | null
   checkpointType?: CheckpointType
   checkpointOrder?: number
+  width?: number
 }
 
 export type PlacementState =

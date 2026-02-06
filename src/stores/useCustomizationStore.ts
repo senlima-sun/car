@@ -22,6 +22,7 @@ interface CustomizationState {
   loadFromStorage: () => void
   saveToStorage: () => void
   setPlacedObjects: (objects: PlacedObject[]) => void
+  updateObject: (id: string, updates: Partial<PlacedObject>) => void
   addGeneratedCurbs: (curbs: PlacedObject[]) => void
   performPartialDelete: (
     roadId: string,
@@ -100,6 +101,15 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
 
   setPlacedObjects: (objects: PlacedObject[]) => {
     set({ placedObjects: objects })
+  },
+
+  updateObject: (id, updates) => {
+    set(state => ({
+      placedObjects: state.placedObjects.map(obj =>
+        obj.id === id ? { ...obj, ...updates } : obj,
+      ),
+    }))
+    setTimeout(() => get().saveToStorage(), 0)
   },
 
   addGeneratedCurbs: curbs => {

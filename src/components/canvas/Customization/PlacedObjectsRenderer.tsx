@@ -20,6 +20,8 @@ export default function PlacedObjectsRenderer({
   const autoCurbMode = useEditorStore(s => s.autoCurbMode)
   const selectedRoadIds = useEditorStore(s => s.selectedRoadIds)
   const toggleRoadSelection = useEditorStore(s => s.toggleRoadSelection)
+  const multiSelectedIds = useEditorStore(s => s.multiSelectedIds)
+  const toggleMultiSelect = useEditorStore(s => s.toggleMultiSelect)
 
   // Load track library on mount (handles migration from legacy storage)
   useEffect(() => {
@@ -35,18 +37,18 @@ export default function PlacedObjectsRenderer({
         return
       }
 
-      // Handle delete mode
       if (deleteMode) {
         e.stopPropagation()
-        // Toggle selection or select new object
-        if (selectedObjectId === objectId) {
+        if (e.nativeEvent.shiftKey) {
+          toggleMultiSelect(objectId)
+        } else if (selectedObjectId === objectId) {
           selectObject(null)
         } else {
           selectObject(objectId)
         }
       }
     },
-    [deleteMode, autoCurbMode, selectedObjectId, selectObject, toggleRoadSelection],
+    [deleteMode, autoCurbMode, selectedObjectId, selectObject, toggleRoadSelection, toggleMultiSelect],
   )
 
   // Check if pointer events should be active (for delete or auto curb mode)
@@ -80,7 +82,7 @@ export default function PlacedObjectsRenderer({
             <TrackObjectWrapper
               object={object}
               enablePhysics={enablePhysics}
-              isSelected={selectedObjectId === object.id}
+              isSelected={selectedObjectId === object.id || multiSelectedIds.includes(object.id)}
               isSelectedForCurb={autoCurbMode && selectedRoadIds.includes(object.id)}
             />
           </group>

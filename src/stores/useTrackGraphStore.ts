@@ -2,12 +2,14 @@ import { create } from 'zustand'
 import type { TrackGraph } from '../types/trackGraph'
 import type { SnapPointWithDirection, PlacedObject } from '../types/trackObjects'
 import { buildFromObjects, findBranchPoints, isCircuit, findConnectedRoads, propagateFlowDirection, type FlowPropagationResult } from '../utils/trackGraph'
-import { getSnapPoints, findNearestSnapPoint } from '../utils/roadGeometry'
+import { getSnapPoints } from '../utils/roadGeometry'
+import { SpatialIndex } from '../utils/spatialIndex'
 import { useCustomizationStore } from './useCustomizationStore'
 
 interface TrackGraphState {
   graph: TrackGraph
   snapPoints: SnapPointWithDirection[]
+  spatialIndex: SpatialIndex
   flowDirections: Map<string, 'forward' | 'backward'>
   flowWarnings: string[]
   hasFlow: boolean
@@ -25,6 +27,7 @@ interface TrackGraphState {
 export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
   graph: { nodes: new Map(), edges: new Map(), adjacency: new Map() },
   snapPoints: [],
+  spatialIndex: new SpatialIndex(),
   flowDirections: new Map(),
   flowWarnings: [],
   hasFlow: false,
@@ -33,11 +36,13 @@ export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
     const { placedObjects } = useCustomizationStore.getState()
     const graph = buildFromObjects(placedObjects)
     const snapPoints = getSnapPoints(placedObjects)
-    set({ graph, snapPoints })
+    const spatialIndex = new SpatialIndex()
+    spatialIndex.buildFromPoints(snapPoints)
+    set({ graph, snapPoints, spatialIndex })
   },
 
   findNearestSnap: (pos) => {
-    return findNearestSnapPoint(pos, get().snapPoints)
+    return get().spatialIndex.findNearest(pos)
   },
 
   getBranchPoints: () => {
