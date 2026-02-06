@@ -836,6 +836,60 @@ export default function CustomizationPanel() {
         </div>
       )}
 
+      {/* Elevation - show when road is selected */}
+      {selectedObject && selectedObject.type === 'road' && !deleteMode && (
+        <div style={styles.section}>
+          <div style={styles.sectionTitle}>Elevation</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ color: '#aaa', fontSize: 11, minWidth: 80 }}>Start Height</span>
+            <input
+              type="range"
+              min={0}
+              max={20}
+              step={0.5}
+              value={selectedObject.startElevation ?? 0}
+              onChange={(e) => updateObject(selectedObject.id, { startElevation: Number(e.target.value) })}
+              style={{ flex: 1, accentColor: '#3b82f6' }}
+            />
+            <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 36 }}>
+              {(selectedObject.startElevation ?? 0).toFixed(1)}m
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ color: '#aaa', fontSize: 11, minWidth: 80 }}>End Height</span>
+            <input
+              type="range"
+              min={0}
+              max={20}
+              step={0.5}
+              value={selectedObject.endElevation ?? 0}
+              onChange={(e) => updateObject(selectedObject.id, { endElevation: Number(e.target.value) })}
+              style={{ flex: 1, accentColor: '#3b82f6' }}
+            />
+            <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 36 }}>
+              {(selectedObject.endElevation ?? 0).toFixed(1)}m
+            </span>
+          </div>
+          {selectedObject.trackMode === 'curve' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#aaa', fontSize: 11, minWidth: 80 }}>Banking</span>
+              <input
+                type="range"
+                min={-30}
+                max={30}
+                step={5}
+                value={selectedObject.banking ?? 0}
+                onChange={(e) => updateObject(selectedObject.id, { banking: Number(e.target.value) })}
+                style={{ flex: 1, accentColor: '#3b82f6' }}
+              />
+              <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 36 }}>
+                {(selectedObject.banking ?? 0).toFixed(0)}°
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       <TrackValidationPanel />
 
       <div style={styles.section}>

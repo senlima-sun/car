@@ -23,6 +23,9 @@ export interface PlacedObject {
   checkpointType?: CheckpointType
   checkpointOrder?: number
   width?: number
+  startElevation?: number
+  endElevation?: number
+  banking?: number
 }
 
 export type PlacementState =

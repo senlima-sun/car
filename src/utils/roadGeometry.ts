@@ -642,3 +642,9 @@ export const splitRoadAtSegment = (
 
   return results
 }
+
+export const getElevationAtT = (road: PlacedObject, t: number): number => {
+  const startElev = road.startElevation ?? 0
+  const endElev = road.endElevation ?? 0
+  return startElev + (endElev - startElev) * t
+}
