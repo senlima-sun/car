@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useEffect } from 'react'
 import { Vector3, BufferGeometry, Float32BufferAttribute } from 'three'
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
@@ -161,6 +161,37 @@ export default function RoadSegment({
     }
   }, [isGhost, physics, setRoadRegionTS, finalPosition, finalRotation, width, length])
 
+  const rampColliderData = useMemo(() => {
+    const hw = width / 2
+    const hl = length / 2
+    const topStartY = (startElev - midElev) + ROAD_THICKNESS
+    const topEndY = (endElev - midElev) + ROAD_THICKNESS
+    const botStartY = topStartY - 0.5
+    const botEndY = topEndY - 0.5
+
+    const vertices = new Float32Array([
+      -hw, topStartY, -hl,
+       hw, topStartY, -hl,
+      -hw, topEndY,    hl,
+       hw, topEndY,    hl,
+      -hw, botStartY, -hl,
+       hw, botStartY, -hl,
+      -hw, botEndY,    hl,
+       hw, botEndY,    hl,
+    ])
+
+    const indices = new Uint32Array([
+      0, 2, 1, 1, 2, 3,
+      5, 7, 4, 4, 7, 6,
+      0, 1, 4, 4, 1, 5,
+      2, 6, 3, 3, 6, 7,
+      0, 4, 2, 2, 4, 6,
+      1, 3, 5, 5, 3, 7,
+    ])
+
+    return { vertices, indices }
+  }, [width, length, startElev, endElev, midElev])
+
   const roadVisuals = (
     <>
       <mesh geometry={slopeGeometry} receiveShadow={!isGhost} castShadow={!isGhost}>
@@ -224,6 +255,13 @@ export default function RoadSegment({
         onIntersectionEnter={handleEnterRoad}
         onIntersectionExit={handleExitRoad}
       />
+
+      {(startElev > 0.1 || endElev > 0.1) && (
+        <TrimeshCollider
+          args={[rampColliderData.vertices, rampColliderData.indices]}
+          friction={1}
+        />
+      )}
 
       {roadVisuals}
     </RigidBody>

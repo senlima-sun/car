@@ -355,19 +355,19 @@ export function useCarFrame({
     {
       const placedObjects = useCustomizationStore.getState().placedObjects
       const liveElev = getElevationAtWorldPosition(pos.x, pos.z, placedObjects)
-      const effectiveElev = liveElev > 0.1 ? liveElev : (onRoad ? targetElev : 0)
 
-      if (effectiveElev > 0.1) {
+      if (liveElev > 0.1) {
         const currentY = chassis.translation().y
-        const targetY = effectiveElev + 0.5
+        const targetY = liveElev + 0.5
         const diff = targetY - currentY
 
-        const k = 800
-        const d = 150
-        const vy = chassis.linvel().y
-        const force = k * diff - d * vy
-
-        chassis.applyImpulse({ x: 0, y: force * dt, z: 0 }, true)
+        if (diff > 0.2) {
+          const k = 300
+          const d = 80
+          const vy = chassis.linvel().y
+          const force = k * diff - d * vy
+          chassis.applyImpulse({ x: 0, y: force * dt, z: 0 }, true)
+        }
       }
     }
 
