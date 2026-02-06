@@ -1,37 +1,111 @@
 use crate::types::{BrakeConfig, BrakeState, EngineBrakingLevel};
 
-// ============================================================================
-// Brake Constants
-// ============================================================================
-
-/// Default front brake bias (58%)
 pub const DEFAULT_FRONT_BIAS: f32 = 0.58;
-
-/// Minimum front brake bias (50%)
 pub const MIN_FRONT_BIAS: f32 = 0.50;
-
-/// Maximum front brake bias (70%)
 pub const MAX_FRONT_BIAS: f32 = 0.70;
-
-/// Brake bias adjustment step (2%)
 pub const BIAS_ADJUSTMENT_STEP: f32 = 0.02;
-
-/// Engine braking force at Low level (N)
 pub const ENGINE_BRAKE_LOW: f32 = 1500.0;
-
-/// Engine braking force at Medium level (N)
 pub const ENGINE_BRAKE_MEDIUM: f32 = 2500.0;
-
-/// Engine braking force at High level (N)
 pub const ENGINE_BRAKE_HIGH: f32 = 4000.0;
 
-// ============================================================================
-// Brake Physics State
-// ============================================================================
+const DISC_MASS_KG: f32 = 3.0;
+const DISC_CP: f32 = 1000.0;
+const DISC_AREA: f32 = 0.06;
+const DISC_EMISSIVITY: f32 = 0.85;
+const STEFAN_BOLTZMANN: f32 = 5.67e-8;
+const AMBIENT_TEMP_K: f32 = 298.0;
+const BASE_CONV_H: f32 = 25.0;
+const SPEED_CONV_FACTOR: f32 = 3.0;
+const BRAKE_TO_TIRE_K: f32 = 0.002;
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BrakeDiscTemperatures {
+    pub temps: [f32; 4],
+    pub wear: [f32; 4],
+}
+
+impl BrakeDiscTemperatures {
+    pub fn new() -> Self {
+        Self {
+            temps: [AMBIENT_TEMP_K; 4],
+            wear: [0.0; 4],
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        dt: f32,
+        speed_ms: f32,
+        brake_forces: [f32; 4],
+        ambient_celsius: f32,
+    ) {
+        let ambient_k = ambient_celsius + 273.15;
+        for i in 0..4 {
+            let q_in = brake_forces[i] * speed_ms;
+            let h = BASE_CONV_H + SPEED_CONV_FACTOR * speed_ms;
+            let q_conv = h * DISC_AREA * (self.temps[i] - ambient_k);
+            let t4_diff = self.temps[i].powi(4) - ambient_k.powi(4);
+            let q_rad = DISC_EMISSIVITY * STEFAN_BOLTZMANN * DISC_AREA * t4_diff;
+            let q_net = q_in - q_conv - q_rad;
+            let dt_temp = q_net / (DISC_MASS_KG * DISC_CP);
+            self.temps[i] = (self.temps[i] + dt_temp * dt).clamp(ambient_k, 1200.0);
+
+            if self.temps[i] > 1100.0 {
+                self.wear[i] = (self.wear[i] + 0.001 * dt).min(1.0);
+            }
+        }
+    }
+
+    pub fn get_fade_multiplier(&self, wheel: usize) -> f32 {
+        let celsius = self.temps[wheel] - 273.15;
+        brake_friction_mu(celsius) / 0.45
+    }
+
+    pub fn get_overall_fade(&self) -> f32 {
+        let mut total = 0.0;
+        for i in 0..4 {
+            total += self.get_fade_multiplier(i);
+        }
+        total / 4.0
+    }
+
+    pub fn heat_to_tires(&self, tire_temps_celsius: &[f32; 4]) -> [f32; 4] {
+        let mut deltas = [0.0f32; 4];
+        for i in 0..4 {
+            let disc_c = self.temps[i] - 273.15;
+            let diff = disc_c - tire_temps_celsius[i];
+            deltas[i] = diff * BRAKE_TO_TIRE_K;
+        }
+        deltas
+    }
+
+    pub fn celsius(&self) -> [f32; 4] {
+        [
+            self.temps[0] - 273.15,
+            self.temps[1] - 273.15,
+            self.temps[2] - 273.15,
+            self.temps[3] - 273.15,
+        ]
+    }
+}
+
+pub fn brake_friction_mu(celsius: f32) -> f32 {
+    if celsius < 200.0 {
+        0.3 + (celsius / 200.0) * 0.15
+    } else if celsius <= 600.0 {
+        0.45
+    } else if celsius <= 900.0 {
+        0.45 - 0.15 * ((celsius - 600.0) / 300.0)
+    } else {
+        let over = ((celsius - 900.0) / 200.0).min(1.0);
+        0.3 - 0.1 * over
+    }
+}
 
 #[derive(Debug)]
 pub struct BrakePhysicsState {
     config: BrakeConfig,
+    pub disc_temps: BrakeDiscTemperatures,
 }
 
 impl Default for BrakePhysicsState {
@@ -47,6 +121,7 @@ impl BrakePhysicsState {
                 front_bias: DEFAULT_FRONT_BIAS,
                 engine_braking: EngineBrakingLevel::Medium,
             },
+            disc_temps: BrakeDiscTemperatures::new(),
         }
     }
 
@@ -113,7 +188,35 @@ impl BrakePhysicsState {
         }
     }
 
-    /// Get current brake state
+    pub fn update_disc_temps(
+        &mut self,
+        dt: f32,
+        speed_ms: f32,
+        is_braking: bool,
+        total_brake_force: f32,
+        ambient_celsius: f32,
+    ) {
+        let forces = if is_braking {
+            let (front, rear) = self.calculate_forces(total_brake_force);
+            [front / 2.0, front / 2.0, rear / 2.0, rear / 2.0]
+        } else {
+            [0.0; 4]
+        };
+        self.disc_temps.update(dt, speed_ms, forces, ambient_celsius);
+    }
+
+    pub fn get_brake_temperatures(&self) -> [f32; 4] {
+        self.disc_temps.celsius()
+    }
+
+    pub fn get_brake_wear(&self) -> [f32; 4] {
+        self.disc_temps.wear
+    }
+
+    pub fn get_fade_multiplier(&self) -> f32 {
+        self.disc_temps.get_overall_fade()
+    }
+
     pub fn get_state(&self) -> BrakeState {
         BrakeState {
             front_bias: self.config.front_bias,
@@ -245,6 +348,95 @@ mod tests {
         assert_eq!(state.engine_braking, EngineBrakingLevel::Medium);
         assert!((state.front_brake_force - 11600.0).abs() < 0.1); // 58% of 20000
         assert!((state.rear_brake_force - 8400.0).abs() < 0.1);   // 42% of 20000
+    }
+
+    #[test]
+    fn test_brake_disc_heats_up_under_braking() {
+        let mut discs = BrakeDiscTemperatures::new();
+        let initial_temp = discs.celsius()[0];
+        for _ in 0..600 {
+            discs.update(1.0 / 60.0, 30.0, [5000.0, 5000.0, 3000.0, 3000.0], 25.0);
+        }
+        let after_temp = discs.celsius()[0];
+        assert!(
+            after_temp > initial_temp + 50.0,
+            "Brake disc should heat up from {} to well above, got {}",
+            initial_temp, after_temp
+        );
+    }
+
+    #[test]
+    fn test_high_speed_cools_faster() {
+        let mut slow_discs = BrakeDiscTemperatures::new();
+        let mut fast_discs = BrakeDiscTemperatures::new();
+
+        for d in [&mut slow_discs, &mut fast_discs] {
+            d.temps = [800.0; 4];
+        }
+
+        for _ in 0..600 {
+            slow_discs.update(1.0 / 60.0, 5.0, [0.0; 4], 25.0);
+            fast_discs.update(1.0 / 60.0, 60.0, [0.0; 4], 25.0);
+        }
+
+        assert!(
+            fast_discs.celsius()[0] < slow_discs.celsius()[0],
+            "High speed ({}) should cool faster than low speed ({})",
+            fast_discs.celsius()[0], slow_discs.celsius()[0]
+        );
+    }
+
+    #[test]
+    fn test_brake_fade_starts_at_600c() {
+        let mu_500 = brake_friction_mu(500.0);
+        let mu_700 = brake_friction_mu(700.0);
+        assert!(
+            mu_500 > mu_700,
+            "Friction at 500C ({}) should be > 700C ({})",
+            mu_500, mu_700
+        );
+        assert!((mu_500 - 0.45).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_brake_cold_low_friction() {
+        let mu_cold = brake_friction_mu(50.0);
+        let mu_optimal = brake_friction_mu(400.0);
+        assert!(
+            mu_cold < mu_optimal,
+            "Cold brake friction ({}) should be < optimal ({})",
+            mu_cold, mu_optimal
+        );
+    }
+
+    #[test]
+    fn test_disc_temp_stays_reasonable() {
+        let mut discs = BrakeDiscTemperatures::new();
+        for _ in 0..3600 {
+            discs.update(1.0 / 60.0, 30.0, [8000.0; 4], 25.0);
+        }
+        for i in 0..4 {
+            assert!(
+                discs.celsius()[i] < 1000.0,
+                "Disc {} temp {} should stay under 1000C with cooling",
+                i, discs.celsius()[i]
+            );
+        }
+    }
+
+    #[test]
+    fn test_brake_to_tire_heat_transfer() {
+        let mut discs = BrakeDiscTemperatures::new();
+        discs.temps = [873.15; 4]; // 600C
+        let tire_temps = [80.0; 4]; // 80C tires
+        let deltas = discs.heat_to_tires(&tire_temps);
+        for delta in &deltas {
+            assert!(
+                *delta > 0.0,
+                "Hot brake should transfer heat to cooler tire, got {}",
+                delta
+            );
+        }
     }
 
     #[test]

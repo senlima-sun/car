@@ -561,10 +561,16 @@ impl PhysicsEngine {
         // Get engine temperature power multiplier
         let engine_power_multiplier = self.engine_temperature.get_state().power_multiplier;
 
-        // Calculate front/rear brake forces from brake bias
-        let (front_brake_force, rear_brake_force) = self.brakes.calculate_forces(BASE_BRAKE_FORCE);
-
-        // Calculate ERS harvest deceleration (conservation of energy)
+        let is_braking = input.backward || input.brake;
+        self.brakes.update_disc_temps(
+            dt,
+            speed_ms,
+            is_braking,
+            BASE_BRAKE_FORCE,
+            ambient.to_celsius(),
+        );
+        let brake_fade = self.brakes.get_fade_multiplier();
+        let (front_brake_force, rear_brake_force) = self.brakes.calculate_forces(BASE_BRAKE_FORCE * brake_fade);
         let ers_harvest_decel = if self.ers.is_harvesting() {
             let harvest_power = self.ers.get_harvest_power_watts();
             harvest_power / speed_ms.max(1.0)
