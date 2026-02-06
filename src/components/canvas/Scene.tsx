@@ -22,9 +22,9 @@ function Ground() {
   return (
     <>
       <RigidBody type='fixed' colliders='cuboid' friction={1}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} visible={false}>
           <planeGeometry args={[1000, 1000]} />
-          <meshStandardMaterial color='#808080' roughness={0.3} metalness={0} />
+          <meshBasicMaterial />
         </mesh>
       </RigidBody>
       <TerrainMesh />

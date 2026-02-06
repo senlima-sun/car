@@ -33,17 +33,11 @@ export default function DynamicLighting() {
       {/* Ambient light */}
       <ambientLight intensity={config.ambientIntensity} />
 
-      {/* Main sun light */}
+      {/* Main sun light (shadows handled by FollowingSun in Scene) */}
       <directionalLight
         position={config.sunPosition}
         intensity={config.sunIntensity}
         color={config.sunColor}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-100}
-        shadow-camera-right={100}
-        shadow-camera-top={100}
-        shadow-camera-bottom={-100}
       />
 
       {/* Fill light from opposite side */}

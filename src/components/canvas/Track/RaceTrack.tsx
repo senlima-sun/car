@@ -225,7 +225,17 @@ function Ground() {
   )
 }
 
-// Track segment with asphalt texture
+// Shared asphalt textures (created once, reused by all TrackSegments)
+let sharedAsphaltTextures: ReturnType<typeof createAsphaltTexture> | null = null
+function getSharedAsphaltTextures() {
+  if (!sharedAsphaltTextures) {
+    sharedAsphaltTextures = createAsphaltTexture()
+  }
+  return sharedAsphaltTextures
+}
+
+const _normalScale = new THREE.Vector2(0.3, 0.3)
+
 function TrackSegment({
   position,
   rotation = 0,
@@ -236,12 +246,12 @@ function TrackSegment({
   length?: number
 }) {
   const textures = useMemo(() => {
-    const t = createAsphaltTexture()
+    const base = getSharedAsphaltTextures()
     const lengthRepeat = (length / 50) * 40
-    t.map.repeat.set(8, lengthRepeat)
-    t.normalMap.repeat.set(8, lengthRepeat)
-    t.roughnessMap.repeat.set(8, lengthRepeat)
-    return t
+    base.map.repeat.set(8, lengthRepeat)
+    base.normalMap.repeat.set(8, lengthRepeat)
+    base.roughnessMap.repeat.set(8, lengthRepeat)
+    return base
   }, [length])
 
   return (
@@ -250,7 +260,7 @@ function TrackSegment({
       <meshStandardMaterial
         map={textures.map}
         normalMap={textures.normalMap}
-        normalScale={new THREE.Vector2(0.3, 0.3)}
+        normalScale={_normalScale}
         roughnessMap={textures.roughnessMap}
         roughness={0.75}
         metalness={0.0}

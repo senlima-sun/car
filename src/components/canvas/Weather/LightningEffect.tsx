@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useCallback } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
@@ -38,21 +38,18 @@ export default function LightningEffect() {
   const lightRef = useRef<THREE.DirectionalLight>(null)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
-  // Lightning timing state
-  const [nextFlashTime, setNextFlashTime] = useState(5 + Math.random() * 10)
-  const [isFlashing, setIsFlashing] = useState(false)
-  const [currentPattern, setCurrentPattern] = useState<FlashPattern | null>(null)
+  const nextFlashTime = useRef(5 + Math.random() * 10)
+  const isFlashing = useRef(false)
+  const currentPattern = useRef<FlashPattern | null>(null)
   const flashStartTime = useRef(0)
   const elapsedTime = useRef(0)
 
   // Lightning only in heavy rain (intensity > 0.6)
   const isRaining = rainIntensity > 0.6
 
-  // Schedule next flash
   const scheduleNextFlash = useCallback(() => {
-    // Random interval: 8-23 seconds between lightning strikes
     const interval = 8 + Math.random() * 15
-    setNextFlashTime(elapsedTime.current + interval)
+    nextFlashTime.current = elapsedTime.current + interval
   }, [])
 
   useFrame((_, delta) => {
@@ -66,29 +63,25 @@ export default function LightningEffect() {
 
     elapsedTime.current += delta
 
-    // Check if it's time to flash
-    if (!isFlashing && elapsedTime.current >= nextFlashTime) {
-      setIsFlashing(true)
-      setCurrentPattern(generateFlashPattern())
+    if (!isFlashing.current && elapsedTime.current >= nextFlashTime.current) {
+      isFlashing.current = true
+      currentPattern.current = generateFlashPattern()
       flashStartTime.current = elapsedTime.current
     }
 
-    // Process flash animation
-    if (isFlashing && currentPattern) {
+    if (isFlashing.current && currentPattern.current) {
       const flashElapsed = elapsedTime.current - flashStartTime.current
 
-      if (flashElapsed >= currentPattern.totalDuration) {
-        // Flash complete
-        setIsFlashing(false)
-        setCurrentPattern(null)
+      if (flashElapsed >= currentPattern.current.totalDuration) {
+        isFlashing.current = false
+        currentPattern.current = null
         lightRef.current.intensity = 0
         scheduleNextFlash()
       } else {
-        // Find current flash segment
         let accumulatedTime = 0
         let currentIntensity = 0
 
-        for (const flash of currentPattern.flashes) {
+        for (const flash of currentPattern.current.flashes) {
           if (flashElapsed < accumulatedTime + flash.duration) {
             // Calculate smooth intensity within this segment
             const segmentProgress = (flashElapsed - accumulatedTime) / flash.duration

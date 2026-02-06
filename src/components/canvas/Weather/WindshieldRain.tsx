@@ -5,6 +5,8 @@ import { useGameStore } from '../../../stores/useGameStore'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { useCarStore } from '../../../stores/useCarStore'
 
+const _forward = new THREE.Vector3()
+
 // Windshield rain shader - animated droplets and streaks
 const windshieldRainShader = {
   uniforms: {
@@ -173,12 +175,11 @@ export default function WindshieldRain() {
     materialRef.current.uniforms.uTime.value += delta
     materialRef.current.uniforms.uSpeed.value = speed
 
-    // Position the plane in front of the camera
-    const forward = new THREE.Vector3(0, 0, -1)
-    forward.applyQuaternion(camera.quaternion)
+    _forward.set(0, 0, -1)
+    _forward.applyQuaternion(camera.quaternion)
 
     meshRef.current.position.copy(camera.position)
-    meshRef.current.position.add(forward.multiplyScalar(0.5))
+    meshRef.current.position.add(_forward.multiplyScalar(0.5))
     meshRef.current.quaternion.copy(camera.quaternion)
   })
 

@@ -24,6 +24,7 @@ interface TireState {
   syncFromWasm: (wear: PerWheelWear, effectiveGrip: number) => void
   syncGripBreakdown: (breakdown: GripBreakdown) => void
   syncTireMaterial: (material: TireMaterialOutput) => void
+  syncAllFromWasm: (wear: PerWheelWear, effectiveGrip: number, breakdown: GripBreakdown | null, material: TireMaterialOutput | null) => void
   resetWear: () => void
   setWearDebug: (wearPercentage: number) => void
   disableDebugMode: () => void
@@ -73,6 +74,20 @@ export const useTireStore = create<TireState>((set, get) => ({
 
   syncTireMaterial: material => {
     set({ tireMaterial: material })
+  },
+
+  syncAllFromWasm: (wear, effectiveGrip, breakdown, material) => {
+    if (get().debugMode) return
+
+    const avgWear = (wear.frontLeft + wear.frontRight + wear.rearLeft + wear.rearRight) / 4
+
+    set({
+      perWheelWear: wear,
+      averageWear: avgWear,
+      effectiveGripMultiplier: effectiveGrip,
+      gripBreakdown: breakdown,
+      tireMaterial: material,
+    })
   },
 
   resetWear: () => {

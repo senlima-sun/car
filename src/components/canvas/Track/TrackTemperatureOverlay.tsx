@@ -24,6 +24,7 @@ function computeWeatherType(temperature: number, rainIntensity: number): number 
 
 export default function TrackTemperatureOverlay() {
   const materialRef = useRef<THREE.ShaderMaterial>(null)
+  const wasmFrameCounter = useRef(0)
 
   const dataTexture = useTrackTemperatureStore(s => s.dataTexture)
   const textureNeedsUpdate = useTrackTemperatureStore(s => s.textureNeedsUpdate)
@@ -88,17 +89,16 @@ export default function TrackTemperatureOverlay() {
       updateTexture()
     }
 
-    // Merge rubber data from WASM into the texture's B channel
-    if (dataTexture && physics.initialized) {
+    // Merge rubber data from WASM into the texture's B channel (~10Hz, every 6 frames)
+    wasmFrameCounter.current++
+    if (wasmFrameCounter.current % 6 === 0 && dataTexture && physics.initialized) {
       try {
         const wasmData = physics.getTrackTextureData()
         const textureData = dataTexture.image.data as Uint8Array
         const len = Math.min(wasmData.length, textureData.length)
 
-        // Copy only the B channel (rubber + ice) from WASM data
-        // WASM texture: R=heat, G=wetness, B=rubber|ice, A=255
         for (let i = 0; i < len; i += 4) {
-          textureData[i + 2] = wasmData[i + 2] // B channel: rubber (lower 4 bits) + ice (upper 4 bits)
+          textureData[i + 2] = wasmData[i + 2]
         }
         dataTexture.needsUpdate = true
       } catch {

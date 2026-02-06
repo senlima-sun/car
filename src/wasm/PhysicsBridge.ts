@@ -295,6 +295,13 @@ export interface BrakeState {
   rear_brake_force: number // N
 }
 
+export interface StepAndSyncOutput {
+  physics: CarPhysicsOutput
+  wind_state: WindState
+  aero_state: ActiveAeroState
+  brake_state: BrakeState
+}
+
 // ============================================================================
 // Engine Instance Management
 // ============================================================================
@@ -392,6 +399,24 @@ export function stepPhysics(
   const safeDelta = sanitize(delta, 0.016) // Default to ~60fps
 
   return eng.step(safeDelta, input, position, rotation, safeLinvel, safeAngvel) as CarPhysicsOutput
+}
+
+/**
+ * Combined physics step + state sync (fewer FFI calls)
+ */
+export function stepAndSync(
+  delta: number,
+  input: CarInput,
+  position: [number, number, number],
+  rotation: [number, number, number, number],
+  linvel: [number, number, number],
+  angvel: [number, number, number],
+): StepAndSyncOutput {
+  const eng = getPhysicsEngine()
+  const safeLinvel = sanitizeVec3(linvel)
+  const safeAngvel = sanitizeVec3(angvel)
+  const safeDelta = sanitize(delta, 0.016)
+  return eng.step_and_sync(safeDelta, input, position, rotation, safeLinvel, safeAngvel) as StepAndSyncOutput
 }
 
 /**

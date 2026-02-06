@@ -8,6 +8,7 @@ export {
   isPhysicsEngineInitialized,
   getPhysicsEngine,
   stepPhysics,
+  stepAndSync,
   getWeatherModifiers,
   getAmbientConditions,
   // Weather API
@@ -101,6 +102,7 @@ export type {
   ActiveAeroState,
   EngineBrakingLevel,
   BrakeState,
+  StepAndSyncOutput,
 } from './PhysicsBridge'
 
 // React provider

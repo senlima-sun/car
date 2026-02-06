@@ -18,7 +18,8 @@ function PuddlePatches() {
   const colorRef = useRef<THREE.InstancedBufferAttribute | null>(null)
   const dummyRef = useRef(new THREE.Object3D())
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
-  const cells = useTrackTemperatureStore(s => s.cells)
+  const cellsVersion = useTrackTemperatureStore(s => s.cellsVersion)
+  const frameCounter = useRef(0)
 
   // Only render when raining or shortly after (puddles persist)
   const isRaining = rainIntensity > 0.01
@@ -29,11 +30,14 @@ function PuddlePatches() {
   useFrame(() => {
     if (!meshRef.current) return
 
+    frameCounter.current++
+    if (frameCounter.current % 3 !== 0) return
+
+    const cells = useTrackTemperatureStore.getState().cells
     const dummy = dummyRef.current
     const { gridSize } = TRACK_TEMP_CONFIG
     let instanceIndex = 0
 
-    // Reset all instances to invisible first
     for (let i = 0; i < MAX_PUDDLES; i++) {
       dummy.position.set(0, -100, 0)
       dummy.scale.setScalar(0)
@@ -41,39 +45,34 @@ function PuddlePatches() {
       meshRef.current.setMatrixAt(i, dummy.matrix)
     }
 
-    // Place puddles at cells with water depth
     cells.forEach((cell, key) => {
       if (instanceIndex >= MAX_PUDDLES) return
 
-      // Use water_depth if available, fallback to wetness for compatibility
       const waterDepth = cell.waterDepth ?? cell.wetness
       if (waterDepth < WATER_DEPTH_THRESHOLD) return
 
-      const [cellX, cellZ] = key.split(',').map(Number)
+      const commaIdx = key.indexOf(',')
+      const cellX = +key.slice(0, commaIdx)
+      const cellZ = +key.slice(commaIdx + 1)
       const worldX = cellX * gridSize + gridSize / 2
       const worldZ = cellZ * gridSize + gridSize / 2
 
-      // Y position rises slightly with water depth (deeper = higher water level)
       const yPos = 0.01 + waterDepth * 0.03
       dummy.position.set(worldX, yPos, worldZ)
 
-      // Scale based on water depth (deeper puddles are larger)
       const baseScale = gridSize * 0.5
-      const depthScale = 0.5 + waterDepth * 0.8 // 0.5 to 1.3 multiplier
+      const depthScale = 0.5 + waterDepth * 0.8
       dummy.scale.setScalar(baseScale * depthScale)
 
-      // Use cell position for stable rotation
       dummy.rotation.set(-Math.PI / 2, 0, (cellX * 13 + cellZ * 29) % (Math.PI * 2))
       dummy.updateMatrix()
 
       meshRef.current!.setMatrixAt(instanceIndex, dummy.matrix)
 
-      // Color varies by depth - deeper puddles are darker
-      // Shallow: light blue (#5080a0), Deep: dark blue (#203850)
       const depthFactor = waterDepth
-      colorArray[instanceIndex * 3] = 0.31 - depthFactor * 0.19 // R: 0.31 -> 0.12
-      colorArray[instanceIndex * 3 + 1] = 0.5 - depthFactor * 0.28 // G: 0.5 -> 0.22
-      colorArray[instanceIndex * 3 + 2] = 0.63 - depthFactor * 0.31 // B: 0.63 -> 0.31
+      colorArray[instanceIndex * 3] = 0.31 - depthFactor * 0.19
+      colorArray[instanceIndex * 3 + 1] = 0.5 - depthFactor * 0.28
+      colorArray[instanceIndex * 3 + 2] = 0.63 - depthFactor * 0.31
 
       instanceIndex++
     })
@@ -81,20 +80,12 @@ function PuddlePatches() {
     meshRef.current.instanceMatrix.needsUpdate = true
     meshRef.current.count = instanceIndex
 
-    // Update instance colors
     if (colorRef.current) {
       colorRef.current.needsUpdate = true
     }
   })
 
-  // Don't render if no rain and no cells have water
-  const hasWater = useMemo(() => {
-    for (const cell of cells.values()) {
-      const waterDepth = cell.waterDepth ?? cell.wetness
-      if (waterDepth >= WATER_DEPTH_THRESHOLD) return true
-    }
-    return false
-  }, [cells])
+  const hasWater = cellsVersion > 0 && rainIntensity > 0.01
 
   if (!isRaining && !hasWater) return null
 
@@ -121,19 +112,21 @@ function IcePatches() {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const dummyRef = useRef(new THREE.Object3D())
   const temperature = useEnvironmentStore(s => s.temperature)
-  const cells = useTrackTemperatureStore(s => s.cells)
+  const frameCounter = useRef(0)
 
-  // Only render when cold (temp < 0°C)
   const isCold = temperature < 0
 
   useFrame(() => {
     if (!meshRef.current || !isCold) return
 
+    frameCounter.current++
+    if (frameCounter.current % 3 !== 0) return
+
+    const cells = useTrackTemperatureStore.getState().cells
     const dummy = dummyRef.current
     const { gridSize } = TRACK_TEMP_CONFIG
     let instanceIndex = 0
 
-    // Reset all instances to invisible first
     for (let i = 0; i < MAX_ICE_PATCHES; i++) {
       dummy.position.set(0, -100, 0)
       dummy.scale.setScalar(0)
@@ -141,13 +134,13 @@ function IcePatches() {
       meshRef.current.setMatrixAt(i, dummy.matrix)
     }
 
-    // Place ice at cold cells (low temperature = ice visible)
     cells.forEach((cell, key) => {
       if (instanceIndex >= MAX_ICE_PATCHES) return
-      // Show ice where temperature is low (car hasn't driven recently)
       if (cell.temperature > ICE_THRESHOLD) return
 
-      const [cellX, cellZ] = key.split(',').map(Number)
+      const commaIdx = key.indexOf(',')
+      const cellX = +key.slice(0, commaIdx)
+      const cellZ = +key.slice(commaIdx + 1)
       const worldX = cellX * gridSize + gridSize / 2
       const worldZ = cellZ * gridSize + gridSize / 2
 

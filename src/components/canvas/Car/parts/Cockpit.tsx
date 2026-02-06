@@ -1,4 +1,7 @@
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { CAR_COLORS } from '../constants/materials'
+import { useCarStore } from '../../../../stores/useCarStore'
 import { SteeringWheel } from './SteeringWheel'
 
 interface CockpitProps {
@@ -6,22 +9,21 @@ interface CockpitProps {
   showDisplay: boolean
 }
 
-/**
- * Driver cockpit with floor, walls, and steering wheel
- */
-export function Cockpit({ steerAngle, showDisplay }: CockpitProps) {
+export function Cockpit({ showDisplay }: CockpitProps) {
   const cockpitColor = CAR_COLORS.cockpit
+  const steerRef = useRef(0)
+
+  useFrame(() => {
+    steerRef.current = useCarStore.getState().steerAngle
+  })
 
   return (
     <group>
-      {/* Cockpit floor */}
       <mesh castShadow position={[0, -0.05, 0.15]}>
         <boxGeometry args={[0.65, 0.1, 1.3]} />
         <meshStandardMaterial color={cockpitColor} metalness={0.5} roughness={0.5} />
       </mesh>
-
-      {/* Steering wheel */}
-      <SteeringWheel steerAngle={steerAngle} showDisplay={showDisplay} />
+      <SteeringWheel steerAngle={steerRef.current} showDisplay={showDisplay} />
     </group>
   )
 }

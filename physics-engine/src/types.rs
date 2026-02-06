@@ -607,6 +607,15 @@ pub struct CarPhysicsOutput {
     pub tire_material: TireMaterialOutput,
 }
 
+/// Combined output for step + sync (reduces FFI calls per frame)
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct StepAndSyncOutput {
+    pub physics: CarPhysicsOutput,
+    pub wind_state: WindState,
+    pub aero_state: ActiveAeroState,
+    pub brake_state: BrakeState,
+}
+
 // ============================================================================
 // Track Temperature Types
 // ============================================================================

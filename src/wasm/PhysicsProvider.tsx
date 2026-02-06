@@ -2,11 +2,12 @@
  * React context provider for WASM physics engine
  */
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from 'react'
 import { getLogger } from '../debug/ActionLogger'
 import {
   initPhysicsEngine,
   stepPhysics,
+  stepAndSync,
   getWeatherModifiers,
   getAmbientConditions,
   // Weather API
@@ -83,11 +84,9 @@ import {
   SurfaceModifiers,
   TrackBounds,
   PerWheelWear,
+  StepAndSyncOutput,
   TireCompound,
   SurfaceType,
-  // ErsMode,
-  // AeroMode,
-  // EngineBrakingLevel,
 } from './PhysicsBridge'
 
 // Re-export types
@@ -99,12 +98,14 @@ export type {
   SurfaceModifiers,
   TrackBounds,
   PerWheelWear,
+  StepAndSyncOutput,
 }
 export { TireCompound, SurfaceType }
 
 interface PhysicsContextValue {
   initialized: boolean
   stepPhysics: typeof stepPhysics
+  stepAndSync: typeof stepAndSync
   getWeatherModifiers: typeof getWeatherModifiers
   getAmbientConditions: typeof getAmbientConditions
   // Weather API
@@ -227,25 +228,22 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     return fallback ? <>{fallback}</> : null
   }
 
-  const value: PhysicsContextValue = {
+  const value: PhysicsContextValue = useMemo(() => ({
     initialized,
     stepPhysics,
+    stepAndSync,
     getWeatherModifiers,
     getAmbientConditions,
-    // Weather API
     setCustomWeather,
     getRainIntensity,
-    // Environment API
     setEnvironment,
     getAirDensity,
     getSurfaceFrictionBreakdown,
-    // Wind API
     setWind,
     setWindEnabled,
     isWindEnabled,
     getWindState,
     getWindModifiers,
-    // Tire API
     setTireCompound,
     getTireCompound,
     getTireWear,
@@ -263,21 +261,17 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     getTrackTextureData,
     getTrackCellCount,
     updateCarDriving,
-    // Road temperature API
     setRoadCell,
     setRoadRegion,
-    // Rubber deposit / tire marks API
     updateRubberDeposits,
     getTrackWetness,
     getRubberDepositMultiplier,
-    // ERS API
     setErsMode,
     getErsMode,
     getErsBatteryCharge,
     setErsBatteryCharge,
     setErsOvertakeAvailable,
     getErsState,
-    // Semi-Auto ERS API
     setErsSemiAutoPreset,
     getErsSemiAutoPreset,
     getErsSemiAutoConfig,
@@ -286,11 +280,9 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     activateErsOvertake,
     deactivateErsOvertake,
     isErsOvertakeOverride,
-    // Active Aero API
     setAeroMode,
     getAeroMode,
     getActiveAeroState,
-    // Brake System API
     setBrakeBias,
     getBrakeBias,
     increaseBrakeBias,
@@ -299,7 +291,7 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     getEngineBrakingLevel,
     cycleEngineBrakingLevel,
     getBrakeState,
-  }
+  }), [initialized])
 
   return <PhysicsContext.Provider value={value}>{children}</PhysicsContext.Provider>
 }

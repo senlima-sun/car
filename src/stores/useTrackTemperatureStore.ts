@@ -46,17 +46,14 @@ export const TRACK_TEMP_CONFIG = {
 }
 
 interface TrackTemperatureState {
-  // Sparse storage - only stores non-default cells
   cells: Map<string, GridCell>
+  cellsVersion: number
 
-  // DataTexture for GPU rendering
   dataTexture: THREE.DataTexture | null
   textureNeedsUpdate: boolean
 
-  // Last prune timestamp
   lastPruneTime: number
 
-  // Actions
   updateCarPosition: (x: number, z: number, delta: number, intensity?: number) => void
   updateWeatherEffects: (temperature: number, rainIntensity: number, delta: number) => void
   initializeTexture: () => void
@@ -95,6 +92,7 @@ function gridToTextureCoord(cellX: number, cellZ: number): [number, number] {
 
 export const useTrackTemperatureStore = create<TrackTemperatureState>((set, get) => ({
   cells: new Map(),
+  cellsVersion: 0,
   dataTexture: null,
   textureNeedsUpdate: false,
   lastPruneTime: 0,
@@ -207,7 +205,7 @@ export const useTrackTemperatureStore = create<TrackTemperatureState>((set, get)
       }
     }
 
-    set({ cells: new Map(cells), textureNeedsUpdate: true })
+    set(s => ({ cellsVersion: s.cellsVersion + 1, textureNeedsUpdate: true }))
   },
 
   updateWeatherEffects: (temperature: number, rainIntensity: number, delta: number) => {
@@ -298,7 +296,7 @@ export const useTrackTemperatureStore = create<TrackTemperatureState>((set, get)
       set({ lastPruneTime: now })
     }
 
-    set({ cells: new Map(cells), textureNeedsUpdate: true })
+    set(s => ({ cellsVersion: s.cellsVersion + 1, textureNeedsUpdate: true }))
   },
 
   setRoadRegion: (minX: number, minZ: number, maxX: number, maxZ: number, isRoad: boolean) => {
@@ -324,6 +322,6 @@ export const useTrackTemperatureStore = create<TrackTemperatureState>((set, get)
       }
     }
 
-    set({ cells: new Map(cells), textureNeedsUpdate: true })
+    set(s => ({ cellsVersion: s.cellsVersion + 1, textureNeedsUpdate: true }))
   },
 }))

@@ -140,18 +140,12 @@ export default function StatusBar() {
   const lapCount = useLapTimeStore(state => state.lapCount)
   const updateCurrentTime = useLapTimeStore(state => state.updateCurrentTime)
 
-  // Update current lap time every frame
+  // Update current lap time at 10Hz (not every frame)
   useEffect(() => {
     if (!isLapActive || !isRecording || currentLapStart === null) return
 
-    let animationId: number
-    const update = () => {
-      updateCurrentTime()
-      animationId = requestAnimationFrame(update)
-    }
-    animationId = requestAnimationFrame(update)
-
-    return () => cancelAnimationFrame(animationId)
+    const intervalId = setInterval(updateCurrentTime, 100)
+    return () => clearInterval(intervalId)
   }, [isLapActive, isRecording, currentLapStart, updateCurrentTime])
 
   const tireConfig = TIRE_CONFIG[currentCompound]

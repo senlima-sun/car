@@ -706,6 +706,32 @@ impl PhysicsEngine {
     }
 
     // ========================================================================
+    // Batched Step + Sync (reduces FFI overhead)
+    // ========================================================================
+
+    pub fn step_and_sync(
+        &mut self,
+        delta_seconds: f32,
+        input: CarInput,
+        car_position: [f32; 3],
+        car_rotation: [f32; 4],
+        current_linvel: [f32; 3],
+        current_angvel: [f32; 3],
+    ) -> crate::types::StepAndSyncOutput {
+        let physics = self.step(delta_seconds, input, car_position, car_rotation, current_linvel, current_angvel);
+        let wind_state = self.get_wind_state();
+        let aero_state = self.get_active_aero_state();
+        let brake_state = self.get_brake_state();
+
+        crate::types::StepAndSyncOutput {
+            physics,
+            wind_state,
+            aero_state,
+            brake_state,
+        }
+    }
+
+    // ========================================================================
     // Debug API
     // ========================================================================
 

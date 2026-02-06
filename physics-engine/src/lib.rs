@@ -625,6 +625,32 @@ impl PhysicsEngine {
     }
 
     // ========================================================================
+    // Batched Step + Sync (fewer FFI calls per frame)
+    // ========================================================================
+
+    /// Combined physics step + state sync in one FFI call
+    /// Returns physics output + wind state + aero state + brake state
+    #[wasm_bindgen]
+    pub fn step_and_sync(
+        &mut self,
+        delta_seconds: f32,
+        input: JsValue,
+        car_position: JsValue,
+        car_rotation: JsValue,
+        current_linvel: JsValue,
+        current_angvel: JsValue,
+    ) -> JsValue {
+        let input: CarInput = from_value(input).unwrap_or_default();
+        let position: [f32; 3] = from_value(car_position).unwrap_or([0.0, 0.0, 0.0]);
+        let rotation: [f32; 4] = from_value(car_rotation).unwrap_or([0.0, 0.0, 0.0, 1.0]);
+        let linvel: [f32; 3] = from_value(current_linvel).unwrap_or([0.0, 0.0, 0.0]);
+        let angvel: [f32; 3] = from_value(current_angvel).unwrap_or([0.0, 0.0, 0.0]);
+
+        let output = self.inner.step_and_sync(delta_seconds, input, position, rotation, linvel, angvel);
+        to_value(&output).unwrap_or(JsValue::NULL)
+    }
+
+    // ========================================================================
     // Debug API
     // ========================================================================
 

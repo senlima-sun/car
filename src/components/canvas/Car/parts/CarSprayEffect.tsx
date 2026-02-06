@@ -1,8 +1,9 @@
-import { useRef, useMemo, useEffect } from 'react'
+import { useRef, useMemo, useEffect, type MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import { useTrackTemperatureStore } from '../../../../stores/useTrackTemperatureStore'
+import type { CarState } from '../hooks/useCarFrame'
 
 const MIN_SPEED_FOR_SPRAY = 8 // m/s (~29 km/h)
 
@@ -64,9 +65,7 @@ const sprayFragmentShader = /* glsl */ `
 `
 
 interface CarSprayEffectProps {
-  carPosition: THREE.Vector3
-  carVelocity: number
-  carRotation: number
+  carStateRef: MutableRefObject<CarState>
 }
 
 interface ParticleData {
@@ -80,9 +79,7 @@ interface ParticleData {
 }
 
 export default function CarSprayEffect({
-  carPosition,
-  carVelocity,
-  carRotation,
+  carStateRef,
 }: CarSprayEffectProps) {
   const temperature = useEnvironmentStore(s => s.temperature)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
@@ -206,8 +203,8 @@ export default function CarSprayEffect({
     }
   }, [sprayGeometry, mistGeometry, dropletGeometry, shaderMaterial])
 
-  // Check surface condition based on dynamic weather
   const getSurfaceCondition = () => {
+    const { position: carPosition } = carStateRef.current
     const cell = getCell(carPosition.x, carPosition.z)
     // Wet conditions when raining
     if (rainIntensity > 0.01) {
@@ -225,9 +222,10 @@ export default function CarSprayEffect({
   const spawnAccumulator = useRef({ spray: 0, mist: 0, droplet: 0 })
 
   useFrame((_, delta) => {
+    const { position: carPosition, velocity: carVelocity, rotation: carRotation } = carStateRef.current
     const surfaceCondition = getSurfaceCondition()
     const shouldEmit = surfaceCondition && carVelocity > MIN_SPEED_FOR_SPRAY
-    const speedFactor = Math.min(carVelocity / 30, 2) // Normalize speed effect
+    const speedFactor = Math.min(carVelocity / 30, 2)
 
     const cos = Math.cos(carRotation)
     const sin = Math.sin(carRotation)

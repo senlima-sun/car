@@ -25,6 +25,14 @@ interface AquaplaningState {
     affectedWheels: [boolean, boolean, boolean, boolean],
   ) => void
   setThermalShock: (isShocked: boolean, penalty: number, recoveryTime: number) => void
+  syncAll: (
+    isAquaplaning: boolean,
+    intensity: number,
+    affectedWheels: [boolean, boolean, boolean, boolean],
+    isShocked: boolean,
+    penalty: number,
+    recoveryTime: number,
+  ) => void
   reset: () => void
 }
 
@@ -47,6 +55,17 @@ export const useAquaplaningStore = create<AquaplaningState>(set => ({
 
   setThermalShock: (isShocked, penalty, recoveryTime) => {
     set({
+      isThermalShock: isShocked,
+      thermalShockPenalty: penalty,
+      thermalShockRecoveryTime: recoveryTime,
+    })
+  },
+
+  syncAll: (isAquaplaning, intensity, affectedWheels, isShocked, penalty, recoveryTime) => {
+    set({
+      isAquaplaning,
+      intensity,
+      affectedWheels,
       isThermalShock: isShocked,
       thermalShockPenalty: penalty,
       thermalShockRecoveryTime: recoveryTime,

@@ -20,7 +20,7 @@ const Car = forwardRef<Group>((_, ref) => {
   const { startPosition, startRotation } = useStartPosition()
 
   // Main physics frame loop
-  const { carState } = useCarFrame({
+  const { carStateRef } = useCarFrame({
     chassisRef,
     physics,
     windEnabled,
@@ -59,11 +59,7 @@ const Car = forwardRef<Group>((_, ref) => {
         </group>
       </RigidBody>
 
-      <CarSprayEffect
-        carPosition={carState.position}
-        carVelocity={carState.velocity}
-        carRotation={carState.rotation}
-      />
+      <CarSprayEffect carStateRef={carStateRef} />
     </>
   )
 })

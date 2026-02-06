@@ -1,4 +1,4 @@
-import { useRef, useState, MutableRefObject } from 'react'
+import { useRef, MutableRefObject } from 'react'
 import { Vector3 } from 'three'
 import { useFrame } from '@react-three/fiber'
 import { RapierRigidBody } from '@react-three/rapier'
@@ -80,15 +80,12 @@ export function useCarFrame({
   // Wind sync
   const syncWindState = useWindStore(state => state.syncFromPhysics)
 
-  // Tire/temperature sync
-  const syncTireWear = useTireStore(state => state.syncFromWasm)
-  const syncGripBreakdown = useTireStore(state => state.syncGripBreakdown)
-  const syncTireMaterial = useTireStore(state => state.syncTireMaterial)
+  // Tire/temperature sync (batched)
+  const syncAllTire = useTireStore(state => state.syncAllFromWasm)
   const syncTemperature = useTemperatureStore(state => state.syncFromWasm)
 
-  // Aquaplaning sync
-  const setAquaplaning = useAquaplaningStore(state => state.setAquaplaning)
-  const setThermalShock = useAquaplaningStore(state => state.setThermalShock)
+  // Aquaplaning sync (batched)
+  const syncAllAquaplaning = useAquaplaningStore(state => state.syncAll)
 
   // ERS sync (SemiAuto is default-only mode)
   const activateOvertake = useErsStore(state => state.activateOvertake)
@@ -150,9 +147,11 @@ export function useCarFrame({
   const prevGearRef = useRef(0)
   const prevDriftRef = useRef(false)
   const prevGripRef = useRef(1)
+  const lastTelemetryTime = useRef(0)
+  const windSyncCounter = useRef(0)
 
-  // State for spray effect
-  const [carState, setCarState] = useState<CarState>({
+  // Spray effect state (ref to avoid re-renders)
+  const carStateRef = useRef<CarState>({
     position: new Vector3(0, 0, 0),
     velocity: 0,
     rotation: 0,
@@ -290,11 +289,7 @@ export function useCarFrame({
       return
     }
 
-    // Sync wind state from physics (for gust updates)
-    if (windEnabled) {
-      const windState = physics.getWindState()
-      syncWindState(windState)
-    }
+    // Wind sync moved to batched stepAndSync below
 
     // Get current physics state from Rapier
     const pos = chassis.translation()
@@ -342,14 +337,8 @@ export function useCarFrame({
     // Sync ERS mode from UI to physics engine (get fresh state to avoid stale closure)
     physics.setErsMode(useErsStore.getState().mode)
 
-    // Sync Active Aero mode to physics and get current state (get fresh state to avoid stale closure)
+    // Sync Active Aero mode to physics
     physics.setAeroMode(useActiveAeroStore.getState().mode)
-    const aeroState = physics.getActiveAeroState()
-    syncAeroState(aeroState)
-
-    // Get brake state from physics (physics is source of truth)
-    const brakeState = physics.getBrakeState()
-    syncBrakeState(brakeState)
 
     // Build input for WASM physics
     const input: CarInput = {
@@ -361,8 +350,8 @@ export function useCarFrame({
       handbrake,
     }
 
-    // Run WASM physics step
-    const output = physics.stepPhysics(
+    // Batched WASM call: step + wind + aero + brake in one FFI round-trip
+    const syncResult = physics.stepAndSync(
       dt,
       input,
       [pos.x, pos.y, pos.z],
@@ -370,6 +359,15 @@ export function useCarFrame({
       [linvel.x, linvel.y, linvel.z],
       [angvel.x, angvel.y, angvel.z],
     )
+    const output = syncResult.physics
+
+    // Sync wind (throttled to every 10 frames), aero, brake from batched result
+    windSyncCounter.current++
+    if (windEnabled && windSyncCounter.current % 10 === 0) {
+      syncWindState(syncResult.wind_state)
+    }
+    syncAeroState(syncResult.aero_state)
+    syncBrakeState(syncResult.brake_state)
 
     // Apply velocities to Rapier
     chassis.setLinvel(
@@ -435,9 +433,9 @@ export function useCarFrame({
       prevGripRef.current = output.effective_grip
     }
 
-    // Sync tire wear from WASM to UI store
+    // Batched tire sync (1 set() instead of 3)
     if (output.tire_wear) {
-      syncTireWear(
+      syncAllTire(
         {
           frontLeft: output.tire_wear.front_left * 100,
           frontRight: output.tire_wear.front_right * 100,
@@ -445,36 +443,21 @@ export function useCarFrame({
           rearRight: output.tire_wear.rear_right * 100,
         },
         output.effective_grip,
+        output.grip_breakdown ?? null,
+        output.tire_material ?? null,
       )
     }
 
-    // Sync grip breakdown from WASM to UI store
-    if (output.grip_breakdown) {
-      syncGripBreakdown(output.grip_breakdown)
-    }
-
-    // Sync tire material from WASM to UI store
-    if (output.tire_material) {
-      syncTireMaterial(output.tire_material)
-    }
-
-    // Sync temperature from WASM to UI store
     if (output.temperature) {
       syncTemperature(output.temperature)
     }
 
-    // Sync aquaplaning state from WASM to UI store
-    if (output.aquaplaning) {
-      setAquaplaning(
+    // Batched aquaplaning sync (1 set() instead of 2)
+    if (output.aquaplaning && output.tire_thermal_shock) {
+      syncAllAquaplaning(
         output.aquaplaning.is_aquaplaning,
         output.aquaplaning.intensity,
         output.aquaplaning.affected_wheels,
-      )
-    }
-
-    // Sync thermal shock state from WASM to UI store
-    if (output.tire_thermal_shock) {
-      setThermalShock(
         output.tire_thermal_shock.is_shocked,
         output.tire_thermal_shock.grip_penalty,
         output.tire_thermal_shock.recovery_time,
@@ -496,16 +479,29 @@ export function useCarFrame({
       number,
     ]
 
-    // Update telemetry
-    updateTelemetry({
-      speed: output.speed_kmh,
-      gear: output.gear,
-      rpm: output.rpm ?? 0,
-      position: [pos.x, pos.y, pos.z],
-      rotation: [rot.x, rot.y, rot.z, rot.w],
-      steerAngle: left ? 0.3 : right ? -0.3 : 0,
-      wheelRotations: wheelRotationsRef.current,
-    })
+    const steerVal = left ? 0.3 : right ? -0.3 : 0
+    const now = performance.now()
+    const speedChanged = Math.abs(output.speed_kmh - prevSpeedRef.current) >= 1
+    const gearChanged = output.gear !== prevGearRef.current
+
+    // Throttle telemetry to ~10Hz (100ms), but always update steerAngle/wheelRotations for visuals
+    if (now - lastTelemetryTime.current > 100 || speedChanged || gearChanged) {
+      updateTelemetry({
+        speed: output.speed_kmh,
+        gear: output.gear,
+        rpm: output.rpm ?? 0,
+        position: [pos.x, pos.y, pos.z],
+        rotation: [rot.x, rot.y, rot.z, rot.w],
+        steerAngle: steerVal,
+        wheelRotations: wheelRotationsRef.current,
+      })
+      lastTelemetryTime.current = now
+    } else {
+      // Always update visual-only fields via direct state mutation (no re-render)
+      const store = useCarStore.getState()
+      store.steerAngle = steerVal
+      store.wheelRotations = wheelRotationsRef.current
+    }
 
     // Update track temperature from normal driving
     if (output.speed_kmh > 3) {
@@ -520,15 +516,16 @@ export function useCarFrame({
       updateCarPosition(pos.x, pos.z, dt, output.skid_intensity)
     }
 
+    // Compute yaw once for rubber deposits and spray effect
+    const yaw = Math.atan2(
+      2 * (rot.w * rot.y + rot.x * rot.z),
+      1 - 2 * (rot.y * rot.y + rot.x * rot.x),
+    )
+    const cosYaw = Math.cos(yaw)
+    const sinYaw = Math.sin(yaw)
+
     // Update rubber deposits for tire marks (per-wheel)
     if (output.speed_kmh > MIN_SPEED_FOR_RUBBER) {
-      // Calculate car yaw for wheel position rotation
-      const yawForRubber = Math.atan2(
-        2 * (rot.w * rot.y + rot.x * rot.z),
-        1 - 2 * (rot.y * rot.y + rot.x * rot.x),
-      )
-      const cosYaw = Math.cos(yawForRubber)
-      const sinYaw = Math.sin(yawForRubber)
 
       // Get physics parameters for rubber calculation
       const compoundMult = physics.getRubberDepositMultiplier()
@@ -608,18 +605,10 @@ export function useCarFrame({
       }
     }
 
-    // Update car state for spray effect
-    const yaw = Math.atan2(
-      2 * (rot.w * rot.y + rot.x * rot.z),
-      1 - 2 * (rot.y * rot.y + rot.x * rot.x),
-    )
-
-    setCarState({
-      position: tempCarPosRef.current.set(pos.x, pos.y, pos.z),
-      velocity: output.speed_kmh / 3.6,
-      rotation: yaw,
-    })
+    carStateRef.current.position = tempCarPosRef.current.set(pos.x, pos.y, pos.z)
+    carStateRef.current.velocity = output.speed_kmh / 3.6
+    carStateRef.current.rotation = yaw
   })
 
-  return { carState, wheelRotations: wheelRotationsRef }
+  return { carStateRef, wheelRotations: wheelRotationsRef }
 }
