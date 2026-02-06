@@ -1,7 +1,7 @@
 use crate::active_aero::ActiveAeroPhysicsState;
 use crate::brakes::BrakePhysicsState;
 use crate::car_physics::weight_transfer::calculate_weight_transfer;
-use crate::car_physics::CarPhysicsState;
+use crate::car_physics::{CarPhysicsState, BASE_BRAKE_FORCE};
 use crate::curb::CurbState;
 use crate::engine_temp::EngineTemperatureState;
 use crate::ers::ErsPhysicsState;
@@ -536,6 +536,20 @@ impl PhysicsEngine {
         // Get engine braking force from brake system
         let engine_braking_force = self.brakes.get_engine_braking_force();
 
+        // Get engine temperature power multiplier
+        let engine_power_multiplier = self.engine_temperature.get_state().power_multiplier;
+
+        // Calculate front/rear brake forces from brake bias
+        let (front_brake_force, rear_brake_force) = self.brakes.calculate_forces(BASE_BRAKE_FORCE);
+
+        // Calculate ERS harvest deceleration (conservation of energy)
+        let ers_harvest_decel = if self.ers.is_harvesting() {
+            let harvest_power = self.ers.get_harvest_power_watts();
+            harvest_power / speed_ms.max(1.0)
+        } else {
+            0.0
+        };
+
         // Run car physics with surface, tire degradation, wind, ERS, active aero, and brake effects
         let mut output = self.car.step(
             dt,
@@ -554,6 +568,10 @@ impl PhysicsEngine {
             active_aero_state.drag_multiplier,
             active_aero_state.downforce_multiplier,
             engine_braking_force,
+            engine_power_multiplier,
+            front_brake_force,
+            rear_brake_force,
+            ers_harvest_decel,
         );
 
         // Apply curb bump as pitch rotation (X axis = pitch in Three.js)

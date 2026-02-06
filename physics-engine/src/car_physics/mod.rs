@@ -96,6 +96,10 @@ impl CarPhysicsState {
         active_aero_drag_mult: f32,
         active_aero_downforce_mult: f32,
         engine_braking_force: f32,
+        engine_power_multiplier: f32,
+        front_brake_force: f32,
+        rear_brake_force: f32,
+        ers_harvest_decel: f32,
     ) -> CarPhysicsOutput {
         let dt = delta.min(0.05); // Clamp delta time
 
@@ -161,18 +165,19 @@ impl CarPhysicsState {
         // Engine force
         if input.forward && !input.brake {
             let engine_force = aerodynamics::get_engine_force(self.speed_ms, ers_boost)
-                * weather_modifiers.engine_efficiency_multiplier;
+                * weather_modifiers.engine_efficiency_multiplier
+                * engine_power_multiplier;
             longitudinal_force += engine_force;
         }
 
         // Braking / Reverse
         if input.backward || input.brake {
             if forward_speed > 0.5 {
-                let brake_force = BASE_BRAKE_FORCE
+                let total_brake = (front_brake_force + rear_brake_force)
                     * weather_modifiers.brake_efficiency_multiplier
                     * tire_degradation.brake_efficiency;
                 let handbrake_mult = if input.handbrake { 1.2 } else { 1.0 };
-                longitudinal_force -= brake_force * handbrake_mult;
+                longitudinal_force -= total_brake * handbrake_mult;
             } else if input.backward {
                 let reverse_force = aerodynamics::get_engine_force(0.0, 0.0)
                     * weather_modifiers.engine_efficiency_multiplier
@@ -196,6 +201,11 @@ impl CarPhysicsState {
         if is_on_curb && self.speed_ms > 1.0 {
             let curb_drag = self.speed_ms * CAR_MASS * (1.0 - curb_speed_multiplier) * 0.5;
             longitudinal_force -= curb_drag * forward_speed.signum();
+        }
+
+        // ERS harvest deceleration (energy conservation)
+        if ers_harvest_decel > 0.0 && self.speed_ms > 1.0 {
+            longitudinal_force -= ers_harvest_decel * forward_speed.signum();
         }
 
         // Downforce for grip (affected by weather and active aero)

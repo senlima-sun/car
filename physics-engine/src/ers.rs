@@ -478,6 +478,18 @@ impl ErsPhysicsState {
         self.current.overtake_available
     }
 
+    pub fn is_harvesting(&self) -> bool {
+        self.current.is_harvesting
+    }
+
+    pub fn get_harvest_power_watts(&self) -> f32 {
+        if self.current.power_flow < 0.0 {
+            self.current.power_flow.abs() * 1000.0
+        } else {
+            0.0
+        }
+    }
+
     /// Reset to default state
     pub fn reset(&mut self) {
         *self = Self::new();

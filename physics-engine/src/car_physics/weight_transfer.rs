@@ -1,18 +1,37 @@
-use super::{CAR_MASS, CG_HEIGHT, TRACK_WIDTH, WHEELBASE};
+use super::{CAR_MASS, CG_HEIGHT, TRACK_WIDTH, WEIGHT_DIST_FRONT, WHEELBASE};
 
 const LONGITUDINAL_TRANSFER_FACTOR: f32 = 0.5;
 const LATERAL_TRANSFER_FACTOR: f32 = 0.4;
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct WeightTransferResult {
     pub front_load_change: f32,
     pub rear_load_change: f32,
     pub left_load_change: f32,
     pub right_load_change: f32,
+    pub front_load_pct: f32,
+    pub rear_load_pct: f32,
+}
+
+impl Default for WeightTransferResult {
+    fn default() -> Self {
+        Self {
+            front_load_change: 0.0,
+            rear_load_change: 0.0,
+            left_load_change: 0.0,
+            right_load_change: 0.0,
+            front_load_pct: WEIGHT_DIST_FRONT,
+            rear_load_pct: 1.0 - WEIGHT_DIST_FRONT,
+        }
+    }
 }
 
 /// Calculate weight transfer based on longitudinal and lateral G-forces
 pub fn calculate_weight_transfer(longitudinal_g: f32, lateral_g: f32) -> WeightTransferResult {
+    let total_weight = CAR_MASS * 9.81;
+    let static_front_load = WEIGHT_DIST_FRONT * total_weight;
+    let static_rear_load = (1.0 - WEIGHT_DIST_FRONT) * total_weight;
+
     // Longitudinal weight transfer (acceleration/braking)
     // Positive G = accelerating = weight shifts to rear
     // Negative G = braking = weight shifts to front
@@ -23,11 +42,16 @@ pub fn calculate_weight_transfer(longitudinal_g: f32, lateral_g: f32) -> WeightT
     // Negative G = turning left = weight shifts to right
     let lat_transfer = (lateral_g * CAR_MASS * CG_HEIGHT / TRACK_WIDTH) * LATERAL_TRANSFER_FACTOR;
 
+    let front_load = static_front_load - long_transfer;
+    let rear_load = static_rear_load + long_transfer;
+
     WeightTransferResult {
-        front_load_change: -long_transfer,  // Braking adds load to front
-        rear_load_change: long_transfer,    // Acceleration adds load to rear
-        left_load_change: lat_transfer,     // Right turn adds load to left
-        right_load_change: -lat_transfer,   // Left turn adds load to right
+        front_load_change: -long_transfer,
+        rear_load_change: long_transfer,
+        left_load_change: lat_transfer,
+        right_load_change: -lat_transfer,
+        front_load_pct: (front_load / total_weight).clamp(0.1, 0.9),
+        rear_load_pct: (rear_load / total_weight).clamp(0.1, 0.9),
     }
 }
 
