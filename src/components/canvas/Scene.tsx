@@ -11,6 +11,7 @@ import WeatherEffects from './Weather/WeatherEffects'
 import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
 import { ObjectPlacer, GhostPreview, PlacedObjectsRenderer, ValidationOverlay, ElevationGrid, ElevationHandles } from './Customization'
+import TerrainMesh from './Track/TerrainMesh'
 import PitLane from './TrackObjects/PitLane'
 import StartGrid from './TrackObjects/StartGrid'
 import { useGameStore } from '@/stores/useGameStore'
@@ -19,12 +20,15 @@ import { useEditorStore } from '@/stores/useEditorStore'
 
 function Ground() {
   return (
-    <RigidBody type='fixed' colliders='cuboid' friction={1}>
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-        <planeGeometry args={[1000, 1000]} />
-        <meshStandardMaterial color='#808080' roughness={0.3} metalness={0} />
-      </mesh>
-    </RigidBody>
+    <>
+      <RigidBody type='fixed' colliders='cuboid' friction={1}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+          <planeGeometry args={[1000, 1000]} />
+          <meshStandardMaterial color='#808080' roughness={0.3} metalness={0} />
+        </mesh>
+      </RigidBody>
+      <TerrainMesh />
+    </>
   )
 }
 
