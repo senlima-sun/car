@@ -1,31 +1,31 @@
 import type { StoreApi } from 'zustand'
 import { registerAndWatchStore } from './index'
+import { useGameStore } from '../stores/useGameStore'
+import { useTireStore } from '../stores/useTireStore'
+import { useErsStore } from '../stores/useErsStore'
+import { useLapTimeStore } from '../stores/useLapTimeStore'
+import { usePitStore } from '../stores/usePitStore'
+import { useSurfaceStore } from '../stores/useSurfaceStore'
+import { useActiveAeroStore } from '../stores/useActiveAeroStore'
+import { useBrakeStore } from '../stores/useBrakeStore'
+import { useAquaplaningStore } from '../stores/useAquaplaningStore'
+import { useCarStore } from '../stores/useCarStore'
 
 type AnyStore = StoreApi<Record<string, unknown>>
 
 export function registerAllStores(): (() => void)[] {
-  const unsubs: (() => void)[] = []
-
-  const stores: [string, () => Promise<{ default?: AnyStore } & Record<string, AnyStore>>][] = [
-    ['game', () => import('../stores/useGameStore').then(m => ({ default: m.useGameStore as unknown as AnyStore }))],
-    ['tire', () => import('../stores/useTireStore').then(m => ({ default: m.useTireStore as unknown as AnyStore }))],
-    ['ers', () => import('../stores/useErsStore').then(m => ({ default: m.useErsStore as unknown as AnyStore }))],
-    ['lapTime', () => import('../stores/useLapTimeStore').then(m => ({ default: m.useLapTimeStore as unknown as AnyStore }))],
-    ['pit', () => import('../stores/usePitStore').then(m => ({ default: m.usePitStore as unknown as AnyStore }))],
-    ['surface', () => import('../stores/useSurfaceStore').then(m => ({ default: m.useSurfaceStore as unknown as AnyStore }))],
-    ['activeAero', () => import('../stores/useActiveAeroStore').then(m => ({ default: m.useActiveAeroStore as unknown as AnyStore }))],
-    ['brake', () => import('../stores/useBrakeStore').then(m => ({ default: m.useBrakeStore as unknown as AnyStore }))],
-    ['aquaplaning', () => import('../stores/useAquaplaningStore').then(m => ({ default: m.useAquaplaningStore as unknown as AnyStore }))],
-    ['car', () => import('../stores/useCarStore').then(m => ({ default: m.useCarStore as unknown as AnyStore }))],
+  const stores: [string, AnyStore][] = [
+    ['game', useGameStore as unknown as AnyStore],
+    ['tire', useTireStore as unknown as AnyStore],
+    ['ers', useErsStore as unknown as AnyStore],
+    ['lapTime', useLapTimeStore as unknown as AnyStore],
+    ['pit', usePitStore as unknown as AnyStore],
+    ['surface', useSurfaceStore as unknown as AnyStore],
+    ['activeAero', useActiveAeroStore as unknown as AnyStore],
+    ['brake', useBrakeStore as unknown as AnyStore],
+    ['aquaplaning', useAquaplaningStore as unknown as AnyStore],
+    ['car', useCarStore as unknown as AnyStore],
   ]
 
-  for (const [name, loader] of stores) {
-    loader().then(mod => {
-      if (mod.default) {
-        unsubs.push(registerAndWatchStore(name, mod.default))
-      }
-    })
-  }
-
-  return unsubs
+  return stores.map(([name, store]) => registerAndWatchStore(name, store))
 }

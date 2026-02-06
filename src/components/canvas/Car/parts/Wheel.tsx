@@ -2,10 +2,11 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-import { VEHICLE_CONFIG } from '../../../../constants/physics'
 import { useThermalTireMaterial } from '../../../../hooks/useThermalTireMaterial'
 
-// Wheel component - solid tire with rounded edges and rim details
+const WHEEL_RADIUS = 0.3
+const WHEEL_WIDTH = 0.35
+
 export function Wheel({
   position,
   steerAngle,
@@ -25,10 +26,8 @@ export function Wheel({
   isThermalView?: boolean
   compoundColor?: string
 }) {
-  const { wheels } = VEHICLE_CONFIG
-  // Make wheels bigger for better visibility
-  const radius = wheels.radius * 1.15
-  const width = wheels.width * 1.2
+  const radius = WHEEL_RADIUS * 1.15
+  const width = WHEEL_WIDTH * 1.2
 
   // Thermal material uses average of inner/outer temperatures
   const thermalMaterial = useThermalTireMaterial((innerTemp + outerTemp) / 2)

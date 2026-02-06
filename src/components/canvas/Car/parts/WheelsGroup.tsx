@@ -1,6 +1,13 @@
-import { VEHICLE_CONFIG } from '../../../../constants/physics'
 import { useTemperatureStore } from '../../../../stores/useTemperatureStore'
 import { Wheel } from './Wheel'
+
+const WHEEL_RADIUS = 0.3
+const WHEEL_POSITIONS: readonly (readonly [number, number, number])[] = [
+  [-0.82, 0, 1.8],
+  [0.82, 0, 1.8],
+  [-0.82, 0, -1.2],
+  [0.82, 0, -1.2],
+]
 
 interface WheelsGroupProps {
   steerAngle: number
@@ -9,21 +16,17 @@ interface WheelsGroupProps {
   compoundColor: string
 }
 
-/**
- * Component that renders all four wheels with temperature data
- */
 export function WheelsGroup({
   steerAngle,
   wheelRotations,
   isThermalView,
   compoundColor,
 }: WheelsGroupProps) {
-  const { wheels } = VEHICLE_CONFIG
   const tires = useTemperatureStore(state => state.tires)
 
   return (
     <>
-      {wheels.positions.map((pos, index) => {
+      {WHEEL_POSITIONS.map((pos, index) => {
         const isFrontWheel = index < 2
         const isLeftWheel = pos[0] < 0
 
@@ -53,7 +56,7 @@ export function WheelsGroup({
         return (
           <Wheel
             key={index}
-            position={[pos[0], -wheels.radius + 0.25, pos[2]]}
+            position={[pos[0], -WHEEL_RADIUS + 0.25, pos[2]]}
             steerAngle={isFrontWheel ? steerAngle : 0}
             wheelRotation={wheelRotations[index]}
             isLeft={isLeftWheel}

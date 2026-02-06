@@ -1,5 +1,6 @@
 import { createLogger } from './ActionLogger'
 import { watchStore } from './storeLogger'
+import { registerAllStores } from './registerStores'
 import type { StoreApi } from 'zustand'
 
 export { getLogger, createLogger } from './ActionLogger'
@@ -39,7 +40,7 @@ export function initDevTools(): void {
 
   logger.log('system', 'system.devtools.init', 'debug', { timestamp: Date.now() })
 
-  import('./registerStores').then(({ registerAllStores }) => registerAllStores())
+  registerAllStores()
 }
 
 export function registerAndWatchStore(name: string, store: AnyStore): () => void {
