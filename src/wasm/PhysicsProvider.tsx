@@ -216,18 +216,6 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     }
   }, [])
 
-  if (error) {
-    return (
-      <div style={{ color: 'red', padding: '20px' }}>
-        Failed to load physics engine: {error.message}
-      </div>
-    )
-  }
-
-  if (!initialized) {
-    return fallback ? <>{fallback}</> : null
-  }
-
   const value: PhysicsContextValue = useMemo(() => ({
     initialized,
     stepPhysics,
@@ -292,6 +280,18 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     cycleEngineBrakingLevel,
     getBrakeState,
   }), [initialized])
+
+  if (error) {
+    return (
+      <div style={{ color: 'red', padding: '20px' }}>
+        Failed to load physics engine: {error.message}
+      </div>
+    )
+  }
+
+  if (!initialized) {
+    return fallback ? <>{fallback}</> : null
+  }
 
   return <PhysicsContext.Provider value={value}>{children}</PhysicsContext.Provider>
 }
