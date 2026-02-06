@@ -23,6 +23,7 @@ import { useElevationStore } from '../../../../stores/useElevationStore'
 import { useCustomizationStore, getElevationAtWorldPosition } from '../../../../stores/useCustomizationStore'
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
+import { getLogger } from '../../../../debug/ActionLogger'
 
 // Wheel offset positions relative to car center [x, z]
 // FL, FR, RL, RR
@@ -135,9 +136,18 @@ export function useCarFrame({
   const lastPitStopToggle = useRef(0)
   const tempCarPosRef = useRef(new Vector3())
 
+  // Spawn protection: count frames to stabilize car above ground
+  const spawnFrameRef = useRef(0)
+  const SPAWN_PROTECT_FRAMES = 30
+
   // Pre-allocated arrays for rubber deposit updates (avoid GC)
   const wheelPositionsRef = useRef(new Float32Array(8))
   const wheelIntensitiesRef = useRef(new Float32Array(4))
+
+  const prevSpeedRef = useRef(0)
+  const prevGearRef = useRef(0)
+  const prevDriftRef = useRef(false)
+  const prevGripRef = useRef(1)
 
   // State for spray effect
   const [carState, setCarState] = useState<CarState>({
@@ -172,10 +182,13 @@ export function useCarFrame({
     } = getKeys()
     const chassis = chassisRef.current
 
+    const logger = import.meta.env.DEV ? getLogger() : null
+
     // Camera toggle with debounce
     if (camera && state.clock.elapsedTime - lastCameraToggle.current > 0.3) {
       toggleCameraMode()
       lastCameraToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.camera', 'useCarFrame', { key: 'C' }, { action: 'toggleCameraMode' })
     }
 
     // Temperature visualization toggle with debounce (H key) - testing mode only
@@ -184,73 +197,96 @@ export function useCarFrame({
       toggleThermalView()
       toggleWindView()
       lastHeatmapToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.heatmap', 'useCarFrame', { key: 'H' }, { action: 'toggleHeatmap' })
     }
 
     // Distance grid toggle with debounce (Option/Alt key) - testing mode only
     if (isTestingMode && distanceGrid && state.clock.elapsedTime - lastGridToggle.current > 0.3) {
       toggleDistanceGrid()
       lastGridToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.distanceGrid', 'useCarFrame', { key: 'Alt' }, { action: 'toggleDistanceGrid' })
     }
 
     // Free camera toggle with debounce (F key) - testing mode only
     if (isTestingMode && freeCamera && state.clock.elapsedTime - lastFreeCamToggle.current > 0.3) {
       toggleFreeCamera()
       lastFreeCamToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.freeCamera', 'useCarFrame', { key: 'F' }, { action: 'toggleFreeCamera' })
     }
 
     // ERS preset cycle with debounce (G key)
     if (ersPreset && state.clock.elapsedTime - lastErsPresetToggle.current > 0.3) {
       cycleSemiAutoPreset()
-      // Sync preset to physics engine (get fresh state after cycling)
       const freshPreset = useErsStore.getState().semiAutoConfig.preset
       physics.setErsSemiAutoPreset(freshPreset)
       lastErsPresetToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.ersPreset', 'useCarFrame', { key: 'G' }, { preset: freshPreset })
     }
 
     // Overtake mode activation with debounce (O key) - testing mode only
     if (isTestingMode && overtake && state.clock.elapsedTime - lastOvertakeToggle.current > 0.3) {
       activateOvertake()
       lastOvertakeToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.overtake', 'useCarFrame', { key: 'O' }, { action: 'activateOvertake' })
     }
 
     // Active Aero mode toggle with debounce (V key)
     if (aero && state.clock.elapsedTime - lastAeroModeToggle.current > 0.3) {
       toggleAeroMode()
       lastAeroModeToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.aero', 'useCarFrame', { key: 'V' }, { action: 'toggleAeroMode' })
     }
 
     // Brake bias increase with debounce (] key) - testing mode only
     if (isTestingMode && brakeIncr && state.clock.elapsedTime - lastBrakeIncrToggle.current > 0.3) {
       physics.increaseBrakeBias()
       lastBrakeIncrToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.brakeIncr', 'useCarFrame', { key: ']' }, { action: 'increaseBrakeBias' })
     }
 
     // Brake bias decrease with debounce ([ key) - testing mode only
     if (isTestingMode && brakeDecr && state.clock.elapsedTime - lastBrakeDecrToggle.current > 0.3) {
       physics.decreaseBrakeBias()
       lastBrakeDecrToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.brakeDecr', 'useCarFrame', { key: '[' }, { action: 'decreaseBrakeBias' })
     }
 
     // Engine braking cycle with debounce (N key) - call physics directly
     if (engineBrake && state.clock.elapsedTime - lastEngineBrakeToggle.current > 0.3) {
       physics.cycleEngineBrakingLevel()
       lastEngineBrakeToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.engineBrake', 'useCarFrame', { key: 'N' }, { action: 'cycleEngineBrakingLevel' })
     }
 
     // Lap timer toggle with debounce (L key)
     if (lapTimer && state.clock.elapsedTime - lastLapTimerToggle.current > 0.3) {
       toggleLapRecording()
       lastLapTimerToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.lapTimer', 'useCarFrame', { key: 'L' }, { action: 'toggleLapRecording' })
     }
 
     // Pit stop toggle with debounce (P key)
     if (pitStop && state.clock.elapsedTime - lastPitStopToggle.current > 0.3) {
       startPitStop()
       lastPitStopToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.pitStop', 'useCarFrame', { key: 'P' }, { action: 'startPitStop' })
     }
 
     // Skip physics when in free camera mode or customize mode (freeze car)
     if (cameraMode === 'free' || gameStatus === 'customize') return
+
+    // Spawn protection: hold car above ground for initial frames while physics settles
+    if (spawnFrameRef.current < SPAWN_PROTECT_FRAMES) {
+      spawnFrameRef.current++
+      const p = chassis.translation()
+      const minY = startPosition[1]
+      if (p.y < minY) {
+        chassis.setTranslation({ x: p.x, y: minY, z: p.z }, true)
+        chassis.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        chassis.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      }
+      return
+    }
 
     // Sync wind state from physics (for gust updates)
     if (windEnabled) {
@@ -361,14 +397,40 @@ export function useCarFrame({
         const targetY = liveElev + 0.5
         const diff = targetY - currentY
 
-        if (diff > 0.2) {
-          const k = 300
-          const d = 80
+        if (diff > 0.05) {
+          const k = 600
+          const d = 120
           const vy = chassis.linvel().y
           const force = k * diff - d * vy
           chassis.applyImpulse({ x: 0, y: force * dt, z: 0 }, true)
         }
       }
+    }
+
+    if (logger) {
+      const speedDelta = Math.abs(output.speed_kmh - prevSpeedRef.current)
+      const gearChanged = output.gear !== prevGearRef.current
+      const driftChanged = output.is_drifting !== prevDriftRef.current
+      const gripDelta = Math.abs(output.effective_grip - prevGripRef.current)
+
+      if (speedDelta > 2 || gearChanged || driftChanged || gripDelta > 0.05) {
+        logger.log('physics', 'physics.step.change', 'useCarFrame', {
+          input: { forward, backward, left, right, brake, handbrake },
+          speed_before: prevSpeedRef.current,
+        }, {
+          speed: output.speed_kmh,
+          gear: output.gear,
+          drift: output.is_drifting,
+          grip: output.effective_grip,
+          slip_angle: output.slip_angle,
+          lateral_g: output.lateral_g,
+        })
+      }
+
+      prevSpeedRef.current = output.speed_kmh
+      prevGearRef.current = output.gear
+      prevDriftRef.current = output.is_drifting
+      prevGripRef.current = output.effective_grip
     }
 
     // Sync tire wear from WASM to UI store

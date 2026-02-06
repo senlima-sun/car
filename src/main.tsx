@@ -5,6 +5,10 @@ import './styles.css'
 import App from './App'
 import PartEditor from './components/part-editor'
 
+if (import.meta.env.DEV) {
+  import('./debug').then(({ initDevTools }) => initDevTools())
+}
+
 const options = {
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
   defaults: '2025-11-30',

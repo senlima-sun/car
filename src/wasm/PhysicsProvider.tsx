@@ -3,6 +3,7 @@
  */
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { getLogger } from '../debug/ActionLogger'
 import {
   initPhysicsEngine,
   stepPhysics,
@@ -187,6 +188,9 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
         if (mounted) {
           setInitialized(true)
           console.log('[PhysicsProvider] WASM physics engine ready')
+          if (import.meta.env.DEV) {
+            getLogger().log('system', 'system.wasm.ready', 'PhysicsProvider', { timestamp: Date.now() })
+          }
         }
       } catch (err) {
         if (mounted) {
