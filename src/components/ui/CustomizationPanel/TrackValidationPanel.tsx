@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
+import { useEditorStore } from '../../../stores/useEditorStore'
 import {
   validateTrack,
   type TrackValidationReport,
@@ -68,12 +69,20 @@ const severityConfig = {
 export default function TrackValidationPanel() {
   const [report, setReport] = useState<TrackValidationReport | null>(null)
 
+  const setCameraTarget = useEditorStore(s => s.setCameraTarget)
+
   const handleValidate = useCallback(() => {
     const objects = useCustomizationStore.getState().placedObjects
     const graph = useTrackGraphStore.getState().graph
     const result = validateTrack(objects, graph)
     setReport(result)
   }, [])
+
+  const handleResultClick = useCallback((result: ValidationResult) => {
+    if (result.location) {
+      setCameraTarget(result.location)
+    }
+  }, [setCameraTarget])
 
   return (
     <div style={styles.container}>
@@ -93,10 +102,16 @@ export default function TrackValidationPanel() {
                   style={{
                     ...styles.resultItem,
                     background: config.bg,
+                    cursor: result.location ? 'pointer' : 'default',
+                    opacity: result.location ? 1 : 0.7,
                   }}
+                  onClick={() => handleResultClick(result)}
                 >
                   <span style={{ ...styles.icon, color: config.color }}>[{config.icon}]</span>
                   <span style={{ ...styles.message, color: config.color }}>{result.message}</span>
+                  {result.location && (
+                    <span style={{ fontSize: 10, color: '#666', flexShrink: 0 }}>&#x2316;</span>
+                  )}
                 </div>
               )
             })}

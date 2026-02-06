@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { OrthographicCamera } from '@react-three/drei'
 import { Vector3 } from 'three'
 import type { OrthographicCamera as OrthographicCameraType } from 'three'
+import { useEditorStore } from '@/stores/useEditorStore'
 
 const ISO_ELEVATION = Math.PI / 2 // 90 degrees - true top-down view
 const ISO_AZIMUTH = 0 // No horizontal rotation for top-down
@@ -105,7 +106,23 @@ export default function IsometricCamera() {
     targetPos.current.x += worldPanX
     targetPos.current.z += worldPanZ
 
-    // Calculate camera position based on isometric angles
+    const cameraTarget = useEditorStore.getState().cameraTarget
+    if (cameraTarget) {
+      const tx = cameraTarget[0]
+      const tz = cameraTarget[2]
+      const lerpFactor = 1 - Math.exp(-5 * delta)
+      targetPos.current.x += (tx - targetPos.current.x) * lerpFactor
+      targetPos.current.z += (tz - targetPos.current.z) * lerpFactor
+
+      const dx = tx - targetPos.current.x
+      const dz = tz - targetPos.current.z
+      if (Math.sqrt(dx * dx + dz * dz) < 0.1) {
+        targetPos.current.x = tx
+        targetPos.current.z = tz
+        useEditorStore.getState().setCameraTarget(null)
+      }
+    }
+
     const camOffset = new Vector3(
       Math.sin(ISO_AZIMUTH) * Math.cos(ISO_ELEVATION) * CAMERA_DISTANCE,
       Math.sin(ISO_ELEVATION) * CAMERA_DISTANCE,

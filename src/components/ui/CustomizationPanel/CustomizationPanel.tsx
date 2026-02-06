@@ -228,6 +228,8 @@ export default function CustomizationPanel() {
   const clearMultiSelection = useEditorStore(s => s.clearMultiSelection)
   const checkpointPlacementType = useEditorStore(s => s.checkpointPlacementType)
   const setCheckpointPlacementType = useEditorStore(s => s.setCheckpointPlacementType)
+  const symmetricCurve = useEditorStore(s => s.symmetricCurve)
+  const setSymmetricCurve = useEditorStore(s => s.setSymmetricCurve)
 
   // Track store
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
@@ -571,6 +573,27 @@ export default function CustomizationPanel() {
               Curve
             </button>
           </div>
+          {trackMode === 'curve' && (
+            <div
+              style={styles.snapToggle}
+              onClick={() => setSymmetricCurve(!symmetricCurve)}
+            >
+              <span style={styles.snapToggleLabel}>Symmetric Curve</span>
+              <div
+                style={{
+                  ...styles.snapToggleSwitch,
+                  background: symmetricCurve ? '#22c55e' : '#444',
+                }}
+              >
+                <div
+                  style={{
+                    ...styles.snapToggleKnob,
+                    left: symmetricCurve ? 20 : 2,
+                  }}
+                />
+              </div>
+            </div>
+          )}
           {placementHint && <div style={styles.placementHint}>{placementHint}</div>}
         </div>
       )}

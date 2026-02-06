@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Vector3 } from 'three'
+import { Text } from '@react-three/drei'
 import {
   useCustomizationStore,
   isLinearObject,
@@ -154,6 +155,135 @@ function TangentIndicator({
   )
 }
 
+function computeCurvatureRadius(
+  start: [number, number, number],
+  control: [number, number, number],
+  end: [number, number, number],
+): { radius: number; center: [number, number, number] } {
+  const p0x = start[0], p0z = start[2]
+  const p1x = control[0], p1z = control[2]
+  const p2x = end[0], p2z = end[2]
+
+  const t = 0.5
+  const dtx = 2 * (1 - t) * (p1x - p0x) + 2 * t * (p2x - p1x)
+  const dtz = 2 * (1 - t) * (p1z - p0z) + 2 * t * (p2z - p1z)
+  const ddtx = 2 * (p2x - 2 * p1x + p0x)
+  const ddtz = 2 * (p2z - 2 * p1z + p0z)
+
+  const speedSq = dtx * dtx + dtz * dtz
+  const speed = Math.sqrt(speedSq)
+  const cross = Math.abs(dtx * ddtz - dtz * ddtx)
+
+  if (cross < 0.001) return { radius: Infinity, center: [0, 0, 0] }
+
+  const radius = (speed * speedSq) / cross
+
+  const mx = (1 - t) * (1 - t) * p0x + 2 * (1 - t) * t * p1x + t * t * p2x
+  const mz = (1 - t) * (1 - t) * p0z + 2 * (1 - t) * t * p1z + t * t * p2z
+
+  const nx = -dtz / speed
+  const nz = dtx / speed
+
+  const signedCross = dtx * ddtz - dtz * ddtx
+  const sign = signedCross > 0 ? 1 : -1
+
+  const cx = mx + sign * radius * nx
+  const cz = mz + sign * radius * nz
+
+  return { radius, center: [cx, 0, cz] }
+}
+
+function CurvatureIndicator({
+  start,
+  control,
+  end,
+}: {
+  start: [number, number, number]
+  control: [number, number, number]
+  end: [number, number, number]
+}) {
+  const { radius, center } = useMemo(
+    () => computeCurvatureRadius(start, control, end),
+    [start, control, end],
+  )
+
+  if (radius === Infinity || radius > 500) return null
+
+  const displayRadius = Math.min(radius, 80)
+  const ringSegments = 64
+
+  const mx = (start[0] + end[0]) / 2
+  const mz = (start[2] + end[2]) / 2
+  const midY = 0.2
+
+  return (
+    <group>
+      <mesh position={[center[0], 0.05, center[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[displayRadius - 0.15, displayRadius + 0.15, ringSegments]} />
+        <meshBasicMaterial
+          color="#ff8800"
+          transparent
+          opacity={0.2}
+          depthWrite={false}
+          side={2}
+        />
+      </mesh>
+
+      <mesh position={[center[0], 0.06, center[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.3, 0.6, 12]} />
+        <meshBasicMaterial
+          color="#ff8800"
+          transparent
+          opacity={0.5}
+          side={2}
+        />
+      </mesh>
+
+      <Text
+        position={[mx, midY + 1.5, mz]}
+        fontSize={1.2}
+        color="#ff8800"
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.08}
+        outlineColor="#000000"
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        {`R ${radius.toFixed(1)}m`}
+      </Text>
+    </group>
+  )
+}
+
+function ControlPointGuideLine({
+  start,
+  end,
+}: {
+  start: [number, number, number]
+  end: [number, number, number]
+}) {
+  const midX = (start[0] + end[0]) / 2
+  const midZ = (start[2] + end[2]) / 2
+  const dx = end[0] - start[0]
+  const dz = end[2] - start[2]
+  const length = Math.sqrt(dx * dx + dz * dz)
+  const angle = Math.atan2(dx, dz)
+
+  if (length < 0.1) return null
+
+  return (
+    <mesh position={[midX, 0.04, midZ]} rotation={[-Math.PI / 2, 0, -angle]}>
+      <planeGeometry args={[0.1, length]} />
+      <meshBasicMaterial
+        color="#ffff00"
+        transparent
+        opacity={0.4}
+        depthWrite={false}
+      />
+    </mesh>
+  )
+}
+
 interface GhostPreviewProps {
   checkpointRoadEdge?: RoadEdgeResult | null
   curbEdgeHover?: RoadEdgeHitResult | null
@@ -182,6 +312,7 @@ export default function GhostPreview({
   const snapSettings = useEditorStore(s => s.snapSettings)
   const connectedTangent = useEditorStore(s => s.connectedTangent)
   const snappedAngle = useEditorStore(s => s.snappedAngle)
+  const symmetricCurve = useEditorStore(s => s.symmetricCurve)
 
   // Get snap points for visual indicators
   const snapPoints = getSnapPoints(placedObjects)
@@ -399,61 +530,113 @@ export default function GhostPreview({
 
   // Curve mode previews
   if (isLinear && isCurveMode) {
-    // State: dragging (after first click, before control point)
-    // Show straight line from start to cursor as preview
     if (placementState === 'dragging' && dragStartPoint) {
+      const dx = previewPosition[0] - dragStartPoint[0]
+      const dz = previewPosition[2] - dragStartPoint[2]
+      const dist = Math.sqrt(dx * dx + dz * dz)
+
+      const previewControlPoint: [number, number, number] = dist > 1
+        ? [
+            (dragStartPoint[0] + previewPosition[0]) / 2 + dz * 0.3,
+            0,
+            (dragStartPoint[2] + previewPosition[2]) / 2 - dx * 0.3,
+          ]
+        : previewPosition
+
+      const previewEndPoint: [number, number, number] = previewPosition
+
+      const showArcPreview = dist > 2
+
       return (
         <>
           {renderSnapIndicators()}
           {renderSnapGuides()}
-          {/* Start point marker */}
           <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
             <sphereGeometry args={[0.5, 16, 16]} />
             <meshStandardMaterial color='#00ff00' transparent opacity={0.8} />
           </mesh>
-          {/* Line to cursor */}
-          {selectedObjectType === 'barrier' ? (
-            <Barrier
-              position={previewPosition}
-              startPoint={dragStartPoint}
-              endPoint={previewPosition}
-              isGhost
-            />
-          ) : (
-            <RoadSegment
-              position={previewPosition}
-              startPoint={dragStartPoint}
-              endPoint={previewPosition}
-              isGhost
-            />
+          <ControlPointGuideLine start={dragStartPoint} end={previewPosition} />
+          <mesh position={[previewPosition[0], 0.1, previewPosition[2]]}>
+            <sphereGeometry args={[0.4, 16, 16]} />
+            <meshStandardMaterial color='#ffff00' transparent opacity={0.6} />
+          </mesh>
+          {showArcPreview && (
+            selectedObjectType === 'barrier' ? (
+              <CurvedBarrier
+                position={previewPosition}
+                startPoint={dragStartPoint}
+                controlPoint={previewControlPoint}
+                endPoint={previewEndPoint}
+                isGhost
+              />
+            ) : (
+              <CurvedRoadSegment
+                position={previewPosition}
+                startPoint={dragStartPoint}
+                controlPoint={previewControlPoint}
+                endPoint={previewEndPoint}
+                isGhost
+              />
+            )
+          )}
+          {!showArcPreview && (
+            selectedObjectType === 'barrier' ? (
+              <Barrier
+                position={previewPosition}
+                startPoint={dragStartPoint}
+                endPoint={previewPosition}
+                isGhost
+              />
+            ) : (
+              <RoadSegment
+                position={previewPosition}
+                startPoint={dragStartPoint}
+                endPoint={previewPosition}
+                isGhost
+              />
+            )
           )}
         </>
       )
     }
 
-    // State: placingControlPoint (after control point set, before end point)
-    // Show curve preview from start through control to cursor
     if (placementState === 'placingControlPoint' && dragStartPoint && controlPoint) {
+      const effectiveControlPoint: [number, number, number] = symmetricCurve
+        ? (() => {
+            const mx = (dragStartPoint[0] + previewPosition[0]) / 2
+            const mz = (dragStartPoint[2] + previewPosition[2]) / 2
+            const dx = previewPosition[0] - dragStartPoint[0]
+            const dz = previewPosition[2] - dragStartPoint[2]
+            const len = Math.sqrt(dx * dx + dz * dz)
+            if (len < 0.01) return controlPoint
+            const nx = -dz / len
+            const nz = dx / len
+            const vx = controlPoint[0] - mx
+            const vz = controlPoint[2] - mz
+            const proj = vx * nx + vz * nz
+            return [mx + proj * nx, 0, mz + proj * nz]
+          })()
+        : controlPoint
+
       return (
         <>
           {renderSnapIndicators()}
           {renderSnapGuides()}
-          {/* Start point marker */}
           <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
             <sphereGeometry args={[0.5, 16, 16]} />
             <meshStandardMaterial color='#00ff00' transparent opacity={0.8} />
           </mesh>
-          {/* Control point marker */}
-          <mesh position={[controlPoint[0], 0.1, controlPoint[2]]}>
+          <mesh position={[effectiveControlPoint[0], 0.1, effectiveControlPoint[2]]}>
             <sphereGeometry args={[0.4, 16, 16]} />
             <meshStandardMaterial color='#ffff00' transparent opacity={0.8} />
           </mesh>
-          {/* Curve preview */}
+          <ControlPointGuideLine start={dragStartPoint} end={effectiveControlPoint} />
+          <ControlPointGuideLine start={effectiveControlPoint} end={previewPosition} />
           {selectedObjectType === 'barrier' ? (
             <CurvedBarrier
               position={previewPosition}
               startPoint={dragStartPoint}
-              controlPoint={controlPoint}
+              controlPoint={effectiveControlPoint}
               endPoint={previewPosition}
               isGhost
             />
@@ -461,11 +644,16 @@ export default function GhostPreview({
             <CurvedRoadSegment
               position={previewPosition}
               startPoint={dragStartPoint}
-              controlPoint={controlPoint}
+              controlPoint={effectiveControlPoint}
               endPoint={previewPosition}
               isGhost
             />
           )}
+          <CurvatureIndicator
+            start={dragStartPoint}
+            control={effectiveControlPoint}
+            end={previewPosition}
+          />
         </>
       )
     }

@@ -43,9 +43,12 @@ interface EditorState {
   canRedo: boolean
   undoDescription: string | null
   redoDescription: string | null
+  symmetricCurve: boolean
   multiSelectedIds: string[]
   clipboard: PlacedObject[]
+  cameraTarget: [number, number, number] | null
 
+  setSymmetricCurve: (enabled: boolean) => void
   undo: () => void
   redo: () => void
   toggleMultiSelect: (id: string) => void
@@ -102,6 +105,7 @@ interface EditorState {
   setSnapSettings: (settings: Partial<SnapSettings>) => void
   setConnectedTangent: (tangent: [number, number, number] | null) => void
   setSnappedAngle: (angle: number | null) => void
+  setCameraTarget: (pos: [number, number, number] | null) => void
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -133,8 +137,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   canRedo: false,
   undoDescription: null,
   redoDescription: null,
+  symmetricCurve: false,
   multiSelectedIds: [],
   clipboard: [],
+  cameraTarget: null,
+
+  setSymmetricCurve: (enabled) => set({ symmetricCurve: enabled }),
 
   undo: () => {
     editorCommandStack.undo()
@@ -251,7 +259,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       newObject.trackMode = trackMode
 
       if (trackMode === 'curve' && controlPoint) {
-        newObject.controlPoint = controlPoint
+        let effectiveControlPoint = controlPoint
+        if (state.symmetricCurve) {
+          const mx = (dragStartPoint[0] + previewPosition[0]) / 2
+          const mz = (dragStartPoint[2] + previewPosition[2]) / 2
+          const dx = previewPosition[0] - dragStartPoint[0]
+          const dz = previewPosition[2] - dragStartPoint[2]
+          const len = Math.sqrt(dx * dx + dz * dz)
+          if (len > 0.01) {
+            const nx = -dz / len
+            const nz = dx / len
+            const vx = controlPoint[0] - mx
+            const vz = controlPoint[2] - mz
+            const proj = vx * nx + vz * nz
+            effectiveControlPoint = [mx + proj * nx, 0, mz + proj * nz]
+          }
+        }
+        newObject.controlPoint = effectiveControlPoint
         if (startSnapEdges) {
           newObject.startLeftEdge = startSnapEdges.left
           newObject.startRightEdge = startSnapEdges.right
@@ -533,6 +557,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setConnectedTangent: tangent => set({ connectedTangent: tangent }),
 
   setSnappedAngle: angle => set({ snappedAngle: angle }),
+
+  setCameraTarget: pos => set({ cameraTarget: pos }),
 
   toggleMultiSelect: (id) => {
     set(state => ({
