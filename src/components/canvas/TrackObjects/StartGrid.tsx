@@ -25,6 +25,7 @@ export default function StartGrid() {
     const cx = (startFinish.startPoint[0] + startFinish.endPoint[0]) / 2
     const cz = (startFinish.startPoint[2] + startFinish.endPoint[2]) / 2
     const rot = startFinish.rotation
+    const baseElevation = startFinish.startPoint[1] ?? 0
 
     const behindX = -Math.sin(rot)
     const behindZ = -Math.cos(rot)
@@ -43,7 +44,7 @@ export default function StartGrid() {
         positions.push({
           position: [
             cx + behindX * (rowOffset + stagger) + lateralX * colOffset,
-            0.05,
+            baseElevation + 0.05,
             cz + behindZ * (rowOffset + stagger) + lateralZ * colOffset,
           ],
           row,

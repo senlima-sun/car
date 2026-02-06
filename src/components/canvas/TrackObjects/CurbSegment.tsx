@@ -105,7 +105,7 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
     // Midpoint for positioning
     const mid: [number, number, number] = [
       (startPos[0] + endPos[0]) / 2,
-      0, // Geometry handles height
+      (startPos[1] + endPos[1]) / 2,
       (startPos[2] + endPos[2]) / 2,
     ]
 
@@ -214,7 +214,7 @@ export function CurbPreview({
     const rot = Math.atan2(dx, dz)
     const mid: [number, number, number] = [
       (startPosition[0] + endPosition[0]) / 2,
-      0,
+      (startPosition[1] + endPosition[1]) / 2,
       (startPosition[2] + endPosition[2]) / 2,
     ]
 

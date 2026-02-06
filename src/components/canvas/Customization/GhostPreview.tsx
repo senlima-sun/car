@@ -36,7 +36,7 @@ function SnapPointIndicator({
   isActive: boolean
 }) {
   return (
-    <mesh position={[point.position[0], 0.15, point.position[2]]}>
+    <mesh position={[point.position[0], point.position[1] + 0.15, point.position[2]]}>
       <ringGeometry args={[0.4, 0.6, 16]} />
       <meshBasicMaterial
         color={isActive ? '#00ffff' : '#888888'}
@@ -67,9 +67,10 @@ function AngleGuideLine({
   // Calculate midpoint and length for the line mesh
   const midX = (startPoint[0] + endX) / 2
   const midZ = (startPoint[2] + endZ) / 2
+  const midY = startPoint[1] ?? 0
 
   return (
-    <mesh position={[midX, 0.02, midZ]} rotation={[-Math.PI / 2, 0, -angle]}>
+    <mesh position={[midX, midY + 0.02, midZ]} rotation={[-Math.PI / 2, 0, -angle]}>
       <planeGeometry args={[0.08, length]} />
       <meshBasicMaterial
         color={isActive ? '#00ffff' : '#666666'}
@@ -137,17 +138,18 @@ function TangentIndicator({
 
   // Calculate angle for rotation
   const angle = Math.atan2(direction[0], direction[2])
+  const originY = origin[1] ?? 0
 
   return (
     <group>
       {/* Arrow shaft */}
-      <mesh position={[shaftMidX, 0.1, shaftMidZ]} rotation={[-Math.PI / 2, 0, -angle]}>
+      <mesh position={[shaftMidX, originY + 0.1, shaftMidZ]} rotation={[-Math.PI / 2, 0, -angle]}>
         <planeGeometry args={[0.2, shaftLength]} />
         <meshBasicMaterial color='#ffaa00' transparent opacity={0.7} depthWrite={false} />
       </mesh>
 
       {/* Arrow head (triangle) */}
-      <mesh position={[endX, 0.1, endZ]} rotation={[-Math.PI / 2, 0, -angle]}>
+      <mesh position={[endX, originY + 0.1, endZ]} rotation={[-Math.PI / 2, 0, -angle]}>
         <coneGeometry args={[0.5, arrowHeadLength, 3]} />
         <meshBasicMaterial color='#ffaa00' transparent opacity={0.8} />
       </mesh>
@@ -214,11 +216,12 @@ function CurvatureIndicator({
 
   const mx = (start[0] + end[0]) / 2
   const mz = (start[2] + end[2]) / 2
+  const baseElev = (start[1] + end[1]) / 2
   const midY = 0.2
 
   return (
     <group>
-      <mesh position={[center[0], 0.05, center[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[center[0], baseElev + 0.05, center[2]]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[displayRadius - 0.15, displayRadius + 0.15, ringSegments]} />
         <meshBasicMaterial
           color="#ff8800"
@@ -229,7 +232,7 @@ function CurvatureIndicator({
         />
       </mesh>
 
-      <mesh position={[center[0], 0.06, center[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[center[0], baseElev + 0.06, center[2]]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.3, 0.6, 12]} />
         <meshBasicMaterial
           color="#ff8800"
@@ -240,7 +243,7 @@ function CurvatureIndicator({
       </mesh>
 
       <Text
-        position={[mx, midY + 1.5, mz]}
+        position={[mx, baseElev + midY + 1.5, mz]}
         fontSize={1.2}
         color="#ff8800"
         anchorX="center"
@@ -264,6 +267,7 @@ function ControlPointGuideLine({
 }) {
   const midX = (start[0] + end[0]) / 2
   const midZ = (start[2] + end[2]) / 2
+  const midY = (start[1] + end[1]) / 2
   const dx = end[0] - start[0]
   const dz = end[2] - start[2]
   const length = Math.sqrt(dx * dx + dz * dz)
@@ -272,7 +276,7 @@ function ControlPointGuideLine({
   if (length < 0.1) return null
 
   return (
-    <mesh position={[midX, 0.04, midZ]} rotation={[-Math.PI / 2, 0, -angle]}>
+    <mesh position={[midX, midY + 0.04, midZ]} rotation={[-Math.PI / 2, 0, -angle]}>
       <planeGeometry args={[0.1, length]} />
       <meshBasicMaterial
         color="#ffff00"
@@ -339,7 +343,7 @@ export default function GhostPreview({
         const t = startT + (endT - startT) * (i / numSamples)
         const pos = getRoadCenterPositionAt(road, t)
         deleteZoneMarkers.push(
-          <mesh key={`delete-marker-${i}`} position={[pos[0], 0.15, pos[2]]}>
+          <mesh key={`delete-marker-${i}`} position={[pos[0], pos[1] + 0.15, pos[2]]}>
             <sphereGeometry args={[0.4, 8, 8]} />
             <meshStandardMaterial color='#ff0000' transparent opacity={0.6} />
           </mesh>,
@@ -352,7 +356,7 @@ export default function GhostPreview({
           <mesh
             position={[
               partialDeleteState.startPosition[0],
-              0.4,
+              partialDeleteState.startPosition[1] + 0.4,
               partialDeleteState.startPosition[2],
             ]}
           >
@@ -367,7 +371,7 @@ export default function GhostPreview({
           </mesh>
 
           {/* End point marker (lighter red) */}
-          <mesh position={[endPos[0], 0.35, endPos[2]]}>
+          <mesh position={[endPos[0], endPos[1] + 0.35, endPos[2]]}>
             <sphereGeometry args={[0.6, 16, 16]} />
             <meshStandardMaterial
               color='#ff4444'
@@ -383,7 +387,7 @@ export default function GhostPreview({
 
           {/* Red overlay plane on the deletion zone */}
           <mesh
-            position={[(startPos[0] + endPos[0]) / 2, 0.08, (startPos[2] + endPos[2]) / 2]}
+            position={[(startPos[0] + endPos[0]) / 2, (startPos[1] + endPos[1]) / 2 + 0.08, (startPos[2] + endPos[2]) / 2]}
             rotation={[
               -Math.PI / 2,
               0,
@@ -418,7 +422,7 @@ export default function GhostPreview({
           <mesh
             position={[
               partialDeleteHover.centerPosition[0],
-              0.25,
+              partialDeleteHover.centerPosition[1] + 0.25,
               partialDeleteHover.centerPosition[2],
             ]}
           >
@@ -435,7 +439,7 @@ export default function GhostPreview({
           <mesh
             position={[
               partialDeleteHover.centerPosition[0],
-              0.05,
+              partialDeleteHover.centerPosition[1] + 0.05,
               partialDeleteHover.centerPosition[2],
             ]}
             rotation={[-Math.PI / 2, 0, 0]}
@@ -758,12 +762,12 @@ export default function GhostPreview({
         return (
           <>
             {/* Edge position highlight */}
-            <mesh position={[curbEdgeHover.worldPosition[0], 0.1, curbEdgeHover.worldPosition[2]]}>
+            <mesh position={[curbEdgeHover.worldPosition[0], curbEdgeHover.worldPosition[1] + 0.1, curbEdgeHover.worldPosition[2]]}>
               <sphereGeometry args={[0.5, 16, 16]} />
               <meshStandardMaterial color='#ff6600' transparent opacity={0.8} />
             </mesh>
             {/* Edge indicator line along road edge */}
-            <mesh position={[curbEdgeHover.worldPosition[0], 0.05, curbEdgeHover.worldPosition[2]]}>
+            <mesh position={[curbEdgeHover.worldPosition[0], curbEdgeHover.worldPosition[1] + 0.05, curbEdgeHover.worldPosition[2]]}>
               <ringGeometry args={[0.8, 1.0, 16]} />
               <meshBasicMaterial color='#ff6600' transparent opacity={0.6} side={2} />
             </mesh>

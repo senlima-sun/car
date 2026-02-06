@@ -6,6 +6,7 @@ import { CURB_PROFILE, CURB_WIDTH, CURB_PEAK_HEIGHT } from '../../../constants/c
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { PlacedObject } from '../../../stores/useCustomizationStore'
+import { getElevationAtT } from '../../../utils/roadGeometry'
 
 const curbConfig = OBJECT_CONFIGS.curb
 
@@ -139,13 +140,14 @@ export default function CurvedCurbSegment({
     const midTangent = curve.getTangent(midT)
     const midPerp = new Vector3(-midTangent.z, 0, midTangent.x).normalize()
     const sensorOffset = (ROAD_HALF_WIDTH + CURB_WIDTH / 2) * edgeSign
+    const sensorElevation = getElevationAtT(parentRoad, midT)
 
     return {
       stripeGeometries: stripes,
       sensorData: {
         position: [
           midPos.x + midPerp.x * sensorOffset,
-          CURB_PEAK_HEIGHT / 2,
+          CURB_PEAK_HEIGHT / 2 + sensorElevation,
           midPos.z + midPerp.z * sensorOffset,
         ] as [number, number, number],
         length: curveLength,
@@ -199,7 +201,7 @@ export default function CurvedCurbSegment({
       {/* Sensor collider for detecting car entry/exit - surface detection */}
       {sensorData && (
         <CuboidCollider
-          position={[sensorData.position[0], CURB_PEAK_HEIGHT / 2, sensorData.position[2]]}
+          position={sensorData.position}
           args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT / 2, sensorData.length / 2]}
           sensor
           onIntersectionEnter={handleEnter}
@@ -271,6 +273,7 @@ export function CurvedCurbPreview({
         const pos = curve.getPoint(t)
         const tangent = curve.getTangent(t)
         const perp = new Vector3(-tangent.z, 0, tangent.x).normalize()
+        const elevationY = getElevationAtT(parentRoad, t)
 
         for (let p = 0; p <= profileSubdivisions; p++) {
           const normalizedWidth = p / profileSubdivisions
@@ -280,7 +283,7 @@ export function CurvedCurbPreview({
           const outerOffset = (ROAD_HALF_WIDTH + CURB_WIDTH) * edgeSign
           const widthOffset = innerOffset + (outerOffset - innerOffset) * normalizedWidth
 
-          vertices.push(pos.x + perp.x * widthOffset, height, pos.z + perp.z * widthOffset)
+          vertices.push(pos.x + perp.x * widthOffset, height + elevationY, pos.z + perp.z * widthOffset)
         }
       }
 

@@ -54,9 +54,10 @@ export default function Checkpoint({
       const direction = end.clone().sub(start)
       const len = direction.length()
       const rot = Math.atan2(direction.x, direction.z)
+      const startElev = (start.y + end.y) / 2
       const mid: [number, number, number] = [
         (start.x + end.x) / 2,
-        CHECKPOINT_Y_OFFSET,
+        CHECKPOINT_Y_OFFSET + startElev,
         (start.z + end.z) / 2,
       ]
       return { length: len, calculatedRotation: rot, midpoint: mid }
@@ -200,7 +201,7 @@ export default function Checkpoint({
     <group>
       <RigidBody
         type='fixed'
-        position={[finalPosition[0], 1, finalPosition[2]]}
+        position={[finalPosition[0], finalPosition[1] + 0.75, finalPosition[2]]}
         rotation={[0, finalRotation, 0]}
         sensor
       >
