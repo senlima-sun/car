@@ -157,6 +157,7 @@ export default function TrackObjectWrapper({
           isCurve={object.trackMode === 'curve' && !!object.controlPoint}
           startElevation={object.startElevation}
           endElevation={object.endElevation}
+          isSelected={isSelected}
         />
       )}
     </group>

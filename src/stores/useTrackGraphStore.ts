@@ -22,6 +22,7 @@ interface TrackGraphState {
   setTrackFlow: () => FlowPropagationResult | null
   clearTrackFlow: () => void
   getFlowDirection: (roadId: string) => 'forward' | 'backward' | null
+  flipRoadDirection: (roadIds: string[]) => void
 }
 
 export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
@@ -102,6 +103,25 @@ export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
 
   getFlowDirection: (roadId) => {
     return get().flowDirections.get(roadId) ?? null
+  },
+
+  flipRoadDirection: (roadIds) => {
+    const { placedObjects } = useCustomizationStore.getState()
+    const flowDirections = new Map(get().flowDirections)
+
+    const updatedObjects = placedObjects.map((obj: PlacedObject) => {
+      if (obj.type === 'road' && roadIds.includes(obj.id)) {
+        const current = flowDirections.get(obj.id)
+        if (!current) return obj
+        const flipped: 'forward' | 'backward' = current === 'forward' ? 'backward' : 'forward'
+        flowDirections.set(obj.id, flipped)
+        return { ...obj, flowDirection: flipped }
+      }
+      return obj
+    })
+
+    useCustomizationStore.getState().setPlacedObjects(updatedObjects)
+    set({ flowDirections })
   },
 }))
 

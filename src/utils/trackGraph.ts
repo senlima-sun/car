@@ -414,6 +414,85 @@ export interface FlowPropagationResult {
   unvisitedRoadIds: string[]
 }
 
+export interface DirectionIssue {
+  type: 'discontinuity' | 'isolated'
+  roadId: string
+  position: [number, number, number]
+  message: string
+}
+
+export interface DirectionValidationResult {
+  valid: boolean
+  issues: DirectionIssue[]
+}
+
+export const validateFlowDirections = (
+  graph: TrackGraph,
+  objects: PlacedObject[],
+): DirectionValidationResult => {
+  const issues: DirectionIssue[] = []
+  const roadMap = new Map(objects.filter(o => o.type === 'road').map(o => [o.id, o]))
+
+  for (const [, edge] of graph.edges) {
+    const road = roadMap.get(edge.roadId)
+    if (!road || !road.flowDirection) continue
+
+    const nodeKeys = [edge.startNodeKey, edge.endNodeKey]
+    for (const nodeKey of nodeKeys) {
+      const node = graph.nodes.get(nodeKey)
+      if (!node) continue
+
+      for (const neighborEdgeId of node.edges) {
+        if (neighborEdgeId === edge.id) continue
+        const neighborEdge = graph.edges.get(neighborEdgeId)
+        if (!neighborEdge) continue
+        const neighborRoad = roadMap.get(neighborEdge.roadId)
+        if (!neighborRoad || !neighborRoad.flowDirection) continue
+
+        const currentExitsAtNode =
+          (road.flowDirection === 'forward' && edge.endNodeKey === nodeKey) ||
+          (road.flowDirection === 'backward' && edge.startNodeKey === nodeKey)
+
+        const neighborEntersAtNode =
+          (neighborRoad.flowDirection === 'forward' && neighborEdge.startNodeKey === nodeKey) ||
+          (neighborRoad.flowDirection === 'backward' && neighborEdge.endNodeKey === nodeKey)
+
+        if (currentExitsAtNode && !neighborEntersAtNode) {
+          const alreadyReported = issues.some(
+            i => i.type === 'discontinuity' && i.position[0] === node.position[0] && i.position[2] === node.position[2],
+          )
+          if (!alreadyReported) {
+            issues.push({
+              type: 'discontinuity',
+              roadId: road.id,
+              position: node.position,
+              message: 'Direction discontinuity at junction',
+            })
+          }
+        }
+      }
+    }
+  }
+
+  for (const [, road] of roadMap) {
+    if (!road.flowDirection) {
+      const edgeId = `edge_${road.id}`
+      const edge = graph.edges.get(edgeId)
+      const pos: [number, number, number] = edge
+        ? graph.nodes.get(edge.startNodeKey)?.position ?? [0, 0, 0]
+        : road.position
+      issues.push({
+        type: 'isolated',
+        roadId: road.id,
+        position: pos,
+        message: 'Road has no flow direction assigned',
+      })
+    }
+  }
+
+  return { valid: issues.length === 0, issues }
+}
+
 export const propagateFlowDirection = (
   graph: TrackGraph,
   checkpoint: PlacedObject,

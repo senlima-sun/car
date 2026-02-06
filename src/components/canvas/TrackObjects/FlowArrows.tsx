@@ -9,6 +9,8 @@ interface FlowArrowsProps {
   isCurve?: boolean
   startElevation?: number
   endElevation?: number
+  isSelected?: boolean
+  hasError?: boolean
 }
 
 const ARROW_SPACING = 10
@@ -22,6 +24,8 @@ export default function FlowArrows({
   isCurve = false,
   startElevation,
   endElevation,
+  isSelected = false,
+  hasError = false,
 }: FlowArrowsProps) {
   if (!flowDirection) return null
 
@@ -80,6 +84,9 @@ export default function FlowArrows({
     return result
   }, [startPoint, endPoint, controlPoint, flowDirection, isCurve, startElevation, endElevation])
 
+  const arrowColor = hasError ? '#ef4444' : isSelected ? '#f97316' : '#22c55e'
+  const arrowOpacity = isSelected ? 0.9 : 0.7
+
   return (
     <>
       {arrows.map((arrow, i) => (
@@ -92,9 +99,9 @@ export default function FlowArrows({
           <mesh>
             <coneGeometry args={[ARROW_SIZE * 0.5, ARROW_SIZE, 3]} />
             <meshBasicMaterial
-              color='#22c55e'
+              color={arrowColor}
               transparent
-              opacity={0.7}
+              opacity={arrowOpacity}
               depthWrite={false}
             />
           </mesh>

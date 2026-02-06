@@ -1,6 +1,6 @@
 import type { PlacedObject } from '../types/trackObjects'
 import type { TrackGraph } from '../types/trackGraph'
-import { isCircuit, findConnectedRoads } from './trackGraph'
+import { isCircuit, findConnectedRoads, validateFlowDirections } from './trackGraph'
 
 export type ValidationSeverity = 'critical' | 'warning' | 'pass'
 
@@ -132,6 +132,42 @@ export const validateTrack = (
         severity: 'pass',
         message: `${sectors.length} sector checkpoint(s) placed`,
       })
+    }
+
+    const roadsWithFlow = roads.filter(r => r.flowDirection)
+    if (roadsWithFlow.length > 0) {
+      const dirValidation = validateFlowDirections(graph, objects)
+      const discontinuities = dirValidation.issues.filter(i => i.type === 'discontinuity')
+      const isolated = dirValidation.issues.filter(i => i.type === 'isolated')
+
+      if (discontinuities.length > 0) {
+        results.push({
+          id: 'direction-continuity',
+          rule: 'Direction Continuity',
+          severity: 'critical',
+          message: `${discontinuities.length} direction discontinuit${discontinuities.length === 1 ? 'y' : 'ies'} found`,
+          location: discontinuities[0].position,
+          relatedObjectIds: discontinuities.map(d => d.roadId),
+        })
+      } else {
+        results.push({
+          id: 'direction-continuity',
+          rule: 'Direction Continuity',
+          severity: 'pass',
+          message: 'Flow direction is consistent',
+        })
+      }
+
+      if (isolated.length > 0) {
+        results.push({
+          id: 'direction-coverage',
+          rule: 'Direction Coverage',
+          severity: 'warning',
+          message: `${isolated.length} road(s) without direction`,
+          location: isolated[0].position,
+          relatedObjectIds: isolated.map(d => d.roadId),
+        })
+      }
     }
   }
 

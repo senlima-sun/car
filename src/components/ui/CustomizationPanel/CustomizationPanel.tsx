@@ -262,6 +262,7 @@ export default function CustomizationPanel() {
   const flowWarnings = useTrackGraphStore(s => s.flowWarnings)
   const setTrackFlow = useTrackGraphStore(s => s.setTrackFlow)
   const clearTrackFlow = useTrackGraphStore(s => s.clearTrackFlow)
+  const flipRoadDirection = useTrackGraphStore(s => s.flipRoadDirection)
 
   // Check if checkpoint exists
   const checkpoint = placedObjects.find(obj => obj.type === 'checkpoint')
@@ -973,6 +974,26 @@ export default function CustomizationPanel() {
             >
               Direction set{flowWarnings.length > 0 ? ` (${flowWarnings.length} unconnected)` : ''}
             </div>
+            {(() => {
+              const selectedRoads = multiSelectedIds.length > 0
+                ? multiSelectedIds.filter(id => placedObjects.find(o => o.id === id)?.type === 'road')
+                : selectedObject?.type === 'road' ? [selectedObject.id] : []
+              const hasSelectedRoads = selectedRoads.length > 0
+              return hasSelectedRoads ? (
+                <button
+                  style={{
+                    ...styles.actionButton,
+                    background: '#f97316',
+                    color: '#fff',
+                    width: '100%',
+                    marginBottom: 6,
+                  }}
+                  onClick={() => flipRoadDirection(selectedRoads)}
+                >
+                  Flip Direction ({selectedRoads.length} road{selectedRoads.length > 1 ? 's' : ''})
+                </button>
+              ) : null
+            })()}
             <button
               style={{
                 ...styles.actionButton,
