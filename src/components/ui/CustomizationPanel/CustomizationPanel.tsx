@@ -956,6 +956,9 @@ export default function CustomizationPanel() {
         <div style={styles.controlLine}>
           <span style={styles.key}>Scroll</span> Zoom
         </div>
+        <div style={styles.controlLine}>
+          <span style={styles.key}>V</span> Toggle 3D view
+        </div>
       </div>
 
       <div style={{

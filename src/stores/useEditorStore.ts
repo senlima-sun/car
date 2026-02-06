@@ -47,8 +47,10 @@ interface EditorState {
   multiSelectedIds: string[]
   clipboard: PlacedObject[]
   cameraTarget: [number, number, number] | null
+  isObliqueView: boolean
 
   setSymmetricCurve: (enabled: boolean) => void
+  setObliqueView: (v: boolean) => void
   undo: () => void
   redo: () => void
   toggleMultiSelect: (id: string) => void
@@ -141,8 +143,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   multiSelectedIds: [],
   clipboard: [],
   cameraTarget: null,
+  isObliqueView: false,
 
   setSymmetricCurve: (enabled) => set({ symmetricCurve: enabled }),
+
+  setObliqueView: (v) => set({ isObliqueView: v }),
 
   undo: () => {
     editorCommandStack.undo()

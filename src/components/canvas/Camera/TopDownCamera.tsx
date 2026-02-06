@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { OrthographicCamera } from '@react-three/drei'
 import * as THREE from 'three'
+import { useEditorStore } from '@/stores/useEditorStore'
 
 const INITIAL_ZOOM = 15
 const MIN_ZOOM = 5
@@ -13,8 +14,16 @@ const KEYBOARD_PAN_SPEED = 2.5
 export default function TopDownCamera() {
   const cameraRef = useRef<THREE.OrthographicCamera>(null)
   const { gl } = useThree()
+  const setObliqueView = useEditorStore(s => s.setObliqueView)
+  const isObliqueView = useEditorStore(s => s.isObliqueView)
 
-  // Camera position state
+  const isOblique = useRef(false)
+  const azimuth = useRef(0)
+  const targetAzimuth = useRef(0)
+
+  const targetPosition = useRef(new THREE.Vector3(0, 200, 0))
+  const currentPosition = useRef(new THREE.Vector3(0, 200, 0))
+
   const cameraState = useRef({
     x: 0,
     z: 0,
@@ -89,10 +98,20 @@ export default function TopDownCamera() {
   // Track pressed keys for WASD panning
   const keysRef = useRef<Record<string, boolean>>({})
 
-  // Handle keyboard for panning (WASD)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       keysRef.current[e.code] = true
+
+      if (e.code === 'KeyV') {
+        isOblique.current = !isOblique.current
+        setObliqueView(isOblique.current)
+      }
+      if (e.code === 'KeyQ' && isOblique.current) {
+        targetAzimuth.current += Math.PI / 4
+      }
+      if (e.code === 'KeyE' && isOblique.current) {
+        targetAzimuth.current -= Math.PI / 4
+      }
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -106,13 +125,11 @@ export default function TopDownCamera() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [])
+  }, [setObliqueView])
 
-  // Update camera position each frame
   useFrame((_, delta) => {
     if (!cameraRef.current) return
 
-    // Handle keyboard panning in frame loop for smooth movement
     const keys = keysRef.current
     const panFactor = cameraState.current.zoom * KEYBOARD_PAN_SPEED * delta
     if (keys['KeyW'] || keys['ArrowUp']) cameraState.current.z -= panFactor
@@ -120,8 +137,32 @@ export default function TopDownCamera() {
     if (keys['KeyA'] || keys['ArrowLeft']) cameraState.current.x -= panFactor
     if (keys['KeyD'] || keys['ArrowRight']) cameraState.current.x += panFactor
 
+    azimuth.current += (targetAzimuth.current - azimuth.current) * 0.1
+
     const { x, z, zoom } = cameraState.current
-    cameraRef.current.position.set(x, 200, z)
+
+    if (isOblique.current) {
+      const elevAngle = (55 * Math.PI) / 180
+      const dist = 200
+      const camX = x + Math.sin(azimuth.current) * Math.cos(elevAngle) * dist
+      const camY = Math.sin(elevAngle) * dist
+      const camZ = z + Math.cos(azimuth.current) * Math.cos(elevAngle) * dist
+
+      targetPosition.current.set(camX, camY, camZ)
+    } else {
+      targetPosition.current.set(x, 200, z)
+    }
+
+    currentPosition.current.lerp(targetPosition.current, 0.15)
+
+    cameraRef.current.position.copy(currentPosition.current)
+
+    if (isOblique.current) {
+      cameraRef.current.lookAt(x, 0, z)
+    } else {
+      cameraRef.current.rotation.set(-Math.PI / 2, 0, 0)
+    }
+
     cameraRef.current.zoom = zoom
     cameraRef.current.updateProjectionMatrix()
   })

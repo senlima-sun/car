@@ -62,7 +62,18 @@ export default function TrackMinimap() {
 
     for (const road of roads) {
       ctx.beginPath()
-      ctx.strokeStyle = road.flowDirection ? '#22c55e' : '#aaaaaa'
+
+      const maxElev = Math.max(road.startElevation ?? 0, road.endElevation ?? 0)
+      if (maxElev > 0) {
+        const intensity = Math.min(1, maxElev / 20)
+        const r = Math.round(100 + 155 * (1 - intensity))
+        const g = Math.round(100 + 155 * (1 - intensity))
+        const b = Math.round(170 + 85 * intensity)
+        ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`
+      } else {
+        ctx.strokeStyle = road.flowDirection ? '#22c55e' : '#aaaaaa'
+      }
+
       ctx.lineWidth = 2.5
 
       if (road.trackMode === 'curve' && road.controlPoint) {
