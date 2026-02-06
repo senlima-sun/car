@@ -5,6 +5,84 @@ use wasm_bindgen::prelude::*;
 // Weather Types
 // ============================================================================
 
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum PrecipitationType {
+    #[default]
+    None,
+    Rain,
+    Snow,
+    Hail,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct AmbientEnvironment {
+    pub temperature_celsius: f32,
+    pub humidity: f32,
+    pub precipitation_rate_mmh: f32,
+    pub precipitation_type: PrecipitationType,
+    pub atmospheric_pressure_hpa: f32,
+    pub cloud_cover: f32,
+}
+
+impl AmbientEnvironment {
+    pub fn new(celsius: f32, humidity: f32, precipitation_rate_mmh: f32) -> Self {
+        let precip_type = if precipitation_rate_mmh < 0.1 {
+            PrecipitationType::None
+        } else if celsius < 0.0 {
+            PrecipitationType::Snow
+        } else if celsius < 2.0 {
+            if precipitation_rate_mmh > 10.0 { PrecipitationType::Snow } else { PrecipitationType::Rain }
+        } else {
+            PrecipitationType::Rain
+        };
+        Self {
+            temperature_celsius: celsius,
+            humidity: humidity.clamp(0.0, 1.0),
+            precipitation_rate_mmh: precipitation_rate_mmh.max(0.0),
+            precipitation_type: precip_type,
+            atmospheric_pressure_hpa: 1013.25,
+            cloud_cover: if precipitation_rate_mmh > 0.1 { 0.8 } else { 0.2 },
+        }
+    }
+
+    pub fn with_pressure(mut self, hpa: f32) -> Self {
+        self.atmospheric_pressure_hpa = hpa;
+        self
+    }
+
+    pub fn with_cloud_cover(mut self, cover: f32) -> Self {
+        self.cloud_cover = cover.clamp(0.0, 1.0);
+        self
+    }
+
+    pub fn default_dry() -> Self {
+        Self::new(25.0, 0.3, 0.0)
+    }
+
+    pub fn is_precipitating(&self) -> bool {
+        self.precipitation_rate_mmh > 0.1
+    }
+
+    pub fn is_freezing(&self) -> bool {
+        self.temperature_celsius < 0.0
+    }
+
+    pub fn to_legacy_ambient(&self) -> AmbientConditions {
+        let rain_01 = (self.precipitation_rate_mmh / 50.0).clamp(0.0, 1.0);
+        AmbientConditions::new(self.temperature_celsius, self.humidity, rain_01)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct SurfaceFrictionBreakdown {
+    pub water_film_mm: f32,
+    pub ice_thickness: f32,
+    pub snow_depth: f32,
+    pub base_mu: f32,
+    pub effective_mu: f32,
+}
+
 /// Internal weather condition for modifier blending (not exposed to JS)
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum WeatherCondition {

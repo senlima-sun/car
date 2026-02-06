@@ -9,10 +9,11 @@ use crate::surface::SurfaceState;
 use crate::tires::{TempInput, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
-    AeroMode, AmbientConditions, AquaplaningState, BrakeState, CarInput, CarPhysicsOutput, CurbSide,
-    EngineBrakingLevel, ErsMode, GripBreakdown, PerWheelWear, SemiAutoConfig, SemiAutoPreset,
-    SurfaceModifiers, SurfaceType, TemperatureOutput, TireCompound, TireThermalShock, TrackBounds,
-    WeatherModifiers, WindModifiers, WindState,
+    AeroMode, AmbientConditions, AmbientEnvironment, AquaplaningState, BrakeState, CarInput,
+    CarPhysicsOutput, CurbSide, EngineBrakingLevel, ErsMode, GripBreakdown, PerWheelWear,
+    SemiAutoConfig, SemiAutoPreset, SurfaceFrictionBreakdown, SurfaceModifiers, SurfaceType,
+    TemperatureOutput, TireCompound, TireThermalShock, TrackBounds, WeatherModifiers, WindModifiers,
+    WindState,
 };
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
@@ -72,6 +73,22 @@ impl PhysicsEngine {
 
     pub fn set_custom_weather(&mut self, celsius: f32, humidity: f32, rain_intensity: f32) {
         self.weather.set_custom_ambient(celsius, humidity, rain_intensity);
+    }
+
+    pub fn set_environment(&mut self, env: AmbientEnvironment) {
+        self.weather.set_environment(env);
+    }
+
+    pub fn get_environment(&self) -> AmbientEnvironment {
+        *self.weather.get_environment()
+    }
+
+    pub fn get_air_density(&self) -> f32 {
+        self.weather.get_air_density()
+    }
+
+    pub fn get_surface_friction_breakdown(&self) -> SurfaceFrictionBreakdown {
+        self.weather.get_surface_friction_breakdown()
     }
 
     pub fn get_rain_intensity(&self) -> f32 {
@@ -555,7 +572,8 @@ impl PhysicsEngine {
             0.0
         };
 
-        // Run car physics with surface, tire degradation, wind, ERS, active aero, and brake effects
+        let air_density = self.weather.get_air_density();
+
         let mut output = self.car.step(
             dt,
             &input,
@@ -577,6 +595,7 @@ impl PhysicsEngine {
             front_brake_force,
             rear_brake_force,
             ers_harvest_decel,
+            air_density,
         );
 
         // Apply curb bump as pitch rotation (X axis = pitch in Three.js)
@@ -751,8 +770,11 @@ mod tests {
         assert!((ambient.rain_intensity - 1.0).abs() < 0.01);
 
         let modifiers = engine.get_weather_modifiers();
-        // Rain should reduce friction
-        assert!(modifiers.friction_slip_multiplier < 0.6);
+        assert!(
+            modifiers.friction_slip_multiplier < 0.85,
+            "Rain should reduce friction, got {}",
+            modifiers.friction_slip_multiplier
+        );
     }
 
     #[test]

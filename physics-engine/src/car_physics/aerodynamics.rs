@@ -1,52 +1,43 @@
 use super::{BASE_DOWNFORCE_COEFFICIENT, BASE_DRAG_COEFFICIENT};
 
-const AIR_DENSITY: f32 = 1.225; // kg/m³
-const FRONTAL_AREA: f32 = 2.0;  // m²
+const DEFAULT_AIR_DENSITY: f32 = 1.225;
+const FRONTAL_AREA: f32 = 2.0;
 
-/// Calculate engine force based on speed (power curve)
-/// ers_boost: additional force from ERS deployment in Newtons
 pub fn get_engine_force(speed_ms: f32, ers_boost: f32) -> f32 {
     let speed_kmh = speed_ms * 3.6;
 
-    // Multi-stage power curve
     let base_force = if speed_kmh < 60.0 {
-        // Full torque at low speed
         18000.0
     } else if speed_kmh < 150.0 {
-        // Linear falloff mid-range
         let t = (speed_kmh - 60.0) / 90.0;
-        18000.0 - t * 6000.0 // 18000 -> 12000
+        18000.0 - t * 6000.0
     } else if speed_kmh < 250.0 {
-        // Continued falloff high-range
         let t = (speed_kmh - 150.0) / 100.0;
-        12000.0 - t * 5000.0 // 12000 -> 7000
+        12000.0 - t * 5000.0
     } else {
-        // Top speed range - smooth squared falloff
         let t = ((speed_kmh - 250.0) / 60.0).min(1.0);
-        7000.0 - t * t * 3500.0 // 7000 -> 3500
+        7000.0 - t * t * 3500.0
     };
 
     base_force + ers_boost
 }
 
-/// Calculate aerodynamic drag force (proportional to v²)
-/// active_aero_mult: multiplier from active aero system (0.65-1.0)
 pub fn get_drag_force(speed_ms: f32, active_aero_mult: f32) -> f32 {
-    // Apply active aero multiplier to drag coefficient
-    let final_drag_coeff = BASE_DRAG_COEFFICIENT * active_aero_mult;
-
-    // F = 0.5 * ρ * Cd * A * v²
-    0.5 * AIR_DENSITY * final_drag_coeff * FRONTAL_AREA * speed_ms * speed_ms
+    get_drag_force_with_density(speed_ms, active_aero_mult, DEFAULT_AIR_DENSITY)
 }
 
-/// Calculate aerodynamic downforce (proportional to v²)
-/// active_aero_mult: multiplier from active aero system (0.55-1.0)
-pub fn get_downforce(speed_ms: f32, active_aero_mult: f32) -> f32 {
-    // Apply active aero multiplier to downforce coefficient
-    let final_downforce_coeff = BASE_DOWNFORCE_COEFFICIENT * active_aero_mult;
+pub fn get_drag_force_with_density(speed_ms: f32, active_aero_mult: f32, air_density: f32) -> f32 {
+    let final_drag_coeff = BASE_DRAG_COEFFICIENT * active_aero_mult;
+    0.5 * air_density * final_drag_coeff * FRONTAL_AREA * speed_ms * speed_ms
+}
 
-    // F = 0.5 * ρ * Cl * A * v²
-    0.5 * AIR_DENSITY * final_downforce_coeff * FRONTAL_AREA * speed_ms * speed_ms
+pub fn get_downforce(speed_ms: f32, active_aero_mult: f32) -> f32 {
+    get_downforce_with_density(speed_ms, active_aero_mult, DEFAULT_AIR_DENSITY)
+}
+
+pub fn get_downforce_with_density(speed_ms: f32, active_aero_mult: f32, air_density: f32) -> f32 {
+    let final_downforce_coeff = BASE_DOWNFORCE_COEFFICIENT * active_aero_mult;
+    0.5 * air_density * final_downforce_coeff * FRONTAL_AREA * speed_ms * speed_ms
 }
 
 #[cfg(test)]

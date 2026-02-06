@@ -100,6 +100,7 @@ impl CarPhysicsState {
         front_brake_force: f32,
         rear_brake_force: f32,
         ers_harvest_decel: f32,
+        air_density: f32,
     ) -> CarPhysicsOutput {
         let dt = delta.min(0.05); // Clamp delta time
 
@@ -191,9 +192,7 @@ impl CarPhysicsState {
             longitudinal_force -= engine_braking_force * forward_speed.signum();
         }
 
-        // Aerodynamic drag (affected by weather, wind, and active aero)
-        let drag = aerodynamics::get_drag_force(self.speed_ms, active_aero_drag_mult)
-            * weather_modifiers.drag_multiplier
+        let drag = aerodynamics::get_drag_force_with_density(self.speed_ms, active_aero_drag_mult, air_density)
             * wind_modifiers.drag_modifier;
         longitudinal_force -= drag * forward_speed.signum();
 
@@ -208,9 +207,7 @@ impl CarPhysicsState {
             longitudinal_force -= ers_harvest_decel * forward_speed.signum();
         }
 
-        // Downforce for grip (affected by weather and active aero)
-        let downforce = aerodynamics::get_downforce(self.speed_ms, active_aero_downforce_mult)
-            * weather_modifiers.downforce_multiplier;
+        let downforce = aerodynamics::get_downforce_with_density(self.speed_ms, active_aero_downforce_mult, air_density);
         let total_load = CAR_MASS * 9.81 + downforce;
         let downforce_grip_bonus = 1.0 + (downforce / (CAR_MASS * 9.81)) * 0.3;
 
@@ -276,9 +273,10 @@ impl CarPhysicsState {
         // Calculate new velocities
         let new_forward_speed = forward_speed + (longitudinal_force / CAR_MASS) * dt;
 
-        // Apply lateral wind force (crosswind pushes car sideways)
         let wind_lateral_accel = wind_modifiers.lateral_force / CAR_MASS;
         let new_lateral_speed = lateral_speed * lateral_correction + wind_lateral_accel * dt;
+
+        let crosswind_yaw_moment = wind_modifiers.lateral_force * 0.3 / (CAR_MASS * WHEELBASE);
 
         // Clamp speeds with tire degradation effects
         let max_speed = BASE_MAX_SPEED
@@ -292,7 +290,7 @@ impl CarPhysicsState {
 
         // Cap angular velocity
         let max_ang_vel = if self.drift.is_drifting() { 2.8 } else { 1.8 };
-        let final_ang_vel = (self.target_angular_velocity + drift_rotation).clamp(-max_ang_vel, max_ang_vel);
+        let final_ang_vel = (self.target_angular_velocity + drift_rotation + crosswind_yaw_moment * dt).clamp(-max_ang_vel, max_ang_vel);
 
         // Update previous values
         self.prev_forward_speed = clamped_forward;

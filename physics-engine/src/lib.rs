@@ -17,7 +17,10 @@ mod wind;
 
 use engine::PhysicsEngine as PhysicsEngineInternal;
 use serde_wasm_bindgen::{from_value, to_value};
-use types::{AeroMode, CarInput, CurbSide, ErsMode, SemiAutoPreset, SurfaceType, TireCompound, TrackBounds};
+use types::{
+    AeroMode, AmbientEnvironment, CarInput, CurbSide, ErsMode, SemiAutoPreset, SurfaceType,
+    TireCompound, TrackBounds,
+};
 use wasm_bindgen::prelude::*;
 
 // Re-export enums for JavaScript
@@ -74,6 +77,31 @@ impl PhysicsEngine {
     #[wasm_bindgen]
     pub fn get_rain_intensity(&self) -> f32 {
         self.inner.get_rain_intensity()
+    }
+
+    #[wasm_bindgen]
+    pub fn set_environment(
+        &mut self,
+        celsius: f32,
+        humidity: f32,
+        precipitation_rate_mmh: f32,
+        pressure_hpa: f32,
+        cloud_cover: f32,
+    ) {
+        let env = AmbientEnvironment::new(celsius, humidity, precipitation_rate_mmh)
+            .with_pressure(pressure_hpa)
+            .with_cloud_cover(cloud_cover);
+        self.inner.set_environment(env);
+    }
+
+    #[wasm_bindgen]
+    pub fn get_air_density(&self) -> f32 {
+        self.inner.get_air_density()
+    }
+
+    #[wasm_bindgen]
+    pub fn get_surface_friction_breakdown(&self) -> JsValue {
+        to_value(&self.inner.get_surface_friction_breakdown()).unwrap_or(JsValue::NULL)
     }
 
     // ========================================================================
