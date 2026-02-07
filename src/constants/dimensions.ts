@@ -31,17 +31,25 @@ export const GROUP_CAR = 0x0001
 export const GROUP_TRACK = 0x0002
 export const GROUP_GROUND = 0x0004
 export const GROUP_OBJECT = 0x0008
+export const GROUP_RAY = 0x0010
 
 // Collision group interaction masks
 // interactionGroups(membership, filter)
-// Car collides with: TRACK, GROUND, OBJECT
-export const CAR_COLLISION_GROUPS = interactionGroups(GROUP_CAR, GROUP_TRACK | GROUP_GROUND | GROUP_OBJECT)
-// Track collides with: CAR
-export const TRACK_COLLISION_GROUPS = interactionGroups(GROUP_TRACK, GROUP_CAR)
-// Ground collides with: CAR, OBJECT
-export const GROUND_COLLISION_GROUPS = interactionGroups(GROUP_GROUND, GROUP_CAR | GROUP_OBJECT)
-// Object collides with: CAR, GROUND
+//
+// KEY DESIGN: Car chassis does NOT contact-collide with TRACK or GROUND.
+// Raycast suspension handles road support. If chassis cuboid also contacts
+// the road trimesh, Rapier's penetration solver + suspension spring forces
+// stack together → car launched into sky. This is the third time this bug
+// has appeared so DO NOT add GROUP_TRACK or GROUP_GROUND to CAR filter.
+export const CAR_COLLISION_GROUPS = interactionGroups(GROUP_CAR, GROUP_OBJECT)
+// Track: no contact with car, but allows raycast queries (GROUP_RAY)
+export const TRACK_COLLISION_GROUPS = interactionGroups(GROUP_TRACK, GROUP_RAY)
+// Ground: no contact with car, allows raycast + object contact
+export const GROUND_COLLISION_GROUPS = interactionGroups(GROUP_GROUND, GROUP_OBJECT | GROUP_RAY)
+// Object: contacts car and ground
 export const OBJECT_COLLISION_GROUPS = interactionGroups(GROUP_OBJECT, GROUP_CAR | GROUP_GROUND)
+// Raycast filter used by suspension rays: membership=RAY, filter=TRACK|GROUND
+export const SUSPENSION_RAY_GROUPS = interactionGroups(GROUP_RAY, GROUP_TRACK | GROUP_GROUND)
 
 function interactionGroups(membership: number, filter: number): number {
   return (membership << 16) | filter

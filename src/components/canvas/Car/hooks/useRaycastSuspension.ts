@@ -1,6 +1,6 @@
 import { MutableRefObject, useRef } from 'react'
 import { RapierRigidBody, useRapier } from '@react-three/rapier'
-import { WHEEL_POSITIONS, WHEEL_RADIUS } from '../../../../constants/dimensions'
+import { WHEEL_POSITIONS, WHEEL_RADIUS, SUSPENSION_RAY_GROUPS } from '../../../../constants/dimensions'
 
 const SPRING_K = 45000
 const DAMPER_C = 4500
@@ -10,6 +10,7 @@ const RAY_LENGTH = REST_LENGTH + MAX_TRAVEL
 
 const FRONT_ANTI_ROLL_K = 15000
 const REAR_ANTI_ROLL_K = 12000
+
 
 const WHEEL_ANCHORS = [
   WHEEL_POSITIONS.FL,
@@ -94,7 +95,7 @@ export function useRaycastSuspension(
         RAY_LENGTH,
         true,
         undefined,
-        undefined,
+        SUSPENSION_RAY_GROUPS,
         undefined,
         chassis,
       )
