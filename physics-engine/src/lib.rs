@@ -609,18 +609,16 @@ impl PhysicsEngine {
         car_rotation: JsValue,
         current_linvel: JsValue,
         current_angvel: JsValue,
+        surface_normal: JsValue,
     ) -> JsValue {
-        // Parse inputs
         let input: CarInput = from_value(input).unwrap_or_default();
         let position: [f32; 3] = from_value(car_position).unwrap_or([0.0, 0.0, 0.0]);
         let rotation: [f32; 4] = from_value(car_rotation).unwrap_or([0.0, 0.0, 0.0, 1.0]);
         let linvel: [f32; 3] = from_value(current_linvel).unwrap_or([0.0, 0.0, 0.0]);
         let angvel: [f32; 3] = from_value(current_angvel).unwrap_or([0.0, 0.0, 0.0]);
+        let normal: [f32; 3] = from_value(surface_normal).unwrap_or([0.0, 1.0, 0.0]);
 
-        // Run physics step
-        let output = self.inner.step(delta_seconds, input, position, rotation, linvel, angvel);
-
-        // Return as JavaScript object
+        let output = self.inner.step(delta_seconds, input, position, rotation, linvel, angvel, normal);
         to_value(&output).unwrap_or(JsValue::NULL)
     }
 
@@ -639,14 +637,16 @@ impl PhysicsEngine {
         car_rotation: JsValue,
         current_linvel: JsValue,
         current_angvel: JsValue,
+        surface_normal: JsValue,
     ) -> JsValue {
         let input: CarInput = from_value(input).unwrap_or_default();
         let position: [f32; 3] = from_value(car_position).unwrap_or([0.0, 0.0, 0.0]);
         let rotation: [f32; 4] = from_value(car_rotation).unwrap_or([0.0, 0.0, 0.0, 1.0]);
         let linvel: [f32; 3] = from_value(current_linvel).unwrap_or([0.0, 0.0, 0.0]);
         let angvel: [f32; 3] = from_value(current_angvel).unwrap_or([0.0, 0.0, 0.0]);
+        let normal: [f32; 3] = from_value(surface_normal).unwrap_or([0.0, 1.0, 0.0]);
 
-        let output = self.inner.step_and_sync(delta_seconds, input, position, rotation, linvel, angvel);
+        let output = self.inner.step_and_sync(delta_seconds, input, position, rotation, linvel, angvel, normal);
         to_value(&output).unwrap_or(JsValue::NULL)
     }
 

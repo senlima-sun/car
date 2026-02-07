@@ -153,6 +153,7 @@ export function useCarFrame({
   // Raycast suspension
   const suspension = useRaycastSuspension(chassisRef)
   const suspensionOutputRef = useRef<SuspensionOutput | null>(null)
+  const surfaceNormalRef = useRef<[number, number, number]>([0, 1, 0])
 
   // Spray effect state (ref to avoid re-renders)
   const carStateRef = useRef<CarState>({
@@ -362,6 +363,7 @@ export function useCarFrame({
       [rot.x, rot.y, rot.z, rot.w],
       [linvel.x, linvel.y, linvel.z],
       [angvel.x, angvel.y, angvel.z],
+      surfaceNormalRef.current,
     )
     const output = syncResult.physics
 
@@ -394,6 +396,24 @@ export function useCarFrame({
 
     // Raycast suspension: 4 rays from wheel positions, spring-damper forces
     suspensionOutputRef.current = suspension.step(dt)
+
+    // Compute surface normal from 4 wheel hit heights for next frame
+    if (suspensionOutputRef.current) {
+      const w = suspensionOutputRef.current.wheels
+      const frontY = (w[0].hitY + w[1].hitY) / 2
+      const rearY = (w[2].hitY + w[3].hitY) / 2
+      const leftY = (w[0].hitY + w[2].hitY) / 2
+      const rightY = (w[1].hitY + w[3].hitY) / 2
+      const wb = DIM_WHEEL_POS.FL[2] - DIM_WHEEL_POS.RL[2]
+      const tg = DIM_WHEEL_POS.FR[0] - DIM_WHEEL_POS.FL[0]
+      const pitch = Math.atan2(frontY - rearY, wb)
+      const roll = Math.atan2(rightY - leftY, tg)
+      const nx = -Math.sin(pitch)
+      const ny = Math.cos(pitch) * Math.cos(roll)
+      const nz = -Math.sin(roll)
+      const len = Math.sqrt(nx * nx + ny * ny + nz * nz)
+      surfaceNormalRef.current = len > 0.01 ? [nx / len, ny / len, nz / len] : [0, 1, 0]
+    }
 
     if (logger) {
       const speedDelta = Math.abs(output.speed_kmh - prevSpeedRef.current)

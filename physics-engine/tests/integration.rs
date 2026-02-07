@@ -70,6 +70,7 @@ fn step_sim(
         state.rotation,
         state.linvel,
         state.angvel,
+        [0.0, 1.0, 0.0],
     );
 
     state.linvel = output.linear_velocity;
@@ -306,6 +307,7 @@ fn test_rain_reduces_grip() {
             IDENTITY_QUAT,
             ZERO_VEL,
             ZERO_VEL,
+            [0.0, 1.0, 0.0],
         );
     }
     let mut state_rain = SimState::new();

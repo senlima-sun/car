@@ -405,6 +405,7 @@ impl PhysicsEngine {
         car_rotation: [f32; 4],
         current_linvel: [f32; 3],
         current_angvel: [f32; 3],
+        surface_normal: [f32; 3],
     ) -> CarPhysicsOutput {
         let dt = delta_seconds.min(0.05);
 
@@ -616,6 +617,7 @@ impl PhysicsEngine {
             rear_brake_force,
             ers_harvest_decel,
             air_density,
+            surface_normal,
         );
 
         // Apply curb bump as pitch rotation (X axis = pitch in Three.js)
@@ -717,8 +719,9 @@ impl PhysicsEngine {
         car_rotation: [f32; 4],
         current_linvel: [f32; 3],
         current_angvel: [f32; 3],
+        surface_normal: [f32; 3],
     ) -> crate::types::StepAndSyncOutput {
-        let physics = self.step(delta_seconds, input, car_position, car_rotation, current_linvel, current_angvel);
+        let physics = self.step(delta_seconds, input, car_position, car_rotation, current_linvel, current_angvel, surface_normal);
         let wind_state = self.get_wind_state();
         let aero_state = self.get_active_aero_state();
         let brake_state = self.get_brake_state();
@@ -799,6 +802,7 @@ mod tests {
             [0.0, 0.0, 0.0, 1.0],
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
         );
 
         // Should have positive forward velocity after accelerating
@@ -848,6 +852,7 @@ mod tests {
                 1.0 / 60.0, input,
                 [0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0],
                 linvel, [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
             );
             linvel = output.linear_velocity;
         }
@@ -870,6 +875,7 @@ mod tests {
                 1.0 / 60.0, input,
                 [0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0],
                 linvel2, [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
             );
             linvel2 = output.linear_velocity;
         }
@@ -895,6 +901,7 @@ mod tests {
             1.0 / 60.0, input,
             [0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0],
             [0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
         );
 
         assert!(output.grip_breakdown.base_compound_grip > 0.0);

@@ -390,15 +390,15 @@ export function stepPhysics(
   rotation: [number, number, number, number],
   linvel: [number, number, number],
   angvel: [number, number, number],
+  surfaceNormal: [number, number, number] = [0, 1, 0],
 ): CarPhysicsOutput {
   const eng = getPhysicsEngine()
 
-  // Sanitize inputs to prevent NaN propagation into WASM
   const safeLinvel = sanitizeVec3(linvel)
   const safeAngvel = sanitizeVec3(angvel)
-  const safeDelta = sanitize(delta, 0.016) // Default to ~60fps
+  const safeDelta = sanitize(delta, 0.016)
 
-  return eng.step(safeDelta, input, position, rotation, safeLinvel, safeAngvel) as CarPhysicsOutput
+  return eng.step(safeDelta, input, position, rotation, safeLinvel, safeAngvel, surfaceNormal) as CarPhysicsOutput
 }
 
 /**
@@ -411,12 +411,13 @@ export function stepAndSync(
   rotation: [number, number, number, number],
   linvel: [number, number, number],
   angvel: [number, number, number],
+  surfaceNormal: [number, number, number] = [0, 1, 0],
 ): StepAndSyncOutput {
   const eng = getPhysicsEngine()
   const safeLinvel = sanitizeVec3(linvel)
   const safeAngvel = sanitizeVec3(angvel)
   const safeDelta = sanitize(delta, 0.016)
-  return eng.step_and_sync(safeDelta, input, position, rotation, safeLinvel, safeAngvel) as StepAndSyncOutput
+  return eng.step_and_sync(safeDelta, input, position, rotation, safeLinvel, safeAngvel, surfaceNormal) as StepAndSyncOutput
 }
 
 /**

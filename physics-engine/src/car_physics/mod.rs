@@ -97,6 +97,7 @@ impl CarPhysicsState {
         rear_brake_force: f32,
         ers_harvest_decel: f32,
         air_density: f32,
+        surface_normal: [f32; 3],
     ) -> CarPhysicsOutput {
         let dt = delta.min(0.05); // Clamp delta time
 
@@ -203,9 +204,27 @@ impl CarPhysicsState {
             longitudinal_force -= ers_harvest_decel * forward_speed.signum();
         }
 
+        // Surface normal gravity decomposition
+        let normal_y = surface_normal[1].max(0.01);
+        let slope_angle = normal_y.acos();
+        let gravity_normal = CAR_MASS * 9.81 * slope_angle.cos();
+
+        // Pitch component: project surface normal onto forward dir
+        let normal_forward = surface_normal[0] * forward_dir.x + surface_normal[1] * forward_dir.y + surface_normal[2] * forward_dir.z;
+        let pitch_angle = normal_forward.asin().clamp(-0.5, 0.5);
+        let gravity_tangent = CAR_MASS * 9.81 * pitch_angle.sin();
+
+        // Banking component: project surface normal onto right dir
+        let normal_right = surface_normal[0] * right_dir.x + surface_normal[1] * right_dir.y + surface_normal[2] * right_dir.z;
+        let banking_angle = normal_right.asin().clamp(-0.5, 0.5);
+        let banking_lateral_force = CAR_MASS * 9.81 * banking_angle.sin();
+
+        // Apply slope-induced longitudinal force (downhill = positive, uphill = negative)
+        longitudinal_force += gravity_tangent;
+
         let downforce = aerodynamics::get_downforce_with_density(self.speed_ms, active_aero_downforce_mult, air_density);
-        let total_load = CAR_MASS * 9.81 + downforce;
-        let downforce_grip_bonus = 1.0 + (downforce / (CAR_MASS * 9.81)) * 0.3;
+        let total_load = gravity_normal + downforce;
+        let downforce_grip_bonus = 1.0 + (downforce / gravity_normal.max(1.0)) * 0.3;
 
         // Weight transfer (use safe_dt to prevent division by very small numbers)
         let safe_dt = dt.max(0.001); // Minimum 1ms to prevent NaN
@@ -270,7 +289,8 @@ impl CarPhysicsState {
         let new_forward_speed = forward_speed + (longitudinal_force / CAR_MASS) * dt;
 
         let wind_lateral_accel = wind_modifiers.lateral_force / CAR_MASS;
-        let new_lateral_speed = lateral_speed * lateral_correction + wind_lateral_accel * dt;
+        let banking_accel = -banking_lateral_force / CAR_MASS;
+        let new_lateral_speed = lateral_speed * lateral_correction + (wind_lateral_accel + banking_accel) * dt;
 
         let crosswind_yaw_moment = wind_modifiers.lateral_force * 0.3 / (CAR_MASS * WHEELBASE);
 
