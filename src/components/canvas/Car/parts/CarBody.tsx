@@ -1,3 +1,4 @@
+import { MutableRefObject } from 'react'
 import { CAR_SCALE } from '../../../../constants/physics'
 import { TIRE_CONFIG } from '../../../../constants/tires'
 import { useGameStore } from '../../../../stores/useGameStore'
@@ -12,8 +13,13 @@ import DynamicParts from './DynamicParts'
 import { FrontWing } from './FrontWing'
 import { RearWing } from './RearWing'
 import { useEngineThermal } from '../hooks/useEngineThermal'
+import type { SuspensionOutput } from '../hooks/useRaycastSuspension'
 
-export default function CarBody() {
+interface CarBodyProps {
+  suspensionRef?: MutableRefObject<SuspensionOutput | null>
+}
+
+export default function CarBody({ suspensionRef }: CarBodyProps) {
   const cameraMode = useGameStore(state => state.cameraMode)
   const rainIntensity = useEnvironmentStore(state => state.rainIntensity)
   const isRaining = rainIntensity > 0.01
@@ -33,6 +39,7 @@ export default function CarBody() {
       <WheelsGroup
         isThermalView={isThermalView}
         compoundColor={compoundColor}
+        suspensionRef={suspensionRef}
       />
       <FrontWing />
       <RearWing />

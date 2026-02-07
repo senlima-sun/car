@@ -20,11 +20,12 @@ import { useBrakeStore } from '../../../../stores/useBrakeStore'
 import { useLapTimeStore } from '../../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../../stores/usePitStore'
 import { useElevationStore } from '../../../../stores/useElevationStore'
-import { useCustomizationStore, getElevationAtWorldPosition } from '../../../../stores/useCustomizationStore'
+
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 import { getLogger } from '../../../../debug/ActionLogger'
 import { WHEEL_POSITIONS as DIM_WHEEL_POS } from '../../../../constants/dimensions'
+import { useRaycastSuspension, type SuspensionOutput } from './useRaycastSuspension'
 
 const WHEEL_OFFSETS: [number, number][] = [
   [DIM_WHEEL_POS.FL[0], DIM_WHEEL_POS.FL[2]],
@@ -148,6 +149,10 @@ export function useCarFrame({
   const prevGripRef = useRef(1)
   const lastTelemetryTime = useRef(0)
   const windSyncCounter = useRef(0)
+
+  // Raycast suspension
+  const suspension = useRaycastSuspension(chassisRef)
+  const suspensionOutputRef = useRef<SuspensionOutput | null>(null)
 
   // Spray effect state (ref to avoid re-renders)
   const carStateRef = useRef<CarState>({
@@ -387,24 +392,8 @@ export function useCarFrame({
       true,
     )
 
-    {
-      const placedObjects = useCustomizationStore.getState().placedObjects
-      const liveElev = getElevationAtWorldPosition(pos.x, pos.z, placedObjects)
-
-      if (liveElev > 0.1) {
-        const currentY = chassis.translation().y
-        const targetY = liveElev + 0.5
-        const diff = targetY - currentY
-
-        if (diff > 0.05) {
-          const k = 600
-          const d = 120
-          const vy = chassis.linvel().y
-          const force = k * diff - d * vy
-          chassis.applyImpulse({ x: 0, y: force * dt, z: 0 }, true)
-        }
-      }
-    }
+    // Raycast suspension: 4 rays from wheel positions, spring-damper forces
+    suspensionOutputRef.current = suspension.step(dt)
 
     if (logger) {
       const speedDelta = Math.abs(output.speed_kmh - prevSpeedRef.current)
@@ -609,5 +598,5 @@ export function useCarFrame({
     carStateRef.current.rotation = yaw
   })
 
-  return { carStateRef, wheelRotations: wheelRotationsRef }
+  return { carStateRef, wheelRotations: wheelRotationsRef, suspensionOutputRef }
 }

@@ -20,7 +20,7 @@ const Car = forwardRef<Group>((_, ref) => {
   const { startPosition, startRotation } = useStartPosition()
 
   // Main physics frame loop
-  const { carStateRef } = useCarFrame({
+  const { carStateRef, suspensionOutputRef } = useCarFrame({
     chassisRef,
     physics,
     windEnabled,
@@ -55,7 +55,7 @@ const Car = forwardRef<Group>((_, ref) => {
           collisionGroups={CAR_COLLISION_GROUPS}
         />
         <group ref={groupRef}>
-          <CarBody />
+          <CarBody suspensionRef={suspensionOutputRef} />
         </group>
       </RigidBody>
 

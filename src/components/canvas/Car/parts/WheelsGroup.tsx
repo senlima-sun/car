@@ -1,9 +1,10 @@
-import { useRef } from 'react'
+import { useRef, MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useTemperatureStore } from '../../../../stores/useTemperatureStore'
 import { useCarStore } from '../../../../stores/useCarStore'
 import { WHEEL_POSITIONS as DIM_WHEEL_POS, WHEEL_RADIUS as DIM_WHEEL_RADIUS } from '../../../../constants/dimensions'
 import { Wheel } from './Wheel'
+import type { SuspensionOutput } from '../hooks/useRaycastSuspension'
 
 const WHEEL_RADIUS = DIM_WHEEL_RADIUS
 const WHEEL_POSITIONS: readonly (readonly [number, number, number])[] = [
@@ -16,21 +17,30 @@ const WHEEL_POSITIONS: readonly (readonly [number, number, number])[] = [
 interface WheelsGroupProps {
   isThermalView: boolean
   compoundColor: string
+  suspensionRef?: MutableRefObject<SuspensionOutput | null>
 }
 
 export function WheelsGroup({
   isThermalView,
   compoundColor,
+  suspensionRef,
 }: WheelsGroupProps) {
   const tires = useTemperatureStore(state => state.tires)
 
   const steerRef = useRef(0)
   const rotationsRef = useRef<[number, number, number, number]>([0, 0, 0, 0])
+  const wheelYOffsetsRef = useRef([0, 0, 0, 0])
 
   useFrame(() => {
     const state = useCarStore.getState()
     steerRef.current = state.steerAngle
     rotationsRef.current = state.wheelRotations
+
+    if (suspensionRef?.current) {
+      for (let i = 0; i < 4; i++) {
+        wheelYOffsetsRef.current[i] = suspensionRef.current.wheels[i].deflection
+      }
+    }
   })
 
   return (
@@ -61,10 +71,13 @@ export function WheelsGroup({
             break
         }
 
+        const baseY = -WHEEL_RADIUS + 0.25
+        const suspensionY = wheelYOffsetsRef.current[index]
+
         return (
           <Wheel
             key={index}
-            position={[pos[0], -WHEEL_RADIUS + 0.25, pos[2]]}
+            position={[pos[0], baseY + suspensionY, pos[2]]}
             steerAngle={isFrontWheel ? steerRef.current : 0}
             wheelRotation={rotationsRef.current[index]}
             isLeft={isLeftWheel}
