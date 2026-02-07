@@ -2,6 +2,7 @@ import { useMemo, useCallback, useEffect } from 'react'
 import { Vector3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
+import { ROAD_THICKNESS as DIM_ROAD_THICKNESS, TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
 import { useElevationStore } from '../../../stores/useElevationStore'
@@ -20,7 +21,7 @@ interface RoadSegmentProps {
 }
 
 const config = OBJECT_CONFIGS.road
-const ROAD_THICKNESS = 0.02 // 2cm - visible but car drives on ground
+const ROAD_THICKNESS = DIM_ROAD_THICKNESS
 
 export default function RoadSegment({
   position,
@@ -256,12 +257,11 @@ export default function RoadSegment({
         onIntersectionExit={handleExitRoad}
       />
 
-      {(startElev > 0.1 || endElev > 0.1) && (
-        <TrimeshCollider
-          args={[rampColliderData.vertices, rampColliderData.indices]}
-          friction={1}
-        />
-      )}
+      <TrimeshCollider
+        args={[rampColliderData.vertices, rampColliderData.indices]}
+        friction={config.friction}
+        collisionGroups={TRACK_COLLISION_GROUPS}
+      />
 
       {roadVisuals}
     </RigidBody>

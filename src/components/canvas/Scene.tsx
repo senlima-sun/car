@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { Group, DirectionalLight, Vector3 } from 'three'
 import { useFrame } from '@react-three/fiber'
-import { RigidBody } from '@react-three/rapier'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { GROUND_COLLISION_GROUPS } from '../../constants/dimensions'
 import Car from './Car/Car'
 import CameraController from './Camera/CameraController'
 import TrackTemperatureOverlay from './Track/TrackTemperatureOverlay'
@@ -21,11 +22,13 @@ import { useEditorStore } from '@/stores/useEditorStore'
 function Ground() {
   return (
     <>
-      <RigidBody type='fixed' colliders='cuboid' friction={1}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} visible={false}>
-          <planeGeometry args={[1000, 1000]} />
-          <meshBasicMaterial />
-        </mesh>
+      <RigidBody type='fixed' colliders={false}>
+        <CuboidCollider
+          args={[500, 0.1, 500]}
+          position={[0, -0.6, 0]}
+          friction={0.4}
+          collisionGroups={GROUND_COLLISION_GROUPS}
+        />
       </RigidBody>
       <TerrainMesh />
     </>

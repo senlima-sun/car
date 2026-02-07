@@ -1,9 +1,9 @@
 import { useMemo, useCallback } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { GHOST_OPACITY, OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import { CURB_PROFILE, CURB_WIDTH, CURB_PEAK_HEIGHT } from '../../../constants/curb'
-import { ROAD_HALF_WIDTH } from '../../../constants/dimensions'
+import { ROAD_HALF_WIDTH, TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { PlacedObject } from '../../../stores/useCustomizationStore'
@@ -44,7 +44,7 @@ export default function CurvedCurbSegment({
   const enterSurface = useSurfaceStore(s => s.enterSurface)
   const exitSurface = useSurfaceStore(s => s.exitSurface)
 
-  const { stripeGeometries, sensorData } = useMemo(() => {
+  const { stripeGeometries, collisionData, sensorData } = useMemo(() => {
     if (
       !curb.startT ||
       !curb.endT ||
@@ -53,7 +53,7 @@ export default function CurvedCurbSegment({
       !parentRoad.endPoint ||
       !parentRoad.controlPoint
     ) {
-      return { stripeGeometries: [], sensorData: null }
+      return { stripeGeometries: [], collisionData: { vertices: new Float32Array(0), indices: new Uint32Array(0) }, sensorData: null }
     }
 
     const start = new Vector3(...parentRoad.startPoint)
@@ -133,6 +133,30 @@ export default function CurvedCurbSegment({
       })
     }
 
+    // Generate combined collision trimesh from all stripe vertices
+    const allCollisionVerts: number[] = []
+    const allCollisionIndices: number[] = []
+    let vertexOffset = 0
+
+    for (const stripe of stripes) {
+      const posAttr = stripe.geometry.getAttribute('position')
+      const idx = stripe.geometry.getIndex()
+      if (!posAttr || !idx) continue
+
+      for (let i = 0; i < posAttr.count; i++) {
+        allCollisionVerts.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i))
+      }
+      for (let i = 0; i < idx.count; i++) {
+        allCollisionIndices.push(idx.getX(i) + vertexOffset)
+      }
+      vertexOffset += posAttr.count
+    }
+
+    const collisionData = {
+      vertices: new Float32Array(allCollisionVerts),
+      indices: new Uint32Array(allCollisionIndices),
+    }
+
     // Calculate sensor position (center of curb segment)
     const midT = (tStart + tEnd) / 2
     const midPos = curve.getPoint(midT)
@@ -143,6 +167,7 @@ export default function CurvedCurbSegment({
 
     return {
       stripeGeometries: stripes,
+      collisionData,
       sensorData: {
         position: [
           midPos.x + midPerp.x * sensorOffset,
@@ -197,7 +222,6 @@ export default function CurvedCurbSegment({
       restitution={curbConfig.restitution}
       colliders={false}
     >
-      {/* Sensor collider for detecting car entry/exit - surface detection */}
       {sensorData && (
         <CuboidCollider
           position={sensorData.position}
@@ -208,7 +232,13 @@ export default function CurvedCurbSegment({
         />
       )}
 
-      {/* Visual meshes */}
+      {collisionData.vertices.length > 0 && (
+        <TrimeshCollider
+          args={[collisionData.vertices, collisionData.indices]}
+          friction={curbConfig.friction}
+          collisionGroups={TRACK_COLLISION_GROUPS}
+        />
+      )}
       {stripeGeometries.map((stripe, i) => (
         <mesh key={i} geometry={stripe.geometry} receiveShadow castShadow>
           <meshStandardMaterial color={stripe.color} side={2} />

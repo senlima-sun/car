@@ -25,3 +25,24 @@ export const WHEEL_POSITIONS = {
 }
 
 export const ROAD_HALF_WIDTH = TRACK_WIDTH / 2
+
+// Collision groups (bitmask)
+export const GROUP_CAR = 0x0001
+export const GROUP_TRACK = 0x0002
+export const GROUP_GROUND = 0x0004
+export const GROUP_OBJECT = 0x0008
+
+// Collision group interaction masks
+// interactionGroups(membership, filter)
+// Car collides with: TRACK, GROUND, OBJECT
+export const CAR_COLLISION_GROUPS = interactionGroups(GROUP_CAR, GROUP_TRACK | GROUP_GROUND | GROUP_OBJECT)
+// Track collides with: CAR
+export const TRACK_COLLISION_GROUPS = interactionGroups(GROUP_TRACK, GROUP_CAR)
+// Ground collides with: CAR, OBJECT
+export const GROUND_COLLISION_GROUPS = interactionGroups(GROUP_GROUND, GROUP_CAR | GROUP_OBJECT)
+// Object collides with: CAR, GROUND
+export const OBJECT_COLLISION_GROUPS = interactionGroups(GROUP_OBJECT, GROUP_CAR | GROUP_GROUND)
+
+function interactionGroups(membership: number, filter: number): number {
+  return (membership << 16) | filter
+}

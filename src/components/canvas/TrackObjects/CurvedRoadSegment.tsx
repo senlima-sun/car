@@ -1,7 +1,8 @@
 import { useMemo, useCallback, useEffect } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
+import { ROAD_THICKNESS as DIM_ROAD_THICKNESS, TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
 import { useElevationStore } from '../../../stores/useElevationStore'
@@ -26,7 +27,7 @@ interface CurvedRoadSegmentProps {
 
 const config = OBJECT_CONFIGS.road
 const CURVE_SEGMENTS = 48
-const ROAD_THICKNESS = 0.02 // 2cm - visible but car drives on ground
+const ROAD_THICKNESS = DIM_ROAD_THICKNESS
 
 export default function CurvedRoadSegment({
   startPoint,
@@ -76,6 +77,7 @@ export default function CurvedRoadSegment({
     centerLineDashes,
     selectionGeometry,
     sensorColliders,
+    collisionData,
     roadBounds,
   } = useMemo(() => {
     const startElev = startElevation ?? 0
@@ -309,6 +311,106 @@ export default function CurvedRoadSegment({
       })
     }
 
+    // Generate solid collision mesh (reduced resolution for performance)
+    const collisionStep = 3
+    const collisionVertices: number[] = []
+    const collisionIndices: number[] = []
+    let collVtxCount = 0
+
+    for (let i = 0; i < points.length; i += collisionStep) {
+      const idx = Math.min(i, points.length - 1)
+      const p = points[idx]
+      const t = idx / (points.length - 1)
+      const elevY = startElev + (endElev - startElev) * t + ROAD_THICKNESS
+
+      const bankingAngle = bankingDeg * Math.sin(t * Math.PI)
+      const bankRadians = bankingAngle * DEG2RAD
+      const bankOffset = Math.sin(bankRadians) * halfWidth
+
+      let tangent: Vector3
+      if (idx === 0) {
+        tangent = new Vector3().subVectors(points[1], points[0]).normalize()
+      } else if (idx === points.length - 1) {
+        tangent = new Vector3().subVectors(points[idx], points[idx - 1]).normalize()
+      } else {
+        tangent = new Vector3().subVectors(points[Math.min(idx + 1, points.length - 1)], points[Math.max(idx - 1, 0)]).normalize()
+      }
+      const perp = new Vector3(-tangent.z, 0, tangent.x)
+
+      const lp = new Vector3().copy(p).addScaledVector(perp, halfWidth)
+      const rp = new Vector3().copy(p).addScaledVector(perp, -halfWidth)
+
+      const topLeftY = elevY + bankOffset
+      const topRightY = elevY - bankOffset
+      const botLeftY = topLeftY - 0.5
+      const botRightY = topRightY - 0.5
+
+      collisionVertices.push(lp.x, topLeftY, lp.z)
+      collisionVertices.push(rp.x, topRightY, rp.z)
+      collisionVertices.push(lp.x, botLeftY, lp.z)
+      collisionVertices.push(rp.x, botRightY, rp.z)
+
+      if (collVtxCount > 0) {
+        const base = (collVtxCount - 1) * 4
+        // Top face
+        collisionIndices.push(base, base + 1, base + 4)
+        collisionIndices.push(base + 1, base + 5, base + 4)
+        // Bottom face
+        collisionIndices.push(base + 2, base + 6, base + 3)
+        collisionIndices.push(base + 3, base + 6, base + 7)
+        // Left side
+        collisionIndices.push(base, base + 4, base + 2)
+        collisionIndices.push(base + 2, base + 4, base + 6)
+        // Right side
+        collisionIndices.push(base + 1, base + 3, base + 5)
+        collisionIndices.push(base + 3, base + 7, base + 5)
+      }
+      collVtxCount++
+    }
+
+    // Ensure last point is included
+    if ((points.length - 1) % collisionStep !== 0) {
+      const idx = points.length - 1
+      const p = points[idx]
+      const t = 1.0
+      const elevY = startElev + (endElev - startElev) * t + ROAD_THICKNESS
+
+      const bankingAngle = bankingDeg * Math.sin(t * Math.PI)
+      const bankRadians = bankingAngle * DEG2RAD
+      const bankOffset = Math.sin(bankRadians) * halfWidth
+
+      const tangent = new Vector3().subVectors(points[idx], points[idx - 1]).normalize()
+      const perp = new Vector3(-tangent.z, 0, tangent.x)
+
+      const lp = new Vector3().copy(p).addScaledVector(perp, halfWidth)
+      const rp = new Vector3().copy(p).addScaledVector(perp, -halfWidth)
+
+      const topLeftY = elevY + bankOffset
+      const topRightY = elevY - bankOffset
+      const botLeftY = topLeftY - 0.5
+      const botRightY = topRightY - 0.5
+
+      collisionVertices.push(lp.x, topLeftY, lp.z)
+      collisionVertices.push(rp.x, topRightY, rp.z)
+      collisionVertices.push(lp.x, botLeftY, lp.z)
+      collisionVertices.push(rp.x, botRightY, rp.z)
+
+      const base = (collVtxCount - 1) * 4
+      collisionIndices.push(base, base + 1, base + 4)
+      collisionIndices.push(base + 1, base + 5, base + 4)
+      collisionIndices.push(base + 2, base + 6, base + 3)
+      collisionIndices.push(base + 3, base + 6, base + 7)
+      collisionIndices.push(base, base + 4, base + 2)
+      collisionIndices.push(base + 2, base + 4, base + 6)
+      collisionIndices.push(base + 1, base + 3, base + 5)
+      collisionIndices.push(base + 3, base + 7, base + 5)
+    }
+
+    const collisionData = {
+      vertices: new Float32Array(collisionVertices),
+      indices: new Uint32Array(collisionIndices),
+    }
+
     // Calculate bounding box for road temperature registration
     const allXs = roadVertices.filter((_, i) => i % 3 === 0)
     const allZs = roadVertices.filter((_, i) => i % 3 === 2)
@@ -326,6 +428,7 @@ export default function CurvedRoadSegment({
       centerLineDashes: dashes,
       selectionGeometry: selectionGeo,
       sensorColliders: sensorData,
+      collisionData,
       roadBounds,
     }
   }, [
@@ -440,6 +543,12 @@ export default function CurvedRoadSegment({
   return (
     <RigidBody type='fixed' colliders={false}>
       {roadVisuals}
+
+      <TrimeshCollider
+        args={[collisionData.vertices, collisionData.indices]}
+        friction={config.friction}
+        collisionGroups={TRACK_COLLISION_GROUPS}
+      />
 
       {sensorColliders.map((sensor, i) => (
         <CuboidCollider
