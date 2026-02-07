@@ -19,12 +19,11 @@ import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { useBrakeStore } from '../../../../stores/useBrakeStore'
 import { useLapTimeStore } from '../../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../../stores/usePitStore'
-import { useElevationStore } from '../../../../stores/useElevationStore'
 
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 import { getLogger } from '../../../../debug/ActionLogger'
-import { WHEEL_POSITIONS as DIM_WHEEL_POS } from '../../../../constants/dimensions'
+import { WHEEL_POSITIONS as DIM_WHEEL_POS, WHEEL_RADIUS as DIM_WHEEL_RADIUS } from '../../../../constants/dimensions'
 import { useRaycastSuspension, type SuspensionOutput } from './useRaycastSuspension'
 
 const WHEEL_OFFSETS: [number, number][] = [
@@ -94,7 +93,7 @@ export function useCarFrame({
 
   // Active Aero mode toggle and sync
   const toggleAeroMode = useActiveAeroStore(state => state.toggleMode)
-  // @ts-ignore
+  // @ts-expect-error subscribed for reactivity, value unused
   const _aeroMode = useActiveAeroStore(state => state.mode)
   const syncAeroState = useActiveAeroStore(state => state.syncFromPhysics)
 
@@ -111,8 +110,6 @@ export function useCarFrame({
   const isOnCurb = useCurbStore(state => state.isOnCurb)
   const curbSide = useCurbStore(state => state.curbSide)
 
-  const targetElev = useElevationStore(state => state.targetElevation)
-  const onRoad = useElevationStore(state => state.onRoad)
 
   const updateCarPosition = useTrackTemperatureStore(state => state.updateCarPosition)
 
@@ -478,7 +475,7 @@ export function useCarFrame({
     }
 
     // Update wheel rotation (visual)
-    const wheelRadius = 0.33
+    const wheelRadius = DIM_WHEEL_RADIUS
     const wheelRotSpeed = output.speed_kmh / 3.6 / wheelRadius
     wheelRotationsRef.current = wheelRotationsRef.current.map(r => r + wheelRotSpeed * dt) as [
       number,
