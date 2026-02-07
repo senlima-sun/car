@@ -24,14 +24,13 @@ import { useCustomizationStore, getElevationAtWorldPosition } from '../../../../
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
 import { getLogger } from '../../../../debug/ActionLogger'
+import { WHEEL_POSITIONS as DIM_WHEEL_POS } from '../../../../constants/dimensions'
 
-// Wheel offset positions relative to car center [x, z]
-// FL, FR, RL, RR
 const WHEEL_OFFSETS: [number, number][] = [
-  [-0.95, 1.6], // Front Left
-  [0.95, 1.6], // Front Right
-  [-0.95, -1.2], // Rear Left
-  [0.95, -1.2], // Rear Right
+  [DIM_WHEEL_POS.FL[0], DIM_WHEEL_POS.FL[2]],
+  [DIM_WHEEL_POS.FR[0], DIM_WHEEL_POS.FR[2]],
+  [DIM_WHEEL_POS.RL[0], DIM_WHEEL_POS.RL[2]],
+  [DIM_WHEEL_POS.RR[0], DIM_WHEEL_POS.RR[2]],
 ]
 
 // Minimum speed (km/h) to leave rubber marks

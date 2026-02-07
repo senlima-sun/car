@@ -2,7 +2,7 @@ import { forwardRef, useRef, useEffect } from 'react'
 import { Group } from 'three'
 import { RigidBody, RapierRigidBody, CuboidCollider } from '@react-three/rapier'
 
-import { CAR_SCALE } from '../../../constants/physics'
+import { CAR_WIDTH, CAR_HEIGHT, CAR_LENGTH } from '../../../constants/dimensions'
 import CarBody from './parts/CarBody'
 import CarSprayEffect from './parts/CarSprayEffect'
 import { useCarFrame } from './hooks/useCarFrame'
@@ -49,10 +49,9 @@ const Car = forwardRef<Group>((_, ref) => {
         enabledRotations={[true, true, true]}
         ccd={true}
       >
-        {/* Manual collider sized to match wheel bottoms (scaled by CAR_SCALE) */}
         <CuboidCollider
-          args={[0.9 * CAR_SCALE, 0.18 * CAR_SCALE, 1.8 * CAR_SCALE]}
-          position={[0, -0.17 * CAR_SCALE, 0.2 * CAR_SCALE]}
+          args={[CAR_WIDTH / 2, CAR_HEIGHT / 2, CAR_LENGTH / 2]}
+          position={[0, -0.17, 0.2]}
         />
         <group ref={groupRef}>
           <CarBody />

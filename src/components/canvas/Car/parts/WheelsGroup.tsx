@@ -2,14 +2,15 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useTemperatureStore } from '../../../../stores/useTemperatureStore'
 import { useCarStore } from '../../../../stores/useCarStore'
+import { WHEEL_POSITIONS as DIM_WHEEL_POS, WHEEL_RADIUS as DIM_WHEEL_RADIUS } from '../../../../constants/dimensions'
 import { Wheel } from './Wheel'
 
-const WHEEL_RADIUS = 0.3
+const WHEEL_RADIUS = DIM_WHEEL_RADIUS
 const WHEEL_POSITIONS: readonly (readonly [number, number, number])[] = [
-  [-0.82, 0, 1.8],
-  [0.82, 0, 1.8],
-  [-0.82, 0, -1.2],
-  [0.82, 0, -1.2],
+  [DIM_WHEEL_POS.FL[0], 0, DIM_WHEEL_POS.FL[2]],
+  [DIM_WHEEL_POS.FR[0], 0, DIM_WHEEL_POS.FR[2]],
+  [DIM_WHEEL_POS.RL[0], 0, DIM_WHEEL_POS.RL[2]],
+  [DIM_WHEEL_POS.RR[0], 0, DIM_WHEEL_POS.RR[2]],
 ]
 
 interface WheelsGroupProps {

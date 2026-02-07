@@ -1,13 +1,13 @@
 import { PlacedObject, isLinearObject } from '../stores/useCustomizationStore'
 import { PitLaneData } from '../stores/usePitStore'
+import { TRACK_WIDTH } from '../constants/dimensions'
 
-// Pit lane configuration constants
-const PIT_OFFSET_DISTANCE = 20 // Distance from checkpoint to pit lane
-const PIT_BOX_LENGTH = 15 // Length of pit box area
-const PIT_BOX_WIDTH = 8 // Width of pit box
-const ENTRY_EXIT_LENGTH = 12 // Length of entry/exit road segments
-const COLLISION_BUFFER = 4 // Buffer for collision detection
-const ROAD_WIDTH = 16 // Main road width
+const PIT_OFFSET_DISTANCE = 20
+const PIT_BOX_LENGTH = 15
+const PIT_BOX_WIDTH = 8
+const ENTRY_EXIT_LENGTH = 12
+const COLLISION_BUFFER = 4
+const ROAD_WIDTH = TRACK_WIDTH
 const ATTACHMENT_PERCENT = 0.25 // Percentage of road length before/after checkpoint for entry/exit (25%)
 
 interface BoundingBox {
@@ -23,7 +23,7 @@ function getObjectBoundingBox(obj: PlacedObject): BoundingBox | null {
     return null
   }
 
-  const roadWidth = obj.type === 'road' ? 16 : 1 // Roads are wider
+  const roadWidth = obj.type === 'road' ? ROAD_WIDTH : 1
 
   // Calculate road direction
   const dx = obj.endPoint[0] - obj.startPoint[0]

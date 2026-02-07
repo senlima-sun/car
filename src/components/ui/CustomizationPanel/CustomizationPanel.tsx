@@ -1040,12 +1040,12 @@ export default function CustomizationPanel() {
               min={8}
               max={24}
               step={2}
-              value={selectedObject.width ?? 16}
+              value={selectedObject.width ?? 12}
               onChange={(e) => updateObject(selectedObject.id, { width: Number(e.target.value) })}
               style={{ flex: 1, accentColor: '#3b82f6' }}
             />
             <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 28 }}>
-              {selectedObject.width ?? 16}
+              {selectedObject.width ?? 12}
             </span>
           </div>
         </div>

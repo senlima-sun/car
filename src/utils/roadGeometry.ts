@@ -3,7 +3,9 @@ import { isLinearObject } from '../types/trackObjects'
 import { getOutwardTangent } from './roadSnapping'
 
 const SNAP_THRESHOLD = 2
-const ROAD_WIDTH = 16
+import { TRACK_WIDTH } from '../constants/dimensions'
+
+const ROAD_WIDTH = TRACK_WIDTH
 
 export const getSnapPoints = (placedObjects: PlacedObject[]): SnapPointWithDirection[] => {
   const points: SnapPointWithDirection[] = []
@@ -89,7 +91,7 @@ export const findNearestSnapPoint = (
 export const findRoadAtPosition = (
   pos: [number, number, number],
   placedObjects: PlacedObject[],
-  roadWidth: number = 16,
+  roadWidth: number = ROAD_WIDTH,
 ): RoadEdgeResult | null => {
   const halfWidth = roadWidth / 2
 
@@ -267,7 +269,7 @@ const findCurvedRoadEdge = (
 export const findRoadEdgeAtPosition = (
   pos: [number, number, number],
   placedObjects: PlacedObject[],
-  roadWidth: number = 16,
+  roadWidth: number = ROAD_WIDTH,
   edgeThreshold: number = 3,
 ): RoadEdgeHitResult | null => {
   const halfWidth = roadWidth / 2
@@ -437,7 +439,7 @@ const findCurvedRoadSurface = (
 export const findRoadSurfaceAtPosition = (
   pos: [number, number, number],
   placedObjects: PlacedObject[],
-  roadWidth: number = 16,
+  roadWidth: number = ROAD_WIDTH,
 ): RoadSurfaceHitResult | null => {
   const halfWidth = roadWidth / 2
 
@@ -663,7 +665,7 @@ export const getElevationAtWorldPosition = (
   x: number,
   z: number,
   placedObjects: PlacedObject[],
-  roadWidth: number = 16,
+  roadWidth: number = ROAD_WIDTH,
 ): number => {
   const halfWidth = roadWidth / 2
   let bestElev = 0

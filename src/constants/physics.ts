@@ -1,4 +1,4 @@
-export const CAR_SCALE = 1.47
+export const CAR_SCALE = 1.0
 
 // Control keys
 export const CONTROLS = {

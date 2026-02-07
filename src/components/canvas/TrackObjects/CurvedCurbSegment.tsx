@@ -3,6 +3,7 @@ import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute 
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { GHOST_OPACITY, OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import { CURB_PROFILE, CURB_WIDTH, CURB_PEAK_HEIGHT } from '../../../constants/curb'
+import { ROAD_HALF_WIDTH } from '../../../constants/dimensions'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { PlacedObject } from '../../../stores/useCustomizationStore'
@@ -15,8 +16,6 @@ interface CurvedCurbSegmentProps {
   parentRoad: PlacedObject
   isGhost?: boolean
 }
-
-const ROAD_HALF_WIDTH = 8 // Road is 16 units wide
 
 // Helper to get height from curb profile at normalized position (0-1 across width)
 function getProfileHeight(normalizedX: number): number {
