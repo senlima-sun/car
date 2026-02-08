@@ -2,16 +2,15 @@ import { useRef, MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useTemperatureStore } from '../../../../stores/useTemperatureStore'
 import { useCarStore } from '../../../../stores/useCarStore'
-import { WHEEL_POSITIONS as DIM_WHEEL_POS, WHEEL_RADIUS as DIM_WHEEL_RADIUS } from '../../../../constants/dimensions'
+import { WHEEL_POSITIONS as DIM_WHEEL_POS } from '../../../../constants/dimensions'
 import { Wheel } from './Wheel'
 import type { SuspensionOutput } from '../hooks/useRaycastSuspension'
 
-const WHEEL_RADIUS = DIM_WHEEL_RADIUS
 const WHEEL_POSITIONS: readonly (readonly [number, number, number])[] = [
-  [DIM_WHEEL_POS.FL[0], 0, DIM_WHEEL_POS.FL[2]],
-  [DIM_WHEEL_POS.FR[0], 0, DIM_WHEEL_POS.FR[2]],
-  [DIM_WHEEL_POS.RL[0], 0, DIM_WHEEL_POS.RL[2]],
-  [DIM_WHEEL_POS.RR[0], 0, DIM_WHEEL_POS.RR[2]],
+  [DIM_WHEEL_POS.FL[0], DIM_WHEEL_POS.FL[1], DIM_WHEEL_POS.FL[2]],
+  [DIM_WHEEL_POS.FR[0], DIM_WHEEL_POS.FR[1], DIM_WHEEL_POS.FR[2]],
+  [DIM_WHEEL_POS.RL[0], DIM_WHEEL_POS.RL[1], DIM_WHEEL_POS.RL[2]],
+  [DIM_WHEEL_POS.RR[0], DIM_WHEEL_POS.RR[1], DIM_WHEEL_POS.RR[2]],
 ]
 
 interface WheelsGroupProps {
@@ -71,13 +70,12 @@ export function WheelsGroup({
             break
         }
 
-        const baseY = -WHEEL_RADIUS + 0.25
         const suspensionY = wheelYOffsetsRef.current[index]
 
         return (
           <Wheel
             key={index}
-            position={[pos[0], baseY + suspensionY, pos[2]]}
+            position={[pos[0], pos[1] + suspensionY, pos[2]]}
             steerAngle={isFrontWheel ? steerRef.current : 0}
             wheelRotation={rotationsRef.current[index]}
             isLeft={isLeftWheel}
