@@ -16,7 +16,7 @@ interface FirstPersonCameraProps {
 export default function FirstPersonCamera({ target }: FirstPersonCameraProps) {
   const cameraRef = useRef<ThreePerspectiveCamera>(null)
 
-  const driverOffset = useRef(new Vector3(0, 0.75, 0.45))
+  const driverOffset = useRef(new Vector3(0, 0.46, 0.45))
   const flipRotation = useRef(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI))
 
   const _quat = useRef(new Quaternion())
