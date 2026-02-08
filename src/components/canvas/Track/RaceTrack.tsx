@@ -1,6 +1,7 @@
 import { useMemo, type JSX } from 'react'
-import { RigidBody } from '@react-three/rapier'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
+import { GROUND_COLLISION_GROUPS } from '../../../constants/dimensions'
 
 const TRACK_WIDTH = 14
 
@@ -208,7 +209,16 @@ function Ground() {
   const textures = useMemo(() => createGrassTextures(), [])
 
   return (
-    <RigidBody type='fixed' friction={0.2} restitution={0.1}>
+    <>
+      <RigidBody type='fixed' colliders={false}>
+        <CuboidCollider
+          args={[500, 0.1, 500]}
+          position={[0, -0.2, 0]}
+          friction={0.2}
+          restitution={0.1}
+          collisionGroups={GROUND_COLLISION_GROUPS}
+        />
+      </RigidBody>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[1000, 1000, 128, 128]} />
         <meshStandardMaterial
@@ -221,7 +231,7 @@ function Ground() {
           metalness={0.0}
         />
       </mesh>
-    </RigidBody>
+    </>
   )
 }
 

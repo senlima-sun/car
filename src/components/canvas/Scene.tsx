@@ -25,7 +25,7 @@ function Ground() {
       <RigidBody type='fixed' colliders={false}>
         <CuboidCollider
           args={[500, 0.1, 500]}
-          position={[0, -0.6, 0]}
+          position={[0, -0.2, 0]}
           friction={0.4}
           collisionGroups={GROUND_COLLISION_GROUPS}
         />
