@@ -34,6 +34,7 @@ export default function CarBody({ suspensionRef }: CarBodyProps) {
         isRaining={isRaining}
         isThermalView={isThermalView}
         engineThermalMaterial={engineThermalMaterial}
+        suspensionRef={suspensionRef}
       />
       <Cockpit steerAngle={0} showDisplay={cameraMode === 'first-person'} />
       <WheelsGroup

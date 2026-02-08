@@ -92,6 +92,63 @@ export default function CurvedRoadSegment({
     const curve = new QuadraticBezierCurve3(start, control, end)
     const points = curve.getPoints(CURVE_SEGMENTS)
 
+    const BLEND_SEGMENTS = 3
+
+    const computeEdgePoints = (i: number, p: Vector3, t: number) => {
+      const elevationY = startElev + (endElev - startElev) * t + ROAD_THICKNESS
+
+      const bankingAngle = bankingDeg * Math.sin(t * Math.PI)
+      const bankRadians = bankingAngle * DEG2RAD
+
+      let tangent: Vector3
+      if (i === 0) {
+        tangent = new Vector3().subVectors(points[1], points[0]).normalize()
+      } else if (i === points.length - 1) {
+        tangent = new Vector3().subVectors(points[i], points[i - 1]).normalize()
+      } else {
+        tangent = new Vector3().subVectors(points[i + 1], points[i - 1]).normalize()
+      }
+      const perpendicular = new Vector3(-tangent.z, 0, tangent.x)
+
+      const naturalLeft = new Vector3().copy(p).addScaledVector(perpendicular, halfWidth)
+      const naturalRight = new Vector3().copy(p).addScaledVector(perpendicular, -halfWidth)
+
+      let leftPoint: Vector3
+      let rightPoint: Vector3
+
+      const hasStartSnap = !!(startLeftEdge && startRightEdge)
+      const hasEndSnap = !!(endLeftEdge && endRightEdge)
+
+      if (i === 0 && hasStartSnap) {
+        leftPoint = new Vector3(startLeftEdge![0], 0, startLeftEdge![2])
+        rightPoint = new Vector3(startRightEdge![0], 0, startRightEdge![2])
+      } else if (i === points.length - 1 && hasEndSnap) {
+        leftPoint = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
+        rightPoint = new Vector3(endRightEdge![0], 0, endRightEdge![2])
+      } else if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
+        const blend = i / (BLEND_SEGMENTS + 1)
+        const snapLeft = new Vector3(startLeftEdge![0], 0, startLeftEdge![2])
+        const snapRight = new Vector3(startRightEdge![0], 0, startRightEdge![2])
+        leftPoint = new Vector3().lerpVectors(snapLeft, naturalLeft, blend)
+        rightPoint = new Vector3().lerpVectors(snapRight, naturalRight, blend)
+      } else if (i < points.length - 1 && i >= points.length - 1 - BLEND_SEGMENTS && hasEndSnap) {
+        const blend = (points.length - 1 - i) / (BLEND_SEGMENTS + 1)
+        const snapLeft = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
+        const snapRight = new Vector3(endRightEdge![0], 0, endRightEdge![2])
+        leftPoint = new Vector3().lerpVectors(snapLeft, naturalLeft, blend)
+        rightPoint = new Vector3().lerpVectors(snapRight, naturalRight, blend)
+      } else {
+        leftPoint = naturalLeft
+        rightPoint = naturalRight
+      }
+
+      const bankingOffset = Math.sin(bankRadians) * halfWidth
+      const leftY = elevationY + bankingOffset
+      const rightY = elevationY - bankingOffset
+
+      return { leftPoint, rightPoint, leftY, rightY, tangent, perpendicular, elevationY }
+    }
+
     const roadVertices: number[] = []
     const roadIndices: number[] = []
     const roadUvs: number[] = []
@@ -108,38 +165,7 @@ export default function CurvedRoadSegment({
       const p = points[i]
       const t = i / (points.length - 1)
 
-      const elevationY = startElev + (endElev - startElev) * t + ROAD_THICKNESS
-
-      const bankingAngle = bankingDeg * Math.sin(t * Math.PI)
-      const bankRadians = bankingAngle * DEG2RAD
-
-      let leftPoint: Vector3
-      let rightPoint: Vector3
-
-      let tangent: Vector3
-      if (i === 0) {
-        tangent = new Vector3().subVectors(points[1], points[0]).normalize()
-      } else if (i === points.length - 1) {
-        tangent = new Vector3().subVectors(points[i], points[i - 1]).normalize()
-      } else {
-        tangent = new Vector3().subVectors(points[i + 1], points[i - 1]).normalize()
-      }
-      const perpendicular = new Vector3(-tangent.z, 0, tangent.x)
-
-      if (i === 0 && startLeftEdge && startRightEdge) {
-        leftPoint = new Vector3(...startLeftEdge)
-        rightPoint = new Vector3(...startRightEdge)
-      } else if (i === points.length - 1 && endLeftEdge && endRightEdge) {
-        leftPoint = new Vector3(...endLeftEdge)
-        rightPoint = new Vector3(...endRightEdge)
-      } else {
-        leftPoint = new Vector3().copy(p).addScaledVector(perpendicular, halfWidth)
-        rightPoint = new Vector3().copy(p).addScaledVector(perpendicular, -halfWidth)
-      }
-
-      const bankingOffset = Math.sin(bankRadians) * halfWidth
-      const leftY = elevationY + bankingOffset
-      const rightY = elevationY - bankingOffset
+      const { leftPoint, rightPoint, leftY, rightY, perpendicular, elevationY } = computeEdgePoints(i, p, t)
 
       roadVertices.push(leftPoint.x, leftY, leftPoint.z)
       roadVertices.push(rightPoint.x, rightY, rightPoint.z)
@@ -316,32 +342,13 @@ export default function CurvedRoadSegment({
     const collisionVertices: number[] = []
     const collisionIndices: number[] = []
     let collVtxCount = 0
-
     for (let i = 0; i < points.length; i += collisionStep) {
       const idx = Math.min(i, points.length - 1)
       const p = points[idx]
       const t = idx / (points.length - 1)
-      const elevY = startElev + (endElev - startElev) * t + ROAD_THICKNESS
 
-      const bankingAngle = bankingDeg * Math.sin(t * Math.PI)
-      const bankRadians = bankingAngle * DEG2RAD
-      const bankOffset = Math.sin(bankRadians) * halfWidth
+      const { leftPoint: lp, rightPoint: rp, leftY: topLeftY, rightY: topRightY } = computeEdgePoints(idx, p, t)
 
-      let tangent: Vector3
-      if (idx === 0) {
-        tangent = new Vector3().subVectors(points[1], points[0]).normalize()
-      } else if (idx === points.length - 1) {
-        tangent = new Vector3().subVectors(points[idx], points[idx - 1]).normalize()
-      } else {
-        tangent = new Vector3().subVectors(points[Math.min(idx + 1, points.length - 1)], points[Math.max(idx - 1, 0)]).normalize()
-      }
-      const perp = new Vector3(-tangent.z, 0, tangent.x)
-
-      const lp = new Vector3().copy(p).addScaledVector(perp, halfWidth)
-      const rp = new Vector3().copy(p).addScaledVector(perp, -halfWidth)
-
-      const topLeftY = elevY + bankOffset
-      const topRightY = elevY - bankOffset
       const botLeftY = topLeftY - 0.5
       const botRightY = topRightY - 0.5
 
@@ -352,41 +359,25 @@ export default function CurvedRoadSegment({
 
       if (collVtxCount > 0) {
         const base = (collVtxCount - 1) * 4
-        // Top face
         collisionIndices.push(base, base + 1, base + 4)
         collisionIndices.push(base + 1, base + 5, base + 4)
-        // Bottom face
         collisionIndices.push(base + 2, base + 6, base + 3)
         collisionIndices.push(base + 3, base + 6, base + 7)
-        // Left side
         collisionIndices.push(base, base + 4, base + 2)
         collisionIndices.push(base + 2, base + 4, base + 6)
-        // Right side
         collisionIndices.push(base + 1, base + 3, base + 5)
         collisionIndices.push(base + 3, base + 7, base + 5)
       }
       collVtxCount++
     }
 
-    // Ensure last point is included
     if ((points.length - 1) % collisionStep !== 0) {
       const idx = points.length - 1
       const p = points[idx]
       const t = 1.0
-      const elevY = startElev + (endElev - startElev) * t + ROAD_THICKNESS
 
-      const bankingAngle = bankingDeg * Math.sin(t * Math.PI)
-      const bankRadians = bankingAngle * DEG2RAD
-      const bankOffset = Math.sin(bankRadians) * halfWidth
+      const { leftPoint: lp, rightPoint: rp, leftY: topLeftY, rightY: topRightY } = computeEdgePoints(idx, p, t)
 
-      const tangent = new Vector3().subVectors(points[idx], points[idx - 1]).normalize()
-      const perp = new Vector3(-tangent.z, 0, tangent.x)
-
-      const lp = new Vector3().copy(p).addScaledVector(perp, halfWidth)
-      const rp = new Vector3().copy(p).addScaledVector(perp, -halfWidth)
-
-      const topLeftY = elevY + bankOffset
-      const topRightY = elevY - bankOffset
       const botLeftY = topLeftY - 0.5
       const botRightY = topRightY - 0.5
 

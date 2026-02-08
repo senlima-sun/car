@@ -135,6 +135,7 @@ export function useCarFrame({
   // Spawn protection: count frames to stabilize car above ground
   const spawnFrameRef = useRef(0)
   const SPAWN_PROTECT_FRAMES = 30
+  const prevGameStatusRef = useRef(gameStatus)
 
   // Pre-allocated arrays for rubber deposit updates (avoid GC)
   const wheelPositionsRef = useRef(new Float32Array(8))
@@ -161,6 +162,13 @@ export function useCarFrame({
 
   useFrame((state, delta) => {
     if (!chassisRef.current) return
+
+    if (prevGameStatusRef.current === 'customize' && gameStatus !== 'customize') {
+      spawnFrameRef.current = 0
+      chassisRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      chassisRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true)
+    }
+    prevGameStatusRef.current = gameStatus
 
     const dt = Math.min(delta, 0.05)
     const {
@@ -372,13 +380,12 @@ export function useCarFrame({
     syncAeroState(syncResult.aero_state)
     syncBrakeState(syncResult.brake_state)
 
-    // WASM controls horizontal velocity via impulse (preserves Rapier gravity on Y)
-    const mass = 600
-    chassis.applyImpulse(
+    // WASM controls horizontal velocity directly (preserves Rapier gravity on Y)
+    chassis.setLinvel(
       {
-        x: (output.linear_velocity[0] - linvel.x) * mass,
-        y: 0,
-        z: (output.linear_velocity[2] - linvel.z) * mass,
+        x: output.linear_velocity[0],
+        y: linvel.y,
+        z: output.linear_velocity[2],
       },
       true,
     )
