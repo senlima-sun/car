@@ -372,11 +372,15 @@ export function useCarFrame({
     syncAeroState(syncResult.aero_state)
     syncBrakeState(syncResult.brake_state)
 
-    // Apply velocities to Rapier
+    // Raycast suspension first: applies spring/damper impulses at wheel points
+    suspensionOutputRef.current = suspension.step(dt)
+
+    // Apply WASM velocities for horizontal movement, preserve vertical from suspension
+    const currentLinvel = chassis.linvel()
     chassis.setLinvel(
       {
         x: output.linear_velocity[0],
-        y: output.linear_velocity[1],
+        y: currentLinvel.y + (output.linear_velocity[1] - linvel.y),
         z: output.linear_velocity[2],
       },
       true,
@@ -390,9 +394,6 @@ export function useCarFrame({
       },
       true,
     )
-
-    // Raycast suspension: 4 rays from wheel positions, spring-damper forces
-    suspensionOutputRef.current = suspension.step(dt)
 
     // Compute surface normal from 4 wheel hit heights for next frame
     if (suspensionOutputRef.current) {

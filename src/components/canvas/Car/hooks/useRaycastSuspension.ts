@@ -2,14 +2,15 @@ import { MutableRefObject, useRef } from 'react'
 import { RapierRigidBody, useRapier } from '@react-three/rapier'
 import { WHEEL_POSITIONS, WHEEL_RADIUS, SUSPENSION_RAY_GROUPS } from '../../../../constants/dimensions'
 
-const SPRING_K = 45000
-const DAMPER_C = 4500
+const SPRING_K = 25000
+const DAMPER_C = 3000
 const REST_LENGTH = 0.35
 const MAX_TRAVEL = 0.15
 const RAY_LENGTH = REST_LENGTH + MAX_TRAVEL
+const MAX_SPRING_FORCE = 12000
 
-const FRONT_ANTI_ROLL_K = 15000
-const REAR_ANTI_ROLL_K = 12000
+const FRONT_ANTI_ROLL_K = 8000
+const REAR_ANTI_ROLL_K = 6000
 
 
 const WHEEL_ANCHORS = [
@@ -110,7 +111,7 @@ export function useRaycastSuspension(
           prevCompressionRef.current[i] = compression
 
           const springForce = SPRING_K * compression - DAMPER_C * compressionVelocity
-          const clampedForce = Math.max(springForce, 0)
+          const clampedForce = Math.min(Math.max(springForce, 0), MAX_SPRING_FORCE)
 
           forces.push({
             x: -downX * clampedForce,

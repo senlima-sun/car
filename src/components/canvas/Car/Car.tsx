@@ -1,8 +1,8 @@
 import { forwardRef, useRef, useEffect } from 'react'
 import { Group } from 'three'
-import { RigidBody, RapierRigidBody, CuboidCollider } from '@react-three/rapier'
+import { RigidBody, RapierRigidBody, BallCollider } from '@react-three/rapier'
 
-import { CAR_WIDTH, CAR_HEIGHT, CAR_LENGTH, CAR_COLLISION_GROUPS } from '../../../constants/dimensions'
+import { WHEEL_POSITIONS, WHEEL_RADIUS, CAR_COLLISION_GROUPS } from '../../../constants/dimensions'
 import CarBody from './parts/CarBody'
 import CarSprayEffect from './parts/CarSprayEffect'
 import { useCarFrame } from './hooks/useCarFrame'
@@ -49,11 +49,10 @@ const Car = forwardRef<Group>((_, ref) => {
         enabledRotations={[true, true, true]}
         ccd={true}
       >
-        <CuboidCollider
-          args={[CAR_WIDTH / 2, CAR_HEIGHT / 2, CAR_LENGTH / 2]}
-          position={[0, -0.17, 0.2]}
-          collisionGroups={CAR_COLLISION_GROUPS}
-        />
+        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.FL[0], WHEEL_POSITIONS.FL[1], WHEEL_POSITIONS.FL[2]]} collisionGroups={CAR_COLLISION_GROUPS} />
+        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.FR[0], WHEEL_POSITIONS.FR[1], WHEEL_POSITIONS.FR[2]]} collisionGroups={CAR_COLLISION_GROUPS} />
+        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.RL[0], WHEEL_POSITIONS.RL[1], WHEEL_POSITIONS.RL[2]]} collisionGroups={CAR_COLLISION_GROUPS} />
+        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.RR[0], WHEEL_POSITIONS.RR[1], WHEEL_POSITIONS.RR[2]]} collisionGroups={CAR_COLLISION_GROUPS} />
         <group ref={groupRef}>
           <CarBody suspensionRef={suspensionOutputRef} />
         </group>
