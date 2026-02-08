@@ -22,8 +22,9 @@ export interface EditorPart {
   metalness: number
   roughness: number
   // For extrude geometry: 2D outline points
+  mass?: number
+  density?: number
   points?: [number, number][]
-  // For extrude geometry: holes (inner cutouts)
   holes?: [number, number][][]
   // For extrude geometry: height profile [[position (0-1), height (0-1)], ...]
   heightProfile?: [number, number][]

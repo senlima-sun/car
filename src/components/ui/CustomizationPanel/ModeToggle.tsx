@@ -66,6 +66,15 @@ export default function ModeToggle() {
       >
         EDIT
       </button>
+      <button
+        style={{
+          ...styles.button,
+          ...styles.inactive,
+        }}
+        onClick={() => { window.location.hash = '#/part-editor' }}
+      >
+        CAR
+      </button>
       <span style={styles.hint as React.CSSProperties}>Press T to toggle</span>
     </div>
   )

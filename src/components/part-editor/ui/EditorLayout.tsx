@@ -3,6 +3,7 @@ import EditorToolbar from './EditorToolbar'
 import ShapePalette from './ShapePalette'
 import PartListPanel from './PartListPanel'
 import PropertiesPanel from './PropertiesPanel'
+import PhysicsValidationPanel from './PhysicsValidationPanel'
 
 interface EditorLayoutProps {
   children: ReactNode
@@ -39,9 +40,12 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
         <div style={{ flex: 1, borderRadius: '8px', overflow: 'hidden' }}>{children}</div>
 
         {/* Right panel */}
-        <div style={{ width: '260px' }}>
-          <div style={{ ...panelStyle, height: '100%', overflow: 'auto' }}>
+        <div style={{ width: '260px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ ...panelStyle, flex: 1, overflow: 'auto' }}>
             <PropertiesPanel />
+          </div>
+          <div style={panelStyle}>
+            <PhysicsValidationPanel />
           </div>
         </div>
       </div>
