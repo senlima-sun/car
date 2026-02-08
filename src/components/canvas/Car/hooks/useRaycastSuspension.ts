@@ -2,17 +2,16 @@ import { MutableRefObject, useRef } from 'react'
 import { RapierRigidBody, useRapier } from '@react-three/rapier'
 import { WHEEL_POSITIONS, WHEEL_RADIUS, SUSPENSION_RAY_GROUPS } from '../../../../constants/dimensions'
 
-const SPRING_K = 25000
-const DAMPER_C = 3000
-const REST_LENGTH = 0.35
-const MAX_TRAVEL = 0.15
-const RAY_ORIGIN_LIFT = 0.5
+const REST_LENGTH = 0.4
+const MAX_TRAVEL = 0.2
+const RAY_ORIGIN_LIFT = 0.6
 const RAY_LENGTH = RAY_ORIGIN_LIFT + REST_LENGTH + MAX_TRAVEL
-const MAX_SPRING_FORCE = 12000
 
-const FRONT_ANTI_ROLL_K = 8000
-const REAR_ANTI_ROLL_K = 6000
+const SPRING_STIFFNESS = 8.0
+const DAMPING_RATIO = 0.7
 
+const CAR_MASS = 600
+const GRAVITY = 9.81
 
 const WHEEL_ANCHORS = [
   WHEEL_POSITIONS.FL,
@@ -44,7 +43,7 @@ export function useRaycastSuspension(
   chassisRef: MutableRefObject<RapierRigidBody | null>,
 ) {
   const { world, rapier } = useRapier()
-  const prevCompressionRef = useRef([0, 0, 0, 0])
+  const prevErrorRef = useRef([0, 0, 0, 0])
 
   function step(dt: number): SuspensionOutput {
     const chassis = chassisRef.current
@@ -63,12 +62,12 @@ export function useRaycastSuspension(
     const xy = qx * qy, xz = qx * qz, yz = qy * qz
     const wx = qw * qx, wy = qw * qy, wz = qw * qz
 
-    const r00 = 1 - 2 * (yy + zz)
-    const r01 = 2 * (xy - wz)
-    const r02 = 2 * (xz + wy)
     const r10 = 2 * (xy + wz)
     const r11 = 1 - 2 * (xx + zz)
     const r12 = 2 * (yz - wx)
+    const r00 = 1 - 2 * (yy + zz)
+    const r01 = 2 * (xy - wz)
+    const r02 = 2 * (xz + wy)
     const r20 = 2 * (xz - wy)
     const r21 = 2 * (yz + wx)
     const r22 = 1 - 2 * (xx + yy)
@@ -78,7 +77,8 @@ export function useRaycastSuspension(
     const downZ = -r12
 
     const wheels: WheelSuspensionData[] = []
-    const forces: { x: number; y: number; z: number; anchorX: number; anchorY: number; anchorZ: number }[] = []
+    let totalForceY = 0
+    let groundedCount = 0
 
     for (let i = 0; i < 4; i++) {
       const [lx, ly, lz] = WHEEL_ANCHORS[i]
@@ -113,20 +113,15 @@ export function useRaycastSuspension(
         const compression = REST_LENGTH - distFromAnchor
 
         if (compression > 0) {
-          const compressionVelocity = (compression - prevCompressionRef.current[i]) / Math.max(dt, 0.001)
-          prevCompressionRef.current[i] = compression
+          groundedCount++
+          const error = compression
+          const errorVelocity = (error - prevErrorRef.current[i]) / Math.max(dt, 0.001)
+          prevErrorRef.current[i] = error
 
-          const springForce = SPRING_K * compression - DAMPER_C * compressionVelocity
-          const clampedForce = Math.min(Math.max(springForce, 0), MAX_SPRING_FORCE)
-
-          forces.push({
-            x: -downX * clampedForce,
-            y: -downY * clampedForce,
-            z: -downZ * clampedForce,
-            anchorX: lx,
-            anchorY: ly,
-            anchorZ: lz,
-          })
+          const springForce = SPRING_STIFFNESS * error * CAR_MASS * GRAVITY / 4
+          const dampForce = DAMPING_RATIO * 2 * Math.sqrt(SPRING_STIFFNESS * CAR_MASS / 4) * errorVelocity
+          const force = Math.max(springForce - dampForce, 0)
+          totalForceY += force
 
           wheels.push({
             hitY,
@@ -135,51 +130,35 @@ export function useRaycastSuspension(
             deflection: compression - REST_LENGTH,
           })
         } else {
-          prevCompressionRef.current[i] *= 0.9
+          prevErrorRef.current[i] *= 0.9
           wheels.push({ hitY, compression: 0, isGrounded: false, deflection: 0 })
-          forces.push({ x: 0, y: 0, z: 0, anchorX: lx, anchorY: ly, anchorZ: lz })
         }
       } else {
-        prevCompressionRef.current[i] *= 0.9
+        prevErrorRef.current[i] *= 0.9
         wheels.push({ hitY: worldY - RAY_LENGTH, compression: 0, isGrounded: false, deflection: 0 })
-        forces.push({ x: 0, y: 0, z: 0, anchorX: lx, anchorY: ly, anchorZ: lz })
       }
     }
 
-    // Anti-roll bar: front axle
-    const frontDiff = wheels[0].compression - wheels[1].compression
-    const frontAntiRoll = FRONT_ANTI_ROLL_K * frontDiff
-    forces[0].x += -downX * (-frontAntiRoll)
-    forces[0].y += -downY * (-frontAntiRoll)
-    forces[0].z += -downZ * (-frontAntiRoll)
-    forces[1].x += -downX * frontAntiRoll
-    forces[1].y += -downY * frontAntiRoll
-    forces[1].z += -downZ * frontAntiRoll
+    if (groundedCount > 0) {
+      const linvel = chassis.linvel()
+      const gravityForce = CAR_MASS * GRAVITY
+      const netForceY = totalForceY - gravityForce
+      const accelY = netForceY / CAR_MASS
+      const newVelY = linvel.y + accelY * dt
 
-    // Anti-roll bar: rear axle
-    const rearDiff = wheels[2].compression - wheels[3].compression
-    const rearAntiRoll = REAR_ANTI_ROLL_K * rearDiff
-    forces[2].x += -downX * (-rearAntiRoll)
-    forces[2].y += -downY * (-rearAntiRoll)
-    forces[2].z += -downZ * (-rearAntiRoll)
-    forces[3].x += -downX * rearAntiRoll
-    forces[3].y += -downY * rearAntiRoll
-    forces[3].z += -downZ * rearAntiRoll
+      chassis.setLinvel({ x: linvel.x, y: newVelY, z: linvel.z }, true)
 
-    // Apply all forces as impulses at wheel anchor points
-    for (let i = 0; i < 4; i++) {
-      const f = forces[i]
-      if (f.x === 0 && f.y === 0 && f.z === 0) continue
-
-      chassis.applyImpulseAtPoint(
-        { x: f.x * dt, y: f.y * dt, z: f.z * dt },
-        {
-          x: pos.x + r00 * f.anchorX + r01 * f.anchorY + r02 * f.anchorZ,
-          y: pos.y + r10 * f.anchorX + r11 * f.anchorY + r12 * f.anchorZ,
-          z: pos.z + r20 * f.anchorX + r21 * f.anchorY + r22 * f.anchorZ,
-        },
-        true,
-      )
+      const minY = wheels.reduce((min, w) => w.isGrounded ? Math.max(min, w.hitY) : min, -Infinity)
+      if (minY > -Infinity) {
+        const wheelBottomY = pos.y + (WHEEL_POSITIONS.FL[1] - WHEEL_RADIUS)
+        if (wheelBottomY < minY) {
+          const correction = minY - wheelBottomY + 0.01
+          chassis.setTranslation({ x: pos.x, y: pos.y + correction, z: pos.z }, true)
+          if (linvel.y < 0) {
+            chassis.setLinvel({ x: linvel.x, y: 0, z: linvel.z }, true)
+          }
+        }
+      }
     }
 
     return {

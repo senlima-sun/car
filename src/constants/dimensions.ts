@@ -36,12 +36,12 @@ export const GROUP_RAY = 0x0010
 // Collision group interaction masks
 // interactionGroups(membership, filter)
 //
-// Car wheel BallColliders contact TRACK, GROUND, and OBJECT.
-// Suspension keeps car floating above surfaces during normal driving.
-// Contact collision is the safety net for falls, flips, and spawning.
-export const CAR_COLLISION_GROUPS = interactionGroups(GROUP_CAR, GROUP_TRACK | GROUP_GROUND | GROUP_OBJECT)
-export const TRACK_COLLISION_GROUPS = interactionGroups(GROUP_TRACK, GROUP_CAR | GROUP_RAY)
-export const GROUND_COLLISION_GROUPS = interactionGroups(GROUP_GROUND, GROUP_CAR | GROUP_OBJECT | GROUP_RAY)
+// Car does NOT contact-collide with TRACK or GROUND.
+// Raycast suspension is the sole vertical support.
+// A ground clamp in the suspension prevents fall-through.
+export const CAR_COLLISION_GROUPS = interactionGroups(GROUP_CAR, GROUP_OBJECT)
+export const TRACK_COLLISION_GROUPS = interactionGroups(GROUP_TRACK, GROUP_RAY)
+export const GROUND_COLLISION_GROUPS = interactionGroups(GROUP_GROUND, GROUP_OBJECT | GROUP_RAY)
 export const OBJECT_COLLISION_GROUPS = interactionGroups(GROUP_OBJECT, GROUP_CAR | GROUP_GROUND)
 export const SUSPENSION_RAY_GROUPS = interactionGroups(GROUP_RAY, GROUP_TRACK | GROUP_GROUND)
 
