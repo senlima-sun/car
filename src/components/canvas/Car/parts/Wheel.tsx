@@ -3,8 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 import { useThermalTireMaterial } from '../../../../hooks/useThermalTireMaterial'
+import { WHEEL_RADIUS } from '../../../../constants/dimensions'
 
-const WHEEL_RADIUS = 0.3
 const WHEEL_WIDTH = 0.35
 
 export function Wheel({
@@ -26,7 +26,7 @@ export function Wheel({
   isThermalView?: boolean
   compoundColor?: string
 }) {
-  const radius = WHEEL_RADIUS * 1.15
+  const radius = WHEEL_RADIUS
   const width = WHEEL_WIDTH * 1.2
 
   // Thermal material uses average of inner/outer temperatures

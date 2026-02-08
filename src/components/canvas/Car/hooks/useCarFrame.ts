@@ -296,6 +296,9 @@ export function useCarFrame({
         chassis.setLinvel({ x: 0, y: 0, z: 0 }, true)
         chassis.setAngvel({ x: 0, y: 0, z: 0 }, true)
       }
+      if (spawnFrameRef.current >= SPAWN_PROTECT_FRAMES - 1) {
+        suspension.step(dt)
+      }
       return
     }
 

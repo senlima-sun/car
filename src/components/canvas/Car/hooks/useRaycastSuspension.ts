@@ -8,7 +8,7 @@ const RAY_ORIGIN_LIFT = 0.6
 const RAY_LENGTH = RAY_ORIGIN_LIFT + REST_LENGTH + MAX_TRAVEL
 
 const SPRING_STIFFNESS = 8.0
-const DAMPING_RATIO = 0.7
+const DAMPING_RATIO = 0.85
 
 const CAR_MASS = 600
 const GRAVITY = 9.81
@@ -120,14 +120,14 @@ export function useRaycastSuspension(
 
           const springForce = SPRING_STIFFNESS * error * CAR_MASS * GRAVITY / 4
           const dampForce = DAMPING_RATIO * 2 * Math.sqrt(SPRING_STIFFNESS * CAR_MASS / 4) * errorVelocity
-          const force = Math.max(springForce - dampForce, 0)
+          const force = springForce - dampForce
           totalForceY += force
 
           wheels.push({
             hitY,
             compression,
             isGrounded: true,
-            deflection: compression - REST_LENGTH,
+            deflection: compression,
           })
         } else {
           prevErrorRef.current[i] *= 0.9
@@ -152,10 +152,11 @@ export function useRaycastSuspension(
       if (minY > -Infinity) {
         const wheelBottomY = pos.y + (WHEEL_POSITIONS.FL[1] - WHEEL_RADIUS)
         if (wheelBottomY < minY) {
-          const correction = minY - wheelBottomY + 0.01
+          const correction = minY - wheelBottomY
           chassis.setTranslation({ x: pos.x, y: pos.y + correction, z: pos.z }, true)
-          if (linvel.y < 0) {
-            chassis.setLinvel({ x: linvel.x, y: 0, z: linvel.z }, true)
+          const freshLinvel = chassis.linvel()
+          if (freshLinvel.y < 0) {
+            chassis.setLinvel({ x: freshLinvel.x, y: 0, z: freshLinvel.z }, true)
           }
         }
       }
