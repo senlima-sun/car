@@ -94,7 +94,7 @@ export function useRaycastSuspension(
       const hit = world.castRay(
         ray,
         RAY_LENGTH,
-        true,
+        false,
         undefined,
         SUSPENSION_RAY_GROUPS,
         undefined,
@@ -104,7 +104,7 @@ export function useRaycastSuspension(
       if (hit) {
         const hitDistance = hit.timeOfImpact
         const hitY = worldY + downY * hitDistance
-        const compression = REST_LENGTH - hitDistance + WHEEL_RADIUS
+        const compression = REST_LENGTH - hitDistance
 
         if (compression > 0) {
           const compressionVelocity = (compression - prevCompressionRef.current[i]) / Math.max(dt, 0.001)
