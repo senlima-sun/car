@@ -372,13 +372,15 @@ export function useCarFrame({
     syncAeroState(syncResult.aero_state)
     syncBrakeState(syncResult.brake_state)
 
-    // Apply WASM velocities for horizontal movement only
-    // Y axis is fully managed by Rapier gravity + raycast suspension impulses
-    chassis.setLinvel(
+    // WASM controls horizontal velocity (X/Z) directly.
+    // Y axis is fully owned by Rapier (gravity) + suspension (impulses).
+    // Use impulse for X/Z to avoid setLinvel overwriting Rapier's Y gravity integration.
+    const mass = 600
+    chassis.applyImpulse(
       {
-        x: output.linear_velocity[0],
-        y: linvel.y,
-        z: output.linear_velocity[2],
+        x: (output.linear_velocity[0] - linvel.x) * mass,
+        y: 0,
+        z: (output.linear_velocity[2] - linvel.z) * mass,
       },
       true,
     )
@@ -386,11 +388,13 @@ export function useCarFrame({
     // Raycast suspension: applies spring/damper impulses at wheel points
     suspensionOutputRef.current = suspension.step(dt)
 
+    // WASM controls yaw (Y angular), Rapier owns pitch/roll from suspension
+    const currentAngvel = chassis.angvel()
     chassis.setAngvel(
       {
-        x: output.angular_velocity[0],
+        x: currentAngvel.x,
         y: output.angular_velocity[1],
-        z: output.angular_velocity[2],
+        z: currentAngvel.z,
       },
       true,
     )
