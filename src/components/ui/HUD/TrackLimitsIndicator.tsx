@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackLimitsStore } from '../../../stores/useTrackLimitsStore'
+import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { TRACK_LIMITS } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -47,6 +48,8 @@ export default function TrackLimitsIndicator() {
   const roadContactCount = useSurfaceStore(s => s.roadContactCount)
   const curbContactCount = useSurfaceStore(s => s.curbContactCount)
 
+  const isLapTimingActive = useLapTimeStore(s => s.isActive)
+
   const isOffTrack = useTrackLimitsStore(s => s.isOffTrack)
   const violationCount = useTrackLimitsStore(s => s.violationCount)
   const setOffTrack = useTrackLimitsStore(s => s.setOffTrack)
@@ -83,8 +86,7 @@ export default function TrackLimitsIndicator() {
     }
   }, [currentSurface, roadContactCount, curbContactCount, setOffTrack])
 
-  // Don't render if not off track
-  if (!isOffTrack) {
+  if (!isLapTimingActive || !isOffTrack) {
     return null
   }
 
