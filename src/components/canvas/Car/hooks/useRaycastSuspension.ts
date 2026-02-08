@@ -6,7 +6,8 @@ const SPRING_K = 25000
 const DAMPER_C = 3000
 const REST_LENGTH = 0.35
 const MAX_TRAVEL = 0.15
-const RAY_LENGTH = REST_LENGTH + MAX_TRAVEL
+const RAY_ORIGIN_LIFT = 0.5
+const RAY_LENGTH = RAY_ORIGIN_LIFT + REST_LENGTH + MAX_TRAVEL
 const MAX_SPRING_FORCE = 12000
 
 const FRONT_ANTI_ROLL_K = 8000
@@ -86,15 +87,19 @@ export function useRaycastSuspension(
       const worldY = pos.y + r10 * lx + r11 * ly + r12 * lz
       const worldZ = pos.z + r20 * lx + r21 * ly + r22 * lz
 
+      const rayX = worldX - downX * RAY_ORIGIN_LIFT
+      const rayY = worldY - downY * RAY_ORIGIN_LIFT
+      const rayZ = worldZ - downZ * RAY_ORIGIN_LIFT
+
       const ray = new rapier.Ray(
-        { x: worldX, y: worldY, z: worldZ },
+        { x: rayX, y: rayY, z: rayZ },
         { x: downX, y: downY, z: downZ },
       )
 
       const hit = world.castRay(
         ray,
         RAY_LENGTH,
-        false,
+        true,
         undefined,
         SUSPENSION_RAY_GROUPS,
         undefined,
@@ -103,8 +108,9 @@ export function useRaycastSuspension(
 
       if (hit) {
         const hitDistance = hit.timeOfImpact
-        const hitY = worldY + downY * hitDistance
-        const compression = REST_LENGTH - hitDistance
+        const hitY = rayY + downY * hitDistance
+        const distFromAnchor = hitDistance - RAY_ORIGIN_LIFT
+        const compression = REST_LENGTH - distFromAnchor
 
         if (compression > 0) {
           const compressionVelocity = (compression - prevCompressionRef.current[i]) / Math.max(dt, 0.001)
