@@ -44,6 +44,8 @@ export function useRaycastSuspension(
 ) {
   const { world, rapier } = useRapier()
   const prevErrorRef = useRef([0, 0, 0, 0])
+  const prevHitYRef = useRef([0, 0, 0, 0])
+  const HIT_Y_MAX_DROP = 0.08
 
   function step(dt: number): SuspensionOutput {
     const chassis = chassisRef.current
@@ -108,8 +110,14 @@ export function useRaycastSuspension(
 
       if (hit) {
         const hitDistance = hit.timeOfImpact
-        const hitY = rayY + downY * hitDistance
-        const distFromAnchor = hitDistance - RAY_ORIGIN_LIFT
+        let hitY = rayY + downY * hitDistance
+        const prevHitY = prevHitYRef.current[i]
+        if (prevHitY !== 0 && hitY < prevHitY - HIT_Y_MAX_DROP) {
+          hitY = prevHitY - HIT_Y_MAX_DROP
+        }
+        prevHitYRef.current[i] = hitY
+        const effectiveDistance = (hitY - rayY) / downY
+        const distFromAnchor = effectiveDistance - RAY_ORIGIN_LIFT
         const compression = REST_LENGTH - distFromAnchor
 
         if (compression > 0) {

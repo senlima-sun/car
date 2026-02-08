@@ -2,7 +2,7 @@ import { useMemo, useCallback, useEffect } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
-import { ROAD_THICKNESS as DIM_ROAD_THICKNESS, TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
+import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
 import { useElevationStore } from '../../../stores/useElevationStore'
@@ -27,7 +27,6 @@ interface CurvedRoadSegmentProps {
 
 const config = OBJECT_CONFIGS.road
 const CURVE_SEGMENTS = 48
-const ROAD_THICKNESS = DIM_ROAD_THICKNESS
 
 export default function CurvedRoadSegment({
   startPoint,
@@ -95,7 +94,7 @@ export default function CurvedRoadSegment({
     const BLEND_SEGMENTS = 3
 
     const computeEdgePoints = (i: number, p: Vector3, t: number) => {
-      const elevationY = startElev + (endElev - startElev) * t + ROAD_THICKNESS
+      const elevationY = startElev + (endElev - startElev) * t + 0.01
 
       const bankingAngle = bankingDeg * Math.sin(t * Math.PI)
       const bankRadians = bankingAngle * DEG2RAD
@@ -224,7 +223,7 @@ export default function CurvedRoadSegment({
           .addScaledVector(perpendicular, -(edgeOffset - edgeWidth / 2))
       }
 
-      const edgeY = elevationY + 0.005
+      const edgeY = elevationY + 0.002
       leftEdgeVertices.push(leftEdgeOuter.x, edgeY, leftEdgeOuter.z)
       leftEdgeVertices.push(leftEdgeInner.x, edgeY, leftEdgeInner.z)
 
@@ -272,7 +271,7 @@ export default function CurvedRoadSegment({
       const pos = curve.getPoint(t)
       const tangent = curve.getTangent(t)
       const rotation = Math.atan2(tangent.x, tangent.z)
-      const dashElevY = startElev + (endElev - startElev) * t + ROAD_THICKNESS + 0.005
+      const dashElevY = startElev + (endElev - startElev) * t + 0.015
       dashes.push({ position: pos, rotation, elevationY: dashElevY })
     }
 
@@ -283,7 +282,7 @@ export default function CurvedRoadSegment({
     for (let i = 0; i < points.length; i++) {
       const p = points[i]
       const t = i / (points.length - 1)
-      const selectionY = startElev + (endElev - startElev) * t + ROAD_THICKNESS + 0.03
+      const selectionY = startElev + (endElev - startElev) * t + 0.04
 
       let tangent: Vector3
       if (i === 0) {
@@ -338,7 +337,7 @@ export default function CurvedRoadSegment({
     }
 
     // Generate solid collision mesh (reduced resolution for performance)
-    const collisionStep = 3
+    const collisionStep = 2
     const collisionVertices: number[] = []
     const collisionIndices: number[] = []
     let collVtxCount = 0
@@ -349,8 +348,8 @@ export default function CurvedRoadSegment({
 
       const { leftPoint: lp, rightPoint: rp, leftY: topLeftY, rightY: topRightY } = computeEdgePoints(idx, p, t)
 
-      const botLeftY = topLeftY - 0.5
-      const botRightY = topRightY - 0.5
+      const botLeftY = topLeftY - 0.15
+      const botRightY = topRightY - 0.15
 
       collisionVertices.push(lp.x, topLeftY, lp.z)
       collisionVertices.push(rp.x, topRightY, rp.z)
@@ -378,8 +377,8 @@ export default function CurvedRoadSegment({
 
       const { leftPoint: lp, rightPoint: rp, leftY: topLeftY, rightY: topRightY } = computeEdgePoints(idx, p, t)
 
-      const botLeftY = topLeftY - 0.5
-      const botRightY = topRightY - 0.5
+      const botLeftY = topLeftY - 0.15
+      const botRightY = topRightY - 0.15
 
       collisionVertices.push(lp.x, topLeftY, lp.z)
       collisionVertices.push(rp.x, topRightY, rp.z)

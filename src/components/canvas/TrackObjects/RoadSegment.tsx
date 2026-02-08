@@ -2,7 +2,7 @@ import { useMemo, useCallback, useEffect } from 'react'
 import { Vector3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
-import { ROAD_THICKNESS as DIM_ROAD_THICKNESS, TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
+import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
 import { useElevationStore } from '../../../stores/useElevationStore'
@@ -21,7 +21,6 @@ interface RoadSegmentProps {
 }
 
 const config = OBJECT_CONFIGS.road
-const ROAD_THICKNESS = DIM_ROAD_THICKNESS
 
 export default function RoadSegment({
   position,
@@ -82,8 +81,8 @@ export default function RoadSegment({
     const geo = new BufferGeometry()
     const hw = width / 2
     const hl = length / 2
-    const startY = (startElev - midElev) + ROAD_THICKNESS
-    const endY = (endElev - midElev) + ROAD_THICKNESS
+    const startY = (startElev - midElev) + 0.01
+    const endY = (endElev - midElev) + 0.01
 
     const vertices = new Float32Array([
       -hw, startY, -hl,
@@ -165,20 +164,20 @@ export default function RoadSegment({
   const rampColliderData = useMemo(() => {
     const hw = width / 2
     const hl = length / 2
-    const topStartY = (startElev - midElev) + ROAD_THICKNESS
-    const topEndY = (endElev - midElev) + ROAD_THICKNESS
-    const botStartY = topStartY - 0.5
-    const botEndY = topEndY - 0.5
+    const overlap = 0.15
+    const topStartY = (startElev - midElev) + 0.01
+    const topEndY = (endElev - midElev) + 0.01
+    const botY = -0.15
 
     const vertices = new Float32Array([
-      -hw, topStartY, -hl,
-       hw, topStartY, -hl,
-      -hw, topEndY,    hl,
-       hw, topEndY,    hl,
-      -hw, botStartY, -hl,
-       hw, botStartY, -hl,
-      -hw, botEndY,    hl,
-       hw, botEndY,    hl,
+      -hw, topStartY, -(hl + overlap),
+       hw, topStartY, -(hl + overlap),
+      -hw, topEndY,    (hl + overlap),
+       hw, topEndY,    (hl + overlap),
+      -hw, botY, -(hl + overlap),
+       hw, botY, -(hl + overlap),
+      -hw, botY,  (hl + overlap),
+       hw, botY,  (hl + overlap),
     ])
 
     const indices = new Uint32Array([
@@ -206,7 +205,7 @@ export default function RoadSegment({
 
       {Array.from({ length: dashCount }).map((_, i) => {
         const t = (i + 0.5) / dashCount
-        const dashY = (startElev - midElev) + (endElev - startElev) * t + ROAD_THICKNESS + 0.001
+        const dashY = (startElev - midElev) + (endElev - startElev) * t + 0.015
         const dashZ = -length / 2 + (i + 0.5) * (length / dashCount)
         return (
           <mesh
@@ -226,7 +225,7 @@ export default function RoadSegment({
       })}
 
       {isSelectedForCurb && (
-        <mesh position={[0, (startElev + endElev) / 2 - midElev + ROAD_THICKNESS + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[0, (startElev + endElev) / 2 - midElev + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[width + 0.5, length + 0.5]} />
           <meshBasicMaterial color='#22c55e' transparent opacity={0.3} depthWrite={false} />
         </mesh>
