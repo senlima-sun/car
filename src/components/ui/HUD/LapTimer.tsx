@@ -15,6 +15,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: 25,
     alignItems: 'center',
+    flexWrap: 'wrap' as const,
   },
   hint: {
     position: 'absolute',
@@ -102,7 +103,8 @@ export default function LapTimer() {
   const updateCurrentTime = useLapTimeStore(state => state.updateCurrentTime)
   const currentSector = useLapTimeStore(state => state.currentSector)
   const totalCheckpoints = useLapTimeStore(state => state.totalCheckpoints)
-  const lastSectorSplit = useLapTimeStore(state => state.lastSectorSplit)
+  const sectorTimes = useLapTimeStore(state => state.sectorTimes)
+  const bestSectorTimes = useLapTimeStore(state => state.bestSectorTimes)
   const currentLapInvalid = useLapTimeStore(state => state.currentLapInvalid)
   const pitPenalty = usePitStore(state => state.pitLaneSpeedingPenalty)
 
@@ -190,28 +192,32 @@ export default function LapTimer() {
         </div>
       )}
 
-      {/* Last sector split */}
-      {lastSectorSplit && (
-        <div style={styles.timeBlock}>
-          <div style={styles.label}>S{lastSectorSplit.sectorNumber}</div>
-          <div style={{
-            fontSize: 14,
-            fontFamily: 'monospace',
-            color: lastSectorSplit.delta === null
-              ? '#fff'
-              : lastSectorSplit.delta <= 0
-                ? '#22c55e'
-                : '#ef4444',
-          }}>
-            {formatTime(lastSectorSplit.time)}
-            {lastSectorSplit.delta !== null && (
-              <span style={{ fontSize: 10, marginLeft: 4 }}>
-                {lastSectorSplit.delta <= 0 ? '-' : '+'}
-                {formatTime(Math.abs(lastSectorSplit.delta))}
-              </span>
-            )}
-          </div>
-        </div>
+      {hasStarted && totalCheckpoints > 0 && sectorTimes.size > 0 && (
+        <>
+          {Array.from(sectorTimes.entries()).map(([sectorNum, time]) => {
+            const best = bestSectorTimes.get(sectorNum)
+            const delta = best && time !== best ? time - best : null
+            const isPersonalBest = best === time
+            return (
+              <div key={sectorNum} style={styles.timeBlock}>
+                <div style={styles.label}>S{sectorNum}</div>
+                <div style={{
+                  fontSize: 14,
+                  fontFamily: 'monospace',
+                  color: isPersonalBest ? '#22c55e' : delta !== null && delta > 0 ? '#ef4444' : '#fff',
+                }}>
+                  {formatTime(time)}
+                  {delta !== null && (
+                    <span style={{ fontSize: 10, marginLeft: 4 }}>
+                      {delta <= 0 ? '-' : '+'}
+                      {formatTime(Math.abs(delta))}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </>
       )}
     </div>
   )

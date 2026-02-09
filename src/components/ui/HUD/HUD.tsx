@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import RacePanel from './RacePanel'
 import PitStopUI from './PitStopUI'
 import StatusBar from './StatusBar'
+import LapTimer from './LapTimer'
 import KeymapModal from './KeymapModal'
 import WeatherControlModal from './WeatherControlModal'
 import HeatmapLegend from './HeatmapLegend'
@@ -170,8 +171,8 @@ export default function HUD() {
         <>
           {/* Status bar - top left with weather, FPS, tire, camera, lap times */}
           <StatusBar />
+          <LapTimer />
 
-          {/* Mobile: Centered compact speed/gear display */}
           {isMobile && <MobileSpeedGear />}
 
           {/* Desktop: Unified race panel bottom-center, Debug panel bottom-left */}

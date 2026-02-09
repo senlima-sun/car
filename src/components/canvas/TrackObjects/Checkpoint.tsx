@@ -4,6 +4,7 @@ import { Vector3, Quaternion } from 'three'
 import { Text } from '@react-three/drei'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
+import { useCustomizationStore } from '@/stores/useCustomizationStore'
 import { useCarStore } from '../../../stores/useCarStore'
 import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
 import type { CheckpointType } from '../../../types/trackObjects'
@@ -41,11 +42,17 @@ export default function Checkpoint({
   const crossSector = useLapTimeStore(state => state.crossSector)
   const setActive = useLapTimeStore(state => state.setActive)
 
+  const sectorCheckpointCount = useCustomizationStore(state =>
+    state.placedObjects.filter(
+      obj => obj.type === 'checkpoint' && obj.checkpointType === 'sector'
+    ).length
+  )
+
   useEffect(() => {
     if (!isGhost) {
-      setActive(true)
+      setActive(true, sectorCheckpointCount)
     }
-  }, [isGhost, setActive])
+  }, [isGhost, setActive, sectorCheckpointCount])
 
   const { length, calculatedRotation, midpoint } = useMemo(() => {
     if (startPoint && endPoint) {

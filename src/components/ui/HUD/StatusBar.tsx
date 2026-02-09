@@ -135,8 +135,6 @@ export default function StatusBar() {
   const isRecording = useLapTimeStore(state => state.isRecording)
   const currentLapStart = useLapTimeStore(state => state.currentLapStart)
   const currentLapTime = useLapTimeStore(state => state.currentLapTime)
-  const lastLapTime = useLapTimeStore(state => state.lastLapTime)
-  const bestLapTime = useLapTimeStore(state => state.bestLapTime)
   const lapCount = useLapTimeStore(state => state.lapCount)
   const updateCurrentTime = useLapTimeStore(state => state.updateCurrentTime)
 
@@ -277,35 +275,10 @@ export default function StatusBar() {
 
           {isRecording ? (
             <>
-              {/* Recording indicator */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={styles.recordingDot} />
                 <span style={{ ...styles.label, color: LAP_TIMER.recording }}>REC</span>
               </div>
-
-              {/* Current time */}
-              <div style={styles.item}>
-                <span style={styles.label}>Lap:</span>
-                <span style={{ ...styles.lapTime, color: LAP_TIMER.bestLap }}>
-                  {hasLapStarted ? formatTime(currentLapTime) : 'Waiting...'}
-                </span>
-              </div>
-
-              {/* Last lap */}
-              <div style={styles.item}>
-                <span style={styles.label}>Last:</span>
-                <span style={styles.lapTime}>{formatTime(lastLapTime)}</span>
-              </div>
-
-              {/* Best lap */}
-              <div style={styles.item}>
-                <span style={styles.label}>Best:</span>
-                <span style={{ ...styles.lapTime, color: LAP_TIMER.ghost }}>
-                  {formatTime(bestLapTime)}
-                </span>
-              </div>
-
-              {/* Lap count */}
               <div style={styles.item}>
                 <span style={styles.label}>#</span>
                 <span style={styles.value}>{lapCount}</span>

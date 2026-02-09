@@ -191,6 +191,9 @@ export function SteeringWheelDisplay() {
   const lastLapTime = useLapTimeStore(s => s.lastLapTime)
   const lapCount = useLapTimeStore(s => s.lapCount)
   const lastSectorSplit = useLapTimeStore(s => s.lastSectorSplit)
+  const currentLapTime = useLapTimeStore(s => s.currentLapTime)
+  const isRecording = useLapTimeStore(s => s.isRecording)
+  const currentLapStart = useLapTimeStore(s => s.currentLapStart)
 
   const perWheelWear = useTireStore(s => s.perWheelWear)
 
@@ -340,10 +343,16 @@ export function SteeringWheelDisplay() {
         Col({ flex: 1, style: { gap: 4 }, children: [
           Row({ flex: 1, style: { gap: 4 }, children: [
             gridCell('BB', frontBias.toFixed(1), ORANGE, `F${Math.round(frontBias)}`),
-            gridCell('POS', '--', DIM),
+            gridCell('LAP', isRecording && currentLapStart !== null ? formatLapTime(currentLapTime) : '--', isRecording ? SPEED_GREEN : DIM),
           ]}),
           Row({ flex: 1, style: { gap: 4 }, children: [
-            gridCell('DIFF', '--', DIM),
+            gridCell(
+              lastSectorSplit ? `S${lastSectorSplit.sectorNumber}` : 'SEC',
+              lastSectorSplit ? formatLapTime(lastSectorSplit.time) : '--',
+              lastSectorSplit?.delta !== null && lastSectorSplit?.delta !== undefined
+                ? (lastSectorSplit.delta <= 0 ? GREEN : RED)
+                : DIM,
+            ),
             gridCell('LAP', lapCount.toString(), WHITE),
           ]}),
         ]}),
