@@ -20,6 +20,9 @@ interface ControlsState {
   freeCamera: boolean
   lapTimer: boolean
   pitStop: boolean
+  steer: number
+  throttle: number
+  brakeAnalog: number
 }
 
 // Unified controls hook that merges keyboard and touch inputs
@@ -31,13 +34,18 @@ export function useControls(): () => ControlsState {
     const keyboard = getKeyboardKeys() as unknown as ControlsState
     const touch = useTouchControlsStore.getState()
 
-    // Merge: if either source says true, result is true
+    const forward = keyboard.forward || touch.forward
+    const backward = keyboard.backward || touch.backward
+    const left = keyboard.left || touch.left
+    const right = keyboard.right || touch.right
+    const brake = keyboard.brake || touch.brake
+
     return {
-      forward: keyboard.forward || touch.forward,
-      backward: keyboard.backward || touch.backward,
-      left: keyboard.left || touch.left,
-      right: keyboard.right || touch.right,
-      brake: keyboard.brake || touch.brake,
+      forward,
+      backward,
+      left,
+      right,
+      brake,
       handbrake: keyboard.handbrake || touch.handbrake,
       ersPreset: keyboard.ersPreset || false,
       overtake: keyboard.overtake || false,
@@ -51,6 +59,9 @@ export function useControls(): () => ControlsState {
       freeCamera: keyboard.freeCamera || false,
       lapTimer: keyboard.lapTimer || false,
       pitStop: keyboard.pitStop || false,
+      steer: left ? -1 : right ? 1 : 0,
+      throttle: forward ? 1 : 0,
+      brakeAnalog: brake || backward ? 1 : 0,
     }
   }
 }

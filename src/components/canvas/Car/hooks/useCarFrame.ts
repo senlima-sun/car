@@ -194,6 +194,9 @@ export function useCarFrame({
       freeCamera,
       lapTimer,
       pitStop,
+      steer,
+      throttle,
+      brakeAnalog,
     } = getKeys()
     const chassis = chassisRef.current
 
@@ -392,6 +395,9 @@ export function useCarFrame({
       right,
       brake,
       handbrake,
+      steer,
+      throttle,
+      brake_analog: brakeAnalog,
     }
 
     // Batched WASM call: step + wind + aero + brake in one FFI round-trip

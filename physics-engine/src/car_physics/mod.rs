@@ -110,10 +110,12 @@ impl CarPhysicsState {
         self.speed_ms = forward_speed.abs();
         self.speed_kmh = self.speed_ms * 3.6;
 
+        let effective_throttle_for_pt = input.throttle > 0.01 || (input.forward && !input.brake);
+
         let pt_out = self.powertrain.update(
             dt,
             self.speed_ms,
-            input.forward && !input.brake,
+            effective_throttle_for_pt,
             ers_boost,
             weather_modifiers.engine_efficiency_multiplier * engine_power_multiplier,
             1.0,
@@ -151,7 +153,15 @@ impl CarPhysicsState {
             tire_degradation.max_steer_multiplier,
             tire_degradation.steer_instability,
         ) * weather_modifiers.max_steer_angle_multiplier;
-        let steer_input = if input.left { -1.0 } else if input.right { 1.0 } else { 0.0 };
+        let steer_input = if input.steer.abs() > 0.01 {
+            input.steer.clamp(-1.0, 1.0)
+        } else if input.left {
+            -1.0
+        } else if input.right {
+            1.0
+        } else {
+            0.0
+        };
         let target_steer = steer_input * max_steer.to_radians();
 
         // Steering speed affected by both weather and wind (crosswinds make steering harder)
@@ -166,30 +176,46 @@ impl CarPhysicsState {
 
         let mut longitudinal_force = 0.0;
 
-        if input.forward && !input.brake {
-            longitudinal_force += pt_out.drive_force;
+        let effective_throttle = if input.throttle > 0.01 {
+            input.throttle.clamp(0.0, 1.0)
+        } else if input.forward {
+            1.0
+        } else {
+            0.0
+        };
+
+        let effective_brake = if input.brake_analog > 0.01 {
+            input.brake_analog.clamp(0.0, 1.0)
+        } else if input.brake || input.backward {
+            1.0
+        } else {
+            0.0
+        };
+
+        if effective_throttle > 0.01 && effective_brake < 0.01 {
+            longitudinal_force += pt_out.drive_force * effective_throttle;
         }
 
-        if input.backward || input.brake {
+        if effective_brake > 0.01 || input.backward {
             if forward_speed > 0.1 {
                 let total_brake = (front_brake_force + rear_brake_force)
                     * weather_modifiers.brake_efficiency_multiplier
                     * tire_degradation.brake_efficiency;
                 let handbrake_mult = if input.handbrake { 1.2 } else { 1.0 };
-                longitudinal_force -= total_brake * handbrake_mult;
+                longitudinal_force -= total_brake * handbrake_mult * effective_brake;
 
                 if forward_speed < 1.0 {
                     longitudinal_force -= forward_speed * CAR_MASS * 8.0;
                 }
-            } else if input.backward {
+            } else if input.backward || (effective_brake > 0.01 && forward_speed < 0.1) {
                 let reverse_force = 8000.0;
                 longitudinal_force -= reverse_force;
-            } else if input.brake {
+            } else if effective_brake > 0.01 {
                 longitudinal_force -= forward_speed * CAR_MASS * 20.0;
             }
         }
 
-        if !input.forward && !input.backward && !input.brake && self.speed_ms > 1.0 {
+        if effective_throttle < 0.01 && effective_brake < 0.01 && !input.backward && self.speed_ms > 1.0 {
             let rpm_engine_brake = pt_out.engine_brake_force;
             let configured_brake = engine_braking_force;
             longitudinal_force -= rpm_engine_brake.max(configured_brake) * forward_speed.signum();
@@ -250,7 +276,7 @@ impl CarPhysicsState {
             total_load,
             grip_coefficient * downforce_grip_bonus,
             input.handbrake,
-            input.forward && !input.brake,
+            effective_throttle > 0.01 && effective_brake < 0.01,
             &weight_transfer,
         );
 

@@ -568,6 +568,12 @@ pub struct CarInput {
     pub right: bool,
     pub brake: bool,
     pub handbrake: bool,
+    #[serde(default)]
+    pub steer: f32,
+    #[serde(default)]
+    pub throttle: f32,
+    #[serde(default)]
+    pub brake_analog: f32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]

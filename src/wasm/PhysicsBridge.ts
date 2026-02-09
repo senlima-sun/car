@@ -18,6 +18,9 @@ export interface CarInput {
   right: boolean
   brake: boolean
   handbrake: boolean
+  steer?: number
+  throttle?: number
+  brake_analog?: number
 }
 
 export interface PerWheelWear {
