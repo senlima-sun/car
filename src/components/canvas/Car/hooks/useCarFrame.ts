@@ -131,6 +131,7 @@ export function useCarFrame({
   const lastLapTimerToggle = useRef(0)
   const lastPitStopToggle = useRef(0)
   const tempCarPosRef = useRef(new Vector3())
+  const prevCameraModeRef = useRef(cameraMode)
 
   // Spawn protection: count frames to stabilize car above ground
   const spawnFrameRef = useRef(0)
@@ -284,7 +285,24 @@ export function useCarFrame({
     }
 
     // Skip physics when in free camera mode or customize mode (freeze car)
-    if (cameraMode === 'free' || gameStatus === 'customize') return
+    if (cameraMode === 'free' || gameStatus === 'customize') {
+      // Always disable gravity in free camera (handles initial-free-camera case)
+      if (cameraMode === 'free') {
+        chassis.setGravityScale(0, true)
+        if (prevCameraModeRef.current !== 'free') {
+          chassis.setLinvel({ x: 0, y: 0, z: 0 }, true)
+          chassis.setAngvel({ x: 0, y: 0, z: 0 }, true)
+        }
+      }
+      prevCameraModeRef.current = cameraMode
+      return
+    }
+
+    // Restore rigid body when leaving free camera mode
+    if (prevCameraModeRef.current === 'free' && cameraMode !== 'free') {
+      chassis.setGravityScale(1, true)
+    }
+    prevCameraModeRef.current = cameraMode
 
     // Spawn protection: hold car above ground for initial frames while physics settles
     if (spawnFrameRef.current < SPAWN_PROTECT_FRAMES) {

@@ -171,15 +171,21 @@ impl CarPhysicsState {
         }
 
         if input.backward || input.brake {
-            if forward_speed > 0.5 {
+            if forward_speed > 0.1 {
                 let total_brake = (front_brake_force + rear_brake_force)
                     * weather_modifiers.brake_efficiency_multiplier
                     * tire_degradation.brake_efficiency;
                 let handbrake_mult = if input.handbrake { 1.2 } else { 1.0 };
                 longitudinal_force -= total_brake * handbrake_mult;
+
+                if forward_speed < 1.0 {
+                    longitudinal_force -= forward_speed * CAR_MASS * 8.0;
+                }
             } else if input.backward {
-                let reverse_force = pt_out.drive_force.abs() * 0.4;
-                longitudinal_force -= reverse_force.max(2000.0);
+                let reverse_force = 8000.0;
+                longitudinal_force -= reverse_force;
+            } else if input.brake {
+                longitudinal_force -= forward_speed * CAR_MASS * 20.0;
             }
         }
 

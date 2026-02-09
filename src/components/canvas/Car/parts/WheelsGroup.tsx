@@ -28,18 +28,11 @@ export function WheelsGroup({
 
   const steerRef = useRef(0)
   const rotationsRef = useRef<[number, number, number, number]>([0, 0, 0, 0])
-  const wheelYOffsetsRef = useRef([0, 0, 0, 0])
 
   useFrame(() => {
     const state = useCarStore.getState()
     steerRef.current = state.steerAngle
     rotationsRef.current = state.wheelRotations
-
-    if (suspensionRef?.current) {
-      for (let i = 0; i < 4; i++) {
-        wheelYOffsetsRef.current[i] = suspensionRef.current.wheels[i].deflection
-      }
-    }
   })
 
   return (
@@ -70,12 +63,10 @@ export function WheelsGroup({
             break
         }
 
-        const suspensionY = wheelYOffsetsRef.current[index]
-
         return (
           <Wheel
             key={index}
-            position={[pos[0], pos[1] + suspensionY, pos[2]]}
+            position={[pos[0], pos[1], pos[2]]}
             steerAngle={isFrontWheel ? steerRef.current : 0}
             wheelRotation={rotationsRef.current[index]}
             isLeft={isLeftWheel}

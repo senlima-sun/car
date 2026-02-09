@@ -1,6 +1,7 @@
 import { MutableRefObject, useRef } from 'react'
 import { RapierRigidBody, useRapier } from '@react-three/rapier'
 import { WHEEL_POSITIONS, WHEEL_RADIUS, SUSPENSION_RAY_GROUPS } from '../../../../constants/dimensions'
+import { usePhysicsDebugStore } from '../../../../stores/usePhysicsDebugStore'
 
 const REST_LENGTH = 0.4
 const MAX_TRAVEL = 0.2
@@ -46,6 +47,7 @@ export function useRaycastSuspension(
   const prevErrorRef = useRef([0, 0, 0, 0])
   const prevHitYRef = useRef([0, 0, 0, 0])
   const HIT_Y_MAX_DROP = 0.08
+  const HIT_Y_MAX_RISE = 0.06
 
   function step(dt: number): SuspensionOutput {
     const chassis = chassisRef.current
@@ -102,7 +104,7 @@ export function useRaycastSuspension(
         ray,
         RAY_LENGTH,
         true,
-        undefined,
+        0x08, // EXCLUDE_SENSORS — prevent hitting road sensor CuboidColliders
         SUSPENSION_RAY_GROUPS,
         undefined,
         chassis,
@@ -112,8 +114,12 @@ export function useRaycastSuspension(
         const hitDistance = hit.timeOfImpact
         let hitY = rayY + downY * hitDistance
         const prevHitY = prevHitYRef.current[i]
-        if (prevHitY !== 0 && hitY < prevHitY - HIT_Y_MAX_DROP) {
-          hitY = prevHitY - HIT_Y_MAX_DROP
+        if (prevHitY !== 0) {
+          if (hitY < prevHitY - HIT_Y_MAX_DROP) {
+            hitY = prevHitY - HIT_Y_MAX_DROP
+          } else if (hitY > prevHitY + HIT_Y_MAX_RISE) {
+            hitY = prevHitY + HIT_Y_MAX_RISE
+          }
         }
         prevHitYRef.current[i] = hitY
         const effectiveDistance = (hitY - rayY) / downY
@@ -127,8 +133,9 @@ export function useRaycastSuspension(
           prevErrorRef.current[i] = error
 
           const springForce = SPRING_STIFFNESS * error * CAR_MASS * GRAVITY / 4
-          const dampForce = DAMPING_RATIO * 2 * Math.sqrt(SPRING_STIFFNESS * CAR_MASS / 4) * errorVelocity
-          const force = springForce - dampForce
+          // Critical damping: c = ζ * 2 * sqrt(k_wheel * m_wheel)
+          const dampForce = DAMPING_RATIO * (CAR_MASS / 2) * Math.sqrt(SPRING_STIFFNESS * GRAVITY) * errorVelocity
+          const force = springForce + dampForce
           totalForceY += force
 
           wheels.push({
@@ -148,26 +155,39 @@ export function useRaycastSuspension(
     }
 
     if (groundedCount > 0) {
-      const linvel = chassis.linvel()
-      const gravityForce = CAR_MASS * GRAVITY
-      const netForceY = totalForceY - gravityForce
-      const accelY = netForceY / CAR_MASS
-      const newVelY = linvel.y + accelY * dt
+      // Apply spring-damper as impulse (additive, works with Rapier gravity)
+      chassis.applyImpulse({ x: 0, y: totalForceY * dt, z: 0 }, true)
 
-      chassis.setLinvel({ x: linvel.x, y: newVelY, z: linvel.z }, true)
-
+      // Safety: prevent wheel from sinking below ground surface
       const minY = wheels.reduce((min, w) => w.isGrounded ? Math.max(min, w.hitY) : min, -Infinity)
       if (minY > -Infinity) {
         const wheelBottomY = pos.y + (WHEEL_POSITIONS.FL[1] - WHEEL_RADIUS)
         if (wheelBottomY < minY) {
-          const correction = minY - wheelBottomY
+          const correction = (minY - wheelBottomY) * 0.6
           chassis.setTranslation({ x: pos.x, y: pos.y + correction, z: pos.z }, true)
           const freshLinvel = chassis.linvel()
-          if (freshLinvel.y < 0) {
-            chassis.setLinvel({ x: freshLinvel.x, y: 0, z: freshLinvel.z }, true)
+          if (freshLinvel.y < -1) {
+            chassis.setLinvel({ x: freshLinvel.x, y: freshLinvel.y * 0.3, z: freshLinvel.z }, true)
           }
         }
       }
+    }
+
+    // Emit debug telemetry (throttled — only when debug panel is open)
+    if (usePhysicsDebugStore.getState().enabled) {
+      const vel = chassis.linvel()
+      usePhysicsDebugStore.getState().update({
+        posY: pos.y,
+        velY: vel.y,
+        totalForceY,
+        groundedCount,
+        wheels: wheels.map((w, i) => ({
+          compression: w.compression,
+          hitY: w.hitY,
+          isGrounded: w.isGrounded,
+          rayOriginY: pos.y + r10 * WHEEL_ANCHORS[i][0] + r11 * WHEEL_ANCHORS[i][1] + r12 * WHEEL_ANCHORS[i][2],
+        })) as [any, any, any, any],
+      })
     }
 
     return {

@@ -11,7 +11,6 @@ interface SteeringWheelProps {
   showDisplay: boolean
 }
 
-// --- Materials ---
 const carbonMap = createCarbonFiberTexture()
 const carbonMaterial = new THREE.MeshStandardMaterial({
   map: carbonMap,
@@ -29,11 +28,46 @@ const housingMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.2,
   metalness: 0.8,
 })
+const screenBezelMaterial = new THREE.MeshStandardMaterial({
+  color: 0x050505,
+  roughness: 0.1,
+  metalness: 0.9,
+})
+const paddleMaterial = new THREE.MeshStandardMaterial({
+  color: 0x888888,
+  roughness: 0.3,
+  metalness: 0.6,
+})
+const buttonRedMaterial = new THREE.MeshStandardMaterial({
+  color: 0xcc2222,
+  roughness: 0.5,
+  metalness: 0.3,
+  emissive: new THREE.Color(0x440000),
+  emissiveIntensity: 0.3,
+})
+const buttonBlueMaterial = new THREE.MeshStandardMaterial({
+  color: 0x2244cc,
+  roughness: 0.5,
+  metalness: 0.3,
+  emissive: new THREE.Color(0x000044),
+  emissiveIntensity: 0.3,
+})
+const buttonYellowMaterial = new THREE.MeshStandardMaterial({
+  color: 0xccaa22,
+  roughness: 0.5,
+  metalness: 0.3,
+  emissive: new THREE.Color(0x222200),
+  emissiveIntensity: 0.3,
+})
+const rotaryMaterial = new THREE.MeshStandardMaterial({
+  color: 0x333333,
+  roughness: 0.4,
+  metalness: 0.5,
+})
 
-// --- Geometry ---
 const wheelShape = new THREE.Shape()
-const w = 0.16 // Half width, scaled down from example
-const h = 0.09 // Half height
+const w = 0.16
+const h = 0.09
 wheelShape.moveTo(0, -h + 0.025)
 wheelShape.lineTo(w - 0.075, -h + 0.025)
 wheelShape.quadraticCurveTo(w, -h, w, -h + 0.075)
@@ -54,9 +88,6 @@ const extrudeSettings = {
   bevelThickness: 0.005,
 }
 
-/**
- * F1-style butterfly steering wheel with telemetry display
- */
 export function SteeringWheel({ steerAngle, showDisplay }: SteeringWheelProps) {
   const steeringWheelRef = useRef<THREE.Group>(null)
   const smoothSteeringWheel = useRef(0)
@@ -107,21 +138,76 @@ export function SteeringWheel({ steerAngle, showDisplay }: SteeringWheelProps) {
               <capsuleGeometry args={[0.0325, 0.17, 4, 16]} />
             </mesh>
 
+            {/* --- Decorative Buttons (Left) --- */}
+            <mesh castShadow position={[-0.09, 0.055, 0.012]} material={buttonRedMaterial}>
+              <cylinderGeometry args={[0.008, 0.008, 0.006, 12]} />
+            </mesh>
+            <mesh castShadow position={[-0.065, 0.06, 0.012]} material={buttonBlueMaterial}>
+              <cylinderGeometry args={[0.007, 0.007, 0.006, 12]} />
+            </mesh>
+            <mesh castShadow position={[-0.115, 0.045, 0.012]} material={buttonYellowMaterial}>
+              <cylinderGeometry args={[0.007, 0.007, 0.006, 12]} />
+            </mesh>
+
+            {/* --- Decorative Buttons (Right) --- */}
+            <mesh castShadow position={[0.09, 0.055, 0.012]} material={buttonYellowMaterial}>
+              <cylinderGeometry args={[0.008, 0.008, 0.006, 12]} />
+            </mesh>
+            <mesh castShadow position={[0.065, 0.06, 0.012]} material={buttonRedMaterial}>
+              <cylinderGeometry args={[0.007, 0.007, 0.006, 12]} />
+            </mesh>
+            <mesh castShadow position={[0.115, 0.045, 0.012]} material={buttonBlueMaterial}>
+              <cylinderGeometry args={[0.007, 0.007, 0.006, 12]} />
+            </mesh>
+
+            {/* --- Rotary Encoders --- */}
+            <mesh castShadow position={[-0.13, 0.02, 0.012]} rotation-x={Math.PI / 2} material={rotaryMaterial}>
+              <cylinderGeometry args={[0.01, 0.012, 0.008, 16]} />
+            </mesh>
+            <mesh castShadow position={[0.13, 0.02, 0.012]} rotation-x={Math.PI / 2} material={rotaryMaterial}>
+              <cylinderGeometry args={[0.01, 0.012, 0.008, 16]} />
+            </mesh>
+
+            {/* --- Shift Paddles (Behind wheel) --- */}
+            <mesh castShadow position={[-0.11, -0.01, -0.025]} rotation-z={0.15} material={paddleMaterial}>
+              <boxGeometry args={[0.05, 0.025, 0.003]} />
+            </mesh>
+            <mesh castShadow position={[0.11, -0.01, -0.025]} rotation-z={-0.15} material={paddleMaterial}>
+              <boxGeometry args={[0.05, 0.025, 0.003]} />
+            </mesh>
+
             {/* --- Monitor Housing & Screen --- */}
             <group position={[0, 0.015, 0.0125]}>
+              {/* Outer housing (carbon fiber) */}
               <RoundedBox
-                args={[0.21, 0.13, 0.01]}
+                args={[0.28, 0.165, 0.012]}
+                radius={0.006}
+                material={carbonMaterial}
+                castShadow
+              />
+              {/* Inner bezel (glossy black) */}
+              <RoundedBox
+                args={[0.275, 0.16, 0.011]}
+                radius={0.005}
+                material={screenBezelMaterial}
+                castShadow
+                position={[0, 0, 0.001]}
+              />
+              {/* Screen area */}
+              <RoundedBox
+                args={[0.27, 0.155, 0.01]}
                 radius={0.005}
                 material={housingMaterial}
                 castShadow
+                position={[0, 0, 0.002]}
               >
                 {showDisplay && <SteeringWheelDisplay />}
               </RoundedBox>
 
               {/* --- RPM LEDs --- */}
-              <group position={[0, 0.07, 0]}>
+              <group position={[0, 0.09, 0]}>
                 <mesh material={carbonMaterial} castShadow>
-                  <boxGeometry args={[0.21, 0.02, 0.015]} />
+                  <boxGeometry args={[0.28, 0.022, 0.015]} />
                 </mesh>
                 <group position={[0, 0, 0.008]}>
                   <RPMLights />

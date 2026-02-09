@@ -10,6 +10,7 @@ import TrackLimitsIndicator from './TrackLimitsIndicator'
 import WrongWayIndicator from './WrongWayIndicator'
 import DebugPanel from './DebugPanel'
 import CoastIndicator from './CoastIndicator'
+import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
 import { useGameStore } from '../../../stores/useGameStore'
 import { usePitStore } from '../../../stores/usePitStore'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
@@ -230,6 +231,9 @@ export default function HUD() {
 
           {/* Wrong-way warning */}
           <WrongWayIndicator />
+
+          {/* Physics debug overlay (F9 to toggle) */}
+          <PhysicsDebugOverlay />
         </>
       )}
     </div>
