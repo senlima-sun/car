@@ -142,14 +142,14 @@ fn test_acceleration_0_to_100_reasonable_time() {
         time_to_100
     );
     assert!(
-        time_to_100 < 4.0,
-        "0-100 km/h should take less than 4.0s for a 600kg race car with 18kN, took {:.2}s",
+        time_to_100 < 5.0,
+        "0-100 km/h should take less than 5.0s for a 798kg race car with 14kN, took {:.2}s",
         time_to_100
     );
 
     assert!(
-        final_speed > 150.0,
-        "After 3s full throttle, speed should exceed 150 km/h, got {:.1} km/h",
+        final_speed > 120.0,
+        "After 3s full throttle, speed should exceed 120 km/h, got {:.1} km/h",
         final_speed
     );
     assert!(

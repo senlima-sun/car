@@ -2,7 +2,7 @@ use super::weight_transfer::WeightTransferResult;
 use super::CAR_MASS;
 
 const HANDBRAKE_REAR_GRIP: f32 = 0.2;
-const THROTTLE_OVERSTEER_FACTOR: f32 = 0.80;
+const THROTTLE_OVERSTEER_FACTOR: f32 = 0.90;
 
 #[derive(Clone, Copy, Debug)]
 pub struct PacejkaCoeffs {

@@ -1,22 +1,22 @@
 use super::{BASE_DOWNFORCE_COEFFICIENT, BASE_DRAG_COEFFICIENT};
 
 const DEFAULT_AIR_DENSITY: f32 = 1.225;
-const FRONTAL_AREA: f32 = 2.0;
+const FRONTAL_AREA: f32 = 1.5;
 
 pub fn get_engine_force(speed_ms: f32, ers_boost: f32) -> f32 {
     let speed_kmh = speed_ms * 3.6;
 
     let base_force = if speed_kmh < 60.0 {
-        18000.0
+        14000.0
     } else if speed_kmh < 150.0 {
         let t = (speed_kmh - 60.0) / 90.0;
-        18000.0 - t * 6000.0
+        14000.0 - t * 4500.0
     } else if speed_kmh < 250.0 {
         let t = (speed_kmh - 150.0) / 100.0;
-        12000.0 - t * 5000.0
+        9500.0 - t * 3500.0
     } else {
         let t = ((speed_kmh - 250.0) / 60.0).min(1.0);
-        7000.0 - t * t * 3500.0
+        6000.0 - t * t * 2500.0
     };
 
     base_force + ers_boost
@@ -47,21 +47,21 @@ mod tests {
     #[test]
     fn test_engine_force_low_speed() {
         let force = get_engine_force(10.0, 0.0); // ~36 km/h
-        assert!((force - 18000.0).abs() < 100.0);
+        assert!((force - 14000.0).abs() < 100.0);
     }
 
     #[test]
     fn test_engine_force_mid_speed() {
         let force = get_engine_force(30.0, 0.0); // ~108 km/h
-        assert!(force < 18000.0);
-        assert!(force > 12000.0);
+        assert!(force < 14000.0);
+        assert!(force > 9000.0);
     }
 
     #[test]
     fn test_engine_force_high_speed() {
         let force = get_engine_force(70.0, 0.0); // ~252 km/h
-        assert!(force < 8000.0);
-        assert!(force > 5000.0);
+        assert!(force < 7000.0);
+        assert!(force > 3500.0);
     }
 
     #[test]

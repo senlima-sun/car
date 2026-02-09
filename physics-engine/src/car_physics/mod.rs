@@ -12,20 +12,20 @@ use crate::utils::{lerp, sanitize, Quat, Vec3};
 // Vehicle Constants
 // ============================================================================
 
-pub const CAR_MASS: f32 = 600.0;
+pub const CAR_MASS: f32 = 798.0;
 pub const WHEELBASE: f32 = 3.6;
 pub const TRACK_WIDTH: f32 = 1.8;
 pub const CG_HEIGHT: f32 = 0.35;
 pub const WEIGHT_DIST_FRONT: f32 = 0.47;
 
 pub const BASE_MAX_SPEED: f32 = 86.1; // m/s = 310 km/h
-pub const BASE_TIRE_GRIP_COEFFICIENT: f32 = 1.7;
-pub const BASE_DRAG_COEFFICIENT: f32 = 0.35;
+pub const BASE_TIRE_GRIP_COEFFICIENT: f32 = 1.85;
+pub const BASE_DRAG_COEFFICIENT: f32 = 0.85;
 pub const BASE_DOWNFORCE_COEFFICIENT: f32 = 2.8;
-pub const BASE_BRAKE_FORCE: f32 = 35000.0;
+pub const BASE_BRAKE_FORCE: f32 = 40000.0;
 pub const BASE_ENGINE_BRAKE: f32 = 2500.0;
 
-pub const DRIFT_ENTRY_SLIP_ANGLE: f32 = 15.0; // degrees
+pub const DRIFT_ENTRY_SLIP_ANGLE: f32 = 18.0; // degrees
 pub const DRIFT_EXIT_SLIP_ANGLE: f32 = 8.0;
 pub const MIN_DRIFT_SPEED: f32 = 30.0; // km/h
 
@@ -165,7 +165,7 @@ impl CarPhysicsState {
         let target_steer = steer_input * max_steer.to_radians();
 
         // Steering speed affected by both weather and wind (crosswinds make steering harder)
-        let steer_speed = 4.5 * weather_modifiers.steer_response_multiplier * wind_modifiers.steering_difficulty;
+        let steer_speed = 3.5 * weather_modifiers.steer_response_multiplier * wind_modifiers.steering_difficulty;
         let center_speed = 5.0 + self.speed_ms * 0.04;
 
         if steer_input.abs() > 0.01 {
@@ -295,7 +295,7 @@ impl CarPhysicsState {
         };
 
         // Smooth angular velocity
-        let response_rate = if self.drift.is_drifting() { 25.0 } else { 28.0 };
+        let response_rate = if self.drift.is_drifting() { 20.0 } else { 22.0 };
         self.target_angular_velocity = lerp(
             self.target_angular_velocity,
             angular_velocity,
