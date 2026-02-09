@@ -29,40 +29,38 @@ export function ControllerApp() {
   const brakeRef = useRef(0)
   const handbrakeRef = useRef(false)
   const buttonsRef = useRef({ ers: false, aero: false, camera: false })
+  const gyroRef = useRef(gyro)
+  gyroRef.current = gyro
 
   const getControllerState = useCallback((): ControllerState => ({
-    steer: gyro.steer,
+    steer: gyroRef.current.steer,
     throttle: throttleRef.current,
     brake: brakeRef.current,
     handbrake: handbrakeRef.current,
     buttons: { ...buttonsRef.current },
-  }), [gyro.steer])
+  }), [])
 
-  const syncRef = useControllerSync({
+  useControllerSync({
     signalingUrl: signal,
     roomId: room,
     getState: getControllerState,
     onConnected: () => {
-      if (gyro.isCalibrated) setPhase('controlling')
+      if (gyroRef.current.isCalibrated) setPhase('controlling')
       else setPhase('calibrating')
     },
     onDisconnected: () => setPhase('disconnected'),
     onLatency: setLatency,
   })
 
-  const handlePermissionGrant = async () => {
-    await requestFullscreen()
-    if (gyro.needsPermission) {
-      const granted = await gyro.requestPermission()
-      if (!granted) return
-    }
-    await gyro.start()
-    setPhase('connecting')
-  }
+  const handlePermissionGrant = useCallback(async () => {
+    requestFullscreen()
+    const ok = await gyro.requestPermissionAndStart()
+    if (ok) setPhase('connecting')
+  }, [gyro.requestPermissionAndStart, requestFullscreen])
 
   useEffect(() => {
     if (!gyro.needsPermission) {
-      gyro.start()
+      gyro.requestPermissionAndStart()
       setPhase('connecting')
     }
   }, [])
@@ -130,7 +128,7 @@ export function ControllerApp() {
   }
 
   return (
-    <div className="h-screen w-screen bg-neutral-950 relative overflow-hidden select-none touch-none">
+    <div className="h-screen w-screen bg-neutral-950 relative overflow-hidden select-none" style={{ touchAction: 'manipulation' }}>
       <ControlSurface
         onThrottleChange={v => { throttleRef.current = v }}
         onBrakeChange={v => { brakeRef.current = v }}
