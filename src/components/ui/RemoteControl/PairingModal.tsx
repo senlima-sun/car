@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import QRCode from 'qrcode'
 import { useRemoteControlStore } from '../../../stores/useRemoteControlStore'
 import { ConnectionManager } from '../../../utils/webrtc/ConnectionManager'
 import { decodeControllerState, isControllerPacket, isControlMessage, decodeControlMessage, encodeControlMessage } from '../../../utils/webrtc/protocol'
@@ -10,6 +11,7 @@ interface PairingModalProps {
 export function PairingModal({ onClose }: PairingModalProps) {
   const { connectionStatus, roomId, generateRoomId, setConnectionStatus, updateControllerState, setLatency, reset } = useRemoteControlStore()
   const connectionRef = useRef<ConnectionManager | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [controllerUrl, setControllerUrl] = useState('')
 
   useEffect(() => {
@@ -19,6 +21,14 @@ export function PairingModal({ onClose }: PairingModalProps) {
     const gameHost = window.location.host
     const url = `${window.location.protocol}//${gameHost}/controller?room=${id}&signal=${encodeURIComponent(signalingUrl)}`
     setControllerUrl(url)
+
+    if (canvasRef.current) {
+      QRCode.toCanvas(canvasRef.current, url, {
+        width: 200,
+        margin: 2,
+        color: { dark: '#ffffffff', light: '#00000000' },
+      })
+    }
 
     const manager = new ConnectionManager(signalingUrl, id, true, {
       onStatusChange: (status) => {
@@ -69,17 +79,16 @@ export function PairingModal({ onClose }: PairingModalProps) {
         </div>
 
         <div className="space-y-4">
-          <div className="text-center">
-            <div className="inline-block bg-neutral-800 rounded-lg px-4 py-3 mb-3">
-              <span className="text-neutral-400 text-sm">Room Code</span>
-              <div className="text-white text-3xl font-mono tracking-widest mt-1">{roomId.toUpperCase()}</div>
-            </div>
+          <div className="flex justify-center">
+            <canvas ref={canvasRef} className="rounded-lg" />
           </div>
 
-          <div className="bg-neutral-800 rounded p-3">
-            <p className="text-neutral-400 text-xs mb-2">Open this URL on your phone:</p>
-            <p className="text-blue-400 text-sm break-all font-mono select-all">{controllerUrl}</p>
-          </div>
+          <p className="text-neutral-500 text-xs text-center">Scan with your phone camera</p>
+
+          <details className="bg-neutral-800 rounded p-3">
+            <summary className="text-neutral-400 text-xs cursor-pointer select-none">Or open URL manually</summary>
+            <p className="text-blue-400 text-sm break-all font-mono select-all mt-2">{controllerUrl}</p>
+          </details>
 
           <div className="flex items-center gap-2 justify-center">
             {connectionStatus === 'disconnected' && (
