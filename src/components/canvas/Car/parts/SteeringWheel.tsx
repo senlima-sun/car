@@ -3,7 +3,6 @@ import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import { createCarbonFiberTexture } from '@/utils/createCarbonFiberTexture'
-import { RPMLights } from './RPMLights'
 import { SteeringWheelDisplay } from './SteeringWheelDisplay'
 
 interface SteeringWheelProps {
@@ -204,15 +203,6 @@ export function SteeringWheel({ steerAngle, showDisplay }: SteeringWheelProps) {
                 {showDisplay && <SteeringWheelDisplay />}
               </RoundedBox>
 
-              {/* --- RPM LEDs --- */}
-              <group position={[0, 0.09, 0]}>
-                <mesh material={carbonMaterial} castShadow>
-                  <boxGeometry args={[0.28, 0.022, 0.015]} />
-                </mesh>
-                <group position={[0, 0, 0.008]}>
-                  <RPMLights />
-                </group>
-              </group>
             </group>
           </group>
         </group>

@@ -16,7 +16,7 @@ interface ThirdPersonCameraProps {
 export default function ThirdPersonCamera({ target }: ThirdPersonCameraProps) {
   const cameraRef = useRef<ThreePerspectiveCamera>(null)
 
-  const topOffset = useRef(new Vector3(0, 3, -5))
+  const topOffset = useRef(new Vector3(0, 1, -0.5))
   const flipRotation = useRef(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI))
 
   const _quat = useRef(new Quaternion())

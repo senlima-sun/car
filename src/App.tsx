@@ -16,7 +16,7 @@ export default function App() {
     <PhysicsProvider fallback={<LoadingFallback />}>
       <KeyboardControls map={keyboardMap}>
         <div className='w-full h-full relative'>
-          <Canvas shadows camera={{ position: [0, 5, 10], fov: 75 }} className='bg-sky-300'>
+          <Canvas shadows camera={{ position: [0, 5, 10], fov: 75 }} gl={{ logarithmicDepthBuffer: true }} className='bg-sky-300'>
             <Suspense fallback={null}>
               <Physics gravity={[0, -9.81, 0]} debug={physicsDebug}>
                 <Scene />

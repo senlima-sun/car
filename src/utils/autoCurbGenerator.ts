@@ -9,7 +9,7 @@ export const CURB_POSITIONS = {
   exitOnStraight: { startT: 0.0, endT: 0.3 }, // Start of straight after curve
 }
 
-const SNAP_THRESHOLD = 2 // Distance to consider roads connected
+const SNAP_THRESHOLD = 5
 
 // Generate unique ID for new curbs
 const generateId = () => `curb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`

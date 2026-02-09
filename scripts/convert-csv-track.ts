@@ -814,12 +814,13 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
   const checkpoints = generateCheckpoints(roads, config)
   console.log(`  Generated ${checkpoints.length} checkpoints`)
 
-  const barriers = generateBarriers(roads)
-  const curvedBarriers = barriers.filter(b => b.trackMode === 'curve').length
-  const straightBarriers = barriers.filter(b => b.trackMode === 'straight').length
-  console.log(`  Generated ${barriers.length} barriers (${curvedBarriers} curved, ${straightBarriers} straight)`)
+  // const barriers = generateBarriers(roads)
+  // const curvedBarriers = barriers.filter(b => b.trackMode === 'curve').length
+  // const straightBarriers = barriers.filter(b => b.trackMode === 'straight').length
+  // console.log(`  Generated ${barriers.length} barriers (${curvedBarriers} curved, ${straightBarriers} straight)`)
+  console.log(`  Barriers: DISABLED`)
 
-  const allObjects: PlacedObject[] = [...roads, ...curbs, ...checkpoints, ...barriers]
+  const allObjects: PlacedObject[] = [...roads, ...curbs, ...checkpoints]
   console.log(`  Total objects: ${allObjects.length}`)
 
   let totalLength = 0

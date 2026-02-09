@@ -26,7 +26,9 @@ interface CurvedRoadSegmentProps {
 }
 
 const config = OBJECT_CONFIGS.road
-const CURVE_SEGMENTS = 48
+const MAX_CURVE_SEGMENTS = 48
+const MIN_CURVE_SEGMENTS = 8
+const METERS_PER_SEGMENT = 3
 
 export default function CurvedRoadSegment({
   startPoint,
@@ -89,7 +91,9 @@ export default function CurvedRoadSegment({
     const end = new Vector3(...endPoint)
 
     const curve = new QuadraticBezierCurve3(start, control, end)
-    const points = curve.getPoints(CURVE_SEGMENTS)
+    const curveLen = curve.getLength()
+    const segmentCount = Math.max(MIN_CURVE_SEGMENTS, Math.min(MAX_CURVE_SEGMENTS, Math.ceil(curveLen / METERS_PER_SEGMENT)))
+    const points = curve.getPoints(segmentCount)
 
     const BLEND_SEGMENTS = 3
 
@@ -261,19 +265,38 @@ export default function CurvedRoadSegment({
     rightGeo.setIndex(rightEdgeIndices)
     rightGeo.computeVertexNormals()
 
-    const dashes: { position: Vector3; rotation: number; elevationY: number }[] = []
     const curveLength = curve.getLength()
     const dashSpacing = 3
     const dashCount = Math.max(1, Math.floor(curveLength / dashSpacing))
+    const dashW = 0.15 / 2
+    const dashL = 1.2 / 2
+
+    const dashVertices: number[] = []
+    const dashIndices: number[] = []
 
     for (let i = 0; i < dashCount; i++) {
       const t = (i + 0.5) / dashCount
       const pos = curve.getPoint(t)
-      const tangent = curve.getTangent(t)
-      const rotation = Math.atan2(tangent.x, tangent.z)
+      const tan = curve.getTangent(t)
       const dashElevY = startElev + (endElev - startElev) * t + 0.015
-      dashes.push({ position: pos, rotation, elevationY: dashElevY })
+      const perp = new Vector3(-tan.z, 0, tan.x)
+      const base = i * 4
+
+      const fwd = new Vector3(tan.x, 0, tan.z).multiplyScalar(dashL)
+      const side = perp.clone().multiplyScalar(dashW)
+
+      dashVertices.push(pos.x - side.x - fwd.x, dashElevY, pos.z - side.z - fwd.z)
+      dashVertices.push(pos.x + side.x - fwd.x, dashElevY, pos.z + side.z - fwd.z)
+      dashVertices.push(pos.x - side.x + fwd.x, dashElevY, pos.z - side.z + fwd.z)
+      dashVertices.push(pos.x + side.x + fwd.x, dashElevY, pos.z + side.z + fwd.z)
+
+      dashIndices.push(base, base + 2, base + 1, base + 1, base + 2, base + 3)
     }
+
+    const dashGeo = new BufferGeometry()
+    dashGeo.setAttribute('position', new Float32BufferAttribute(dashVertices, 3))
+    dashGeo.setIndex(dashIndices)
+    dashGeo.computeVertexNormals()
 
     const selectionVertices: number[] = []
     const selectionIndices: number[] = []
@@ -415,7 +438,7 @@ export default function CurvedRoadSegment({
       roadGeometry: roadGeo,
       leftEdgeGeometry: leftGeo,
       rightEdgeGeometry: rightGeo,
-      centerLineDashes: dashes,
+      centerLineDashes: dashGeo,
       selectionGeometry: selectionGeo,
       sensorColliders: sensorData,
       collisionData,
@@ -463,13 +486,16 @@ export default function CurvedRoadSegment({
   const roadVisuals = (
     <>
       {/* Road surface */}
-      <mesh geometry={roadGeometry} receiveShadow={!isGhost} castShadow={!isGhost}>
+      <mesh geometry={roadGeometry} receiveShadow={!isGhost}>
         <meshStandardMaterial
           color={config.color}
           transparent={isGhost}
           opacity={isGhost ? GHOST_OPACITY : 1}
           depthWrite={!isGhost}
-          side={2} // DoubleSide
+          side={2}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
         />
       </mesh>
 
@@ -495,21 +521,14 @@ export default function CurvedRoadSegment({
         />
       </mesh>
 
-      {centerLineDashes.map((dash, i) => (
-        <mesh
-          key={`dash-${i}`}
-          position={[dash.position.x, dash.elevationY, dash.position.z]}
-          rotation={[-Math.PI / 2, 0, dash.rotation]}
-        >
-          <planeGeometry args={[0.15, 1.2]} />
-          <meshStandardMaterial
-            color='#ffcc00'
-            transparent={isGhost}
-            opacity={isGhost ? GHOST_OPACITY : 1}
-            depthWrite={!isGhost}
-          />
-        </mesh>
-      ))}
+      <mesh geometry={centerLineDashes}>
+        <meshStandardMaterial
+          color='#ffcc00'
+          transparent={isGhost}
+          opacity={isGhost ? GHOST_OPACITY : 1}
+          depthWrite={!isGhost}
+        />
+      </mesh>
 
       {/* Selection highlight for auto curb mode */}
       {isSelectedForCurb && (

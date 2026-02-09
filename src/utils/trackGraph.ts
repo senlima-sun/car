@@ -3,7 +3,7 @@ import { isLinearObject } from '../types/trackObjects'
 import type { GraphNode, GraphEdge, TrackGraph, CircuitResult } from '../types/trackGraph'
 import { positionKey } from '../types/trackGraph'
 
-const SNAP_THRESHOLD = 2
+const SNAP_THRESHOLD = 5
 
 const distance3D = (a: [number, number, number], b: [number, number, number]): number => {
   return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2)

@@ -2,7 +2,7 @@ import type { PlacedObject, SnapPointWithDirection, RoadEdgeResult, RoadEdgeHitR
 import { isLinearObject } from '../types/trackObjects'
 import { getOutwardTangent } from './roadSnapping'
 
-const SNAP_THRESHOLD = 2
+const SNAP_THRESHOLD = 5
 import { TRACK_WIDTH } from '../constants/dimensions'
 
 const ROAD_WIDTH = TRACK_WIDTH

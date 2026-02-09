@@ -16,6 +16,7 @@ import {
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { renderNode, Row, Col, Text, type UINode } from './canvasUI'
 
 const CW = 1280
 const CH = 640
@@ -25,7 +26,6 @@ const FLASH_DUR = 0.8
 const FM = 'Consolas, "Courier New", monospace'
 const FS = 'Arial, Helvetica, sans-serif'
 
-const BG = '#050505'
 const CELL = 'rgba(255,255,255,0.03)'
 const BORDER = 'rgba(255,255,255,0.06)'
 const DIM = 'rgba(255,255,255,0.15)'
@@ -38,22 +38,12 @@ const BLUE = '#3b82f6'
 const PURPLE = '#a855f7'
 const ORANGE = '#f97316'
 const SPEED_GREEN = '#00ff88'
+const CYAN = '#06b6d4'
 
-// --- Proportional layout ratios ---
-const PAD = 0.01          // padding as % of canvas
-const GAP = 0.008         // gap between panels
-
-// Vertical row ratios (must sum to 1)
-const TOP_R = 0.17        // top info bar
-const BOT_R = 0            // bottom resource bar (removed)
-
-// Horizontal column ratios for middle row (must sum to 1)
-const SIDE_R = 0.18       // left & right columns
-const CENTER_R = 1 - SIDE_R * 2  // center (gear + telemetry)
-
-// Center vertical split: gear vs telemetry
-const GEAR_R = 0.55       // gear takes 55% of center height
-const TEL_R = 0.45        // telemetry takes 45%
+const PAD = 13
+const RPM_H = 40
+const BAT_H = 30
+const ZONE_GAP = 8
 
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const cr = Math.min(r, w / 2, h / 2)
@@ -68,30 +58,6 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.lineTo(x, y + cr)
   ctx.quadraticCurveTo(x, y, x + cr, y)
   ctx.closePath()
-}
-
-function panel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-  rr(ctx, x, y, w, h, 8)
-  ctx.fillStyle = BG
-  ctx.fill()
-  ctx.strokeStyle = BORDER
-  ctx.lineWidth = 2
-  ctx.stroke()
-}
-
-function cell(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
-  rr(ctx, x, y, w, h, 6)
-  ctx.fillStyle = CELL
-  ctx.fill()
-}
-
-function sep(ctx: CanvasRenderingContext2D, x: number, y1: number, y2: number) {
-  ctx.strokeStyle = BORDER
-  ctx.lineWidth = 2
-  ctx.beginPath()
-  ctx.moveTo(x, y1)
-  ctx.lineTo(x, y2)
-  ctx.stroke()
 }
 
 function tempToC(n: number): number {
@@ -110,6 +76,104 @@ function wearCol(w: number): string {
   return w >= 90 ? RED : w >= 70 ? YELLOW : GREEN
 }
 
+const RPM_COLORS = [
+  GREEN, GREEN, GREEN, GREEN, GREEN,
+  YELLOW, YELLOW, YELLOW, YELLOW,
+  RED, RED, RED,
+  BLUE, BLUE, BLUE,
+]
+const RPM_SEGMENTS = RPM_COLORS.length
+
+function drawRpmBar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rpmRatio: number) {
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'
+  rr(ctx, x, y, w, h, 4)
+  ctx.fill()
+
+  const segGap = 4
+  const totalGaps = segGap * (RPM_SEGMENTS - 1)
+  const segW = (w - totalGaps) / RPM_SEGMENTS
+  const lit = Math.round(rpmRatio * RPM_SEGMENTS)
+
+  for (let i = 0; i < RPM_SEGMENTS; i++) {
+    const sx = x + i * (segW + segGap)
+    rr(ctx, sx, y + 4, segW, h - 8, 3)
+    if (i < lit) {
+      ctx.fillStyle = RPM_COLORS[i]
+      ctx.fill()
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.06)'
+      ctx.fill()
+    }
+  }
+}
+
+function drawBatteryBar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, charge: number) {
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'
+  rr(ctx, x, y, w, h, 4)
+  ctx.fill()
+
+  ctx.strokeStyle = BORDER
+  ctx.lineWidth = 1
+  rr(ctx, x, y, w, h, 4)
+  ctx.stroke()
+
+  const labelW = 60
+  const pctW = 60
+  const barX = x + labelW
+  const barW = w - labelW - pctW
+  const barPad = 5
+  const fillW = Math.max(0, (barW - barPad * 2) * (charge / 100))
+
+  const barCol = charge < 20 ? RED : charge < 50 ? ORANGE : GREEN
+
+  if (fillW > 0) {
+    rr(ctx, barX + barPad, y + barPad, fillW, h - barPad * 2, 2)
+    ctx.fillStyle = barCol
+    ctx.globalAlpha = 0.8
+    ctx.fill()
+    ctx.globalAlpha = 1
+  }
+
+  ctx.textBaseline = 'middle'
+  ctx.font = `bold ${h * 0.45}px ${FS}`
+  ctx.fillStyle = LABEL
+  ctx.textAlign = 'center'
+  ctx.fillText('SOC', x + labelW / 2, y + h / 2)
+
+  ctx.font = `bold ${h * 0.5}px ${FM}`
+  ctx.fillStyle = barCol
+  ctx.textAlign = 'center'
+  ctx.fillText(`${Math.round(charge)}%`, x + w - pctW / 2, y + h / 2)
+}
+
+function gridCell(label: string, value: string, color: string, sub?: string): UINode {
+  if (sub) {
+    return Col({ flex: 1, style: { background: CELL, borderRadius: 4, padding: 2 }, children: [
+      Text(label, { flex: 1, fontSize: 0.45, color: LABEL, font: FS, bold: true }),
+      Text(value, { flex: 2, fontSize: 0.7, color, font: FM, bold: true }),
+      Text(sub, { flex: 0.8, fontSize: 0.4, color: LABEL, font: FS }),
+    ]})
+  }
+  return Col({ flex: 1, style: { background: CELL, borderRadius: 4, padding: 2 }, children: [
+    Text(label, { flex: 1, fontSize: 0.5, color: LABEL, font: FS, bold: true }),
+    Text(value, { flex: 2, fontSize: 0.7, color, font: FM, bold: true }),
+  ]})
+}
+
+function tireLifeCell(label: string, life: number, wear: number): UINode {
+  return Col({ flex: 1, style: { background: `rgba(6,182,212,0.06)`, borderRadius: 4, padding: 2 }, children: [
+    Text(label, { flex: 1, fontSize: 0.5, color: CYAN, font: FS, bold: true }),
+    Text(`${Math.round(life)}`, { flex: 2, fontSize: 0.7, color: wearCol(wear), font: FM, bold: true }),
+  ]})
+}
+
+function tireTempCell(label: string, tempNorm: number): UINode {
+  return Col({ flex: 1, style: { background: `rgba(255,255,255,0.02)`, borderRadius: 4, padding: 2 }, children: [
+    Text(label, { flex: 1, fontSize: 0.5, color: LABEL, font: FS, bold: true }),
+    Text(`${tempToC(tempNorm)}`, { flex: 2, fontSize: 0.7, color: tireTempCol(tempNorm), font: FM, bold: true }),
+  ]})
+}
+
 export function SteeringWheelDisplay() {
   const speed = useCarStore(s => s.speed)
   const gear = useCarStore(s => s.gear)
@@ -119,13 +183,12 @@ export function SteeringWheelDisplay() {
   const ersMode = useErsStore(s => s.mode)
   const superClipActive = useErsStore(s => s.superClipActive)
   const overtakeAvailable = useErsStore(s => s.overtakeAvailable)
+  const batteryCharge = useErsStore(s => s.batteryCharge)
 
   const aeroMode = useActiveAeroStore(s => s.mode)
 
-  const currentLapTime = useLapTimeStore(s => s.currentLapTime)
   const bestLapTime = useLapTimeStore(s => s.bestLapTime)
   const lastLapTime = useLapTimeStore(s => s.lastLapTime)
-  const isRecording = useLapTimeStore(s => s.isRecording)
   const lapCount = useLapTimeStore(s => s.lapCount)
   const lastSectorSplit = useLapTimeStore(s => s.lastSectorSplit)
 
@@ -148,7 +211,7 @@ export function SteeringWheelDisplay() {
     return c.getContext('2d')
   }, [])
 
-  useFrame((state) => {
+  useFrame(state => {
     if (!screenCtx) return
     const ctx = screenCtx
     const t = state.clock.elapsedTime
@@ -158,13 +221,22 @@ export function SteeringWheelDisplay() {
       prevPresetRef.current = ersPreset
     }
 
-    const flashing = flashRef.current !== null && (t - flashRef.current) < FLASH_DUR
+    const flashing = flashRef.current !== null && t - flashRef.current < FLASH_DUR
     const ovt = ersMode === 'Overtake' || superClipActive
 
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, CW, CH)
 
-    drawUI(ctx, t, ovt)
+    const rpmRatio = Math.min(1, rpm / MAX_RPM)
+    drawRpmBar(ctx, PAD, PAD, CW - PAD * 2, RPM_H, rpmRatio)
+
+    const gridY = PAD + RPM_H + ZONE_GAP
+    const gridH = CH - PAD * 2 - RPM_H - BAT_H - ZONE_GAP * 2
+    const tree = buildUI(ovt)
+    renderNode(ctx, tree, { x: PAD, y: gridY, w: CW - PAD * 2, h: gridH })
+
+    const batY = CH - PAD - BAT_H
+    drawBatteryBar(ctx, PAD, batY, CW - PAD * 2, BAT_H, batteryCharge)
 
     if (flashing) {
       const a = 1 - (t - flashRef.current!) / FLASH_DUR
@@ -197,81 +269,7 @@ export function SteeringWheelDisplay() {
     if (textureRef.current) textureRef.current.needsUpdate = true
   })
 
-  function drawUI(ctx: CanvasRenderingContext2D, t: number, ovt: boolean) {
-    ctx.textBaseline = 'middle'
-
-    const p = CW * PAD
-    const g = CW * GAP
-
-    // Available area after padding
-    const aw = CW - p * 2
-    const ah = CH - p * 2
-
-    // Row heights (proportional)
-    const topH = ah * TOP_R
-    const botH = ah * BOT_R
-    const midH = ah - topH - botH - g * 2
-
-    // Column widths (proportional)
-    const sideW = aw * SIDE_R
-    const centerW = aw * CENTER_R - g * 2
-
-    // Positions
-    const topY = p
-    const midY = topY + topH + g
-    const botY = CH - p - botH
-
-    const lx = p
-    const cx = lx + sideW + g
-    const rx = cx + centerW + g
-
-    // Center vertical split
-    const gearH = (midH - g) * GEAR_R
-    const telH = (midH - g) * TEL_R
-    const telY = midY + gearH + g
-
-    // ============================================================
-    // TOP ROW: Speed | Lap Time | Delta (3 equal columns)
-    // ============================================================
-    panel(ctx, lx, topY, aw, topH)
-
-    const tcy = topY + topH / 2
-    const topColW = aw / 3
-    const topFontBig = topH * 0.6
-    const topFontSm = topH * 0.26
-
-    // Speed (left third)
-    const speedCx = lx + topColW * 0.5
-    ctx.textAlign = 'center'
-    ctx.fillStyle = SPEED_GREEN
-    ctx.font = `bold ${topFontBig}px ${FM}`
-    ctx.fillText(Math.round(Math.abs(speed)).toString(), speedCx - topColW * 0.08, tcy)
-    ctx.fillStyle = LABEL
-    ctx.font = `bold ${topFontSm}px ${FS}`
-    ctx.fillText('km/h', speedCx + topColW * 0.32, tcy)
-
-    sep(ctx, lx + topColW, topY + topH * 0.15, topY + topH * 0.85)
-
-    // Lap time (center third)
-    const lapCx = lx + topColW * 1.5
-    ctx.textAlign = 'center'
-    ctx.fillStyle = WHITE
-    ctx.font = `bold ${topFontBig}px ${FM}`
-    ctx.fillText(formatLapTime(currentLapTime), lapCx, tcy)
-
-    if (isRecording) {
-      if (Math.floor(t * 2) % 2 === 0) {
-        ctx.beginPath()
-        ctx.arc(lapCx - topColW * 0.42, tcy, topH * 0.08, 0, Math.PI * 2)
-        ctx.fillStyle = RED
-        ctx.fill()
-      }
-    }
-
-    sep(ctx, lx + topColW * 2, topY + topH * 0.15, topY + topH * 0.85)
-
-    // Delta (right third)
-    const deltaCx = lx + topColW * 2.5
+  function buildUI(ovt: boolean): UINode {
     let deltaStr = '-.--'
     let deltaCol = DIM
     if (lastSectorSplit?.delta !== null && lastSectorSplit?.delta !== undefined) {
@@ -284,182 +282,93 @@ export function SteeringWheelDisplay() {
       deltaCol = d <= 0 ? GREEN : RED
     }
 
-    ctx.textAlign = 'center'
-    ctx.fillStyle = LABEL
-    ctx.font = `bold ${topH * 0.2}px ${FS}`
-    ctx.fillText('DELTA', deltaCx, tcy - topH * 0.2)
-    ctx.fillStyle = deltaCol
-    ctx.font = `bold ${topH * 0.48}px ${FM}`
-    ctx.fillText(deltaStr, deltaCx, tcy + topH * 0.1)
+    const socVal = ({ Aggressive: '3', Balanced: '5', Conservative: '8' } as Record<string, string>)[ersPreset] ?? '5'
+    const ebVal = ({ Low: '2', Medium: '5', High: '8' } as Record<string, string>)[engineBraking] ?? '5'
+    const aeroVal = aeroMode === 'Corner' ? 'CRN' : 'STR'
+    const aeroCol = aeroMode === 'Corner' ? BLUE : GREEN
+    const otVal = ovt ? 'ON' : overtakeAvailable ? 'RDY' : 'OFF'
+    const otCol = ovt ? PURPLE : overtakeAvailable ? YELLOW : DIM
 
-    // ============================================================
-    // LEFT COLUMN: SOC | EB | AERO | OT (4 equal rows)
-    // ============================================================
-    panel(ctx, lx, midY, sideW, midH)
-    drawSettingsColumn(ctx, lx, midY, sideW, midH, 'left', ovt)
-
-    // ============================================================
-    // CENTER TOP: GEAR
-    // ============================================================
-    panel(ctx, cx, midY, centerW, gearH)
-
-    const gcx = cx + centerW / 2
-    const gcy = midY + gearH / 2
-
-    if (ovt) {
-      rr(ctx, cx + 4, midY + 4, centerW - 8, gearH - 8, 8)
-      ctx.fillStyle = 'rgba(168,85,247,0.1)'
-      ctx.fill()
-      ctx.textAlign = 'center'
-      ctx.fillStyle = PURPLE
-      ctx.font = `bold ${gearH * 0.12}px ${FS}`
-      ctx.fillText('OVERTAKE', gcx, midY + gearH * 0.12)
-    }
-
-    ctx.textAlign = 'center'
-    ctx.fillStyle = getGearColor(gear, rpm, MAX_RPM)
-    ctx.font = `bold ${gearH * 0.75}px ${FM}`
-    ctx.fillText(getGearDisplay(gear), gcx, gcy + gearH * 0.04)
-
-    // ============================================================
-    // CENTER BOTTOM: Telemetry — tire temps + wear + brake temp
-    // ============================================================
-    panel(ctx, cx, telY, centerW, telH)
-    drawTelemetry(ctx, cx, telY, centerW, telH)
-
-    // ============================================================
-    // RIGHT COLUMN: BB | POS | DIFF | LAP
-    // ============================================================
-    panel(ctx, rx, midY, sideW, midH)
-    drawSettingsColumn(ctx, rx, midY, sideW, midH, 'right', ovt)
-
-    // Bottom row removed (RPM shown via LED lights)
-  }
-
-  function drawSettingsColumn(
-    ctx: CanvasRenderingContext2D,
-    x: number, y: number, w: number, h: number,
-    side: 'left' | 'right',
-    ovt: boolean,
-  ) {
-    const rowH = h / 4
-    const inset = w * 0.06
-    const cellW = w - inset * 2
-    const cellH = rowH - inset
-
-    const labelSize = Math.round(rowH * 0.22)
-    const valueSize = Math.round(rowH * 0.45)
-    const subSize = Math.round(rowH * 0.16)
-
-    type Row = { lbl: string; v: string; vc: string; sub?: string }
-    const rows: Row[] = side === 'left'
-      ? [
-        { lbl: 'SOC', v: ({ Aggressive: '3', Balanced: '5', Conservative: '8' }[ersPreset]) ?? '5', vc: GREEN, sub: getPresetAbbreviation(ersPreset) },
-        { lbl: 'EB', v: ({ Low: '2', Medium: '5', High: '8' }[engineBraking]) ?? '5', vc: ORANGE, sub: engineBraking },
-        { lbl: 'AERO', v: aeroMode === 'Corner' ? 'CRN' : 'STR', vc: aeroMode === 'Corner' ? BLUE : GREEN, sub: aeroMode },
-        { lbl: 'OT', v: ovt ? 'ON' : overtakeAvailable ? 'RDY' : 'OFF', vc: ovt ? PURPLE : overtakeAvailable ? YELLOW : DIM },
-      ]
-      : [
-        { lbl: 'BB', v: frontBias.toFixed(1), vc: ORANGE, sub: `F${Math.round(frontBias)} R${Math.round(100 - frontBias)}` },
-        { lbl: 'POS', v: '--', vc: DIM },
-        { lbl: 'DIFF', v: '--', vc: DIM },
-        { lbl: 'LAP', v: lapCount.toString(), vc: WHITE },
-      ]
-
-    for (let i = 0; i < 4; i++) {
-      const ry = y + rowH * i
-      const rcy = ry + rowH / 2
-      const { lbl, v, vc, sub } = rows[i]
-
-      cell(ctx, x + inset, ry + inset / 2, cellW, cellH)
-
-      const hasSub = !!sub
-      const vOff = hasSub ? -rowH * 0.06 : 0
-
-      ctx.textAlign = 'left'
-      ctx.fillStyle = LABEL
-      ctx.font = `bold ${labelSize}px ${FS}`
-      ctx.fillText(lbl, x + inset + w * 0.08, rcy + vOff)
-
-      ctx.textAlign = 'right'
-      ctx.fillStyle = vc
-      ctx.font = `bold ${valueSize}px ${FM}`
-      ctx.fillText(v, x + w - inset - w * 0.06, rcy + vOff)
-
-      if (hasSub) {
-        ctx.textAlign = 'right'
-        ctx.fillStyle = LABEL
-        ctx.font = `${subSize}px ${FS}`
-        ctx.fillText(sub, x + w - inset - w * 0.06, rcy + rowH * 0.24)
-      }
-    }
-  }
-
-  function drawTelemetry(
-    ctx: CanvasRenderingContext2D,
-    x: number, y: number, w: number, h: number,
-  ) {
-    const cy = y + h / 2
-
-    // Layout: 4 wheels (70%) | separator | brake (20%) | padding
-    const wheelsW = w * 0.7
-    const brkW = w * 0.2
-
-    // 4 wheels
     const flT = (tires.front_left_inner + tires.front_left_outer) / 2
     const frT = (tires.front_right_inner + tires.front_right_outer) / 2
     const rlT = (tires.rear_left_inner + tires.rear_left_outer) / 2
     const rrT = (tires.rear_right_inner + tires.rear_right_outer) / 2
 
-    const wheels = [
-      { l: 'FL', tp: flT, wr: perWheelWear.frontLeft },
-      { l: 'FR', tp: frT, wr: perWheelWear.frontRight },
-      { l: 'RL', tp: rlT, wr: perWheelWear.rearLeft },
-      { l: 'RR', tp: rrT, wr: perWheelWear.rearRight },
-    ]
+    const flLife = Math.max(0, 100 - perWheelWear.frontLeft)
+    const frLife = Math.max(0, 100 - perWheelWear.frontRight)
+    const rlLife = Math.max(0, 100 - perWheelWear.rearLeft)
+    const rrLife = Math.max(0, 100 - perWheelWear.rearRight)
 
-    const wheelStartX = x + w * 0.05
-    const wheelColW = wheelsW / 4
-    const wLabelSize = h * 0.2
-    const wTempSize = h * 0.36
-    const wWearSize = h * 0.22
+    const bestStr = bestLapTime !== null ? formatLapTime(bestLapTime) : '-:--.---'
 
-    for (let i = 0; i < 4; i++) {
-      const wcx = wheelStartX + wheelColW * (i + 0.5)
-      const { l, tp, wr } = wheels[i]
-      const life = Math.max(0, 100 - wr)
-
-      // Wheel cell background
-      cell(ctx, wheelStartX + wheelColW * i + 4, y + 4, wheelColW - 8, h - 8)
-
-      ctx.textAlign = 'center'
-
-      ctx.fillStyle = LABEL
-      ctx.font = `bold ${wLabelSize}px ${FS}`
-      ctx.fillText(l, wcx, cy - h * 0.3)
-
-      ctx.fillStyle = tireTempCol(tp)
-      ctx.font = `bold ${wTempSize}px ${FM}`
-      ctx.fillText(`${tempToC(tp)}`, wcx, cy + h * 0.02)
-
-      ctx.fillStyle = wearCol(wr)
-      ctx.font = `bold ${wWearSize}px ${FM}`
-      ctx.fillText(`${Math.round(life)}%`, wcx, cy + h * 0.32)
-    }
-
-    // Separator
-    const sepX = x + w * 0.05 + wheelsW + 4
-    sep(ctx, sepX, y + h * 0.12, y + h * 0.88)
-
-    // Brake temp placeholder
-    const brkCx = sepX + brkW / 2
-    ctx.textAlign = 'center'
-    ctx.fillStyle = LABEL
-    ctx.font = `bold ${h * 0.2}px ${FS}`
-    ctx.fillText('BRK', brkCx, cy - h * 0.2)
-    ctx.fillStyle = DIM
-    ctx.font = `bold ${h * 0.34}px ${FM}`
-    ctx.fillText('--', brkCx, cy + h * 0.1)
+    return Col({ style: { gap: 4 }, children: [
+      // Row 1: BEST | SPEED (2-wide) | DELTA
+      Row({ flex: 0.8, style: { gap: 4 }, children: [
+        gridCell('BEST', bestStr, GREEN),
+        Col({ flex: 2, style: { background: CELL, borderRadius: 4 }, children: [
+          Text('SPEED', { flex: 1, fontSize: 0.5, color: LABEL, font: FS, bold: true }),
+          Text(Math.round(Math.abs(speed)).toString(), { flex: 2.5, fontSize: 0.75, color: SPEED_GREEN, font: FM, bold: true }),
+        ]}),
+        gridCell('DELTA', deltaStr, deltaCol),
+      ]}),
+      // Row 2-3: side cells + GEAR center
+      Row({ flex: 2, style: { gap: 4 }, children: [
+        // Left 2 cols
+        Col({ flex: 1, style: { gap: 4 }, children: [
+          Row({ flex: 1, style: { gap: 4 }, children: [
+            gridCell('SOC', socVal, GREEN, getPresetAbbreviation(ersPreset)),
+            gridCell('EB', ebVal, ORANGE, engineBraking),
+          ]}),
+          Row({ flex: 1, style: { gap: 4 }, children: [
+            gridCell('AERO', aeroVal, aeroCol, aeroMode),
+            gridCell('OT', otVal, otCol),
+          ]}),
+        ]}),
+        // Center GEAR (2-wide)
+        Col({ flex: 1, style: {
+          background: ovt ? 'rgba(168,85,247,0.15)' : CELL,
+          borderRadius: 4,
+        }, children: [
+          ...(ovt ? [
+            Text('OVERTAKE', { flex: 0.15, fontSize: 0.55, color: PURPLE, font: FS, bold: true }),
+          ] : []),
+          Text(getGearDisplay(gear), {
+            flex: 1, fontSize: 0.8, color: getGearColor(gear, rpm, MAX_RPM), font: FM, bold: true,
+          }),
+        ]}),
+        // Right 2 cols
+        Col({ flex: 1, style: { gap: 4 }, children: [
+          Row({ flex: 1, style: { gap: 4 }, children: [
+            gridCell('BB', frontBias.toFixed(1), ORANGE, `F${Math.round(frontBias)}`),
+            gridCell('POS', '--', DIM),
+          ]}),
+          Row({ flex: 1, style: { gap: 4 }, children: [
+            gridCell('DIFF', '--', DIM),
+            gridCell('LAP', lapCount.toString(), WHITE),
+          ]}),
+        ]}),
+      ]}),
+      // Row 4: FL% | FR% | FLAG (2-wide) | FL° | FR°
+      Row({ flex: 0.8, style: { gap: 4 }, children: [
+        tireLifeCell('FL%', flLife, perWheelWear.frontLeft),
+        tireLifeCell('FR%', frLife, perWheelWear.frontRight),
+        Col({ flex: 2, style: { background: CELL, borderRadius: 4, padding: 2 }, children: [
+          Text('FLAG', { flex: 1, fontSize: 0.5, color: LABEL, font: FS, bold: true }),
+          Text('--', { flex: 2, fontSize: 0.7, color: DIM, font: FM, bold: true }),
+        ]}),
+        tireTempCell('FL°', flT),
+        tireTempCell('FR°', frT),
+      ]}),
+      // Row 5: RL% | RR% | BAT | FUEL | RL° | RR°
+      Row({ flex: 0.8, style: { gap: 4 }, children: [
+        tireLifeCell('RL%', rlLife, perWheelWear.rearLeft),
+        tireLifeCell('RR%', rrLife, perWheelWear.rearRight),
+        gridCell('BAT', `${Math.round(batteryCharge)}`, batteryCharge < 20 ? RED : batteryCharge < 50 ? ORANGE : GREEN),
+        gridCell('FUEL', '--', DIM),
+        tireTempCell('RL°', rlT),
+        tireTempCell('RR°', rrT),
+      ]}),
+    ]})
   }
 
   return (

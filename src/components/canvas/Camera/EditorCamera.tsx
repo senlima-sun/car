@@ -223,6 +223,8 @@ export default function EditorCamera() {
     const camY = Math.sin(o.elevation) * o.distance
     const camZ = o.targetZ + Math.cos(o.azimuth) * Math.cos(o.elevation) * o.distance
 
+    cameraRef.current.near = Math.max(1, o.distance * 0.01)
+    cameraRef.current.updateProjectionMatrix()
     cameraRef.current.position.set(camX, camY, camZ)
     cameraRef.current.lookAt(o.targetX, 0, o.targetZ)
   })

@@ -107,7 +107,7 @@ export function computeSuspensionLinkage(
   const rockerPivotY = pushrodUpperY
   const rockerPivotZ = pushrodUpperZ
   const rockerAngle = cDeflection * 2.5
-  const rockerEndX = rockerPivotX + side * S.ROCKER_LENGTH * Math.cos(rockerAngle) * -side
+  const rockerEndX = rockerPivotX - side * S.ROCKER_LENGTH * Math.cos(rockerAngle)
   const rockerEndY = rockerPivotY + S.ROCKER_LENGTH * Math.sin(rockerAngle)
 
   const rocker = cylinderBetween(
@@ -118,7 +118,7 @@ export function computeSuspensionLinkage(
   const springTopX = rockerEndX
   const springTopY = rockerEndY
   const springTopZ = rockerPivotZ
-  const springBotX = rockerEndX + side * 0.02 * -side
+  const springBotX = rockerEndX - side * 0.02
   const springBotY = S.PUSHROD_UPPER_Y + 0.02
   const springBotZ = rockerPivotZ
 

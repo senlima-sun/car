@@ -77,9 +77,11 @@ function Rocker({ meshRef, isRaining }: { meshRef: React.RefObject<THREE.Mesh | 
 function SpringDamperUnit({
   springRef,
   isRaining,
+  isLeft,
 }: {
   springRef: React.RefObject<THREE.Group | null>
   isRaining: boolean
+  isLeft: boolean
 }) {
   const metalMat = getMetalMaterial(isRaining)
 
@@ -89,12 +91,13 @@ function SpringDamperUnit({
     const height = S.SPRING_REST_LENGTH
     const radius = S.SPRING_RADIUS
     const segments = coils * 16
+    const mirror = isLeft ? 1 : -1
 
     for (let i = 0; i <= segments; i++) {
       const t = i / segments
       const angle = t * coils * Math.PI * 2
       points.push(new THREE.Vector3(
-        Math.cos(angle) * radius,
+        Math.cos(angle) * radius * mirror,
         t * height - height / 2,
         Math.sin(angle) * radius,
       ))
@@ -107,7 +110,7 @@ function SpringDamperUnit({
       6,
       false,
     )
-  }, [])
+  }, [isLeft])
 
   return (
     <group ref={springRef}>
@@ -195,7 +198,7 @@ function SuspensionCorner({ isLeft, isFront, isRaining, wheelIndex, suspensionRe
       <Upright meshRef={uprightRef} isRaining={isRaining} />
       <Pushrod meshRef={pushrodRef} isRaining={isRaining} />
       <Rocker meshRef={rockerRef} isRaining={isRaining} />
-      <SpringDamperUnit springRef={springRef} isRaining={isRaining} />
+      <SpringDamperUnit springRef={springRef} isRaining={isRaining} isLeft={isLeft} />
     </>
   )
 }

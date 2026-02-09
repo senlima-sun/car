@@ -205,7 +205,7 @@ export default function Checkpoint({
         rotation={[0, finalRotation, 0]}
         sensor
       >
-        <CuboidCollider args={[2, 2, length / 2]} sensor onIntersectionEnter={handleCrossing} />
+        <CuboidCollider args={[4, 2, length / 2 + 1]} sensor onIntersectionEnter={handleCrossing} />
       </RigidBody>
       {mesh}
     </group>

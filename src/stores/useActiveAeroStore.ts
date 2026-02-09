@@ -18,15 +18,15 @@ interface ActiveAeroStoreState {
 export const useActiveAeroStore = create<ActiveAeroStoreState>((set, get) => ({
   mode: 'Corner',
   autoMode: true,
-  frontWingAngle: 1.0,
-  rearWingAngle: 1.0,
+  frontWingAngle: 0.0,
+  rearWingAngle: 0.0,
   dragMultiplier: 1.0,
   downforceMultiplier: 1.0,
 
   toggleMode: () => {
     const currentMode = get().mode
     const newMode: AeroMode = currentMode === 'Corner' ? 'Straight' : 'Corner'
-    set({ mode: newMode })
+    set({ mode: newMode, autoMode: false })
   },
 
   toggleAuto: () => {
