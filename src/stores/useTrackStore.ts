@@ -7,6 +7,7 @@ import {
   DEFAULT_TRACK_OBJECTS,
   DEFAULT_TRACK_PIT_DATA,
 } from '../constants/defaultTrack'
+import { PRESET_TRACKS } from '../constants/tracks'
 
 const LEGACY_STORAGE_KEY = 'car-racing-track'
 const TRACK_LIBRARY_KEY = 'car-racing-track-library'
@@ -29,6 +30,7 @@ interface TrackState {
 
   // Actions - Active Track
   loadTrack: (id: string) => void
+  loadPresetTrack: (presetId: string) => void
   saveCurrentTrack: () => void
   exportCurrentTrack: () => void
   setActiveTrack: (id: string | null) => void
@@ -168,6 +170,41 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       isDirty: false,
     }))
 
+    get().saveLibrary()
+  },
+
+  loadPresetTrack: (presetId: string) => {
+    const preset = PRESET_TRACKS.find(p => p.id === presetId)
+    if (!preset) return
+
+    // Save current track first if dirty
+    const state = get()
+    if (state.isDirty && state.trackLibrary.activeTrackId) {
+      get().saveCurrentTrack()
+    }
+
+    // Create a new editable track from the preset
+    const newTrack: SavedTrack = {
+      id: generateId(),
+      name: preset.name,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      objectCount: preset.objects.length,
+      objects: [...preset.objects],
+      pitLaneData: null,
+    }
+
+    set(state => ({
+      trackLibrary: {
+        ...state.trackLibrary,
+        tracks: [...state.trackLibrary.tracks, newTrack],
+        activeTrackId: newTrack.id,
+      },
+      isDirty: false,
+    }))
+
+    useCustomizationStore.getState().setPlacedObjects(newTrack.objects)
+    usePitStore.getState().setPitLaneData(null)
     get().saveLibrary()
   },
 

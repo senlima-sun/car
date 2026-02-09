@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTrackStore } from '../../../stores/useTrackStore'
+import { PRESET_TRACKS } from '../../../constants/tracks'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -173,6 +174,7 @@ export default function TrackSelector() {
   const renameTrack = useTrackStore(s => s.renameTrack)
   const duplicateTrack = useTrackStore(s => s.duplicateTrack)
   const loadTrack = useTrackStore(s => s.loadTrack)
+  const loadPresetTrack = useTrackStore(s => s.loadPresetTrack)
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
   const getActiveTrack = useTrackStore(s => s.getActiveTrack)
 
@@ -309,6 +311,32 @@ export default function TrackSelector() {
         <div style={styles.menu}>
           {menuMode === 'list' && (
             <>
+              {/* F1 Track Presets */}
+              {PRESET_TRACKS.length > 0 && (
+                <div style={styles.menuSection}>
+                  <div style={styles.menuSectionTitle}>🏎️ F1 Tracks</div>
+                  {PRESET_TRACKS.map(preset => (
+                    <div
+                      key={preset.id}
+                      style={{
+                        ...styles.menuItem,
+                        ...(hoveredItem === preset.id ? styles.menuItemHover : {}),
+                      }}
+                      onClick={() => {
+                        loadPresetTrack(preset.id)
+                        setIsOpen(false)
+                      }}
+                      onMouseEnter={() => setHoveredItem(preset.id)}
+                      onMouseLeave={() => setHoveredItem(null)}
+                    >
+                      <span style={styles.menuItemIcon}>🏁</span>
+                      <span style={styles.menuItemName}>{preset.name}</span>
+                      <span style={styles.menuItemMeta}>{(preset.trackLength / 1000).toFixed(1)}km</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Track List */}
               <div style={styles.menuSection}>
                 <div style={styles.menuSectionTitle}>Tracks</div>
