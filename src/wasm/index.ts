@@ -69,6 +69,7 @@ export {
   setAeroMode,
   getAeroMode,
   getActiveAeroState,
+  toggleAeroAuto,
   // Brake System API
   setBrakeBias,
   getBrakeBias,

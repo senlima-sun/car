@@ -58,6 +58,7 @@ function getModeColor(mode: string): string {
 
 export default function AeroIndicator() {
   const mode = useActiveAeroStore(state => state.mode)
+  const autoMode = useActiveAeroStore(state => state.autoMode)
   const dragMultiplier = useActiveAeroStore(state => state.dragMultiplier)
   const downforceMultiplier = useActiveAeroStore(state => state.downforceMultiplier)
 
@@ -66,6 +67,16 @@ export default function AeroIndicator() {
   return (
     <div style={styles.container}>
       <span style={styles.label}>Active Aero</span>
+
+      {/* Auto/Manual badge */}
+      <span style={{
+        fontSize: 9,
+        fontWeight: 'bold',
+        color: autoMode ? '#00e5ff' : 'rgba(255, 255, 255, 0.6)',
+        letterSpacing: 1,
+      }}>
+        {autoMode ? 'AUTO' : 'MANUAL'}
+      </span>
 
       {/* Mode display */}
       <span style={{ ...styles.modeValue, color: modeColor }}>{mode.toUpperCase()}</span>

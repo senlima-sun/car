@@ -3,6 +3,7 @@ import type { AeroMode, ActiveAeroState } from '../wasm/PhysicsBridge'
 
 interface ActiveAeroStoreState {
   mode: AeroMode
+  autoMode: boolean
   frontWingAngle: number // 0.0-1.0
   rearWingAngle: number // 0.0-1.0
   dragMultiplier: number
@@ -10,12 +11,14 @@ interface ActiveAeroStoreState {
 
   // Actions
   toggleMode: () => void
+  toggleAuto: () => void
   syncFromPhysics: (state: ActiveAeroState) => void
 }
 
 export const useActiveAeroStore = create<ActiveAeroStoreState>((set, get) => ({
   mode: 'Corner',
-  frontWingAngle: 1.0, // Default: Corner mode (high downforce)
+  autoMode: true,
+  frontWingAngle: 1.0,
   rearWingAngle: 1.0,
   dragMultiplier: 1.0,
   downforceMultiplier: 1.0,
@@ -26,9 +29,14 @@ export const useActiveAeroStore = create<ActiveAeroStoreState>((set, get) => ({
     set({ mode: newMode })
   },
 
+  toggleAuto: () => {
+    set(state => ({ autoMode: !state.autoMode }))
+  },
+
   syncFromPhysics: (state: ActiveAeroState) => {
     set({
       mode: state.mode,
+      autoMode: state.auto_mode,
       frontWingAngle: state.front_wing_angle,
       rearWingAngle: state.rear_wing_angle,
       dragMultiplier: state.drag_multiplier,

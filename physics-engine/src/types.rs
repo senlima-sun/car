@@ -424,6 +424,7 @@ pub struct ActiveAeroState {
     pub rear_wing_angle: f32,     // 0.0 = closed, 1.0 = open
     pub drag_multiplier: f32,
     pub downforce_multiplier: f32,
+    pub auto_mode: bool,
 }
 
 // ============================================================================

@@ -280,6 +280,7 @@ export interface ActiveAeroState {
   rear_wing_angle: number // 0.0-1.0
   drag_multiplier: number
   downforce_multiplier: number
+  auto_mode: boolean
 }
 
 // ============================================================================
@@ -1062,6 +1063,13 @@ export function getAeroMode(): AeroMode {
  */
 export function getActiveAeroState(): ActiveAeroState {
   return getPhysicsEngine().get_active_aero_state() as ActiveAeroState
+}
+
+/**
+ * Toggle auto aero mode on/off
+ */
+export function toggleAeroAuto(): void {
+  getPhysicsEngine().toggle_aero_auto()
 }
 
 // ============================================================================

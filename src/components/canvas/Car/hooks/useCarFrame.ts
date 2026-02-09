@@ -126,6 +126,7 @@ export function useCarFrame({
   const lastErsPresetToggle = useRef(0)
   const lastOvertakeToggle = useRef(0)
   const lastAeroModeToggle = useRef(0)
+  const lastAeroAutoToggle = useRef(0)
   const lastBrakeIncrToggle = useRef(0)
   const lastBrakeDecrToggle = useRef(0)
   const lastEngineBrakeToggle = useRef(0)
@@ -183,6 +184,7 @@ export function useCarFrame({
       ersPreset,
       overtake,
       aero,
+      aeroAuto,
       brakeIncr,
       brakeDecr,
       engineBrake,
@@ -243,11 +245,19 @@ export function useCarFrame({
       logger?.log('input', 'input.key.overtake', 'useCarFrame', { key: 'O' }, { action: 'activateOvertake' })
     }
 
-    // Active Aero mode toggle with debounce (V key)
+    // Active Aero mode toggle with debounce (K key)
+    // In auto mode: switches to manual. In manual: toggles Corner/Straight.
     if (aero && state.clock.elapsedTime - lastAeroModeToggle.current > 0.3) {
       toggleAeroMode()
       lastAeroModeToggle.current = state.clock.elapsedTime
-      logger?.log('input', 'input.key.aero', 'useCarFrame', { key: 'V' }, { action: 'toggleAeroMode' })
+      logger?.log('input', 'input.key.aero', 'useCarFrame', { key: 'K' }, { action: 'toggleAeroMode' })
+    }
+
+    // Auto Aero toggle with debounce (E key)
+    if (aeroAuto && state.clock.elapsedTime - lastAeroAutoToggle.current > 0.3) {
+      physics.toggleAeroAuto()
+      lastAeroAutoToggle.current = state.clock.elapsedTime
+      logger?.log('input', 'input.key.aeroAuto', 'useCarFrame', { key: 'E' }, { action: 'toggleAeroAuto' })
     }
 
     // Brake bias increase with debounce (] key) - testing mode only
@@ -369,8 +379,10 @@ export function useCarFrame({
     // Sync ERS mode from UI to physics engine (get fresh state to avoid stale closure)
     physics.setErsMode(useErsStore.getState().mode)
 
-    // Sync Active Aero mode to physics
-    physics.setAeroMode(useActiveAeroStore.getState().mode)
+    // Sync Active Aero mode to physics (only in manual mode)
+    if (!useActiveAeroStore.getState().autoMode) {
+      physics.setAeroMode(useActiveAeroStore.getState().mode)
+    }
 
     // Build input for WASM physics
     const input: CarInput = {

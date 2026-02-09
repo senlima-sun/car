@@ -231,6 +231,10 @@ impl PhysicsEngine {
         self.active_aero.toggle_mode();
     }
 
+    pub fn toggle_aero_auto(&mut self) {
+        self.active_aero.toggle_auto();
+    }
+
     pub fn get_active_aero_state(&self) -> crate::types::ActiveAeroState {
         self.active_aero.get_state()
     }
@@ -484,8 +488,8 @@ impl PhysicsEngine {
             speed_ms,
         );
 
-        // Update active aero wing positions
-        self.active_aero.update(dt);
+        // Update active aero wing positions (auto mode uses speed for adjustment)
+        self.active_aero.update(dt, speed_ms);
 
         // Update tire temperatures (use default weight transfer for now, will be refined after car step)
         let temp_input = TempInput {

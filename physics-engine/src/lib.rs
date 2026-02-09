@@ -317,10 +317,16 @@ impl PhysicsEngine {
         }
     }
 
-    /// Toggle active aero mode between Corner and Straight
+    /// Toggle active aero mode between Corner and Straight (manual mode)
     #[wasm_bindgen]
     pub fn toggle_aero_mode(&mut self) {
         self.inner.toggle_aero_mode();
+    }
+
+    /// Toggle auto aero mode on/off
+    #[wasm_bindgen]
+    pub fn toggle_aero_auto(&mut self) {
+        self.inner.toggle_aero_auto();
     }
 
     /// Get current active aero state as JavaScript object

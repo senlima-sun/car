@@ -10,6 +10,7 @@ export const keyboardMap = [
   { name: 'ersPreset', keys: ['KeyG'] },
   { name: 'overtake', keys: ['KeyR'] },
   { name: 'aero', keys: ['KeyK'] },
+  { name: 'aeroAuto', keys: ['KeyE'] },
   { name: 'brakeIncr', keys: ['BracketRight'] },
   { name: 'brakeDecr', keys: ['BracketLeft'] },
   { name: 'camera', keys: ['KeyC'] },
@@ -62,6 +63,7 @@ export const CONTROLS: ControlDefinition[] = [
     testingModeOnly: true,
   },
   { id: 'aero', displayName: 'Aero Mode', keys: ['K'], category: 'drivingSystems' },
+  { id: 'aeroAuto', displayName: 'Auto Aero', keys: ['E'], category: 'drivingSystems' },
   {
     id: 'brakeIncr',
     displayName: 'Brake Bias +',
