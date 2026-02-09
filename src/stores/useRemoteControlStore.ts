@@ -15,6 +15,7 @@ interface RemoteControlState {
   updateControllerState: (state: ControllerState) => void
   setLatency: (ms: number) => void
   generateRoomId: () => string
+  fadeToZero: () => void
   reset: () => void
 }
 
@@ -58,6 +59,22 @@ export const useRemoteControlStore = create<RemoteControlState>(set => ({
     const id = randomRoomId()
     set({ roomId: id })
     return id
+  },
+
+  fadeToZero: () => {
+    const fade = () => {
+      const state = useRemoteControlStore.getState()
+      if (state.connectionStatus === 'connected') return
+      const decay = 0.85
+      const newSteer = Math.abs(state.steer) < 0.01 ? 0 : state.steer * decay
+      const newThrottle = state.throttle < 0.01 ? 0 : state.throttle * decay
+      const newBrake = state.brake < 0.01 ? 0 : state.brake * decay
+      set({ steer: newSteer, throttle: newThrottle, brake: newBrake, handbrake: false })
+      if (Math.abs(newSteer) > 0.01 || newThrottle > 0.01 || newBrake > 0.01) {
+        requestAnimationFrame(fade)
+      }
+    }
+    requestAnimationFrame(fade)
   },
 
   reset: () => set(initialState),
