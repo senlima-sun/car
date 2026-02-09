@@ -22,18 +22,18 @@ export function BodyFrame({ isRaining, isThermalView, engineThermalMaterial, sus
 
   return (
     <group>
-      <mesh castShadow position={[0, 0.0, frontZ + 0.1]}>
-        <boxGeometry args={[0.5, 0.15, 1]} />
+      <mesh castShadow position={[0, 0.0, frontZ + 0.12]}>
+        <boxGeometry args={[0.5, 0.15, 1.2]} />
         <meshStandardMaterial color={frameColor} {...bodyMaterial} />
       </mesh>
 
-      <mesh castShadow position={[0, 0.0, 0.95]}>
-        <boxGeometry args={[0.45, 0.12, 0.7]} />
+      <mesh castShadow position={[0, 0.0, 1.14]}>
+        <boxGeometry args={[0.45, 0.12, 0.84]} />
         <meshStandardMaterial color={frameColor} {...bodyMaterial} />
       </mesh>
 
-      <mesh castShadow position={[0, 0.0, -0.85]}>
-        <boxGeometry args={[0.7, 0.25, 0.7]} />
+      <mesh castShadow position={[0, 0.0, -1.02]}>
+        <boxGeometry args={[0.7, 0.25, 0.84]} />
         {isThermalView ? (
           <primitive object={engineThermalMaterial} attach='material' />
         ) : (

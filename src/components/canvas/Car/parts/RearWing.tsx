@@ -50,7 +50,7 @@ export function RearWing() {
   })
 
   return (
-    <group position={[0, 0.45, -1.5]}>
+    <group position={[0, 0.45, -1.8]}>
       {/* Support pylons */}
       <mesh castShadow position={[-0.35, -0.25, 0]}>
         <boxGeometry args={[0.03, 0.5, 0.08]} />

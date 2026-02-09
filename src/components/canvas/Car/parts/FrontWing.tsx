@@ -49,7 +49,7 @@ export function FrontWing() {
   })
 
   return (
-    <group position={[0, -0.25, 2.5]}>
+    <group position={[0, -0.25, 3.0]}>
       {/* Main wing plane (fixed) */}
       <mesh castShadow>
         <boxGeometry args={[2.2, 0.02, 0.25]} />

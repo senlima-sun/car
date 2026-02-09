@@ -19,8 +19,8 @@ export function Cockpit({ showDisplay }: CockpitProps) {
 
   return (
     <group>
-      <mesh castShadow position={[0, -0.05, 0.15]}>
-        <boxGeometry args={[0.65, 0.1, 1.3]} />
+      <mesh castShadow position={[0, -0.05, 0.18]}>
+        <boxGeometry args={[0.65, 0.1, 1.56]} />
         <meshStandardMaterial color={cockpitColor} metalness={0.5} roughness={0.5} />
       </mesh>
       <SteeringWheel steerAngle={steerRef.current} showDisplay={showDisplay} />

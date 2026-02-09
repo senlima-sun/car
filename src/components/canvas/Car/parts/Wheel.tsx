@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { useThermalTireMaterial } from '../../../../hooks/useThermalTireMaterial'
 import { WHEEL_RADIUS } from '../../../../constants/dimensions'
 
-const WHEEL_WIDTH = 0.35
+const WHEEL_WIDTH = 0.35 // visual only; physics uses dimensions.ts
 
 export function Wheel({
   position,
