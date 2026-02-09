@@ -14,9 +14,8 @@ export function PairingModal({ onClose }: PairingModalProps) {
 
   useEffect(() => {
     const id = generateRoomId()
-    const signalingHost = window.location.hostname
-    const signalingPort = 3001
-    const signalingUrl = `ws://${signalingHost}:${signalingPort}/ws`
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const signalingUrl = `${wsProtocol}//${window.location.host}/ws`
     const gameHost = window.location.host
     const url = `${window.location.protocol}//${gameHost}/controller?room=${id}&signal=${encodeURIComponent(signalingUrl)}`
     setControllerUrl(url)

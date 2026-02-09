@@ -133,13 +133,24 @@ const srcWatcher = watch('./src', { recursive: true }, (event, filename) => {
 
 console.log('\x1b[33m[watch]\x1b[0m Watching src/ for changes...')
 
-// Start the server
+interface WsData {
+  roomId: string | null
+}
+
+const signalingRooms = new Map<string, Set<WebSocket>>()
+
 // @ts-ignore
-const server = Bun.serve({
+const server = Bun.serve<WsData>({
   port: PORT,
-  async fetch(req) {
+  async fetch(req, server) {
     const url = new URL(req.url)
     let pathname = url.pathname
+
+    if (pathname === '/ws') {
+      const upgraded = server.upgrade(req, { data: { roomId: null } })
+      if (!upgraded) return new Response('WebSocket upgrade failed', { status: 400 })
+      return undefined
+    }
 
     // Handle root
     if (pathname === '/') {
@@ -203,6 +214,37 @@ const server = Bun.serve({
     }
 
     return new Response('Not Found', { status: 404 })
+  },
+  websocket: {
+    open() {},
+    message(ws: any, message: any) {
+      try {
+        const data = JSON.parse(typeof message === 'string' ? message : new TextDecoder().decode(message))
+        if (data.type === 'join' && data.roomId) {
+          ws.data.roomId = data.roomId
+          if (!signalingRooms.has(data.roomId)) signalingRooms.set(data.roomId, new Set())
+          signalingRooms.get(data.roomId)!.add(ws)
+          return
+        }
+        const roomId = ws.data.roomId
+        if (!roomId) return
+        const room = signalingRooms.get(roomId)
+        if (!room) return
+        const msgStr = typeof message === 'string' ? message : new TextDecoder().decode(message)
+        for (const peer of room) {
+          if (peer !== ws) peer.send(msgStr)
+        }
+      } catch {}
+    },
+    close(ws: any) {
+      const roomId = ws.data.roomId
+      if (!roomId) return
+      const room = signalingRooms.get(roomId)
+      if (!room) return
+      room.delete(ws)
+      for (const peer of room) peer.send(JSON.stringify({ type: 'leave', roomId }))
+      if (room.size === 0) signalingRooms.delete(roomId)
+    },
   },
 })
 
