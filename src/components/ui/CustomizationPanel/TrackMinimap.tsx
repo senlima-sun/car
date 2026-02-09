@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo } from 'react'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
+import { useCarStore } from '../../../stores/useCarStore'
 
 const MINIMAP_SIZE = 200
 const PADDING = 15
@@ -7,6 +8,7 @@ const PADDING = 15
 export default function TrackMinimap() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const placedObjects = useCustomizationStore(s => s.placedObjects)
+  const carPosition = useCarStore(s => s.position)
 
   const bounds = useMemo(() => {
     const roads = placedObjects.filter(o => o.type === 'road' && o.startPoint && o.endPoint)
@@ -178,10 +180,21 @@ export default function TrackMinimap() {
       }
     }
 
+    // Draw car position dot
+    const carX = toScreenX(carPosition[0])
+    const carZ = toScreenZ(carPosition[2])
+    ctx.beginPath()
+    ctx.arc(carX, carZ, 5, 0, Math.PI * 2)
+    ctx.fillStyle = '#00ff88'
+    ctx.shadowColor = '#00ff88'
+    ctx.shadowBlur = 8
+    ctx.fill()
+    ctx.shadowBlur = 0
+
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'
     ctx.lineWidth = 1
     ctx.strokeRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE)
-  }, [placedObjects, bounds])
+  }, [placedObjects, bounds, carPosition])
 
   if (!bounds) return null
 
