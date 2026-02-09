@@ -1,5 +1,4 @@
 import type { PlacedObject } from '../stores/useCustomizationStore'
-import type { PitLaneData } from '../stores/usePitStore'
 
 export interface TrackMetadata {
   id: string
@@ -11,7 +10,7 @@ export interface TrackMetadata {
 
 export interface SavedTrack extends TrackMetadata {
   objects: PlacedObject[]
-  pitLaneData: PitLaneData | null
+  pitLaneData?: unknown
 }
 
 export interface TrackLibrary {

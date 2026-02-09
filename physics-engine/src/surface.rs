@@ -43,6 +43,10 @@ impl SurfaceState {
         self.current_surface == SurfaceType::Grass
     }
 
+    pub fn is_on_pit_road(&self) -> bool {
+        self.current_surface == SurfaceType::PitRoad
+    }
+
     /// Get grip modifier for current surface
     pub fn get_grip_modifier(&self) -> f32 {
         self.modifiers.grip_multiplier

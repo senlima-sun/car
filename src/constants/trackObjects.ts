@@ -1,4 +1,4 @@
-import type { ObjectType } from '../stores/useCustomizationStore'
+import type { ObjectType } from '../types/trackObjects'
 import { TRACK_OBJECT } from './colors'
 
 export interface ObjectConfig {
@@ -77,13 +77,30 @@ export const OBJECT_CONFIGS: Record<ObjectType, ObjectConfig> = {
     friction: 0.7,
     restitution: 0.1,
   },
+  pitbox: {
+    type: 'pitbox',
+    label: 'Pit Box',
+    description: 'Pit stop service area',
+    isLinear: false,
+    defaultSize: { width: 15, height: 0.1, depth: 8 },
+    color: TRACK_OBJECT.pitAsphaltDark,
+    friction: 1.0,
+    restitution: 0,
+  },
 }
 
-export const OBJECT_TYPES: ObjectType[] = ['cone', 'ramp', 'checkpoint', 'barrier', 'road', 'curb']
+export const OBJECT_TYPES: ObjectType[] = ['cone', 'ramp', 'checkpoint', 'barrier', 'road', 'curb', 'pitbox']
 
-// Pit lane specific constants
-export const PIT_LANE_WIDTH = 8
-export const PIT_LANE_ENTRY_ANGLE = Math.PI / 6 // 30 degrees
+// Pit road constants
+export const PIT_ROAD_WIDTH = 8
+export const PIT_ROAD_SPEED_LIMIT_KMH = 80
+export const PIT_ROAD_SPEED_LIMIT_MS = PIT_ROAD_SPEED_LIMIT_KMH / 3.6
+export const PIT_ROAD_COLOR = TRACK_OBJECT.pitAsphalt
+export const PIT_ROAD_EDGE_COLOR = TRACK_OBJECT.pitLane
+
+// Pit box constants
+export const PIT_BOX_LENGTH = 15
+export const PIT_BOX_WIDTH = 8
 
 // Ghost preview settings
 export const GHOST_OPACITY = 0.5

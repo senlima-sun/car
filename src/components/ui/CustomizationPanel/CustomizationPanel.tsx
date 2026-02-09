@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   useCustomizationStore,
   type ObjectType,
   isLinearObject,
 } from '../../../stores/useCustomizationStore'
+import { isCurveMode } from '../../../types/trackObjects'
 import { useEditorStore } from '../../../stores/useEditorStore'
-import { usePitStore } from '../../../stores/usePitStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
 import { OBJECT_TYPES } from '../../../constants/trackObjects'
-import { generatePitLane } from '../../../utils/pitLaneGenerator'
 import { generateCurbsForRoads } from '../../../utils/autoCurbGenerator'
 import ObjectButton from './ObjectButton'
 import TrackValidationPanel from './TrackValidationPanel'
@@ -251,12 +250,6 @@ export default function CustomizationPanel() {
   const markDirty = useTrackStore(s => s.markDirty)
   const isDirty = useTrackStore(s => s.isDirty)
 
-  // Pit lane state
-  const pitLaneData = usePitStore(s => s.pitLaneData)
-  const setPitLaneData = usePitStore(s => s.setPitLaneData)
-  const clearPitLane = usePitStore(s => s.clearPitLane)
-  const [pitLaneError, setPitLaneError] = useState<string | null>(null)
-
   // Track direction
   const hasFlow = useTrackGraphStore(s => s.hasFlow)
   const flowWarnings = useTrackGraphStore(s => s.flowWarnings)
@@ -267,24 +260,6 @@ export default function CustomizationPanel() {
   // Check if checkpoint exists
   const checkpoint = placedObjects.find(obj => obj.type === 'checkpoint')
   const hasCheckpoint = !!checkpoint
-
-  // Handle pit lane generation
-  const handleGeneratePitLane = () => {
-    if (!checkpoint) {
-      setPitLaneError('Place a checkpoint first!')
-      setTimeout(() => setPitLaneError(null), 3000)
-      return
-    }
-
-    const pitData = generatePitLane(checkpoint, placedObjects)
-    if (pitData) {
-      setPitLaneData(pitData)
-      setPitLaneError(null)
-    } else {
-      setPitLaneError('Could not find valid pit lane position')
-      setTimeout(() => setPitLaneError(null), 3000)
-    }
-  }
 
   // Mark track as dirty when objects change
   useEffect(() => {
@@ -394,7 +369,7 @@ export default function CustomizationPanel() {
     if (!selectedObjectType) return null
     if (!isLinearObject(selectedObjectType)) return 'Click to place'
 
-    if (trackMode === 'curve') {
+    if (isCurveMode(trackMode)) {
       switch (placementState) {
         case 'selecting':
           return '1. Click to set START point'
@@ -581,14 +556,14 @@ export default function CustomizationPanel() {
             <button
               style={{
                 ...styles.modeButton,
-                ...(trackMode === 'curve' ? styles.modeButtonActive : styles.modeButtonInactive),
+                ...(isCurveMode(trackMode) ? styles.modeButtonActive : styles.modeButtonInactive),
               }}
               onClick={() => setTrackMode('curve')}
             >
               Curve
             </button>
           </div>
-          {trackMode === 'curve' && (
+          {isCurveMode(trackMode) && (
             <div
               style={styles.snapToggle}
               onClick={() => setSymmetricCurve(!symmetricCurve)}
@@ -663,76 +638,6 @@ export default function CustomizationPanel() {
           </div>
         </div>
       )}
-
-      {/* Pit Lane Section */}
-      <div style={styles.section}>
-        <div style={styles.sectionTitle}>Pit Lane</div>
-        {pitLaneData ? (
-          <>
-            <div
-              style={{
-                color: '#22c55e',
-                fontSize: 11,
-                marginBottom: 8,
-                padding: '6px 8px',
-                background: 'rgba(34, 197, 94, 0.1)',
-                borderRadius: 4,
-              }}
-            >
-              Pit lane generated
-            </div>
-            <button
-              style={{
-                ...styles.actionButton,
-                ...styles.clearButton,
-                width: '100%',
-              }}
-              onClick={clearPitLane}
-            >
-              Remove Pit Lane
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              style={{
-                ...styles.actionButton,
-                background: hasCheckpoint ? '#f59e0b' : '#666',
-                color: '#fff',
-                width: '100%',
-                opacity: hasCheckpoint ? 1 : 0.5,
-                cursor: hasCheckpoint ? 'pointer' : 'not-allowed',
-              }}
-              onClick={handleGeneratePitLane}
-              disabled={!hasCheckpoint}
-            >
-              Generate Pit Lane
-            </button>
-            {!hasCheckpoint && (
-              <div
-                style={{
-                  color: '#888',
-                  fontSize: 10,
-                  marginTop: 6,
-                }}
-              >
-                Place a checkpoint first
-              </div>
-            )}
-            {pitLaneError && (
-              <div
-                style={{
-                  color: '#ef4444',
-                  fontSize: 10,
-                  marginTop: 6,
-                }}
-              >
-                {pitLaneError}
-              </div>
-            )}
-          </>
-        )}
-      </div>
 
       {/* Auto Curb Generation Section */}
       <div style={styles.section}>
@@ -1085,7 +990,7 @@ export default function CustomizationPanel() {
               {(selectedObject.endElevation ?? 0).toFixed(1)}m
             </span>
           </div>
-          {selectedObject.trackMode === 'curve' && (
+          {isCurveMode(selectedObject.trackMode) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: '#aaa', fontSize: 11, minWidth: 80 }}>Banking</span>
               <input
@@ -1143,7 +1048,6 @@ export default function CustomizationPanel() {
             onClick={() => {
               if (window.confirm('Clear all placed objects?')) {
                 clearAll()
-                clearPitLane()
               }
             }}
           >

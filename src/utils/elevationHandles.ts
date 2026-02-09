@@ -1,4 +1,5 @@
 import type { PlacedObject, ElevationControlPoint } from '../types/trackObjects'
+import { isCurveMode } from '../types/trackObjects'
 
 const SNAP_THRESHOLD = 2
 
@@ -162,7 +163,7 @@ export function computeRoadGrade(road: PlacedObject): number {
   if (elevDiff < 0.01) return 0
 
   let length: number
-  if (road.trackMode === 'curve' && road.controlPoint) {
+  if (isCurveMode(road.trackMode) && road.controlPoint) {
     let arcLength = 0
     const SAMPLES = 20
     let prevX = road.startPoint[0]

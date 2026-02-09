@@ -1,13 +1,17 @@
 import type { PlacedObject } from '../../../stores/useCustomizationStore'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useGameStore } from '../../../stores/useGameStore'
+import { isPitRoad, isCurveMode } from '../../../types/trackObjects'
 import Cone from './Cone'
 import Ramp from './Ramp'
 import Checkpoint from './Checkpoint'
 import Barrier from './Barrier'
 import RoadSegment from './RoadSegment'
 import CurvedRoadSegment from './CurvedRoadSegment'
+import PitRoadSegment from './PitRoadSegment'
+import CurvedPitRoadSegment from './CurvedPitRoadSegment'
 import CurvedBarrier from './CurvedBarrier'
+import PitBox from './PitBox'
 import CurbSegment from './CurbSegment'
 import CurvedCurbSegment from './CurvedCurbSegment'
 import SelectionHighlight from './SelectionHighlight'
@@ -75,14 +79,35 @@ export default function TrackObjectWrapper({
       break
     case 'barrier':
       // Check if it's a curved barrier
-      if (object.trackMode === 'curve' && object.controlPoint) {
+      if (isCurveMode(object.trackMode) && object.controlPoint) {
         component = <CurvedBarrier {...(curvedProps as any)} />
       } else {
         component = <Barrier {...linearProps} />
       }
       break
     case 'road':
-      if (object.trackMode === 'curve' && object.controlPoint) {
+      if (isPitRoad(object.trackMode)) {
+        if (isCurveMode(object.trackMode) && object.controlPoint) {
+          component = (
+            <CurvedPitRoadSegment
+              {...(curvedProps as any)}
+              width={object.width}
+              startElevation={object.startElevation}
+              endElevation={object.endElevation}
+              banking={object.banking}
+            />
+          )
+        } else {
+          component = (
+            <PitRoadSegment
+              {...linearProps}
+              width={object.width}
+              startElevation={object.startElevation}
+              endElevation={object.endElevation}
+            />
+          )
+        }
+      } else if (isCurveMode(object.trackMode) && object.controlPoint) {
         component = (
           <CurvedRoadSegment
             {...(curvedProps as any)}
@@ -111,7 +136,7 @@ export default function TrackObjectWrapper({
         const parentRoad = placedObjects.find(obj => obj.id === object.parentRoadId)
         if (parentRoad) {
           // Use curved or straight curb component based on parent road type
-          if (parentRoad.trackMode === 'curve' && parentRoad.controlPoint) {
+          if (isCurveMode(parentRoad.trackMode) && parentRoad.controlPoint) {
             component = (
               <CurvedCurbSegment
                 curb={object}
@@ -130,6 +155,18 @@ export default function TrackObjectWrapper({
           }
         }
       }
+      break
+    case 'pitbox':
+      component = (
+        <PitBox
+          {...commonProps}
+          parentRoadId={object.parentRoadId}
+          edgeSide={object.edgeSide}
+          startT={object.startT}
+          endT={object.endT}
+          width={object.width}
+        />
+      )
       break
     default:
       console.warn(`Unknown object type: ${object.type}`)
@@ -154,7 +191,7 @@ export default function TrackObjectWrapper({
           endPoint={object.endPoint!}
           controlPoint={object.controlPoint}
           flowDirection={object.flowDirection!}
-          isCurve={object.trackMode === 'curve' && !!object.controlPoint}
+          isCurve={isCurveMode(object.trackMode) && !!object.controlPoint}
           startElevation={object.startElevation}
           endElevation={object.endElevation}
           isSelected={isSelected}

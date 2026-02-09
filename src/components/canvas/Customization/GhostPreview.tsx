@@ -14,6 +14,7 @@ import {
   SnapPointWithDirection,
 } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
+import { isCurveMode as isCurveModeCheck, isPitRoad } from '../../../types/trackObjects'
 import {
   Cone,
   Ramp,
@@ -21,10 +22,14 @@ import {
   Barrier,
   RoadSegment,
   CurvedRoadSegment,
+  PitRoadSegment,
+  CurvedPitRoadSegment,
   CurvedBarrier,
   CurbPreview,
   CurvedCurbPreview,
+  PitBox,
 } from '../TrackObjects'
+import { PIT_ROAD_WIDTH, PIT_BOX_WIDTH } from '../../../constants/trackObjects'
 import { getSnapAngles } from '../../../utils/roadSnapping'
 
 // Snap point indicator component
@@ -458,7 +463,8 @@ export default function GhostPreview({
   if (!selectedObjectType || !previewPosition) return null
 
   const isLinear = isLinearObject(selectedObjectType)
-  const isCurveMode = trackMode === 'curve'
+  const isCurveMode = isCurveModeCheck(trackMode)
+  const isPit = isPitRoad(trackMode)
 
   // Helper to render snap point indicators for linear objects
   const renderSnapIndicators = () => {
@@ -519,6 +525,14 @@ export default function GhostPreview({
             endPoint={end}
             isGhost
           />
+        ) : isPit ? (
+          <PitRoadSegment
+            position={previewPosition}
+            rotation={previewRotation}
+            startPoint={start}
+            endPoint={end}
+            isGhost
+          />
         ) : (
           <RoadSegment
             position={previewPosition}
@@ -573,6 +587,14 @@ export default function GhostPreview({
                 endPoint={previewEndPoint}
                 isGhost
               />
+            ) : isPit ? (
+              <CurvedPitRoadSegment
+                position={previewPosition}
+                startPoint={dragStartPoint}
+                controlPoint={previewControlPoint}
+                endPoint={previewEndPoint}
+                isGhost
+              />
             ) : (
               <CurvedRoadSegment
                 position={previewPosition}
@@ -586,6 +608,13 @@ export default function GhostPreview({
           {!showArcPreview && (
             selectedObjectType === 'barrier' ? (
               <Barrier
+                position={previewPosition}
+                startPoint={dragStartPoint}
+                endPoint={previewPosition}
+                isGhost
+              />
+            ) : isPit ? (
+              <PitRoadSegment
                 position={previewPosition}
                 startPoint={dragStartPoint}
                 endPoint={previewPosition}
@@ -644,6 +673,14 @@ export default function GhostPreview({
               endPoint={previewPosition}
               isGhost
             />
+          ) : isPit ? (
+            <CurvedPitRoadSegment
+              position={previewPosition}
+              startPoint={dragStartPoint}
+              controlPoint={effectiveControlPoint}
+              endPoint={previewPosition}
+              isGhost
+            />
           ) : (
             <CurvedRoadSegment
               position={previewPosition}
@@ -676,6 +713,13 @@ export default function GhostPreview({
         </mesh>
         {selectedObjectType === 'barrier' ? (
           <Barrier
+            position={previewPosition}
+            startPoint={dragStartPoint}
+            endPoint={previewPosition}
+            isGhost
+          />
+        ) : isPit ? (
+          <PitRoadSegment
             position={previewPosition}
             startPoint={dragStartPoint}
             endPoint={previewPosition}
@@ -767,6 +811,69 @@ export default function GhostPreview({
               <meshStandardMaterial color='#ff6600' transparent opacity={0.8} />
             </mesh>
             {/* Edge indicator line along road edge */}
+            <mesh position={[curbEdgeHover.worldPosition[0], curbEdgeHover.worldPosition[1] + 0.05, curbEdgeHover.worldPosition[2]]}>
+              <ringGeometry args={[0.8, 1.0, 16]} />
+              <meshBasicMaterial color='#ff6600' transparent opacity={0.6} side={2} />
+            </mesh>
+          </>
+        )
+      }
+      return null
+    case 'pitbox':
+      if (
+        placementState === 'curbDragging' &&
+        curbDragState &&
+        curbPreviewEndT !== null &&
+        curbPreviewEndPosition
+      ) {
+        const parentRoad = curbDragState.road
+        if (!parentRoad.startPoint || !parentRoad.endPoint) return null
+
+        const startT = Math.min(curbDragState.startT, curbPreviewEndT)
+        const endT = Math.max(curbDragState.startT, curbPreviewEndT)
+        const midT = (startT + endT) / 2
+
+        const centerPos = getRoadCenterPositionAt(parentRoad, midT)
+
+        const dx = parentRoad.endPoint[0] - parentRoad.startPoint[0]
+        const dz = parentRoad.endPoint[2] - parentRoad.startPoint[2]
+        const length = Math.sqrt(dx * dx + dz * dz)
+        if (length === 0) return null
+
+        const dirX = dx / length
+        const dirZ = dz / length
+        const perpX = -dirZ
+        const perpZ = dirX
+
+        const halfRoadWidth = PIT_ROAD_WIDTH / 2
+        const pitBoxHalfWidth = PIT_BOX_WIDTH / 2
+        const edgeSign = curbDragState.edge === 'left' ? 1 : -1
+        const offsetDist = halfRoadWidth + pitBoxHalfWidth
+
+        const pitBoxPos: [number, number, number] = [
+          centerPos[0] + perpX * edgeSign * offsetDist,
+          centerPos[1],
+          centerPos[2] + perpZ * edgeSign * offsetDist,
+        ]
+
+        const roadRotation = Math.atan2(dx, dz)
+
+        return (
+          <PitBox
+            position={pitBoxPos}
+            rotation={roadRotation}
+            isGhost
+          />
+        )
+      }
+
+      if (placementState === 'selecting' && curbEdgeHover) {
+        return (
+          <>
+            <mesh position={[curbEdgeHover.worldPosition[0], curbEdgeHover.worldPosition[1] + 0.1, curbEdgeHover.worldPosition[2]]}>
+              <sphereGeometry args={[0.5, 16, 16]} />
+              <meshStandardMaterial color='#ff6600' transparent opacity={0.8} />
+            </mesh>
             <mesh position={[curbEdgeHover.worldPosition[0], curbEdgeHover.worldPosition[1] + 0.05, curbEdgeHover.worldPosition[2]]}>
               <ringGeometry args={[0.8, 1.0, 16]} />
               <meshBasicMaterial color='#ff6600' transparent opacity={0.6} side={2} />

@@ -1,8 +1,9 @@
 import { create } from 'zustand'
-import { type ObjectType, type TrackMode, type PlacementState, type CurbDragState, type PartialDeleteState, type PlacedObject, type CheckpointType, type ElevationDragState, type ElevationTool, type SlopeAnchor, isLinearObject } from '../types/trackObjects'
+import { type ObjectType, type TrackMode, type PlacementState, type CurbDragState, type PartialDeleteState, type PlacedObject, type CheckpointType, type ElevationDragState, type ElevationTool, type SlopeAnchor, isLinearObject, isCurveMode, isPitRoad } from '../types/trackObjects'
 import type { EditorCommand } from '../types/editor'
 import { SnapSettings, DEFAULT_SNAP_SETTINGS } from '../utils/roadSnapping'
-import { splitRoadAtSegment } from '../utils/roadGeometry'
+import { splitRoadAtSegment, getRoadCenterPositionAt } from '../utils/roadGeometry'
+import { PIT_ROAD_WIDTH, PIT_BOX_WIDTH } from '../constants/trackObjects'
 import { editorCommandStack } from '../utils/commandStack'
 import { useCustomizationStore } from './useCustomizationStore'
 
@@ -416,7 +417,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       newObject.endPoint = previewPosition
       newObject.trackMode = trackMode
 
-      if (trackMode === 'curve' && controlPoint) {
+      if (isPitRoad(trackMode)) {
+        newObject.width = 8
+      }
+
+      if (isCurveMode(trackMode) && controlPoint) {
         let effectiveControlPoint = controlPoint
         if (state.symmetricCurve) {
           const mx = (dragStartPoint[0] + previewPosition[0]) / 2
@@ -567,7 +572,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   confirmCurbPlacement: () => {
     const state = get()
-    const { curbDragState, curbPreviewEndT } = state
+    const { curbDragState, curbPreviewEndT, selectedObjectType } = state
 
     if (!curbDragState || curbPreviewEndT === null) return
 
@@ -576,11 +581,38 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     if (Math.abs(endT - startT) < 0.05) return
 
-    const newCurb: PlacedObject = {
+    const objectType = selectedObjectType === 'pitbox' ? 'pitbox' : 'curb'
+
+    let pitboxPosition: [number, number, number] = [0, 0, 0]
+    let pitboxRotation = 0
+
+    if (objectType === 'pitbox' && curbDragState.road.startPoint && curbDragState.road.endPoint) {
+      const midT = (startT + endT) / 2
+      const centerPos = getRoadCenterPositionAt(curbDragState.road, midT)
+      const roadStart = curbDragState.road.startPoint
+      const roadEnd = curbDragState.road.endPoint
+      const dx = roadEnd[0] - roadStart[0]
+      const dz = roadEnd[2] - roadStart[2]
+      const len = Math.sqrt(dx * dx + dz * dz)
+      if (len > 0) {
+        const perpX = -dz / len
+        const perpZ = dx / len
+        const edgeSign = curbDragState.edge === 'left' ? 1 : -1
+        const offsetDist = PIT_ROAD_WIDTH / 2 + PIT_BOX_WIDTH / 2
+        pitboxPosition = [
+          centerPos[0] + perpX * edgeSign * offsetDist,
+          centerPos[1],
+          centerPos[2] + perpZ * edgeSign * offsetDist,
+        ]
+        pitboxRotation = Math.atan2(dx, dz)
+      }
+    }
+
+    const newObject: PlacedObject = {
       id: generateId(),
-      type: 'curb',
-      position: [0, 0, 0],
-      rotation: 0,
+      type: objectType,
+      position: objectType === 'pitbox' ? pitboxPosition : [0, 0, 0],
+      rotation: objectType === 'pitbox' ? pitboxRotation : 0,
       parentRoadId: curbDragState.roadId,
       edgeSide: curbDragState.edge,
       startT,
@@ -588,9 +620,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
 
     const command: EditorCommand = {
-      execute: () => useCustomizationStore.getState().addObject(newCurb),
-      undo: () => useCustomizationStore.getState().removeObject(newCurb.id),
-      description: 'Place curb',
+      execute: () => useCustomizationStore.getState().addObject(newObject),
+      undo: () => useCustomizationStore.getState().removeObject(newObject.id),
+      description: `Place ${objectType}`,
     }
     editorCommandStack.push(command)
 

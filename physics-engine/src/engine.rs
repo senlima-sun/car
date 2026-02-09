@@ -5,6 +5,7 @@ use crate::car_physics::{CarPhysicsState, BASE_BRAKE_FORCE};
 use crate::curb::CurbState;
 use crate::engine_temp::EngineTemperatureState;
 use crate::ers::ErsPhysicsState;
+use crate::pit_lane::PitLaneState;
 use crate::surface::SurfaceState;
 use crate::tires::{TempInput, TireMaterialSystem, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
@@ -32,6 +33,7 @@ pub struct PhysicsEngine {
     track_temperature: TrackTemperatureGrid,
     curb: CurbState,
     surface: SurfaceState,
+    pit_lane: PitLaneState,
     car: CarPhysicsState,
     tire_material: TireMaterialSystem,
 }
@@ -56,6 +58,7 @@ impl PhysicsEngine {
             track_temperature: TrackTemperatureGrid::default(),
             curb: CurbState::new(),
             surface: SurfaceState::new(),
+            pit_lane: PitLaneState::new(),
             car: CarPhysicsState::new(),
             tire_material: TireMaterialSystem::new(TireCompound::Medium),
         }
@@ -312,6 +315,34 @@ impl PhysicsEngine {
     }
 
     // ========================================================================
+    // Pit Lane API
+    // ========================================================================
+
+    pub fn set_pit_lane_active(&mut self, active: bool) {
+        self.pit_lane.set_active(active);
+    }
+
+    pub fn is_pit_lane_active(&self) -> bool {
+        self.pit_lane.is_active()
+    }
+
+    pub fn set_pit_lane_speed_limit(&mut self, kmh: f32) {
+        self.pit_lane.set_speed_limit_kmh(kmh);
+    }
+
+    pub fn get_pit_lane_speed_limit_kmh(&self) -> f32 {
+        self.pit_lane.get_speed_limit_kmh()
+    }
+
+    pub fn is_pit_lane_speed_limited(&self) -> bool {
+        self.pit_lane.is_speed_limited()
+    }
+
+    pub fn get_pit_lane_limiter_blend(&self) -> f32 {
+        self.pit_lane.get_limiter_blend()
+    }
+
+    // ========================================================================
     // Track Temperature API
     // ========================================================================
 
@@ -426,6 +457,12 @@ impl PhysicsEngine {
 
         // Calculate car speed for wind modifiers
         let speed_ms = (current_linvel[0].powi(2) + current_linvel[2].powi(2)).sqrt();
+
+        // Update pit lane state from surface
+        self.pit_lane.update_from_surface(self.surface.get_surface());
+
+        // Get pit lane throttle limiter
+        let pit_lane_throttle = self.pit_lane.update(dt, speed_ms);
 
         // Get wind modifiers based on car heading and speed
         let wind_modifiers = self.wind.calculate_modifiers(car_heading, speed_ms);
@@ -599,6 +636,9 @@ impl PhysicsEngine {
 
         let air_density = self.weather.get_air_density();
 
+        let ers_boost = ers_boost * pit_lane_throttle;
+        let engine_power_multiplier = engine_power_multiplier * pit_lane_throttle;
+
         let mut output = self.car.step(
             dt,
             &input,
@@ -623,6 +663,19 @@ impl PhysicsEngine {
             air_density,
             surface_normal,
         );
+
+        // Apply pit lane speed limiter braking
+        let pit_brake = self.pit_lane.get_braking_force(speed_ms);
+        if pit_brake > 0.0 {
+            let brake_decel = pit_brake * 5000.0; // N of braking force
+            let brake_vel = brake_decel * dt / 750.0; // Approximate deceleration
+            let speed = (output.linear_velocity[0].powi(2) + output.linear_velocity[2].powi(2)).sqrt();
+            if speed > 0.1 {
+                let factor = ((speed - brake_vel) / speed).max(0.0);
+                output.linear_velocity[0] *= factor;
+                output.linear_velocity[2] *= factor;
+            }
+        }
 
         // Apply curb bump as pitch rotation (X axis = pitch in Three.js)
         // Positive pitch = nose up

@@ -9,9 +9,6 @@ import LoadingFallback from './components/ui/LoadingFallback'
 import { PhysicsProvider } from './wasm'
 import { keyboardMap } from './constants/controls'
 import { usePhysicsDebugStore } from './stores/usePhysicsDebugStore'
-import { ControllerApp } from './components/controller/ControllerApp'
-
-const isControllerPage = window.location.pathname === '/controller'
 
 function GameApp() {
   const physicsDebug = usePhysicsDebugStore(s => s.enabled)
@@ -34,6 +31,5 @@ function GameApp() {
 }
 
 export default function App() {
-  if (isControllerPage) return <ControllerApp />
   return <GameApp />
 }

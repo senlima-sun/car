@@ -47,6 +47,7 @@ export default function TrackLimitsIndicator() {
   const currentSurface = useSurfaceStore(s => s.currentSurface)
   const roadContactCount = useSurfaceStore(s => s.roadContactCount)
   const curbContactCount = useSurfaceStore(s => s.curbContactCount)
+  const pitroadContactCount = useSurfaceStore(s => s.pitroadContactCount)
 
   const isLapTimingActive = useLapTimeStore(s => s.isActive)
 
@@ -62,7 +63,10 @@ export default function TrackLimitsIndicator() {
   // Off track = on grass AND not touching any road or curb
   useEffect(() => {
     const isCurrentlyOffTrack =
-      currentSurface === 'grass' && roadContactCount === 0 && curbContactCount === 0
+      currentSurface === 'grass' &&
+      roadContactCount === 0 &&
+      curbContactCount === 0 &&
+      pitroadContactCount === 0
 
     // Debounce to prevent rapid flickering when on track edges
     if (isCurrentlyOffTrack !== lastOffTrackRef.current) {
@@ -84,7 +88,7 @@ export default function TrackLimitsIndicator() {
         clearTimeout(debounceRef.current)
       }
     }
-  }, [currentSurface, roadContactCount, curbContactCount, setOffTrack])
+  }, [currentSurface, roadContactCount, curbContactCount, pitroadContactCount, setOffTrack])
 
   if (!isLapTimingActive || !isOffTrack) {
     return null

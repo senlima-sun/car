@@ -8,6 +8,7 @@ pub mod engine;
 mod engine_temp;
 mod ers;
 mod surface;
+mod pit_lane;
 mod tires;
 mod track_temperature;
 pub mod types;
@@ -458,6 +459,40 @@ impl PhysicsEngine {
     #[wasm_bindgen]
     pub fn get_surface_modifiers(&self) -> JsValue {
         to_value(&self.inner.get_surface_modifiers()).unwrap_or(JsValue::NULL)
+    }
+
+    // ========================================================================
+    // Pit Lane API
+    // ========================================================================
+
+    #[wasm_bindgen]
+    pub fn set_pit_lane_active(&mut self, active: bool) {
+        self.inner.set_pit_lane_active(active);
+    }
+
+    #[wasm_bindgen]
+    pub fn is_pit_lane_active(&self) -> bool {
+        self.inner.is_pit_lane_active()
+    }
+
+    #[wasm_bindgen]
+    pub fn set_pit_lane_speed_limit(&mut self, kmh: f32) {
+        self.inner.set_pit_lane_speed_limit(kmh);
+    }
+
+    #[wasm_bindgen]
+    pub fn get_pit_lane_speed_limit_kmh(&self) -> f32 {
+        self.inner.get_pit_lane_speed_limit_kmh()
+    }
+
+    #[wasm_bindgen]
+    pub fn is_pit_lane_speed_limited(&self) -> bool {
+        self.inner.is_pit_lane_speed_limited()
+    }
+
+    #[wasm_bindgen]
+    pub fn get_pit_lane_limiter_blend(&self) -> f32 {
+        self.inner.get_pit_lane_limiter_blend()
     }
 
     // ========================================================================

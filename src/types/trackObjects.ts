@@ -1,5 +1,5 @@
-export type ObjectType = 'cone' | 'ramp' | 'checkpoint' | 'barrier' | 'road' | 'curb'
-export type TrackMode = 'straight' | 'curve'
+export type ObjectType = 'cone' | 'ramp' | 'checkpoint' | 'barrier' | 'road' | 'curb' | 'pitbox'
+export type TrackMode = 'straight' | 'curve' | 'pitroad' | 'pitroad-curve'
 export type CheckpointType = 'start-finish' | 'sector'
 
 export interface PlacedObject {
@@ -108,4 +108,12 @@ export interface SlopeAnchor {
 
 export const isLinearObject = (type: ObjectType): boolean => {
   return type === 'barrier' || type === 'road'
+}
+
+export const isPitRoad = (trackMode?: TrackMode): boolean => {
+  return trackMode === 'pitroad' || trackMode === 'pitroad-curve'
+}
+
+export const isCurveMode = (trackMode?: TrackMode): boolean => {
+  return trackMode === 'curve' || trackMode === 'pitroad-curve'
 }

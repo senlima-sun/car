@@ -1,4 +1,5 @@
 import type { PlacedObject } from '../types/trackObjects'
+import { isCurveMode } from '../types/trackObjects'
 
 function sampleRoadPoints(road: PlacedObject, samples: number): { x: number; z: number; y: number }[] {
   if (!road.startPoint || !road.endPoint) return []
@@ -11,7 +12,7 @@ function sampleRoadPoints(road: PlacedObject, samples: number): { x: number; z: 
     const t = i / samples
     const elev = startElev + (endElev - startElev) * t
 
-    if (road.trackMode === 'curve' && road.controlPoint) {
+    if (isCurveMode(road.trackMode) && road.controlPoint) {
       const t1 = 1 - t
       points.push({
         x: t1 * t1 * road.startPoint[0] + 2 * t1 * t * road.controlPoint[0] + t * t * road.endPoint[0],

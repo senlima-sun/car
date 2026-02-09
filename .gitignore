@@ -3,6 +3,9 @@ node_modules
 .claude
 .env
 
+# Local TLS certs
+.certs/
+
 # Build artifacts
 dist/
 dist-dev/

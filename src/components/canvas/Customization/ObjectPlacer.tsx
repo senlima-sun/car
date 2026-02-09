@@ -13,8 +13,9 @@ import {
   RoadEdgeHitResult,
   RoadSurfaceHitResult,
 } from '../../../stores/useCustomizationStore'
+import { isCurveMode } from '../../../types/trackObjects'
 import { useEditorStore } from '../../../stores/useEditorStore'
-import { MIN_SEGMENT_LENGTH } from '../../../constants/trackObjects'
+import { MIN_SEGMENT_LENGTH, PIT_ROAD_WIDTH } from '../../../constants/trackObjects'
 import { calculateSnappedPosition } from '../../../utils/roadSnapping'
 import GhostPreview from './GhostPreview'
 
@@ -91,8 +92,7 @@ export default function ObjectPlacer() {
       if (elevationEditMode) return
       if (!selectedObjectType) return
       if (event.button !== 0) return // Left click only
-      // Curbs use pointer down/up for drag interaction
-      if (selectedObjectType === 'curb') return
+      if (selectedObjectType === 'curb' || selectedObjectType === 'pitbox') return
 
       // Get intersection point
       raycaster.current.setFromCamera(pointer.current, camera)
@@ -121,7 +121,7 @@ export default function ObjectPlacer() {
       }
 
       if (isLinearObject(selectedObjectType)) {
-        if (trackMode === 'curve') {
+        if (isCurveMode(trackMode)) {
           // Curve mode: 3-click workflow
           // 1. First click: set start point
           // 2. Second click: set control point
@@ -206,11 +206,10 @@ export default function ObjectPlacer() {
   // Handle pointer down for curb drag start
   const handlePointerDown = useCallback(
     (event: PointerEvent) => {
-      if (selectedObjectType !== 'curb') return
-      if (event.button !== 0) return // Left button only
+      if (selectedObjectType !== 'curb' && selectedObjectType !== 'pitbox') return
+      if (event.button !== 0) return
       if (placementState !== 'selecting') return
 
-      // Get intersection point
       raycaster.current.setFromCamera(pointer.current, camera)
       const intersectPoint = new Vector3()
       raycaster.current.ray.intersectPlane(groundPlane.current, intersectPoint)
@@ -219,11 +218,19 @@ export default function ObjectPlacer() {
 
       const clickPos: [number, number, number] = [intersectPoint.x, 0, intersectPoint.z]
 
-      // Check if clicking on a road edge
-      const edgeHit = findRoadEdgeAtPosition(clickPos, placedObjects)
-      if (edgeHit) {
-        // Start curb drag
-        startCurbDrag(edgeHit.roadId, edgeHit.road, edgeHit.edge, edgeHit.t, edgeHit.worldPosition)
+      if (selectedObjectType === 'pitbox') {
+        const straightPitroads = placedObjects.filter(
+          o => o.type === 'road' && o.trackMode === 'pitroad',
+        )
+        const edgeHit = findRoadEdgeAtPosition(clickPos, straightPitroads, PIT_ROAD_WIDTH)
+        if (edgeHit) {
+          startCurbDrag(edgeHit.roadId, edgeHit.road, edgeHit.edge, edgeHit.t, edgeHit.worldPosition)
+        }
+      } else {
+        const edgeHit = findRoadEdgeAtPosition(clickPos, placedObjects)
+        if (edgeHit) {
+          startCurbDrag(edgeHit.roadId, edgeHit.road, edgeHit.edge, edgeHit.t, edgeHit.worldPosition)
+        }
       }
     },
     [selectedObjectType, placementState, camera, placedObjects, startCurbDrag],
@@ -232,11 +239,10 @@ export default function ObjectPlacer() {
   // Handle pointer up for curb drag end
   const handlePointerUp = useCallback(
     (event: PointerEvent) => {
-      if (selectedObjectType !== 'curb') return
+      if (selectedObjectType !== 'curb' && selectedObjectType !== 'pitbox') return
       if (event.button !== 0) return
 
       if (placementState === 'curbDragging') {
-        // Confirm curb placement
         confirmCurbPlacement()
       }
     },
@@ -440,24 +446,38 @@ export default function ObjectPlacer() {
         setCurrentRoadEdge(roadEdge)
       }
 
-      // For curbs, handle edge detection and drag updates
       if (selectedObjectType === 'curb') {
         if (placementState === 'selecting') {
-          // Hovering - detect road edge for preview
           const edgeHit = findRoadEdgeAtPosition(previewPos, placedObjects)
           setCurrentCurbEdge(edgeHit)
         } else if (placementState === 'curbDragging' && curbDragState) {
-          // Dragging - update curb end position on same road edge
           const edgeHit = findRoadEdgeAtPosition(previewPos, placedObjects)
           if (
             edgeHit &&
             edgeHit.roadId === curbDragState.roadId &&
             edgeHit.edge === curbDragState.edge
           ) {
-            // On same road edge - update drag position
             updateCurbDrag(edgeHit.t, edgeHit.worldPosition)
           }
-          // If not on same edge, keep the previous position (don't update)
+        }
+      }
+
+      if (selectedObjectType === 'pitbox') {
+        const straightPitroads = placedObjects.filter(
+          o => o.type === 'road' && o.trackMode === 'pitroad',
+        )
+        if (placementState === 'selecting') {
+          const edgeHit = findRoadEdgeAtPosition(previewPos, straightPitroads, PIT_ROAD_WIDTH)
+          setCurrentCurbEdge(edgeHit)
+        } else if (placementState === 'curbDragging' && curbDragState) {
+          const edgeHit = findRoadEdgeAtPosition(previewPos, straightPitroads, PIT_ROAD_WIDTH)
+          if (
+            edgeHit &&
+            edgeHit.roadId === curbDragState.roadId &&
+            edgeHit.edge === curbDragState.edge
+          ) {
+            updateCurbDrag(edgeHit.t, edgeHit.worldPosition)
+          }
         }
       }
 

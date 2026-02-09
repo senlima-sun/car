@@ -59,7 +59,7 @@ export default function TrackSettings() {
 
   return (
     <div style={styles.container}>
-      {/* Straight / Curve Toggle */}
+      {/* Road Type Toggle */}
       <div style={styles.segmentedControl}>
         <button
           style={{
@@ -78,6 +78,26 @@ export default function TrackSettings() {
           onClick={() => setTrackMode('curve')}
         >
           Curve
+        </button>
+        <button
+          style={{
+            ...styles.segment,
+            ...(trackMode === 'pitroad' ? { ...styles.segmentActive, color: '#ff6600', background: 'rgba(255, 102, 0, 0.2)' } : {}),
+          }}
+          onClick={() => setTrackMode('pitroad')}
+          title='Pit lane road (speed limited)'
+        >
+          Pit
+        </button>
+        <button
+          style={{
+            ...styles.segment,
+            ...(trackMode === 'pitroad-curve' ? { ...styles.segmentActive, color: '#ff6600', background: 'rgba(255, 102, 0, 0.2)' } : {}),
+          }}
+          onClick={() => setTrackMode('pitroad-curve')}
+          title='Curved pit lane road'
+        >
+          Pit&#8635;
         </button>
       </div>
 

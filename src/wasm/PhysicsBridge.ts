@@ -960,6 +960,54 @@ export function getRubberDepositMultiplier(): number {
 }
 
 // ============================================================================
+// Pit Lane API
+// ============================================================================
+
+/**
+ * Set pit lane active state
+ * @param active - Whether the car is in the pit lane
+ */
+export function setPitLaneActive(active: boolean): void {
+  getPhysicsEngine().set_pit_lane_active(active)
+}
+
+/**
+ * Check if the car is currently in the pit lane
+ */
+export function isPitLaneActive(): boolean {
+  return getPhysicsEngine().is_pit_lane_active()
+}
+
+/**
+ * Set pit lane speed limit
+ * @param kmh - Speed limit in km/h
+ */
+export function setPitLaneSpeedLimit(kmh: number): void {
+  getPhysicsEngine().set_pit_lane_speed_limit(kmh)
+}
+
+/**
+ * Get pit lane speed limit in km/h
+ */
+export function getPitLaneSpeedLimitKmh(): number {
+  return getPhysicsEngine().get_pit_lane_speed_limit_kmh()
+}
+
+/**
+ * Check if the pit lane speed limiter is currently active
+ */
+export function isPitLaneSpeedLimited(): boolean {
+  return getPhysicsEngine().is_pit_lane_speed_limited()
+}
+
+/**
+ * Get pit lane limiter blend factor (0.0 = no limit, 1.0 = fully limited)
+ */
+export function getPitLaneLimiterBlend(): number {
+  return getPhysicsEngine().get_pit_lane_limiter_blend()
+}
+
+// ============================================================================
 // Default Input Factory
 // ============================================================================
 

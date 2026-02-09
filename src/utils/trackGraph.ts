@@ -1,5 +1,5 @@
 import type { PlacedObject } from '../types/trackObjects'
-import { isLinearObject } from '../types/trackObjects'
+import { isLinearObject, isCurveMode } from '../types/trackObjects'
 import type { GraphNode, GraphEdge, TrackGraph, CircuitResult } from '../types/trackGraph'
 import { positionKey } from '../types/trackGraph'
 
@@ -55,7 +55,7 @@ const findMatchingNodeKey = (
 export const getRoadLength = (road: PlacedObject): number => {
   if (!road.startPoint || !road.endPoint) return 0
 
-  if (road.trackMode === 'curve' && road.controlPoint) {
+  if (isCurveMode(road.trackMode) && road.controlPoint) {
     return approximateCurveLength(road.startPoint, road.controlPoint, road.endPoint)
   }
 

@@ -1,5 +1,6 @@
 import { isLinearObject } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
+import { isCurveMode } from '../../../types/trackObjects'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -103,7 +104,7 @@ export default function ContextHint() {
     }
 
     // Linear objects (road, barrier)
-    if (trackMode === 'curve') {
+    if (isCurveMode(trackMode)) {
       switch (placementState) {
         case 'selecting':
           return { step: '1.', text: 'Click to set START point' }

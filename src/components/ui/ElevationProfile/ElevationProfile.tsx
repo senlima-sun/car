@@ -2,6 +2,7 @@ import { useEffect, useRef, useMemo, useState } from 'react'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
 import type { PlacedObject } from '../../../types/trackObjects'
+import { isCurveMode } from '../../../types/trackObjects'
 
 const CANVAS_WIDTH = 400
 const CANVAS_HEIGHT = 120
@@ -47,7 +48,7 @@ function buildElevationProfile(placedObjects: PlacedObject[]): { distance: numbe
       : (currentRoad.startElevation ?? 0)
 
     let length: number
-    if (currentRoad.trackMode === 'curve' && currentRoad.controlPoint && currentRoad.startPoint && currentRoad.endPoint) {
+    if (isCurveMode(currentRoad.trackMode) && currentRoad.controlPoint && currentRoad.startPoint && currentRoad.endPoint) {
       let arcLen = 0
       let px = currentRoad.startPoint[0], pz = currentRoad.startPoint[2]
       for (let i = 1; i <= 20; i++) {

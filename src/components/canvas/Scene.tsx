@@ -13,10 +13,8 @@ import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
 import { ObjectPlacer, GhostPreview, PlacedObjectsRenderer, ValidationOverlay, ElevationGrid, ElevationHandles } from './Customization'
 import TerrainMesh from './Track/TerrainMesh'
-import PitLane from './TrackObjects/PitLane'
 import StartGrid from './TrackObjects/StartGrid'
 import { useGameStore } from '@/stores/useGameStore'
-import { usePitStore } from '@/stores/usePitStore'
 import { useEditorStore } from '@/stores/useEditorStore'
 
 function Ground() {
@@ -79,7 +77,6 @@ export default function Scene() {
   const carRef = useRef<Group>(null)
   const status = useGameStore(state => state.status)
   const isCustomizeMode = status === 'customize'
-  const pitLaneData = usePitStore(s => s.pitLaneData)
   const elevationEditMode = useEditorStore(s => s.elevationEditMode)
 
   return (
@@ -95,9 +92,6 @@ export default function Scene() {
 
       {/* Start grid behind start-finish line */}
       <StartGrid />
-
-      {/* Pit lane (generated from checkpoint) */}
-      {pitLaneData && <PitLane data={pitLaneData} />}
 
       {isCustomizeMode && (
         <>

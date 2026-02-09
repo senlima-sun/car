@@ -11478,6 +11478,238 @@
       "checkpointType": "sector",
       "checkpointOrder": 2,
       "width": 12
+    },
+    {
+      "id": "pitroad_entry_curve",
+      "type": "road",
+      "position": [
+        -468.8599,
+        0,
+        -406.53
+      ],
+      "rotation": 0,
+      "startPoint": [
+        -485.7955,
+        0,
+        -418.0475
+      ],
+      "endPoint": [
+        -451.9243,
+        0,
+        -395.0126
+      ],
+      "controlPoint": [
+        -464.8044,
+        0,
+        -409.4545
+      ],
+      "trackMode": "pitroad-curve",
+      "startLeftEdge": [
+        -489.0399,
+        0,
+        -415.7079
+      ],
+      "startRightEdge": [
+        -482.5511,
+        0,
+        -420.3871
+      ],
+      "endLeftEdge": [
+        -455.1687,
+        0,
+        -392.673
+      ],
+      "endRightEdge": [
+        -448.6799,
+        0,
+        -397.3522
+      ],
+      "width": 8
+    },
+    {
+      "id": "pitroad_0",
+      "type": "road",
+      "position": [
+        -438.8599,
+        0,
+        -376.8957
+      ],
+      "rotation": 0,
+      "startPoint": [
+        -451.9243,
+        0,
+        -395.0126
+      ],
+      "endPoint": [
+        -425.7955,
+        0,
+        -358.7789
+      ],
+      "trackMode": "pitroad",
+      "startLeftEdge": [
+        -455.1687,
+        0,
+        -392.673
+      ],
+      "startRightEdge": [
+        -448.6799,
+        0,
+        -397.3522
+      ],
+      "endLeftEdge": [
+        -429.0399,
+        0,
+        -356.4393
+      ],
+      "endRightEdge": [
+        -422.5511,
+        0,
+        -361.1185
+      ],
+      "width": 8
+    },
+    {
+      "id": "pitroad_1",
+      "type": "road",
+      "position": [
+        -412.7311,
+        0,
+        -340.6621
+      ],
+      "rotation": 0,
+      "startPoint": [
+        -425.7955,
+        0,
+        -358.7789
+      ],
+      "endPoint": [
+        -399.6667,
+        0,
+        -322.5452
+      ],
+      "trackMode": "pitroad",
+      "startLeftEdge": [
+        -429.0399,
+        0,
+        -356.4393
+      ],
+      "startRightEdge": [
+        -422.5511,
+        0,
+        -361.1185
+      ],
+      "endLeftEdge": [
+        -402.9111,
+        0,
+        -320.2056
+      ],
+      "endRightEdge": [
+        -396.4223,
+        0,
+        -324.8848
+      ],
+      "width": 8
+    },
+    {
+      "id": "pitroad_2",
+      "type": "road",
+      "position": [
+        -386.6023,
+        0,
+        -304.4284
+      ],
+      "rotation": 0,
+      "startPoint": [
+        -399.6667,
+        0,
+        -322.5452
+      ],
+      "endPoint": [
+        -373.5379,
+        0,
+        -286.3116
+      ],
+      "trackMode": "pitroad",
+      "startLeftEdge": [
+        -402.9111,
+        0,
+        -320.2056
+      ],
+      "startRightEdge": [
+        -396.4223,
+        0,
+        -324.8848
+      ],
+      "endLeftEdge": [
+        -376.7823,
+        0,
+        -283.972
+      ],
+      "endRightEdge": [
+        -370.2935,
+        0,
+        -288.6512
+      ],
+      "width": 8
+    },
+    {
+      "id": "pitroad_exit_curve",
+      "type": "road",
+      "position": [
+        -367.9551,
+        0,
+        -266.6019
+      ],
+      "rotation": 0,
+      "startPoint": [
+        -373.5379,
+        0,
+        -286.3116
+      ],
+      "endPoint": [
+        -362.3722,
+        0,
+        -246.8923
+      ],
+      "controlPoint": [
+        -363.8996,
+        0,
+        -269.5264
+      ],
+      "trackMode": "pitroad-curve",
+      "startLeftEdge": [
+        -376.7823,
+        0,
+        -283.972
+      ],
+      "startRightEdge": [
+        -370.2935,
+        0,
+        -288.6512
+      ],
+      "endLeftEdge": [
+        -365.6166,
+        0,
+        -244.5527
+      ],
+      "endRightEdge": [
+        -359.1278,
+        0,
+        -249.2319
+      ],
+      "width": 8
+    },
+    {
+      "id": "pitbox_0",
+      "type": "pitbox",
+      "position": [
+        -406.2423,
+        0,
+        -345.3413
+      ],
+      "rotation": 0.6248,
+      "parentRoadId": "pitroad_1",
+      "edgeSide": "right"
     }
   ]
 }

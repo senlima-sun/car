@@ -1,4 +1,5 @@
 import { PlacedObject } from '../stores/useCustomizationStore'
+import { isCurveMode } from '../types/trackObjects'
 
 // Constants for curb positioning along road (parametric t values 0-1)
 export const CURB_POSITIONS = {
@@ -19,7 +20,7 @@ const generateId = () => `curb_${Date.now()}_${Math.random().toString(36).substr
  * Returns 'left' if turning left, 'right' if turning right, null if not a curve
  */
 export function getTurnDirection(road: PlacedObject): 'left' | 'right' | null {
-  if (road.trackMode !== 'curve' || !road.controlPoint || !road.startPoint || !road.endPoint) {
+  if (!isCurveMode(road.trackMode) || !road.controlPoint || !road.startPoint || !road.endPoint) {
     return null
   }
 
@@ -143,7 +144,7 @@ export function generateCurbsForRoads(
   const processedStraights = new Set<string>()
 
   for (const road of roads) {
-    if (road.trackMode === 'curve') {
+    if (isCurveMode(road.trackMode)) {
       // 1. Determine turn direction
       const turnDir = getTurnDirection(road)
       if (!turnDir) continue

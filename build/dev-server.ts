@@ -4,6 +4,10 @@ import { mkdirSync, existsSync } from 'fs'
 import tailwind from 'bun-plugin-tailwind'
 
 const PORT = 3000
+const ROOT_DIR = join(import.meta.dir, '..')
+const CERT_PATH = join(ROOT_DIR, '.certs', 'cert.pem')
+const KEY_PATH = join(ROOT_DIR, '.certs', 'key.pem')
+const HAS_TLS = existsSync(CERT_PATH) && existsSync(KEY_PATH)
 
 // Ensure dist-dev directory exists
 if (!existsSync('./dist-dev')) {
@@ -50,7 +54,7 @@ async function buildApp(): Promise<boolean> {
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>3D Car Racing Game - Dev</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />${
       cssFileName
@@ -133,24 +137,12 @@ const srcWatcher = watch('./src', { recursive: true }, (event, filename) => {
 
 console.log('\x1b[33m[watch]\x1b[0m Watching src/ for changes...')
 
-interface WsData {
-  roomId: string | null
-}
-
-const signalingRooms = new Map<string, Set<WebSocket>>()
-
-// @ts-ignore
-const server = Bun.serve<WsData>({
+const server = Bun.serve({
   port: PORT,
-  async fetch(req, server) {
+  ...(HAS_TLS ? { tls: { cert: Bun.file(CERT_PATH), key: Bun.file(KEY_PATH) } } : {}),
+  async fetch(req) {
     const url = new URL(req.url)
     let pathname = url.pathname
-
-    if (pathname === '/ws') {
-      const upgraded = server.upgrade(req, { data: { roomId: null } })
-      if (!upgraded) return new Response('WebSocket upgrade failed', { status: 400 })
-      return undefined
-    }
 
     // Handle root
     if (pathname === '/') {
@@ -202,10 +194,10 @@ const server = Bun.serve<WsData>({
       }
     }
 
-    // SPA fallback - return index.html
-    const indexFile = Bun.file('./dist-dev/index.html')
-    if (await indexFile.exists()) {
-      return new Response(indexFile, {
+    // SPA fallback
+    const fallbackFile = Bun.file('./dist-dev/index.html')
+    if (await fallbackFile.exists()) {
+      return new Response(fallbackFile, {
         headers: {
           'Content-Type': 'text/html',
           'Cache-Control': 'no-cache',
@@ -215,43 +207,25 @@ const server = Bun.serve<WsData>({
 
     return new Response('Not Found', { status: 404 })
   },
-  websocket: {
-    open() {},
-    message(ws: any, message: any) {
-      try {
-        const data = JSON.parse(typeof message === 'string' ? message : new TextDecoder().decode(message))
-        if (data.type === 'join' && data.roomId) {
-          ws.data.roomId = data.roomId
-          if (!signalingRooms.has(data.roomId)) signalingRooms.set(data.roomId, new Set())
-          const room = signalingRooms.get(data.roomId)!
-          for (const peer of room) peer.send(JSON.stringify({ type: 'peer-joined', roomId: data.roomId }))
-          room.add(ws)
-          return
-        }
-        const roomId = ws.data.roomId
-        if (!roomId) return
-        const room = signalingRooms.get(roomId)
-        if (!room) return
-        const msgStr = typeof message === 'string' ? message : new TextDecoder().decode(message)
-        for (const peer of room) {
-          if (peer !== ws) peer.send(msgStr)
-        }
-      } catch {}
-    },
-    close(ws: any) {
-      const roomId = ws.data.roomId
-      if (!roomId) return
-      const room = signalingRooms.get(roomId)
-      if (!room) return
-      room.delete(ws)
-      for (const peer of room) peer.send(JSON.stringify({ type: 'leave', roomId }))
-      if (room.size === 0) signalingRooms.delete(roomId)
-    },
-  },
 })
 
+const protocol = HAS_TLS ? 'https' : 'http'
+const localIp = (() => {
+  try {
+    const { networkInterfaces } = require('os')
+    const nets = networkInterfaces()
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) return net.address
+      }
+    }
+  } catch {}
+  return null
+})()
+
 console.log(`
-\x1b[32m  Dev server running at:\x1b[0m http://localhost:${PORT}
+\x1b[32m  Dev server running at:\x1b[0m
+    ${protocol}://localhost:${PORT}${localIp ? `\n    ${protocol}://${localIp}:${PORT}` : ''}
 
   \x1b[90mChanges to src/ will trigger automatic rebuilds.
   Refresh the browser to see changes.\x1b[0m

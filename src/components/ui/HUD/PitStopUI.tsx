@@ -2,6 +2,7 @@ import { usePitStore } from '../../../stores/usePitStore'
 import { useTireStore } from '../../../stores/useTireStore'
 import { useCarStore } from '../../../stores/useCarStore'
 import { TireCompound, TIRE_CONFIG, TIRE_ORDER } from '../../../constants/tires'
+import { getErsBatteryCharge, setErsBatteryCharge } from '../../../wasm/PhysicsBridge'
 
 const styles: Record<string, React.CSSProperties> = {
   overlay: {
@@ -152,13 +153,102 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(239, 68, 68, 0.1)',
     borderRadius: 6,
   },
+  ersSection: {
+    marginBottom: 20,
+    padding: 14,
+    background: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 8,
+  },
+  ersSectionLabel: {
+    color: '#ff6600',
+    fontSize: 13,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  ersLevelRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  ersLevelLabel: {
+    color: '#888',
+    fontSize: 12,
+  },
+  ersLevelValue: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  ersBarTrack: {
+    width: '100%',
+    height: 6,
+    background: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 3,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  ersBarFill: {
+    height: '100%',
+    borderRadius: 3,
+    transition: 'width 0.3s ease',
+  },
+  ersToggle: {
+    width: '100%',
+    padding: '10px 14px',
+    border: '2px solid transparent',
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    textAlign: 'center',
+  },
+  ersToggleOff: {
+    background: 'rgba(255, 255, 255, 0.1)',
+    color: '#aaa',
+    borderColor: 'transparent',
+  },
+  ersToggleOn: {
+    background: 'rgba(255, 102, 0, 0.2)',
+    color: '#ff6600',
+    borderColor: '#ff6600',
+  },
+  summarySection: {
+    background: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  summaryLabel: {
+    color: '#888',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  summaryItem: {
+    color: '#fff',
+    fontSize: 13,
+    marginBottom: 4,
+  },
+}
+
+function getErsBarColor(charge: number): string {
+  if (charge > 0.5) return '#22c55e'
+  if (charge > 0.2) return '#eab308'
+  return '#ef4444'
 }
 
 export default function PitStopUI() {
   const isPitStopActive = usePitStore(s => s.isPitStopActive)
   const selectedNewTire = usePitStore(s => s.selectedNewTire)
+  const ersChargeSelected = usePitStore(s => s.ersChargeSelected)
   const pitStopSpeedThreshold = usePitStore(s => s.pitStopSpeedThreshold)
   const selectTire = usePitStore(s => s.selectTire)
+  const toggleErsCharge = usePitStore(s => s.toggleErsCharge)
   const completePitStop = usePitStore(s => s.completePitStop)
   const cancelPitStop = usePitStore(s => s.cancelPitStop)
 
@@ -168,21 +258,32 @@ export default function PitStopUI() {
   const resetWear = useTireStore(s => s.resetWear)
 
   const speed = useCarStore(s => s.speed)
-  const speedMs = speed / 3.6 // Convert km/h to m/s
+  const speedMs = speed / 3.6
 
-  // Only show when pit stop is active
   if (!isPitStopActive) return null
 
-  const canChangeTires = speedMs < pitStopSpeedThreshold
+  let currentErsCharge = 0
+  try {
+    currentErsCharge = getErsBatteryCharge()
+  } catch {
+    currentErsCharge = 0
+  }
+
+  const ersPercent = Math.round(currentErsCharge * 100)
+  const canPerformPitStop = speedMs < pitStopSpeedThreshold
+  const hasSelection = selectedNewTire || ersChargeSelected
+  const canConfirm = canPerformPitStop && hasSelection
 
   const handleConfirm = () => {
-    if (!selectedNewTire || !canChangeTires) return
+    if (!canConfirm) return
 
-    // Complete pit stop
-    const newTire = completePitStop()
-    if (newTire) {
-      setTireCompound(newTire)
+    const result = completePitStop()
+    if (result.tire) {
+      setTireCompound(result.tire)
       resetWear()
+    }
+    if (result.ersCharge) {
+      setErsBatteryCharge(1.0)
     }
   }
 
@@ -196,12 +297,13 @@ export default function PitStopUI() {
   return (
     <div style={styles.overlay}>
       <div style={styles.panel}>
-        <div style={styles.title}>PIT STOP</div>
-        <div style={styles.subtitle}>Select new tire compound</div>
+        <div style={styles.title as React.CSSProperties}>PIT STOP</div>
+        <div style={styles.subtitle as React.CSSProperties}>Select services</div>
 
-        {!canChangeTires && <div style={styles.speedWarning}>STOP THE CAR TO CHANGE TIRES</div>}
+        {!canPerformPitStop && (
+          <div style={styles.speedWarning}>STOP THE CAR TO PERFORM PIT STOP</div>
+        )}
 
-        {/* Current tire info */}
         <div style={styles.currentTireInfo}>
           <div>
             <div style={styles.currentLabel}>Current</div>
@@ -211,7 +313,7 @@ export default function PitStopUI() {
             </div>
           </div>
           {selectedConfig && (
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ textAlign: 'right' as const }}>
               <div style={styles.currentLabel}>New</div>
               <div style={styles.currentValue}>
                 <span style={{ color: selectedConfig.color }}>{selectedConfig.icon}</span>{' '}
@@ -221,7 +323,6 @@ export default function PitStopUI() {
           )}
         </div>
 
-        {/* Tire selection grid */}
         <div style={styles.tireGrid}>
           {TIRE_ORDER.map(compound => {
             const config = TIRE_CONFIG[compound]
@@ -250,7 +351,49 @@ export default function PitStopUI() {
           })}
         </div>
 
-        {/* Action buttons */}
+        <div style={styles.ersSection}>
+          <div style={styles.ersSectionLabel as React.CSSProperties}>Energy Recovery System</div>
+          <div style={styles.ersLevelRow}>
+            <div style={styles.ersLevelLabel}>Current ERS Level</div>
+            <div style={styles.ersLevelValue}>{ersPercent}%</div>
+          </div>
+          <div style={styles.ersBarTrack}>
+            <div
+              style={{
+                ...styles.ersBarFill,
+                width: `${ersPercent}%`,
+                background: getErsBarColor(currentErsCharge),
+              }}
+            />
+          </div>
+          <button
+            style={{
+              ...styles.ersToggle,
+              ...(ersChargeSelected ? styles.ersToggleOn : styles.ersToggleOff),
+            } as React.CSSProperties}
+            onClick={toggleErsCharge}
+          >
+            {ersChargeSelected ? 'ERS Charge to 100% - SELECTED' : 'Charge ERS to 100%'}
+          </button>
+        </div>
+
+        {hasSelection && (
+          <div style={styles.summarySection}>
+            <div style={styles.summaryLabel as React.CSSProperties}>Pit Stop Summary</div>
+            {selectedConfig && (
+              <div style={styles.summaryItem}>
+                Tires: <span style={{ color: selectedConfig.color }}>{selectedConfig.icon}</span>{' '}
+                {selectedConfig.displayName}
+              </div>
+            )}
+            {ersChargeSelected && (
+              <div style={styles.summaryItem}>
+                ERS: Charge {ersPercent}% <span style={{ color: '#ff6600' }}>-&gt;</span> 100%
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={styles.actionRow}>
           <button style={styles.cancelButton} onClick={cancelPitStop}>
             Cancel
@@ -258,18 +401,16 @@ export default function PitStopUI() {
           <button
             style={{
               ...styles.confirmButton,
-              ...(selectedNewTire && canChangeTires
-                ? styles.confirmButtonEnabled
-                : styles.confirmButtonDisabled),
+              ...(canConfirm ? styles.confirmButtonEnabled : styles.confirmButtonDisabled),
             }}
             onClick={handleConfirm}
-            disabled={!selectedNewTire || !canChangeTires}
+            disabled={!canConfirm}
           >
-            Change Tires
+            Confirm Pit Stop
           </button>
         </div>
 
-        <div style={styles.hint}>Press ESC to cancel</div>
+        <div style={styles.hint as React.CSSProperties}>Press ESC to cancel</div>
       </div>
     </div>
   )

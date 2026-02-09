@@ -770,6 +770,7 @@ pub enum SurfaceType {
     Grass,
     Road,
     Curb,
+    PitRoad,
 }
 
 /// Modifiers applied based on surface type
@@ -832,11 +833,24 @@ impl SurfaceModifiers {
         }
     }
 
+    /// Pit road surface - same grip as road
+    pub fn pitroad() -> Self {
+        Self {
+            grip_multiplier: 1.0,
+            speed_multiplier: 1.0,
+            tire_wear_multiplier: 1.0,
+            drag_multiplier: 1.0,
+            brake_efficiency: 1.0,
+            steer_response: 1.0,
+        }
+    }
+
     pub fn for_surface(surface: SurfaceType) -> Self {
         match surface {
             SurfaceType::Grass => Self::grass(),
             SurfaceType::Road => Self::road(),
             SurfaceType::Curb => Self::curb(),
+            SurfaceType::PitRoad => Self::pitroad(),
         }
     }
 }

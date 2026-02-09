@@ -1,5 +1,5 @@
 import type { PlacedObject, SnapPointWithDirection, RoadEdgeResult, RoadEdgeHitResult, RoadSurfaceHitResult } from '../types/trackObjects'
-import { isLinearObject } from '../types/trackObjects'
+import { isLinearObject, isCurveMode } from '../types/trackObjects'
 import { getOutwardTangent } from './roadSnapping'
 
 const SNAP_THRESHOLD = 5
@@ -100,7 +100,7 @@ export const findRoadAtPosition = (
       continue
     }
 
-    if (obj.trackMode === 'curve' && obj.controlPoint) {
+    if (isCurveMode(obj.trackMode) && obj.controlPoint) {
       const SAMPLES = 32
       let bestDist = halfWidth
       let bestResult: RoadEdgeResult | null = null
@@ -279,7 +279,7 @@ export const findRoadEdgeAtPosition = (
       continue
     }
 
-    if (obj.trackMode === 'curve' && obj.controlPoint) {
+    if (isCurveMode(obj.trackMode) && obj.controlPoint) {
       const result = findCurvedRoadEdge(obj, pos, halfWidth, edgeThreshold)
       if (result) return result
     } else {
@@ -352,7 +352,7 @@ export const getRoadEdgePositionAt = (
   t: number,
   halfWidth: number = 8,
 ): [number, number, number] => {
-  if (road.trackMode === 'curve' && road.controlPoint && road.startPoint && road.endPoint) {
+  if (isCurveMode(road.trackMode) && road.controlPoint && road.startPoint && road.endPoint) {
     const t1 = 1 - t
     const curveX =
       t1 * t1 * road.startPoint[0] + 2 * t1 * t * road.controlPoint[0] + t * t * road.endPoint[0]
@@ -448,7 +448,7 @@ export const findRoadSurfaceAtPosition = (
       continue
     }
 
-    if (obj.trackMode === 'curve' && obj.controlPoint) {
+    if (isCurveMode(obj.trackMode) && obj.controlPoint) {
       const result = findCurvedRoadSurface(obj, pos, halfWidth)
       if (result) return result
     } else {
@@ -499,7 +499,7 @@ export const getRoadCenterPositionAt = (
 
   const elevY = getElevationAtT(road, t)
 
-  if (road.trackMode === 'curve' && road.controlPoint) {
+  if (isCurveMode(road.trackMode) && road.controlPoint) {
     const t1 = 1 - t
     return [
       t1 * t1 * road.startPoint[0] + 2 * t1 * t * road.controlPoint[0] + t * t * road.endPoint[0],
@@ -580,7 +580,7 @@ export const splitRoadAtSegment = (
   const startT = Math.min(deleteStartT, deleteEndT)
   const endT = Math.max(deleteStartT, deleteEndT)
 
-  if (road.trackMode === 'curve' && road.controlPoint) {
+  if (isCurveMode(road.trackMode) && road.controlPoint) {
     if (startT > MIN_T_THRESHOLD) {
       const segment = subdivideBezier(road.startPoint, road.controlPoint, road.endPoint, 0, startT)
       results.push({
@@ -674,7 +674,7 @@ export const getElevationAtWorldPosition = (
   for (const obj of placedObjects) {
     if (obj.type !== 'road' || !obj.startPoint || !obj.endPoint) continue
 
-    if (obj.trackMode === 'curve' && obj.controlPoint) {
+    if (isCurveMode(obj.trackMode) && obj.controlPoint) {
       const SAMPLES = 16
       let bestDist = halfWidth
       let bestT = -1

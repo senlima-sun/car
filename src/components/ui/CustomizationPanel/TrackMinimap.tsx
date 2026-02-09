@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo } from 'react'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useCarStore } from '../../../stores/useCarStore'
+import { isCurveMode } from '../../../types/trackObjects'
 
 const MINIMAP_SIZE = 200
 const PADDING = 15
@@ -78,7 +79,7 @@ export default function TrackMinimap() {
 
       ctx.lineWidth = 2.5
 
-      if (road.trackMode === 'curve' && road.controlPoint) {
+      if (isCurveMode(road.trackMode) && road.controlPoint) {
         const sx = toScreenX(road.startPoint![0])
         const sz = toScreenZ(road.startPoint![2])
         const cpx = toScreenX(road.controlPoint[0])
@@ -104,7 +105,7 @@ export default function TrackMinimap() {
         const isForward = road.flowDirection === 'forward'
         let mx: number, mz: number, dx: number, dz: number
 
-        if (road.trackMode === 'curve' && road.controlPoint) {
+        if (isCurveMode(road.trackMode) && road.controlPoint) {
           const t = 0.5
           const s0x = road.startPoint![0]
           const s0z = road.startPoint![2]
