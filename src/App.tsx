@@ -9,8 +9,11 @@ import LoadingFallback from './components/ui/LoadingFallback'
 import { PhysicsProvider } from './wasm'
 import { keyboardMap } from './constants/controls'
 import { usePhysicsDebugStore } from './stores/usePhysicsDebugStore'
+import { ControllerApp } from './components/controller/ControllerApp'
 
-export default function App() {
+const isControllerPage = window.location.pathname === '/controller'
+
+function GameApp() {
   const physicsDebug = usePhysicsDebugStore(s => s.enabled)
   return (
     <PhysicsProvider fallback={<LoadingFallback />}>
@@ -23,10 +26,14 @@ export default function App() {
               </Physics>
             </Suspense>
           </Canvas>
-          {/* HUD overlay (outside Canvas) */}
           <HUD />
         </div>
       </KeyboardControls>
     </PhysicsProvider>
   )
+}
+
+export default function App() {
+  if (isControllerPage) return <ControllerApp />
+  return <GameApp />
 }
