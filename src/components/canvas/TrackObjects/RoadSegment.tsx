@@ -77,6 +77,65 @@ export default function RoadSegment({
 
   const dashCount = Math.max(1, Math.floor(length / 3))
 
+  const dashGeometry = useMemo(() => {
+    const geo = new BufferGeometry()
+    const dashW = 0.15
+    const dashLen = (length / dashCount) * 0.6
+    const vertices: number[] = []
+    const indices: number[] = []
+    const hw = dashW / 2
+    const hl = dashLen / 2
+
+    for (let i = 0; i < dashCount; i++) {
+      const t = (i + 0.5) / dashCount
+      const dashY = (startElev - midElev) + (endElev - startElev) * t + 0.015
+      const dashZ = -length / 2 + (i + 0.5) * (length / dashCount)
+      const base = i * 4
+
+      vertices.push(-hw, dashY, dashZ - hl)
+      vertices.push(hw, dashY, dashZ - hl)
+      vertices.push(-hw, dashY, dashZ + hl)
+      vertices.push(hw, dashY, dashZ + hl)
+
+      indices.push(base, base + 2, base + 1, base + 1, base + 2, base + 3)
+    }
+
+    geo.setAttribute('position', new Float32BufferAttribute(vertices, 3))
+    geo.setIndex(indices)
+    geo.computeVertexNormals()
+    return geo
+  }, [dashCount, length, startElev, endElev, midElev])
+
+  const { leftEdgeGeometry, rightEdgeGeometry } = useMemo(() => {
+    const halfW = width / 2
+    const edgeWidth = 0.2
+    const edgeOffset = halfW - edgeWidth / 2
+    const hl = length / 2
+    const startY = (startElev - midElev) + 0.012
+    const endY = (endElev - midElev) + 0.012
+
+    const createEdgeGeo = (sign: number) => {
+      const geo = new BufferGeometry()
+      const inner = sign * (edgeOffset - edgeWidth / 2)
+      const outer = sign * (edgeOffset + edgeWidth / 2)
+      const vertices = new Float32Array([
+        inner, startY, -hl,
+        outer, startY, -hl,
+        inner, endY, hl,
+        outer, endY, hl,
+      ])
+      geo.setAttribute('position', new Float32BufferAttribute(vertices, 3))
+      geo.setIndex([0, 2, 1, 1, 2, 3])
+      geo.computeVertexNormals()
+      return geo
+    }
+
+    return {
+      leftEdgeGeometry: createEdgeGeo(-1),
+      rightEdgeGeometry: createEdgeGeo(1),
+    }
+  }, [width, length, startElev, endElev, midElev])
+
   const slopeGeometry = useMemo(() => {
     const geo = new BufferGeometry()
     const hw = width / 2
@@ -194,35 +253,46 @@ export default function RoadSegment({
 
   const roadVisuals = (
     <>
-      <mesh geometry={slopeGeometry} receiveShadow={!isGhost} castShadow={!isGhost}>
+      <mesh geometry={slopeGeometry} receiveShadow={!isGhost}>
         <meshStandardMaterial
           color={config.color}
           transparent={isGhost}
           opacity={isGhost ? GHOST_OPACITY : 1}
           depthWrite={!isGhost}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
         />
       </mesh>
 
-      {Array.from({ length: dashCount }).map((_, i) => {
-        const t = (i + 0.5) / dashCount
-        const dashY = (startElev - midElev) + (endElev - startElev) * t + 0.015
-        const dashZ = -length / 2 + (i + 0.5) * (length / dashCount)
-        return (
-          <mesh
-            key={i}
-            position={[0, dashY, dashZ]}
-            rotation={[-Math.PI / 2, 0, 0]}
-          >
-            <planeGeometry args={[0.15, (length / dashCount) * 0.6]} />
-            <meshStandardMaterial
-              color='#ffcc00'
-              transparent={isGhost}
-              opacity={isGhost ? GHOST_OPACITY : 1}
-              depthWrite={!isGhost}
-            />
-          </mesh>
-        )
-      })}
+      <mesh geometry={leftEdgeGeometry}>
+        <meshStandardMaterial
+          color='#ffffff'
+          transparent={isGhost}
+          opacity={isGhost ? GHOST_OPACITY : 1}
+          depthWrite={!isGhost}
+          side={2}
+        />
+      </mesh>
+
+      <mesh geometry={rightEdgeGeometry}>
+        <meshStandardMaterial
+          color='#ffffff'
+          transparent={isGhost}
+          opacity={isGhost ? GHOST_OPACITY : 1}
+          depthWrite={!isGhost}
+          side={2}
+        />
+      </mesh>
+
+      <mesh geometry={dashGeometry}>
+        <meshStandardMaterial
+          color='#ffcc00'
+          transparent={isGhost}
+          opacity={isGhost ? GHOST_OPACITY : 1}
+          depthWrite={!isGhost}
+        />
+      </mesh>
 
       {isSelectedForCurb && (
         <mesh position={[0, (startElev + endElev) / 2 - midElev + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
