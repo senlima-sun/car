@@ -31,6 +31,10 @@ export interface PitLaneData {
   attachmentSide?: 'left' | 'right'
 }
 
+export const PIT_LANE_SPEED_LIMIT_KMH = 80
+export const PIT_LANE_SPEED_LIMIT_MS = PIT_LANE_SPEED_LIMIT_KMH / 3.6 // ~22.2 m/s
+export const PIT_LANE_PENALTY_SECONDS = 3
+
 interface PitState {
   // Pit lane configuration (null if not generated)
   pitLaneData: PitLaneData | null
@@ -46,6 +50,10 @@ interface PitState {
   // Speed threshold for pit stop (must be nearly stopped)
   pitStopSpeedThreshold: number
 
+  // Pit lane speed limit penalty
+  pitLaneSpeedingPenalty: number // accumulated penalty in seconds
+  isPitLaneSpeeding: boolean // currently exceeding speed limit
+
   // Actions
   setPitLaneData: (data: PitLaneData | null) => void
   enterPitLane: () => void
@@ -53,10 +61,12 @@ interface PitState {
   enterPitBox: () => void
   exitPitBox: () => void
   selectTire: (compound: TireCompound) => void
-  startPitStop: () => boolean // Returns true if pit stop started successfully
-  completePitStop: () => TireCompound | null // Returns the new tire compound
+  startPitStop: () => boolean
+  completePitStop: () => TireCompound | null
   cancelPitStop: () => void
   clearPitLane: () => void
+  checkPitLaneSpeed: (speedMs: number) => void
+  clearPenalty: () => void
 }
 
 export const usePitStore = create<PitState>((set, get) => ({
@@ -66,6 +76,8 @@ export const usePitStore = create<PitState>((set, get) => ({
   isPitStopActive: false,
   selectedNewTire: null,
   pitStopSpeedThreshold: 2, // Must be below 2 m/s (~7 km/h) to pit
+  pitLaneSpeedingPenalty: 0,
+  isPitLaneSpeeding: false,
 
   setPitLaneData: data => set({ pitLaneData: data }),
 
@@ -77,6 +89,7 @@ export const usePitStore = create<PitState>((set, get) => ({
       isInPitBox: false,
       isPitStopActive: false,
       selectedNewTire: null,
+      isPitLaneSpeeding: false,
     }),
 
   enterPitBox: () => set({ isInPitBox: true }),
@@ -126,5 +139,24 @@ export const usePitStore = create<PitState>((set, get) => ({
       isInPitBox: false,
       isPitStopActive: false,
       selectedNewTire: null,
+      pitLaneSpeedingPenalty: 0,
+      isPitLaneSpeeding: false,
     }),
+
+  checkPitLaneSpeed: (speedMs: number) => {
+    const state = get()
+    if (!state.isInPitLane) return
+    const isSpeeding = speedMs > PIT_LANE_SPEED_LIMIT_MS
+    if (isSpeeding && !state.isPitLaneSpeeding) {
+      // Just started speeding - add penalty
+      set({
+        isPitLaneSpeeding: true,
+        pitLaneSpeedingPenalty: state.pitLaneSpeedingPenalty + PIT_LANE_PENALTY_SECONDS,
+      })
+    } else if (!isSpeeding && state.isPitLaneSpeeding) {
+      set({ isPitLaneSpeeding: false })
+    }
+  },
+
+  clearPenalty: () => set({ pitLaneSpeedingPenalty: 0, isPitLaneSpeeding: false }),
 }))

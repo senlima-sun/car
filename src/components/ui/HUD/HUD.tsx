@@ -8,6 +8,7 @@ import HeatmapLegend from './HeatmapLegend'
 import AquaplaningIndicator from './AquaplaningIndicator'
 import TrackLimitsIndicator from './TrackLimitsIndicator'
 import WrongWayIndicator from './WrongWayIndicator'
+import PitLaneSpeedIndicator from './PitLaneSpeedIndicator'
 import DebugPanel from './DebugPanel'
 import CoastIndicator from './CoastIndicator'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
@@ -231,6 +232,9 @@ export default function HUD() {
 
           {/* Wrong-way warning */}
           <WrongWayIndicator />
+
+          {/* Pit lane speed limit indicator */}
+          <PitLaneSpeedIndicator />
 
           {/* Physics debug overlay (F9 to toggle) */}
           <PhysicsDebugOverlay />

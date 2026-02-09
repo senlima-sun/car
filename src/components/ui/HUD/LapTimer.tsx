@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
+import { usePitStore } from '../../../stores/usePitStore'
 import { LAP_TIMER, UI } from '@/constants/colors'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -103,6 +104,7 @@ export default function LapTimer() {
   const totalCheckpoints = useLapTimeStore(state => state.totalCheckpoints)
   const lastSectorSplit = useLapTimeStore(state => state.lastSectorSplit)
   const currentLapInvalid = useLapTimeStore(state => state.currentLapInvalid)
+  const pitPenalty = usePitStore(state => state.pitLaneSpeedingPenalty)
 
   // Update current lap time every frame
   useEffect(() => {
@@ -174,6 +176,16 @@ export default function LapTimer() {
           <div style={styles.label}>Sector</div>
           <div style={{ fontSize: 14, color: currentLapInvalid ? '#ef4444' : '#fff', fontFamily: 'monospace' }}>
             {currentLapInvalid ? 'INV' : `${currentSector}/${totalCheckpoints}`}
+          </div>
+        </div>
+      )}
+
+      {/* Pit lane penalty */}
+      {pitPenalty > 0 && (
+        <div style={styles.timeBlock}>
+          <div style={{ ...styles.label, color: '#ef4444' }}>Penalty</div>
+          <div style={{ fontSize: 14, color: '#ef4444', fontWeight: 'bold', fontFamily: 'monospace' }}>
+            +{pitPenalty}s
           </div>
         </div>
       )}

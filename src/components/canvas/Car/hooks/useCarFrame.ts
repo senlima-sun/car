@@ -105,6 +105,7 @@ export function useCarFrame({
 
   // Pit stop
   const startPitStop = usePitStore(state => state.startPitStop)
+  const checkPitLaneSpeed = usePitStore(state => state.checkPitLaneSpeed)
 
   // Curb state
   const isOnCurb = useCurbStore(state => state.isOnCurb)
@@ -546,6 +547,9 @@ export function useCarFrame({
       const drivingIntensity = Math.min(0.2 + (output.speed_kmh / 150) * 0.4, 0.6)
       updateCarPosition(pos.x, pos.z, dt, drivingIntensity)
     }
+
+    // Check pit lane speed limit
+    checkPitLaneSpeed(output.speed_kmh / 3.6)
 
     // Update track temperature visualization for skid marks
     if (output.skid_intensity > 0.01) {
