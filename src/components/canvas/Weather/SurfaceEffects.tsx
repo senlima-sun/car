@@ -282,7 +282,7 @@ function SnowAccumulation() {
 
   return (
     <mesh ref={meshRef} position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[1000, 1000]} />
+      <planeGeometry args={[5000, 5000]} />
       <meshStandardMaterial
         map={snowTexture}
         transparent
@@ -309,7 +309,7 @@ function WetRoadOverlay() {
 
   return (
     <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[1000, 1000]} />
+      <planeGeometry args={[5000, 5000]} />
       <meshStandardMaterial
         color='#2a4050'
         transparent

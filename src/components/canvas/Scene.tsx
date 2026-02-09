@@ -24,14 +24,14 @@ function Ground() {
     <>
       <RigidBody type='fixed' colliders={false}>
         <CuboidCollider
-          args={[500, 0.1, 500]}
+          args={[2500, 0.1, 2500]}
           position={[0, -0.12, 0]}
           friction={0.4}
           collisionGroups={GROUND_COLLISION_GROUPS}
         />
       </RigidBody>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
-        <planeGeometry args={[1000, 1000]} />
+        <planeGeometry args={[5000, 5000]} />
         <meshStandardMaterial color='#b0b0b0' roughness={0.8} />
       </mesh>
       <TerrainMesh />
