@@ -12,9 +12,12 @@ import PitLaneSpeedIndicator from './PitLaneSpeedIndicator'
 import DebugPanel from './DebugPanel'
 import CoastIndicator from './CoastIndicator'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
+import { PairingModal } from '../RemoteControl/PairingModal'
+import { SteeringIndicator } from './SteeringIndicator'
 import { useGameStore } from '../../../stores/useGameStore'
 import { usePitStore } from '../../../stores/usePitStore'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
+import { useRemoteControlStore } from '../../../stores/useRemoteControlStore'
 import { ModeToggle } from '../CustomizationPanel'
 import { TrackEditorDock } from '../TrackEditorDock'
 import { TrackSelector } from '../TrackSelector'
@@ -70,9 +73,11 @@ export default function HUD() {
   const isCustomizeMode = status === 'customize'
   const toggleEnvironmentModal = useEnvironmentStore(state => state.toggleModal)
   const isEnvironmentModalOpen = useEnvironmentStore(state => state.isModalOpen)
+  const remoteStatus = useRemoteControlStore(s => s.connectionStatus)
+  const remoteLatency = useRemoteControlStore(s => s.latency)
 
-  // Debug panel visibility state
   const [showDebugPanel, setShowDebugPanel] = useState(false)
+  const [showPairingModal, setShowPairingModal] = useState(false)
 
   // Mode notification state
   const [modeNotification, setModeNotification] = useState<string | null>(null)
@@ -158,6 +163,25 @@ export default function HUD() {
       {/* Mode toggle - hide on mobile */}
       {!isMobile && <ModeToggle />}
 
+      {!isMobile && (
+        <button
+          onClick={() => setShowPairingModal(true)}
+          className="absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-900/80 hover:bg-neutral-800/80 border border-neutral-700 text-sm"
+          style={{ pointerEvents: 'auto' }}
+        >
+          {remoteStatus === 'connected' ? (
+            <>
+              <span className="w-2 h-2 bg-green-400 rounded-full" />
+              <span className="text-green-400">{remoteLatency}ms</span>
+            </>
+          ) : (
+            <span className="text-neutral-400">Controller</span>
+          )}
+        </button>
+      )}
+
+      {showPairingModal && <PairingModal onClose={() => setShowPairingModal(false)} />}
+
       {isCustomizeMode ? (
         /* Customize mode UI */
         <>
@@ -238,6 +262,8 @@ export default function HUD() {
 
           {/* Physics debug overlay (F9 to toggle) */}
           <PhysicsDebugOverlay />
+
+          <SteeringIndicator />
         </>
       )}
     </div>

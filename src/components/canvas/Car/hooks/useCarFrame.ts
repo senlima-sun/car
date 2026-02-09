@@ -534,7 +534,7 @@ export function useCarFrame({
       number,
     ]
 
-    const steerVal = left ? 0.3 : right ? -0.3 : 0
+    const steerVal = -steer * 0.3
     const now = performance.now()
     const speedChanged = Math.abs(output.speed_kmh - prevSpeedRef.current) >= 1
     const gearChanged = output.gear !== prevGearRef.current
