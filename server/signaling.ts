@@ -31,7 +31,11 @@ const server = Bun.serve<WsData>({
           if (!rooms.has(data.roomId)) {
             rooms.set(data.roomId, new Set())
           }
-          rooms.get(data.roomId)!.add(ws as unknown as WebSocket)
+          const room = rooms.get(data.roomId)!
+          for (const peer of room) {
+            peer.send(JSON.stringify({ type: 'peer-joined', roomId: data.roomId }))
+          }
+          room.add(ws as unknown as WebSocket)
           return
         }
 

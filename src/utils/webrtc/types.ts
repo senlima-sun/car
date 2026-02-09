@@ -1,4 +1,4 @@
-export type SignalingMessageType = 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave'
+export type SignalingMessageType = 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'peer-joined'
 
 export interface SignalingMessage {
   type: SignalingMessageType

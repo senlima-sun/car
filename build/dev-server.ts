@@ -223,7 +223,9 @@ const server = Bun.serve<WsData>({
         if (data.type === 'join' && data.roomId) {
           ws.data.roomId = data.roomId
           if (!signalingRooms.has(data.roomId)) signalingRooms.set(data.roomId, new Set())
-          signalingRooms.get(data.roomId)!.add(ws)
+          const room = signalingRooms.get(data.roomId)!
+          for (const peer of room) peer.send(JSON.stringify({ type: 'peer-joined', roomId: data.roomId }))
+          room.add(ws)
           return
         }
         const roomId = ws.data.roomId

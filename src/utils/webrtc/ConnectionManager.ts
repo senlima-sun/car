@@ -55,10 +55,6 @@ export class ConnectionManager {
 
     this.ws.onopen = () => {
       this.ws!.send(JSON.stringify({ type: 'join', roomId: this.roomId }))
-      if (this.isHost) {
-        this.createPeerConnection()
-        this.createOffer()
-      }
     }
 
     this.ws.onmessage = (event) => {
@@ -69,13 +65,15 @@ export class ConnectionManager {
     }
 
     this.ws.onclose = () => {
-      if (this._status === 'connected') {
+      if (this._status !== 'disconnected') {
         this.handleDisconnect()
       }
     }
 
     this.ws.onerror = () => {
-      this.handleDisconnect()
+      if (this._status !== 'disconnected') {
+        this.handleDisconnect()
+      }
     }
   }
 
@@ -139,7 +137,11 @@ export class ConnectionManager {
   }
 
   private async handleSignalingMessage(msg: SignalingMessage) {
-    if (msg.type === 'offer' && !this.isHost) {
+    if (msg.type === 'peer-joined' && this.isHost) {
+      this.pc?.close()
+      this.createPeerConnection()
+      await this.createOffer()
+    } else if (msg.type === 'offer' && !this.isHost) {
       this.createPeerConnection()
       await this.pc!.setRemoteDescription(new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit))
       const answer = await this.pc!.createAnswer()
