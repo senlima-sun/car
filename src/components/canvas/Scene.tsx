@@ -1,5 +1,5 @@
 import { useRef, useMemo } from 'react'
-import { Group, DoubleSide } from 'three'
+import { Group, FrontSide } from 'three'
 import { useFrame } from '@react-three/fiber'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { GROUND_COLLISION_GROUPS } from '../../constants/dimensions'
@@ -65,7 +65,7 @@ function Ground() {
           vertexShader={groundVertexShader}
           fragmentShader={grassFragmentShader}
           uniforms={uniforms}
-          side={DoubleSide}
+          side={FrontSide}
         />
       </mesh>
       <TerrainMesh />

@@ -51,7 +51,7 @@ export default function DynamicLighting({ target }: DynamicLightingProps) {
     sunLightRef.current.target.updateMatrixWorld()
   })
 
-  const shadowSize = isCustomizeMode ? 2048 : 4096
+  const shadowSize = 2048
 
   return (
     <>

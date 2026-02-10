@@ -218,13 +218,16 @@ export default function CarSprayEffect({
     return null
   }
 
-  // Spawn tracking
   const spawnAccumulator = useRef({ spray: 0, mist: 0, droplet: 0 })
+  const hasActiveRef = useRef(false)
 
   useFrame((_, delta) => {
     const { position: carPosition, velocity: carVelocity, rotation: carRotation } = carStateRef.current
     const surfaceCondition = getSurfaceCondition()
     const shouldEmit = surfaceCondition && carVelocity > MIN_SPEED_FOR_SPRAY
+
+    if (!shouldEmit && !hasActiveRef.current) return
+
     const speedFactor = Math.min(carVelocity / 30, 2)
 
     const cos = Math.cos(carRotation)
@@ -372,10 +375,13 @@ export default function CarSprayEffect({
       geometry.attributes.lifetime.needsUpdate = true
     }
 
-    // Update all particle systems
     updateParticles(sprayData, sprayGeometry, SPRAY_COUNT, 'spray', 12, 0.98)
     updateParticles(mistData, mistGeometry, MIST_COUNT, 'mist', 3, 0.96)
     updateParticles(dropletData, dropletGeometry, DROPLET_COUNT, 'droplet', 20, 0.99)
+
+    hasActiveRef.current = sprayData.active.some(v => v === 1)
+      || mistData.active.some(v => v === 1)
+      || dropletData.active.some(v => v === 1)
   })
 
   // Only render when raining or cold

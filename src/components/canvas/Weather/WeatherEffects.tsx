@@ -10,7 +10,7 @@ function RainEffect() {
   const linesRef = useRef<THREE.LineSegments>(null)
   const { camera } = useThree()
 
-  const dropCount = 1500
+  const dropCount = 800
   const areaSize = 150
   const streakLength = 1.2 // Length of each rain streak
   const windX = 0.2 // Wind pushing rain sideways
@@ -390,7 +390,7 @@ export function HeatEffect() {
   const pointsRef = useRef<THREE.Points>(null)
   const { camera } = useThree()
 
-  const particleCount = 500
+  const particleCount = 300
   const areaSize = 80
 
   const geometry = useMemo(() => {
