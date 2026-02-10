@@ -14,9 +14,9 @@ export function FrontWing() {
   const smoothFlap1 = useRef(0)
   const smoothFlap2 = useRef(0)
 
-  const spoonGeo = useMemo(() => createSpoonWingGeometry(1.9, 0.25, 28), [])
-  const flapGeo1 = useMemo(() => createSpoonWingGeometry(1.88, 0.2, 24), [])
-  const flapGeo2 = useMemo(() => createSpoonWingGeometry(1.86, 0.16, 24), [])
+  const spoonGeo = useMemo(() => createSpoonWingGeometry(1.9, 0.26, 28), [])
+  const flapGeo1 = useMemo(() => createSpoonWingGeometry(1.88, 0.20, 24), [])
+  const flapGeo2 = useMemo(() => createSpoonWingGeometry(1.84, 0.16, 24), [])
 
   useFrame((_, delta) => {
     const lerpSpeed = 4
@@ -39,14 +39,14 @@ export function FrontWing() {
       </mesh>
 
       {/* Flap 1 - primary adjustable */}
-      <group ref={flap1Ref} position={[0, 0.025, 0]}>
+      <group ref={flap1Ref} position={[0, 0.025, -0.02]}>
         <mesh castShadow geometry={flapGeo1} position={[0, 0.012, 0]}>
           <meshStandardMaterial color={LIVERY.PRIMARY} roughness={0.6} metalness={0.3} side={THREE.DoubleSide} />
         </mesh>
       </group>
 
       {/* Flap 2 - secondary adjustable */}
-      <group ref={flap2Ref} position={[0, 0.05, 0]}>
+      <group ref={flap2Ref} position={[0, 0.05, -0.04]}>
         <mesh castShadow geometry={flapGeo2} position={[0, 0.012, 0]}>
           <meshStandardMaterial color={LIVERY.PRIMARY_LIGHT} roughness={0.6} metalness={0.3} side={THREE.DoubleSide} />
         </mesh>
@@ -54,32 +54,42 @@ export function FrontWing() {
 
       {/* Left nose strut */}
       <mesh castShadow position={[-0.12, 0.12, 0.04]}>
-        <cylinderGeometry args={[0.012, 0.012, 0.28, 8]} />
+        <cylinderGeometry args={[0.012, 0.014, 0.28, 8]} />
         <meshStandardMaterial color={LIVERY.CARBON} {...CARBON_FIBER} />
       </mesh>
 
       {/* Right nose strut */}
       <mesh castShadow position={[0.12, 0.12, 0.04]}>
-        <cylinderGeometry args={[0.012, 0.012, 0.28, 8]} />
+        <cylinderGeometry args={[0.012, 0.014, 0.28, 8]} />
         <meshStandardMaterial color={LIVERY.CARBON} {...CARBON_FIBER} />
       </mesh>
 
       {/* Left end plate */}
       <mesh castShadow position={[-0.95, 0.04, 0]}>
-        <boxGeometry args={[0.015, 0.12, 0.32]} />
+        <boxGeometry args={[0.015, 0.13, 0.34]} />
         <meshStandardMaterial color={LIVERY.ACCENT_YELLOW} {...GLOSSY_ACCENT} />
       </mesh>
 
       {/* Right end plate */}
       <mesh castShadow position={[0.95, 0.04, 0]}>
-        <boxGeometry args={[0.015, 0.12, 0.32]} />
+        <boxGeometry args={[0.015, 0.13, 0.34]} />
         <meshStandardMaterial color={LIVERY.ACCENT_YELLOW} {...GLOSSY_ACCENT} />
       </mesh>
 
       {/* Red accent strip on wing leading edge */}
-      <mesh position={[0, -0.005, 0.12]}>
+      <mesh position={[0, -0.005, 0.13]}>
         <boxGeometry args={[1.5, 0.006, 0.02]} />
         <meshStandardMaterial color={LIVERY.ACCENT_RED} {...GLOSSY_ACCENT} />
+      </mesh>
+
+      {/* Front wing underside guide vanes */}
+      <mesh castShadow position={[-0.6, -0.02, -0.02]}>
+        <boxGeometry args={[0.004, 0.04, 0.18]} />
+        <meshStandardMaterial color={LIVERY.CARBON} {...CARBON_FIBER} />
+      </mesh>
+      <mesh castShadow position={[0.6, -0.02, -0.02]}>
+        <boxGeometry args={[0.004, 0.04, 0.18]} />
+        <meshStandardMaterial color={LIVERY.CARBON} {...CARBON_FIBER} />
       </mesh>
     </group>
   )
