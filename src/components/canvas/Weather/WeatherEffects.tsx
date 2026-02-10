@@ -2,6 +2,7 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
+import { usePerformanceStore } from '../../../stores/usePerformanceStore'
 import { ATMOSPHERE_CONFIG } from '../../../constants/weather'
 import SurfaceEffects from './SurfaceEffects'
 
@@ -66,8 +67,9 @@ function RainEffect() {
     if (!linesRef.current) return
 
     const pos = linesRef.current.geometry.attributes.position.array as Float32Array
+    const activeCount = Math.ceil(dropCount * usePerformanceStore.getState().particleMultiplier)
 
-    for (let i = 0; i < dropCount; i++) {
+    for (let i = 0; i < activeCount; i++) {
       const speed = velocities[i]
       const moveY = speed * delta
       const moveX = windX * speed * delta
@@ -160,7 +162,8 @@ function RainSplashEffect() {
     if (!pointsRef.current) return
 
     const positions = pointsRef.current.geometry.attributes.position.array as Float32Array
-    const spawnRate = 100
+    const mult = usePerformanceStore.getState().particleMultiplier
+    const spawnRate = 100 * mult
     let toSpawn = Math.floor(spawnRate * delta)
 
     for (let i = 0; i < splashCount; i++) {
@@ -252,9 +255,9 @@ function SnowEffect() {
 
     const pos = pointsRef.current.geometry.attributes.position.array as Float32Array
     const time = state.clock.elapsedTime
+    const activeCount = Math.ceil(particleCount * usePerformanceStore.getState().particleMultiplier)
 
-    for (let i = 0; i < particleCount; i++) {
-      // Gentle falling with drift
+    for (let i = 0; i < activeCount; i++) {
       pos[i * 3] += Math.sin(time + i) * drifts[i * 2] * delta
       pos[i * 3 + 1] -= velocities[i] * delta
       pos[i * 3 + 2] += Math.cos(time + i) * drifts[i * 2 + 1] * delta
@@ -328,7 +331,8 @@ function SnowSplashEffect() {
     const positions = pointsRef.current.geometry.attributes.position.array as Float32Array
     const time = state.clock.elapsedTime
 
-    const spawnRate = 25
+    const snowMult = usePerformanceStore.getState().particleMultiplier
+    const spawnRate = 25 * snowMult
     let toSpawn = Math.floor(spawnRate * delta)
 
     for (let i = 0; i < puffCount; i++) {
@@ -417,9 +421,9 @@ export function HeatEffect() {
 
     const pos = pointsRef.current.geometry.attributes.position.array as Float32Array
     const time = state.clock.elapsedTime
+    const heatActiveCount = Math.ceil(particleCount * usePerformanceStore.getState().particleMultiplier)
 
-    for (let i = 0; i < particleCount; i++) {
-      // Shimmer effect - particles rise and drift
+    for (let i = 0; i < heatActiveCount; i++) {
       pos[i * 3] += Math.sin(time * 2 + i * 0.1) * delta * 2
       pos[i * 3 + 1] += delta * (1 + Math.sin(time + i) * 0.5)
       pos[i * 3 + 2] += Math.cos(time * 2 + i * 0.1) * delta * 2

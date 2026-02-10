@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import { useTrackTemperatureStore } from '../../../../stores/useTrackTemperatureStore'
+import { usePerformanceStore } from '../../../../stores/usePerformanceStore'
 import type { CarState } from '../hooks/useCarFrame'
 
 const MIN_SPEED_FOR_SPRAY = 8 // m/s (~29 km/h)
@@ -233,11 +234,11 @@ export default function CarSprayEffect({
     const cos = Math.cos(carRotation)
     const sin = Math.sin(carRotation)
 
-    // Spawn rates based on speed
+    const pMult = usePerformanceStore.getState().particleMultiplier
     if (shouldEmit) {
-      spawnAccumulator.current.spray += delta * 400 * speedFactor
-      spawnAccumulator.current.mist += delta * 200 * speedFactor
-      spawnAccumulator.current.droplet += delta * 100 * speedFactor
+      spawnAccumulator.current.spray += delta * 400 * speedFactor * pMult
+      spawnAccumulator.current.mist += delta * 200 * speedFactor * pMult
+      spawnAccumulator.current.droplet += delta * 100 * speedFactor * pMult
     }
 
     // Helper to spawn a particle

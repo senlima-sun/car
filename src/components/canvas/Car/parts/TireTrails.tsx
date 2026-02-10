@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useTireTrailStore, MAX_POINTS_PER_WHEEL } from '../../../../stores/useTireTrailStore'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
+import { usePerformanceStore } from '../../../../stores/usePerformanceStore'
 import { tireTrailVertexShader, tireTrailFragmentShader } from '../../../../shaders/tireTrail'
 
 const TOTAL_INSTANCES = MAX_POINTS_PER_WHEEL * 4
@@ -59,11 +60,12 @@ export default function TireTrails() {
       return
     }
 
+    const maxPerWheel = usePerformanceStore.getState().trailPointsPerWheel
     let instanceIdx = 0
 
     for (let w = 0; w < 4; w++) {
       const base = w * MAX_POINTS_PER_WHEEL
-      const count = counts[w]
+      const count = Math.min(counts[w], maxPerWheel)
 
       for (let i = 0; i < count; i++) {
         const idx = base + i

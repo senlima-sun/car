@@ -2,6 +2,7 @@ import { useRef, useMemo, useEffect, type MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
+import { usePerformanceStore } from '../../../../stores/usePerformanceStore'
 import type { CarState } from '../hooks/useCarFrame'
 import { tireSmokeVertexShader, tireSmokeFragmentShader } from '../../../../shaders/tireSmoke'
 
@@ -128,8 +129,9 @@ export default function TireSmoke({ carStateRef }: TireSmokeProps) {
     const emitStrength = isDrifting ? 1.5 : skid > 0.3 ? skid : braking ? 0.6 : 0
 
     if (shouldEmit) {
-      spawnAccum.current.smoke += delta * 200 * emitStrength
-      spawnAccum.current.debris += delta * 100 * emitStrength
+      const pMult = usePerformanceStore.getState().particleMultiplier
+      spawnAccum.current.smoke += delta * 200 * emitStrength * pMult
+      spawnAccum.current.debris += delta * 100 * emitStrength * pMult
     }
 
     const spawnParticle = (
