@@ -9,7 +9,7 @@ const BATTERY_CAPACITY_KJ: f32 = 4000.0; // 4 MJ = 4000 kJ
 // 2026 Power levels (350kW MGU-K, up from 120kW)
 const MAX_DEPLOY_POWER_KW: f32 = 350.0; // 2026: 350kW max deployment
 const MAX_HARVEST_POWER_KW: f32 = 350.0; // 2026: 350kW max brake harvest
-const MAX_COAST_POWER_KW: f32 = 160.0; // Increased coast regen for time imbalance
+const MAX_COAST_POWER_KW: f32 = 200.0;
 const MAX_SUPER_CLIP_POWER_KW: f32 = 150.0; // 2026: Super clipping (was 50, now significant)
 
 // Mode multipliers (deploy / harvest / coast / super_clip)
@@ -20,10 +20,10 @@ const HARVEST_COAST_MULT: f32 = 1.0;
 const HARVEST_CLIP_MULT: f32 = 1.0;
 
 // Balanced mode: moderate deploy with good recovery
-const BALANCED_DEPLOY_MULT: f32 = 0.35; // Reduced from 0.5 for better balance
-const BALANCED_HARVEST_MULT: f32 = 0.9; // Increased from 0.8
-const BALANCED_COAST_MULT: f32 = 0.8; // Increased from 0.6
-const BALANCED_CLIP_MULT: f32 = 0.8; // Increased from 0.5
+const BALANCED_DEPLOY_MULT: f32 = 0.45;
+const BALANCED_HARVEST_MULT: f32 = 0.95;
+const BALANCED_COAST_MULT: f32 = 0.85;
+const BALANCED_CLIP_MULT: f32 = 0.85;
 
 // Attack mode: high deploy, some recovery
 const ATTACK_DEPLOY_MULT: f32 = 0.70; // Reduced from 0.85
@@ -39,9 +39,9 @@ const OVERTAKE_CLIP_MULT: f32 = 0.0;
 
 // Efficiency
 const DEPLOY_EFFICIENCY: f32 = 0.95;
-const HARVEST_EFFICIENCY: f32 = 0.92;
-const COAST_EFFICIENCY: f32 = 0.90; // Improved from 0.88
-const SUPER_CLIP_EFFICIENCY: f32 = 0.85; // Improved from 0.70 for gameplay
+const HARVEST_EFFICIENCY: f32 = 0.95;
+const COAST_EFFICIENCY: f32 = 0.93;
+const SUPER_CLIP_EFFICIENCY: f32 = 0.90;
 
 // Speed thresholds (m/s)
 const MIN_HARVEST_SPEED: f32 = 5.0; // ~18 km/h minimum for any harvest
