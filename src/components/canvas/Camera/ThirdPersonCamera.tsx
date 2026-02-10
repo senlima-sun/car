@@ -43,6 +43,7 @@ export default function ThirdPersonCamera({ target }: ThirdPersonCameraProps) {
   const cameraRef = useRef<ThreePerspectiveCamera>(null)
 
   const topOffset = useRef(new Vector3(0, 1, -0.5))
+  const flipRotation = useRef(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI))
 
   const _quat = useRef(new Quaternion())
   const _yawQuat = useRef(new Quaternion())
@@ -103,7 +104,7 @@ export default function ThirdPersonCamera({ target }: ThirdPersonCameraProps) {
       _shakeQuat.current.identity()
     }
 
-    _targetQuat.current.copy(_yawQuat.current).multiply(_shakeQuat.current)
+    _targetQuat.current.copy(_yawQuat.current).multiply(flipRotation.current).multiply(_shakeQuat.current)
 
     if (!initialized.current) {
       cameraRef.current.quaternion.copy(_targetQuat.current)

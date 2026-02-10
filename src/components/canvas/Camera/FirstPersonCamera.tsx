@@ -17,6 +17,7 @@ export default function FirstPersonCamera({ target }: FirstPersonCameraProps) {
   const cameraRef = useRef<ThreePerspectiveCamera>(null)
 
   const driverOffset = useRef(new Vector3(0, 0.45, 0.45))
+  const flipRotation = useRef(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI))
 
   const _quat = useRef(new Quaternion())
   const _yawQuat = useRef(new Quaternion())
@@ -42,7 +43,7 @@ export default function FirstPersonCamera({ target }: FirstPersonCameraProps) {
     _pos.current.applyQuaternion(_yawQuat.current)
     _pos.current.add(_worldPos.current)
 
-    _targetQuat.current.copy(_yawQuat.current)
+    _targetQuat.current.copy(_yawQuat.current).multiply(flipRotation.current)
 
     if (!initialized.current) {
       cameraRef.current.quaternion.copy(_targetQuat.current)
