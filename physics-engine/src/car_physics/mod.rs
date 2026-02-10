@@ -12,9 +12,9 @@ use crate::utils::{lerp, sanitize, Quat, Vec3};
 // Vehicle Constants
 // ============================================================================
 
-pub const CAR_MASS: f32 = 798.0;
-pub const WHEELBASE: f32 = 3.6;
-pub const TRACK_WIDTH: f32 = 1.8;
+pub const CAR_MASS: f32 = 768.0;
+pub const WHEELBASE: f32 = 3.4;
+pub const TRACK_WIDTH: f32 = 1.7;
 pub const CG_HEIGHT: f32 = 0.35;
 pub const WEIGHT_DIST_FRONT: f32 = 0.47;
 

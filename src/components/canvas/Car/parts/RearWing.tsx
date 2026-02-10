@@ -2,97 +2,88 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
+import { LIVERY, CARBON_FIBER, GLOSSY_ACCENT } from '../../../../constants/f1Livery'
 
-/**
- * Rear wing with DRS (Drag Reduction System)
- * Position: rear of car, elevated [0, 0.6, -1.5]
- */
 export function RearWing() {
   const rearWingAngle = useActiveAeroStore(state => state.rearWingAngle)
 
-  // Refs for animated elements
   const mainFlapRef = useRef<THREE.Group>(null)
-  const drsFlapRef = useRef<THREE.Group>(null)
+  const topFlapRef = useRef<THREE.Group>(null)
 
-  // Smooth animation refs
   const smoothMainFlap = useRef(0)
-  const smoothDrsFlap = useRef(0)
+  const smoothTopFlap = useRef(0)
 
-  // Animate wing flaps with smooth lerp
   useFrame((_, delta) => {
     const lerpSpeed = 5
 
-    // Target angles based on wing angle (0.0-1.0)
-    // When closed (angle=0.1): minimal angles (DRS open)
-    // When open (angle=1.0): maximum angles (DRS closed)
-    const targetMainFlap = -rearWingAngle * 0.35 // 0° to -20°
-    const targetDrsFlap = -rearWingAngle * 1.13 // 0° to -65° (large DRS opening)
+    const targetMainFlap = -rearWingAngle * 0.35
+    const targetTopFlap = -rearWingAngle * 1.05
 
-    // Smooth transitions
-    smoothMainFlap.current = THREE.MathUtils.lerp(
-      smoothMainFlap.current,
-      targetMainFlap,
-      lerpSpeed * delta,
-    )
-    smoothDrsFlap.current = THREE.MathUtils.lerp(
-      smoothDrsFlap.current,
-      targetDrsFlap,
-      lerpSpeed * delta,
-    )
+    smoothMainFlap.current = THREE.MathUtils.lerp(smoothMainFlap.current, targetMainFlap, lerpSpeed * delta)
+    smoothTopFlap.current = THREE.MathUtils.lerp(smoothTopFlap.current, targetTopFlap, lerpSpeed * delta)
 
-    // Apply rotations
-    if (mainFlapRef.current) {
-      mainFlapRef.current.rotation.x = smoothMainFlap.current
-    }
-    if (drsFlapRef.current) {
-      drsFlapRef.current.rotation.x = smoothDrsFlap.current
-    }
+    if (mainFlapRef.current) mainFlapRef.current.rotation.x = smoothMainFlap.current
+    if (topFlapRef.current) topFlapRef.current.rotation.x = smoothTopFlap.current
   })
 
   return (
-    <group position={[0, 0.45, -1.8]}>
-      {/* Support pylons */}
-      <mesh castShadow position={[-0.35, -0.25, 0]}>
-        <boxGeometry args={[0.03, 0.5, 0.08]} />
-        <meshStandardMaterial color='#1a1a1a' metalness={0.8} roughness={0.2} />
-      </mesh>
-      <mesh castShadow position={[0.35, -0.25, 0]}>
-        <boxGeometry args={[0.03, 0.5, 0.08]} />
-        <meshStandardMaterial color='#1a1a1a' metalness={0.8} roughness={0.2} />
+    <group position={[0, 0.45, -2.0]}>
+      {/* Left support pylon (cylindrical) */}
+      <mesh castShadow position={[-0.3, -0.28, 0]}>
+        <cylinderGeometry args={[0.018, 0.022, 0.52, 8]} />
+        <meshStandardMaterial color={LIVERY.CARBON} {...CARBON_FIBER} />
       </mesh>
 
-      {/* Main wing plane (fixed) */}
+      {/* Right support pylon */}
+      <mesh castShadow position={[0.3, -0.28, 0]}>
+        <cylinderGeometry args={[0.018, 0.022, 0.52, 8]} />
+        <meshStandardMaterial color={LIVERY.CARBON} {...CARBON_FIBER} />
+      </mesh>
+
+      {/* Bottom wing plane (fixed) */}
       <mesh castShadow>
-        <boxGeometry args={[0.9, 0.02, 0.3]} />
-        <meshStandardMaterial color='#2a2a2a' metalness={0.7} roughness={0.3} />
+        <boxGeometry args={[0.85, 0.018, 0.28]} />
+        <meshStandardMaterial color={LIVERY.PRIMARY} roughness={0.5} metalness={0.3} />
       </mesh>
 
-      {/* Main flap (middle element) */}
-      <group ref={mainFlapRef} position={[0, 0.04, 0]}>
-        <mesh castShadow position={[0, 0.015, 0]}>
-          <boxGeometry args={[0.85, 0.02, 0.28]} />
-          <meshStandardMaterial color='#3a3a3a' metalness={0.6} roughness={0.4} />
+      {/* Main flap (middle element - adjustable) */}
+      <group ref={mainFlapRef} position={[0, 0.035, 0]}>
+        <mesh castShadow position={[0, 0.012, 0]}>
+          <boxGeometry args={[0.84, 0.018, 0.24]} />
+          <meshStandardMaterial color={LIVERY.PRIMARY_LIGHT} roughness={0.55} metalness={0.3} />
         </mesh>
       </group>
 
-      {/* DRS flap (top element - RED for visibility) */}
-      <group ref={drsFlapRef} position={[0, 0.08, 0]}>
-        <mesh castShadow position={[0, 0.015, 0]}>
-          <boxGeometry args={[0.8, 0.02, 0.26]} />
-          <meshStandardMaterial color='#ffffff' metalness={0.7} roughness={0.3} />
+      {/* Top flap (DRS adjustable) */}
+      <group ref={topFlapRef} position={[0, 0.07, 0]}>
+        <mesh castShadow position={[0, 0.012, 0]}>
+          <boxGeometry args={[0.82, 0.018, 0.2]} />
+          <meshStandardMaterial color={LIVERY.WHITE} roughness={0.4} metalness={0.5} />
         </mesh>
       </group>
 
-      {/* Left end plate */}
-      <mesh castShadow position={[-0.45, 0.04, 0]}>
-        <boxGeometry args={[0.015, 0.18, 0.4]} />
-        <meshStandardMaterial color='#111111' metalness={0.8} roughness={0.3} />
+      {/* Left end plate (flat, 2026 style) */}
+      <mesh castShadow position={[-0.43, 0.035, 0]}>
+        <boxGeometry args={[0.012, 0.16, 0.36]} />
+        <meshStandardMaterial color={LIVERY.ACCENT_YELLOW} {...GLOSSY_ACCENT} />
       </mesh>
 
-      {/* Right end plate */}
-      <mesh castShadow position={[0.45, 0.04, 0]}>
-        <boxGeometry args={[0.015, 0.18, 0.4]} />
-        <meshStandardMaterial color='#111111' metalness={0.8} roughness={0.3} />
+      {/* Right end plate (flat) */}
+      <mesh castShadow position={[0.43, 0.035, 0]}>
+        <boxGeometry args={[0.012, 0.16, 0.36]} />
+        <meshStandardMaterial color={LIVERY.ACCENT_YELLOW} {...GLOSSY_ACCENT} />
+      </mesh>
+
+      {/* Red accent on trailing edge */}
+      <mesh position={[0, 0.0, -0.14]}>
+        <boxGeometry args={[0.7, 0.006, 0.015]} />
+        <meshStandardMaterial color={LIVERY.ACCENT_RED} {...GLOSSY_ACCENT} />
+      </mesh>
+
+      {/* Number plate / branding area */}
+      <mesh position={[0, 0.035, 0.185]}>
+        <boxGeometry args={[0.4, 0.08, 0.005]} />
+        <meshStandardMaterial color={LIVERY.PRIMARY} roughness={0.7} metalness={0.2} />
       </mesh>
     </group>
   )

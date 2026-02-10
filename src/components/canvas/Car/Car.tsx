@@ -48,10 +48,10 @@ const Car = forwardRef<Group>((_, ref) => {
         enabledRotations={[true, true, true]}
         ccd={true}
       >
-        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.FL[0], WHEEL_POSITIONS.FL[1], WHEEL_POSITIONS.FL[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={199.5} restitution={0} friction={1.5} />
-        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.FR[0], WHEEL_POSITIONS.FR[1], WHEEL_POSITIONS.FR[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={199.5} restitution={0} friction={1.5} />
-        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.RL[0], WHEEL_POSITIONS.RL[1], WHEEL_POSITIONS.RL[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={199.5} restitution={0} friction={1.5} />
-        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.RR[0], WHEEL_POSITIONS.RR[1], WHEEL_POSITIONS.RR[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={199.5} restitution={0} friction={1.5} />
+        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.FL[0], WHEEL_POSITIONS.FL[1], WHEEL_POSITIONS.FL[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={192.0} restitution={0} friction={1.5} />
+        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.FR[0], WHEEL_POSITIONS.FR[1], WHEEL_POSITIONS.FR[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={192.0} restitution={0} friction={1.5} />
+        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.RL[0], WHEEL_POSITIONS.RL[1], WHEEL_POSITIONS.RL[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={192.0} restitution={0} friction={1.5} />
+        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.RR[0], WHEEL_POSITIONS.RR[1], WHEEL_POSITIONS.RR[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={192.0} restitution={0} friction={1.5} />
         <group ref={groupRef}>
           <CarBody suspensionRef={suspensionOutputRef} />
         </group>

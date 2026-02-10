@@ -1,95 +1,85 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
+import { LIVERY, CARBON_FIBER, GLOSSY_ACCENT } from '../../../../constants/f1Livery'
+import { createSpoonWingGeometry } from '../../../../utils/f1Geometry'
 
-/**
- * Multi-element front wing with animated flaps
- * Position: front of car [0, 0.05, 1.9]
- */
 export function FrontWing() {
   const frontWingAngle = useActiveAeroStore(state => state.frontWingAngle)
 
-  // Refs for each flap element
   const flap1Ref = useRef<THREE.Group>(null)
   const flap2Ref = useRef<THREE.Group>(null)
-  const flap3Ref = useRef<THREE.Group>(null)
 
-  // Smooth animation refs
   const smoothFlap1 = useRef(0)
   const smoothFlap2 = useRef(0)
-  const smoothFlap3 = useRef(0)
 
-  // Animate wing flaps with smooth lerp
+  const spoonGeo = useMemo(() => createSpoonWingGeometry(1.9, 0.25, 28), [])
+  const flapGeo1 = useMemo(() => createSpoonWingGeometry(1.88, 0.2, 24), [])
+  const flapGeo2 = useMemo(() => createSpoonWingGeometry(1.86, 0.16, 24), [])
+
   useFrame((_, delta) => {
     const lerpSpeed = 4
 
-    // Target angles based on wing angle (0.0-1.0)
-    // When closed (angle=0.2): minimal angles
-    // When open (angle=1.0): maximum angles
-    const targetFlap1 = -frontWingAngle * 0.26 // 0° to -15°
-    const targetFlap2 = -frontWingAngle * 0.44 // 0° to -25°
-    const targetFlap3 = -frontWingAngle * 0.61 // 0° to -35°
+    const targetFlap1 = -frontWingAngle * 0.3
+    const targetFlap2 = -frontWingAngle * 0.52
 
-    // Smooth transitions
     smoothFlap1.current = THREE.MathUtils.lerp(smoothFlap1.current, targetFlap1, lerpSpeed * delta)
     smoothFlap2.current = THREE.MathUtils.lerp(smoothFlap2.current, targetFlap2, lerpSpeed * delta)
-    smoothFlap3.current = THREE.MathUtils.lerp(smoothFlap3.current, targetFlap3, lerpSpeed * delta)
 
-    // Apply rotations
-    if (flap1Ref.current) {
-      flap1Ref.current.rotation.x = smoothFlap1.current
-    }
-    if (flap2Ref.current) {
-      flap2Ref.current.rotation.x = smoothFlap2.current
-    }
-    if (flap3Ref.current) {
-      flap3Ref.current.rotation.x = smoothFlap3.current
-    }
+    if (flap1Ref.current) flap1Ref.current.rotation.x = smoothFlap1.current
+    if (flap2Ref.current) flap2Ref.current.rotation.x = smoothFlap2.current
   })
 
   return (
-    <group position={[0, -0.25, 3.0]}>
-      {/* Main wing plane (fixed) */}
-      <mesh castShadow>
-        <boxGeometry args={[2.2, 0.02, 0.25]} />
-        <meshStandardMaterial color='#1a1a1a' metalness={0.8} roughness={0.3} />
+    <group position={[0, -0.25, 2.65]}>
+      {/* Main spoon-shaped wing plane (fixed) */}
+      <mesh castShadow receiveShadow geometry={spoonGeo}>
+        <meshStandardMaterial color={LIVERY.CARBON} {...CARBON_FIBER} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Flap 1 - Main flap (bottom) */}
-      <group ref={flap1Ref} position={[0, 0.03, 0]}>
-        <mesh castShadow position={[0, 0.015, 0]}>
-          <boxGeometry args={[2.2, 0.02, 0.22]} />
-          <meshStandardMaterial color='#2a2a2a' metalness={0.7} roughness={0.4} />
+      {/* Flap 1 - primary adjustable */}
+      <group ref={flap1Ref} position={[0, 0.025, 0]}>
+        <mesh castShadow geometry={flapGeo1} position={[0, 0.012, 0]}>
+          <meshStandardMaterial color={LIVERY.PRIMARY} roughness={0.6} metalness={0.3} side={THREE.DoubleSide} />
         </mesh>
       </group>
 
-      {/* Flap 2 - Middle flap */}
-      <group ref={flap2Ref} position={[0, 0.06, 0]}>
-        <mesh castShadow position={[0, 0.015, 0]}>
-          <boxGeometry args={[2.2, 0.02, 0.18]} />
-          <meshStandardMaterial color='#3a3a3a' metalness={0.6} roughness={0.4} />
+      {/* Flap 2 - secondary adjustable */}
+      <group ref={flap2Ref} position={[0, 0.05, 0]}>
+        <mesh castShadow geometry={flapGeo2} position={[0, 0.012, 0]}>
+          <meshStandardMaterial color={LIVERY.PRIMARY_LIGHT} roughness={0.6} metalness={0.3} side={THREE.DoubleSide} />
         </mesh>
       </group>
 
-      {/* Flap 3 - Top/Gurney flap */}
-      <group ref={flap3Ref} position={[0, 0.09, 0]}>
-        <mesh castShadow position={[0, 0.015, 0]}>
-          <boxGeometry args={[2.2, 0.02, 0.14]} />
-          <meshStandardMaterial color='#4a4a4a' metalness={0.5} roughness={0.5} />
-        </mesh>
-      </group>
+      {/* Left nose strut */}
+      <mesh castShadow position={[-0.12, 0.12, 0.04]}>
+        <cylinderGeometry args={[0.012, 0.012, 0.28, 8]} />
+        <meshStandardMaterial color={LIVERY.CARBON} {...CARBON_FIBER} />
+      </mesh>
+
+      {/* Right nose strut */}
+      <mesh castShadow position={[0.12, 0.12, 0.04]}>
+        <cylinderGeometry args={[0.012, 0.012, 0.28, 8]} />
+        <meshStandardMaterial color={LIVERY.CARBON} {...CARBON_FIBER} />
+      </mesh>
 
       {/* Left end plate */}
-      <mesh castShadow position={[-1.1, 0.075, 0]}>
-        <boxGeometry args={[0.02, 0.15, 0.35]} />
-        <meshStandardMaterial color='#111111' metalness={0.8} roughness={0.3} />
+      <mesh castShadow position={[-0.95, 0.04, 0]}>
+        <boxGeometry args={[0.015, 0.12, 0.32]} />
+        <meshStandardMaterial color={LIVERY.ACCENT_YELLOW} {...GLOSSY_ACCENT} />
       </mesh>
 
       {/* Right end plate */}
-      <mesh castShadow position={[1.1, 0.075, 0]}>
-        <boxGeometry args={[0.02, 0.15, 0.35]} />
-        <meshStandardMaterial color='#111111' metalness={0.8} roughness={0.3} />
+      <mesh castShadow position={[0.95, 0.04, 0]}>
+        <boxGeometry args={[0.015, 0.12, 0.32]} />
+        <meshStandardMaterial color={LIVERY.ACCENT_YELLOW} {...GLOSSY_ACCENT} />
+      </mesh>
+
+      {/* Red accent strip on wing leading edge */}
+      <mesh position={[0, -0.005, 0.12]}>
+        <boxGeometry args={[1.5, 0.006, 0.02]} />
+        <meshStandardMaterial color={LIVERY.ACCENT_RED} {...GLOSSY_ACCENT} />
       </mesh>
     </group>
   )
