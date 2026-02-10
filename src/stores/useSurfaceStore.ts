@@ -1,27 +1,30 @@
 import { create } from 'zustand'
 
-// Surface state tracking for WASM physics integration
-// Physics calculations are handled by the Rust/WASM engine
-
-export type SurfaceType = 'grass' | 'road' | 'curb' | 'pitroad'
+export type SurfaceType = 'grass' | 'road' | 'curb' | 'pitroad' | 'gravel'
 
 interface SurfaceState {
-  // Current surface the car is on
   currentSurface: SurfaceType
-
-  // Number of road segments currently in contact (for overlapping roads)
   roadContactCount: number
-
-  // Number of curb segments currently in contact
   curbContactCount: number
-
-  // Number of pitroad segments currently in contact
   pitroadContactCount: number
+  gravelContactCount: number
 
-  // Actions
   enterSurface: (type: SurfaceType) => void
   exitSurface: (type: SurfaceType) => void
   reset: () => void
+}
+
+function resolveSurface(state: {
+  curbContactCount: number
+  gravelContactCount: number
+  pitroadContactCount: number
+  roadContactCount: number
+}): SurfaceType {
+  if (state.curbContactCount > 0) return 'curb'
+  if (state.gravelContactCount > 0) return 'gravel'
+  if (state.pitroadContactCount > 0) return 'pitroad'
+  if (state.roadContactCount > 0) return 'road'
+  return 'grass'
 }
 
 export const useSurfaceStore = create<SurfaceState>((set, get) => ({
@@ -29,22 +32,25 @@ export const useSurfaceStore = create<SurfaceState>((set, get) => ({
   roadContactCount: 0,
   curbContactCount: 0,
   pitroadContactCount: 0,
+  gravelContactCount: 0,
 
   enterSurface: type => {
     const state = get()
 
     if (type === 'road') {
       const newCount = state.roadContactCount + 1
-      const currentSurface =
-        state.curbContactCount > 0 ? 'curb' : state.pitroadContactCount > 0 ? 'pitroad' : 'road'
-      set({ roadContactCount: newCount, currentSurface })
+      set({ roadContactCount: newCount, currentSurface: resolveSurface({ ...state, roadContactCount: newCount }) })
     } else if (type === 'curb') {
       const newCount = state.curbContactCount + 1
       set({ curbContactCount: newCount, currentSurface: 'curb' })
     } else if (type === 'pitroad') {
       const newCount = state.pitroadContactCount + 1
-      const currentSurface = state.curbContactCount > 0 ? 'curb' : 'pitroad'
-      set({ pitroadContactCount: newCount, currentSurface })
+      set({ pitroadContactCount: newCount, currentSurface: resolveSurface({ ...state, pitroadContactCount: newCount }) })
+    } else if (type === 'gravel') {
+      const newCount = state.gravelContactCount + 1
+      set({ gravelContactCount: newCount, currentSurface: resolveSurface({ ...state, gravelContactCount: newCount }) })
+    } else if (type === 'grass') {
+      set({ currentSurface: resolveSurface(state) })
     }
   },
 
@@ -53,37 +59,18 @@ export const useSurfaceStore = create<SurfaceState>((set, get) => ({
 
     if (type === 'road') {
       const newCount = Math.max(0, state.roadContactCount - 1)
-      const currentSurface =
-        state.curbContactCount > 0
-          ? 'curb'
-          : state.pitroadContactCount > 0
-            ? 'pitroad'
-            : newCount > 0
-              ? 'road'
-              : 'grass'
-      set({ roadContactCount: newCount, currentSurface })
+      set({ roadContactCount: newCount, currentSurface: resolveSurface({ ...state, roadContactCount: newCount }) })
     } else if (type === 'curb') {
       const newCount = Math.max(0, state.curbContactCount - 1)
-      const currentSurface =
-        newCount > 0
-          ? 'curb'
-          : state.pitroadContactCount > 0
-            ? 'pitroad'
-            : state.roadContactCount > 0
-              ? 'road'
-              : 'grass'
-      set({ curbContactCount: newCount, currentSurface })
+      set({ curbContactCount: newCount, currentSurface: resolveSurface({ ...state, curbContactCount: newCount }) })
     } else if (type === 'pitroad') {
       const newCount = Math.max(0, state.pitroadContactCount - 1)
-      const currentSurface =
-        state.curbContactCount > 0
-          ? 'curb'
-          : newCount > 0
-            ? 'pitroad'
-            : state.roadContactCount > 0
-              ? 'road'
-              : 'grass'
-      set({ pitroadContactCount: newCount, currentSurface })
+      set({ pitroadContactCount: newCount, currentSurface: resolveSurface({ ...state, pitroadContactCount: newCount }) })
+    } else if (type === 'gravel') {
+      const newCount = Math.max(0, state.gravelContactCount - 1)
+      set({ gravelContactCount: newCount, currentSurface: resolveSurface({ ...state, gravelContactCount: newCount }) })
+    } else if (type === 'grass') {
+      set({ currentSurface: resolveSurface(state) })
     }
   },
 
@@ -93,6 +80,7 @@ export const useSurfaceStore = create<SurfaceState>((set, get) => ({
       roadContactCount: 0,
       curbContactCount: 0,
       pitroadContactCount: 0,
+      gravelContactCount: 0,
     })
   },
 }))

@@ -12,6 +12,7 @@ import WrongWayIndicator from './WrongWayIndicator'
 import PitLaneSpeedIndicator from './PitLaneSpeedIndicator'
 import DebugPanel from './DebugPanel'
 import CoastIndicator from './CoastIndicator'
+import SurfaceIndicator from './SurfaceIndicator'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
 import { useGameStore } from '../../../stores/useGameStore'
 import { usePitStore } from '../../../stores/usePitStore'
@@ -171,7 +172,7 @@ export default function HUD() {
         <>
           {/* Status bar - top left with weather, FPS, tire, camera, lap times */}
           <StatusBar />
-          <LapTimer />
+          {cameraMode !== 'first-person' && <LapTimer />}
 
           {isMobile && <MobileSpeedGear />}
 
@@ -222,6 +223,11 @@ export default function HUD() {
 
           {/* Heatmap/Thermal view legend */}
           {!isMobile && <HeatmapLegend />}
+
+          {/* Surface type indicator */}
+          <div style={{ position: 'absolute', top: 60, right: 20 }}>
+            <SurfaceIndicator />
+          </div>
 
           {/* Aquaplaning/Thermal shock warning overlay */}
           <AquaplaningIndicator />

@@ -13,7 +13,7 @@ import {
   RoadEdgeHitResult,
   RoadSurfaceHitResult,
 } from '../../../stores/useCustomizationStore'
-import { isCurveMode } from '../../../types/trackObjects'
+import { isCurveMode, isPolygonObject } from '../../../types/trackObjects'
 import { useEditorStore } from '../../../stores/useEditorStore'
 import { MIN_SEGMENT_LENGTH, PIT_ROAD_WIDTH } from '../../../constants/trackObjects'
 import { calculateSnappedPosition } from '../../../utils/roadSnapping'
@@ -67,6 +67,10 @@ export default function ObjectPlacer() {
   const previewPositionForPaste = useEditorStore(s => s.previewPosition)
   const elevationEditMode = useEditorStore(s => s.elevationEditMode)
   const setElevationEditMode = useEditorStore(s => s.setElevationEditMode)
+  const addPolygonPoint = useEditorStore(s => s.addPolygonPoint)
+  const cancelPolygon = useEditorStore(s => s.cancelPolygon)
+  const undoLastPolygonPoint = useEditorStore(s => s.undoLastPolygonPoint)
+  const closePolygon = useEditorStore(s => s.closePolygon)
 
   // Get snap points from existing road/barrier segments
   const snapPoints = getSnapPoints(placedObjects)
@@ -93,6 +97,17 @@ export default function ObjectPlacer() {
       if (!selectedObjectType) return
       if (event.button !== 0) return // Left click only
       if (selectedObjectType === 'curb' || selectedObjectType === 'pitbox') return
+
+      if (isPolygonObject(selectedObjectType)) {
+        if (event.detail >= 2) return
+        raycaster.current.setFromCamera(pointer.current, camera)
+        const intersectPoint = new Vector3()
+        raycaster.current.ray.intersectPlane(groundPlane.current, intersectPoint)
+        if (intersectPoint) {
+          addPolygonPoint([intersectPoint.x, 0, intersectPoint.z])
+        }
+        return
+      }
 
       // Get intersection point
       raycaster.current.setFromCamera(pointer.current, camera)
@@ -326,12 +341,24 @@ export default function ObjectPlacer() {
         case 'Escape':
           if (elevationEditMode) {
             setElevationEditMode(false)
+          } else if (placementState === 'polygonDrawing') {
+            cancelPolygon()
           } else if (partialDeleteMode && partialDeleteState) {
             cancelPartialDelete()
           } else if (placementState === 'curbDragging') {
             cancelCurbPlacement()
           } else {
             cancelPlacement()
+          }
+          break
+        case 'Backspace':
+          if (placementState === 'polygonDrawing') {
+            undoLastPolygonPoint()
+          }
+          break
+        case 'Enter':
+          if (placementState === 'polygonDrawing') {
+            closePolygon()
           }
           break
       }
@@ -341,6 +368,9 @@ export default function ObjectPlacer() {
       cancelPlacement,
       cancelCurbPlacement,
       cancelPartialDelete,
+      cancelPolygon,
+      undoLastPolygonPoint,
+      closePolygon,
       placementState,
       partialDeleteMode,
       partialDeleteState,
@@ -354,12 +384,23 @@ export default function ObjectPlacer() {
     ],
   )
 
+  const handleDblClick = useCallback(
+    (event: MouseEvent) => {
+      if (placementState === 'polygonDrawing') {
+        event.preventDefault()
+        closePolygon()
+      }
+    },
+    [placementState, closePolygon],
+  )
+
   // Setup event listeners
   useEffect(() => {
     const canvas = gl.domElement
     canvas.addEventListener('pointermove', handlePointerMove)
     canvas.addEventListener('click', handleClick)
     canvas.addEventListener('click', handlePartialDeleteClick)
+    canvas.addEventListener('dblclick', handleDblClick)
     canvas.addEventListener('pointerdown', handlePointerDown)
     canvas.addEventListener('pointerup', handlePointerUp)
     window.addEventListener('keydown', handleKeyDown)
@@ -368,6 +409,7 @@ export default function ObjectPlacer() {
       canvas.removeEventListener('pointermove', handlePointerMove)
       canvas.removeEventListener('click', handleClick)
       canvas.removeEventListener('click', handlePartialDeleteClick)
+      canvas.removeEventListener('dblclick', handleDblClick)
       canvas.removeEventListener('pointerdown', handlePointerDown)
       canvas.removeEventListener('pointerup', handlePointerUp)
       window.removeEventListener('keydown', handleKeyDown)
@@ -377,6 +419,7 @@ export default function ObjectPlacer() {
     handlePointerMove,
     handleClick,
     handlePartialDeleteClick,
+    handleDblClick,
     handlePointerDown,
     handlePointerUp,
     handleKeyDown,

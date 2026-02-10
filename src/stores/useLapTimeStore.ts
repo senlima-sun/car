@@ -18,36 +18,26 @@ interface LapTimeState {
   lastLapTime: number | null
   bestLapTime: number | null
   lapCount: number
-  lastCrossingTime: number
+  lastStartFinishCrossingTime: number
 
   wrongWay: boolean
   currentLapInvalid: boolean
 
-  totalCheckpoints: number
+  totalSectors: number
   currentSector: number
-  expectedNextCheckpoint: number
   sectorStartTime: number | null
   sectorTimes: Map<number, number>
   bestSectorTimes: Map<number, number>
   lastSectorSplit: SectorSplit | null
+  lastSectorCrossingTimes: Map<number, number>
 
-  setActive: (active: boolean, totalCheckpoints?: number) => void
+  setActive: (active: boolean, sectorCheckpoints?: number) => void
   toggleRecording: () => void
   crossStartFinish: (isWrongWay?: boolean) => void
   crossSector: (checkpointOrder: number, isWrongWay?: boolean) => void
   updateCurrentTime: () => void
   setWrongWay: (wrongWay: boolean) => void
   reset: () => void
-}
-
-const initialSectorState = {
-  totalCheckpoints: 0,
-  currentSector: 0,
-  expectedNextCheckpoint: 1,
-  sectorStartTime: null as number | null,
-  sectorTimes: new Map<number, number>(),
-  bestSectorTimes: new Map<number, number>(),
-  lastSectorSplit: null as SectorSplit | null,
 }
 
 export const useLapTimeStore = create<LapTimeState>((set, get) => ({
@@ -58,12 +48,18 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
   lastLapTime: null,
   bestLapTime: null,
   lapCount: 0,
-  lastCrossingTime: 0,
+  lastStartFinishCrossingTime: 0,
   wrongWay: false,
   currentLapInvalid: false,
-  ...initialSectorState,
+  totalSectors: 0,
+  currentSector: 0,
+  sectorStartTime: null,
+  sectorTimes: new Map(),
+  bestSectorTimes: new Map(),
+  lastSectorSplit: null,
+  lastSectorCrossingTimes: new Map(),
 
-  setActive: (active, totalCheckpoints = 0) => {
+  setActive: (active, sectorCheckpoints = 0) => {
     if (!active) {
       set({
         isActive: false,
@@ -73,13 +69,20 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         lastLapTime: null,
         bestLapTime: null,
         lapCount: 0,
-        lastCrossingTime: 0,
+        lastStartFinishCrossingTime: 0,
         wrongWay: false,
         currentLapInvalid: false,
-        ...initialSectorState,
+        totalSectors: 0,
+        currentSector: 0,
+        sectorStartTime: null,
+        sectorTimes: new Map(),
+        bestSectorTimes: new Map(),
+        lastSectorSplit: null,
+        lastSectorCrossingTimes: new Map(),
       })
     } else {
-      set({ isActive: true, totalCheckpoints })
+      const totalSectors = sectorCheckpoints > 0 ? sectorCheckpoints + 1 : 0
+      set({ isActive: true, totalSectors })
     }
   },
 
@@ -95,11 +98,16 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         lastLapTime: null,
         bestLapTime: null,
         lapCount: 0,
-        lastCrossingTime: 0,
+        lastStartFinishCrossingTime: 0,
         wrongWay: false,
         currentLapInvalid: false,
-        ...initialSectorState,
-        totalCheckpoints: state.totalCheckpoints,
+        currentSector: 0,
+        sectorStartTime: null,
+        sectorTimes: new Map(),
+        bestSectorTimes: new Map(),
+        lastSectorSplit: null,
+        lastSectorCrossingTimes: new Map(),
+        totalSectors: state.totalSectors,
       })
     } else {
       set({ isRecording: true })
@@ -119,108 +127,76 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
     }
 
     const now = performance.now()
-    if (now - state.lastCrossingTime < CROSSING_COOLDOWN_MS) return
+    if (now - state.lastStartFinishCrossingTime < CROSSING_COOLDOWN_MS) return
+
+    const sectorReset = {
+      currentSector: 0,
+      sectorStartTime: now,
+      sectorTimes: new Map<number, number>(),
+      lastSectorCrossingTimes: new Map<number, number>(),
+    }
 
     if (state.currentLapStart === null) {
       set({
         currentLapStart: now,
         currentLapTime: 0,
-        lastCrossingTime: now,
+        lastStartFinishCrossingTime: now,
         currentLapInvalid: false,
-        currentSector: 0,
-        expectedNextCheckpoint: 1,
-        sectorStartTime: now,
-        sectorTimes: new Map(),
+        ...sectorReset,
+      })
+      return
+    }
+
+    const lapTime = now - state.currentLapStart
+
+    let lastSplit: SectorSplit | null = null
+    const newBestSectors = new Map(state.bestSectorTimes)
+
+    if (state.totalSectors > 0 && state.sectorStartTime !== null) {
+      const finalSectorNum = state.totalSectors
+      const finalSectorTime = now - state.sectorStartTime
+      const prevBest = newBestSectors.get(finalSectorNum)
+      if (!prevBest || finalSectorTime < prevBest) {
+        newBestSectors.set(finalSectorNum, finalSectorTime)
+      }
+      const delta = prevBest ? finalSectorTime - prevBest : null
+      lastSplit = { sectorNumber: finalSectorNum, time: finalSectorTime, delta }
+    }
+
+    if (!state.currentLapInvalid) {
+      const newBest =
+        state.bestLapTime === null || lapTime < state.bestLapTime ? lapTime : state.bestLapTime
+      set({
+        currentLapStart: now,
+        currentLapTime: 0,
+        lastStartFinishCrossingTime: now,
+        currentLapInvalid: false,
+        lastLapTime: lapTime,
+        bestLapTime: newBest,
+        lapCount: state.lapCount + 1,
+        bestSectorTimes: newBestSectors,
+        lastSectorSplit: lastSplit,
+        ...sectorReset,
       })
     } else {
-      const lapTime = now - state.currentLapStart
-
-      if (state.sectorStartTime !== null && state.totalCheckpoints > 0) {
-        const lastSectorTime = now - state.sectorStartTime
-        const sectorNum = state.totalCheckpoints
-        const newSectorTimes = new Map(state.sectorTimes)
-        newSectorTimes.set(sectorNum, lastSectorTime)
-
-        const newBestSectors = new Map(state.bestSectorTimes)
-        const prevBest = newBestSectors.get(sectorNum)
-        if (!prevBest || lastSectorTime < prevBest) {
-          newBestSectors.set(sectorNum, lastSectorTime)
-        }
-
-        const delta = prevBest ? lastSectorTime - prevBest : null
-
-        if (!state.currentLapInvalid) {
-          const newBest =
-            state.bestLapTime === null || lapTime < state.bestLapTime ? lapTime : state.bestLapTime
-          set({
-            lastLapTime: lapTime,
-            bestLapTime: newBest,
-            lapCount: state.lapCount + 1,
-            currentLapStart: now,
-            currentLapTime: 0,
-            lastCrossingTime: now,
-            currentLapInvalid: false,
-            currentSector: 0,
-            expectedNextCheckpoint: 1,
-            sectorStartTime: now,
-            sectorTimes: new Map(),
-            bestSectorTimes: newBestSectors,
-            lastSectorSplit: { sectorNumber: sectorNum, time: lastSectorTime, delta },
-          })
-        } else {
-          set({
-            lastLapTime: null,
-            lapCount: state.lapCount + 1,
-            currentLapStart: now,
-            currentLapTime: 0,
-            lastCrossingTime: now,
-            currentLapInvalid: false,
-            currentSector: 0,
-            expectedNextCheckpoint: 1,
-            sectorStartTime: now,
-            sectorTimes: new Map(),
-            bestSectorTimes: newBestSectors,
-            lastSectorSplit: null,
-          })
-        }
-      } else {
-        if (!state.currentLapInvalid) {
-          const newBest =
-            state.bestLapTime === null || lapTime < state.bestLapTime ? lapTime : state.bestLapTime
-          set({
-            lastLapTime: lapTime,
-            bestLapTime: newBest,
-            lapCount: state.lapCount + 1,
-            currentLapStart: now,
-            currentLapTime: 0,
-            lastCrossingTime: now,
-            currentLapInvalid: false,
-            currentSector: 0,
-            expectedNextCheckpoint: 1,
-            sectorStartTime: now,
-            sectorTimes: new Map(),
-          })
-        } else {
-          set({
-            lastLapTime: null,
-            lapCount: state.lapCount + 1,
-            currentLapStart: now,
-            currentLapTime: 0,
-            lastCrossingTime: now,
-            currentLapInvalid: false,
-            currentSector: 0,
-            expectedNextCheckpoint: 1,
-            sectorStartTime: now,
-            sectorTimes: new Map(),
-          })
-        }
-      }
+      set({
+        currentLapStart: now,
+        currentLapTime: 0,
+        lastStartFinishCrossingTime: now,
+        currentLapInvalid: false,
+        lastLapTime: null,
+        lapCount: state.lapCount + 1,
+        bestSectorTimes: newBestSectors,
+        lastSectorSplit: null,
+        ...sectorReset,
+      })
     }
   },
 
   crossSector: (checkpointOrder, isWrongWay = false) => {
     const state = get()
     if (!state.isActive || !state.isRecording || state.currentLapStart === null) return
+    if (state.totalSectors === 0) return
 
     if (isWrongWay) {
       set({ wrongWay: true, currentLapInvalid: true })
@@ -230,15 +206,13 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
       return
     }
 
-    if (checkpointOrder !== state.expectedNextCheckpoint) {
-      set({ currentLapInvalid: true })
-      return
-    }
-
     const now = performance.now()
-    if (now - state.lastCrossingTime < CROSSING_COOLDOWN_MS) return
+    const lastCrossing = state.lastSectorCrossingTimes.get(checkpointOrder) ?? 0
+    if (now - lastCrossing < CROSSING_COOLDOWN_MS) return
 
-    const sectorTime = state.sectorStartTime !== null ? now - state.sectorStartTime : 0
+    if (state.sectorStartTime === null) return
+
+    const sectorTime = now - state.sectorStartTime
 
     const newSectorTimes = new Map(state.sectorTimes)
     newSectorTimes.set(checkpointOrder, sectorTime)
@@ -251,13 +225,15 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
 
     const delta = prevBest ? sectorTime - prevBest : null
 
+    const newCrossingTimes = new Map(state.lastSectorCrossingTimes)
+    newCrossingTimes.set(checkpointOrder, now)
+
     set({
       currentSector: checkpointOrder,
-      expectedNextCheckpoint: checkpointOrder + 1,
       sectorStartTime: now,
       sectorTimes: newSectorTimes,
       bestSectorTimes: newBestSectors,
-      lastCrossingTime: now,
+      lastSectorCrossingTimes: newCrossingTimes,
       lastSectorSplit: { sectorNumber: checkpointOrder, time: sectorTime, delta },
     })
   },
@@ -288,9 +264,15 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
       lastLapTime: null,
       bestLapTime: null,
       lapCount: 0,
-      lastCrossingTime: 0,
+      lastStartFinishCrossingTime: 0,
       wrongWay: false,
       currentLapInvalid: false,
-      ...initialSectorState,
+      totalSectors: 0,
+      currentSector: 0,
+      sectorStartTime: null,
+      sectorTimes: new Map(),
+      bestSectorTimes: new Map(),
+      lastSectorSplit: null,
+      lastSectorCrossingTimes: new Map(),
     }),
 }))

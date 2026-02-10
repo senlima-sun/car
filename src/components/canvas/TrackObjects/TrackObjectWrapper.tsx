@@ -14,6 +14,7 @@ import CurvedBarrier from './CurvedBarrier'
 import PitBox from './PitBox'
 import CurbSegment from './CurbSegment'
 import CurvedCurbSegment from './CurvedCurbSegment'
+import SurfacePatch from './SurfacePatch'
 import SelectionHighlight from './SelectionHighlight'
 import FlowArrows from './FlowArrows'
 
@@ -165,6 +166,16 @@ export default function TrackObjectWrapper({
           startT={object.startT}
           endT={object.endT}
           width={object.width}
+        />
+      )
+      break
+    case 'grass_patch':
+    case 'gravel_patch':
+      component = (
+        <SurfacePatch
+          polygonPoints={object.polygonPoints}
+          surfaceType={object.type as 'grass_patch' | 'gravel_patch'}
+          isGhost={isGhost || !enablePhysics}
         />
       )
       break

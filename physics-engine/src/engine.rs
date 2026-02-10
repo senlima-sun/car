@@ -483,7 +483,8 @@ impl PhysicsEngine {
             .tires
             .calculate_degradation_modifiers_from_ambient(&ambient);
 
-        // Get surface modifiers (grass, road, curb)
+        // Update surface transition and get modifiers
+        self.surface.update(dt);
         let surface_modifiers = self.surface.get_modifiers();
 
         // Surface grip is the primary grip modifier

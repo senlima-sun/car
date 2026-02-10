@@ -13,4 +13,5 @@ export { default as CurvedCurbSegment, CurvedCurbPreview } from './CurvedCurbSeg
 export { default as TrackObjectWrapper } from './TrackObjectWrapper'
 export { default as SelectionHighlight } from './SelectionHighlight'
 export { default as PitBox } from './PitBox'
+export { default as SurfacePatch } from './SurfacePatch'
 export { default as StartGrid } from './StartGrid'

@@ -771,6 +771,7 @@ pub enum SurfaceType {
     Road,
     Curb,
     PitRoad,
+    Gravel,
 }
 
 /// Modifiers applied based on surface type
@@ -845,12 +846,37 @@ impl SurfaceModifiers {
         }
     }
 
+    /// Gravel surface - loose surface runoff area
+    pub fn gravel() -> Self {
+        Self {
+            grip_multiplier: 0.55,
+            speed_multiplier: 0.8,
+            tire_wear_multiplier: 1.4,
+            drag_multiplier: 1.8,
+            brake_efficiency: 0.7,
+            steer_response: 0.7,
+        }
+    }
+
     pub fn for_surface(surface: SurfaceType) -> Self {
         match surface {
             SurfaceType::Grass => Self::grass(),
             SurfaceType::Road => Self::road(),
             SurfaceType::Curb => Self::curb(),
             SurfaceType::PitRoad => Self::pitroad(),
+            SurfaceType::Gravel => Self::gravel(),
+        }
+    }
+
+    pub fn lerp(a: &Self, b: &Self, t: f32) -> Self {
+        let mix = |x: f32, y: f32| x + (y - x) * t;
+        Self {
+            grip_multiplier: mix(a.grip_multiplier, b.grip_multiplier),
+            speed_multiplier: mix(a.speed_multiplier, b.speed_multiplier),
+            tire_wear_multiplier: mix(a.tire_wear_multiplier, b.tire_wear_multiplier),
+            drag_multiplier: mix(a.drag_multiplier, b.drag_multiplier),
+            brake_efficiency: mix(a.brake_efficiency, b.brake_efficiency),
+            steer_response: mix(a.steer_response, b.steer_response),
         }
     }
 }

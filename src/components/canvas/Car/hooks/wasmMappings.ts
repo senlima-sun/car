@@ -28,6 +28,10 @@ export function mapSurfaceToWasm(surface: SurfaceType): WasmSurfaceType {
       return WasmSurfaceType.Road
     case 'curb':
       return WasmSurfaceType.Curb
+    case 'pitroad':
+      return WasmSurfaceType.PitRoad
+    case 'gravel':
+      return WasmSurfaceType.Gravel
     case 'grass':
     default:
       return WasmSurfaceType.Grass

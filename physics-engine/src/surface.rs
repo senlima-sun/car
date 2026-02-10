@@ -1,44 +1,79 @@
 use crate::types::{SurfaceModifiers, SurfaceType};
 
-/// Tracks the current surface the car is driving on
-#[derive(Debug, Default)]
+const TRANSITION_DURATION: f32 = 0.3;
+
+#[derive(Debug)]
 pub struct SurfaceState {
     current_surface: SurfaceType,
-    modifiers: SurfaceModifiers,
+    target_modifiers: SurfaceModifiers,
+    previous_modifiers: SurfaceModifiers,
+    active_modifiers: SurfaceModifiers,
+    transition_timer: f32,
+    is_transitioning: bool,
+}
+
+impl Default for SurfaceState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SurfaceState {
     pub fn new() -> Self {
+        let modifiers = SurfaceModifiers::grass();
         Self {
             current_surface: SurfaceType::Grass,
-            modifiers: SurfaceModifiers::grass(),
+            target_modifiers: modifiers,
+            previous_modifiers: modifiers,
+            active_modifiers: modifiers,
+            transition_timer: 0.0,
+            is_transitioning: false,
         }
     }
 
-    /// Set the current surface type
     pub fn set_surface(&mut self, surface: SurfaceType) {
         if self.current_surface != surface {
             self.current_surface = surface;
-            self.modifiers = SurfaceModifiers::for_surface(surface);
+            self.previous_modifiers = self.active_modifiers;
+            self.target_modifiers = SurfaceModifiers::for_surface(surface);
+            self.transition_timer = 0.0;
+            self.is_transitioning = true;
         }
     }
 
-    /// Get the current surface type
+    pub fn update(&mut self, dt: f32) {
+        if !self.is_transitioning {
+            return;
+        }
+
+        self.transition_timer += dt;
+        let t = (self.transition_timer / TRANSITION_DURATION).min(1.0);
+        let smoothed = t * t * (3.0 - 2.0 * t);
+
+        self.active_modifiers = SurfaceModifiers::lerp(
+            &self.previous_modifiers,
+            &self.target_modifiers,
+            smoothed,
+        );
+
+        if t >= 1.0 {
+            self.is_transitioning = false;
+            self.active_modifiers = self.target_modifiers;
+        }
+    }
+
     pub fn get_surface(&self) -> SurfaceType {
         self.current_surface
     }
 
-    /// Get the current surface modifiers
     pub fn get_modifiers(&self) -> &SurfaceModifiers {
-        &self.modifiers
+        &self.active_modifiers
     }
 
-    /// Check if currently on road
     pub fn is_on_road(&self) -> bool {
         self.current_surface == SurfaceType::Road
     }
 
-    /// Check if currently off-track (grass)
     pub fn is_off_track(&self) -> bool {
         self.current_surface == SurfaceType::Grass
     }
@@ -47,34 +82,44 @@ impl SurfaceState {
         self.current_surface == SurfaceType::PitRoad
     }
 
-    /// Get grip modifier for current surface
+    pub fn is_on_gravel(&self) -> bool {
+        self.current_surface == SurfaceType::Gravel
+    }
+
+    pub fn is_transitioning(&self) -> bool {
+        self.is_transitioning
+    }
+
+    pub fn get_transition_progress(&self) -> f32 {
+        if self.is_transitioning {
+            (self.transition_timer / TRANSITION_DURATION).min(1.0)
+        } else {
+            1.0
+        }
+    }
+
     pub fn get_grip_modifier(&self) -> f32 {
-        self.modifiers.grip_multiplier
+        self.active_modifiers.grip_multiplier
     }
 
-    /// Get speed modifier for current surface
     pub fn get_speed_modifier(&self) -> f32 {
-        self.modifiers.speed_multiplier
+        self.active_modifiers.speed_multiplier
     }
 
-    /// Get tire wear modifier for current surface
     pub fn get_tire_wear_modifier(&self) -> f32 {
-        self.modifiers.tire_wear_multiplier
+        self.active_modifiers.tire_wear_multiplier
     }
 
-    /// Get drag modifier for current surface
     pub fn get_drag_modifier(&self) -> f32 {
-        self.modifiers.drag_multiplier
+        self.active_modifiers.drag_multiplier
     }
 
-    /// Get brake efficiency for current surface
     pub fn get_brake_efficiency(&self) -> f32 {
-        self.modifiers.brake_efficiency
+        self.active_modifiers.brake_efficiency
     }
 
-    /// Get steering response for current surface
     pub fn get_steer_response(&self) -> f32 {
-        self.modifiers.steer_response
+        self.active_modifiers.steer_response
     }
 }
 
@@ -95,25 +140,21 @@ mod tests {
         let mut state = SurfaceState::new();
 
         state.set_surface(SurfaceType::Road);
+        state.update(TRANSITION_DURATION + 0.01);
         assert_eq!(state.get_surface(), SurfaceType::Road);
         assert!(state.is_on_road());
         assert!(!state.is_off_track());
 
-        // Check road modifiers
         assert!((state.get_grip_modifier() - 1.0).abs() < 0.01);
         assert!((state.get_speed_modifier() - 1.0).abs() < 0.01);
     }
 
     #[test]
     fn test_grass_penalties() {
-        let mut state = SurfaceState::new();
-        state.set_surface(SurfaceType::Grass);
+        let state = SurfaceState::new();
 
-        // Grass should have severe grip penalty
         assert!(state.get_grip_modifier() < 0.5);
-        // Grass should slow down the car
         assert!(state.get_speed_modifier() < 1.0);
-        // Grass should have less tire wear
         assert!(state.get_tire_wear_modifier() < 1.0);
     }
 
@@ -121,10 +162,9 @@ mod tests {
     fn test_curb_modifiers() {
         let mut state = SurfaceState::new();
         state.set_surface(SurfaceType::Curb);
+        state.update(TRANSITION_DURATION + 0.01);
 
-        // Curb should have increased grip
         assert!(state.get_grip_modifier() > 1.0);
-        // Curb should have slight speed reduction
         assert!(state.get_speed_modifier() < 1.0);
     }
 
@@ -132,15 +172,67 @@ mod tests {
     fn test_surface_change() {
         let mut state = SurfaceState::new();
 
-        // Start on grass
         assert_eq!(state.get_surface(), SurfaceType::Grass);
         let grass_grip = state.get_grip_modifier();
 
-        // Move to road
         state.set_surface(SurfaceType::Road);
+        state.update(TRANSITION_DURATION + 0.01);
         let road_grip = state.get_grip_modifier();
 
-        // Road should have more grip than grass
         assert!(road_grip > grass_grip);
+    }
+
+    #[test]
+    fn test_transition_interpolation() {
+        let mut state = SurfaceState::new();
+        state.set_surface(SurfaceType::Road);
+        state.update(0.0);
+        let grass_grip = SurfaceModifiers::grass().grip_multiplier;
+        let road_grip = SurfaceModifiers::road().grip_multiplier;
+
+        assert!(state.is_transitioning());
+
+        state.update(TRANSITION_DURATION * 0.5);
+        let mid_grip = state.get_grip_modifier();
+        assert!(mid_grip > grass_grip);
+        assert!(mid_grip < road_grip);
+
+        state.update(TRANSITION_DURATION);
+        assert!(!state.is_transitioning());
+        assert!((state.get_grip_modifier() - road_grip).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_transition_progress() {
+        let mut state = SurfaceState::new();
+        assert!((state.get_transition_progress() - 1.0).abs() < 0.01);
+
+        state.set_surface(SurfaceType::Road);
+        assert!((state.get_transition_progress() - 0.0).abs() < 0.01);
+
+        state.update(TRANSITION_DURATION * 0.5);
+        let progress = state.get_transition_progress();
+        assert!(progress > 0.4 && progress < 0.6);
+
+        state.update(TRANSITION_DURATION);
+        assert!((state.get_transition_progress() - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_rapid_surface_changes() {
+        let mut state = SurfaceState::new();
+
+        state.set_surface(SurfaceType::Road);
+        state.update(TRANSITION_DURATION * 0.3);
+        let mid_transition_grip = state.get_grip_modifier();
+
+        state.set_surface(SurfaceType::Gravel);
+        assert!(state.is_transitioning());
+        let restart_grip = state.get_grip_modifier();
+        assert!((restart_grip - mid_transition_grip).abs() < 0.01);
+
+        state.update(TRANSITION_DURATION + 0.01);
+        let gravel_grip = SurfaceModifiers::gravel().grip_multiplier;
+        assert!((state.get_grip_modifier() - gravel_grip).abs() < 0.01);
     }
 }

@@ -343,7 +343,7 @@ export function SteeringWheelDisplay() {
         Col({ flex: 1, style: { gap: 4 }, children: [
           Row({ flex: 1, style: { gap: 4 }, children: [
             gridCell('BB', frontBias.toFixed(1), ORANGE, `F${Math.round(frontBias)}`),
-            gridCell('LAP', isRecording && currentLapStart !== null ? formatLapTime(currentLapTime) : '--', isRecording ? SPEED_GREEN : DIM),
+            gridCell('POS', '--', DIM),
           ]}),
           Row({ flex: 1, style: { gap: 4 }, children: [
             gridCell(

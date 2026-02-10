@@ -102,7 +102,7 @@ export default function LapTimer() {
   const lapCount = useLapTimeStore(state => state.lapCount)
   const updateCurrentTime = useLapTimeStore(state => state.updateCurrentTime)
   const currentSector = useLapTimeStore(state => state.currentSector)
-  const totalCheckpoints = useLapTimeStore(state => state.totalCheckpoints)
+  const totalSectors = useLapTimeStore(state => state.totalSectors)
   const sectorTimes = useLapTimeStore(state => state.sectorTimes)
   const bestSectorTimes = useLapTimeStore(state => state.bestSectorTimes)
   const currentLapInvalid = useLapTimeStore(state => state.currentLapInvalid)
@@ -129,7 +129,7 @@ export default function LapTimer() {
   if (!isRecording) {
     return (
       <div style={styles.hint}>
-        Press <strong>R</strong> to start lap timing
+        Press <strong>L</strong> to start lap timing
       </div>
     )
   }
@@ -173,11 +173,11 @@ export default function LapTimer() {
       </div>
 
       {/* Sector indicator */}
-      {totalCheckpoints > 0 && hasStarted && (
+      {totalSectors > 0 && hasStarted && (
         <div style={styles.timeBlock}>
           <div style={styles.label}>Sector</div>
           <div style={{ fontSize: 14, color: currentLapInvalid ? '#ef4444' : '#fff', fontFamily: 'monospace' }}>
-            {currentLapInvalid ? 'INV' : `${currentSector}/${totalCheckpoints}`}
+            {currentLapInvalid ? 'INV' : `${currentSector}/${totalSectors}`}
           </div>
         </div>
       )}
@@ -192,7 +192,7 @@ export default function LapTimer() {
         </div>
       )}
 
-      {hasStarted && totalCheckpoints > 0 && sectorTimes.size > 0 && (
+      {hasStarted && totalSectors > 0 && sectorTimes.size > 0 && (
         <>
           {Array.from(sectorTimes.entries()).map(([sectorNum, time]) => {
             const best = bestSectorTimes.get(sectorNum)

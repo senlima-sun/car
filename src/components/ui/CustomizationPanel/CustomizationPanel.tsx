@@ -4,7 +4,7 @@ import {
   type ObjectType,
   isLinearObject,
 } from '../../../stores/useCustomizationStore'
-import { isCurveMode } from '../../../types/trackObjects'
+import { isCurveMode, isPolygonObject } from '../../../types/trackObjects'
 import { useEditorStore } from '../../../stores/useEditorStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
@@ -212,6 +212,7 @@ export default function CustomizationPanel() {
   const placementState = useEditorStore(s => s.placementState)
   const selectedObjectId = useEditorStore(s => s.selectedObjectId)
   const deleteMode = useEditorStore(s => s.deleteMode)
+  const polygonPoints = useEditorStore(s => s.polygonPoints)
   const selectObjectType = useEditorStore(s => s.selectObjectType)
   const setTrackMode = useEditorStore(s => s.setTrackMode)
   const setDeleteMode = useEditorStore(s => s.setDeleteMode)
@@ -367,6 +368,23 @@ export default function CustomizationPanel() {
   // Get placement hint based on current state
   const getPlacementHint = () => {
     if (!selectedObjectType) return null
+
+    if (isPolygonObject(selectedObjectType)) {
+      if (placementState === 'polygonDrawing') {
+        const points = polygonPoints.length
+        if (points === 0) {
+          return 'Click to add first point'
+        } else if (points === 1) {
+          return `1 point placed • Click to add more points`
+        } else if (points === 2) {
+          return `${points} points • Click to add more • Need at least 3 points`
+        } else {
+          return `${points} points • Double-click or Enter to close • Backspace to undo • Esc to cancel`
+        }
+      }
+      return 'Click to start drawing polygon • Double-click or Enter to close'
+    }
+
     if (!isLinearObject(selectedObjectType)) return 'Click to place'
 
     if (isCurveMode(trackMode)) {
@@ -438,6 +456,11 @@ export default function CustomizationPanel() {
         >
           {partialDeleteMode ? 'Exit Partial Delete' : 'Partial Delete Road'}
         </button>
+
+        {/* Show polygon drawing hint */}
+        {selectedObjectType && isPolygonObject(selectedObjectType) && placementHint && (
+          <div style={styles.placementHint}>{placementHint}</div>
+        )}
 
         {/* Show selected object info when in delete mode */}
         {deleteMode && (

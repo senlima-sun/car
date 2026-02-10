@@ -47,6 +47,8 @@ const objectIcons: Record<ObjectType, string> = {
   road: '#333333',
   curb: '#ff0000',
   pitbox: '#ff6600',
+  grass_patch: '#4a8c3f',
+  gravel_patch: '#8a7f6d',
 }
 
 export default function ObjectButton({ type, isSelected, onClick }: ObjectButtonProps) {

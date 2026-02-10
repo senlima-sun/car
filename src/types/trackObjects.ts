@@ -1,4 +1,4 @@
-export type ObjectType = 'cone' | 'ramp' | 'checkpoint' | 'barrier' | 'road' | 'curb' | 'pitbox'
+export type ObjectType = 'cone' | 'ramp' | 'checkpoint' | 'barrier' | 'road' | 'curb' | 'pitbox' | 'grass_patch' | 'gravel_patch'
 export type TrackMode = 'straight' | 'curve' | 'pitroad' | 'pitroad-curve'
 export type CheckpointType = 'start-finish' | 'sector'
 
@@ -26,6 +26,7 @@ export interface PlacedObject {
   startElevation?: number
   endElevation?: number
   banking?: number
+  polygonPoints?: Array<[number, number, number]>
 }
 
 export type PlacementState =
@@ -35,6 +36,7 @@ export type PlacementState =
   | 'dragging'
   | 'placingControlPoint'
   | 'curbDragging'
+  | 'polygonDrawing'
 
 export interface CurbDragState {
   roadId: string
@@ -108,6 +110,10 @@ export interface SlopeAnchor {
 
 export const isLinearObject = (type: ObjectType): boolean => {
   return type === 'barrier' || type === 'road'
+}
+
+export const isPolygonObject = (type: ObjectType): boolean => {
+  return type === 'grass_patch' || type === 'gravel_patch'
 }
 
 export const isPitRoad = (trackMode?: TrackMode): boolean => {

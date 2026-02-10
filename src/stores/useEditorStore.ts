@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { type ObjectType, type TrackMode, type PlacementState, type CurbDragState, type PartialDeleteState, type PlacedObject, type CheckpointType, type ElevationDragState, type ElevationTool, type SlopeAnchor, isLinearObject, isCurveMode, isPitRoad } from '../types/trackObjects'
+import { type ObjectType, type TrackMode, type PlacementState, type CurbDragState, type PartialDeleteState, type PlacedObject, type CheckpointType, type ElevationDragState, type ElevationTool, type SlopeAnchor, isLinearObject, isCurveMode, isPitRoad, isPolygonObject } from '../types/trackObjects'
 import type { EditorCommand } from '../types/editor'
 import { SnapSettings, DEFAULT_SNAP_SETTINGS } from '../utils/roadSnapping'
 import { splitRoadAtSegment, getRoadCenterPositionAt } from '../utils/roadGeometry'
@@ -56,7 +56,12 @@ interface EditorState {
   slopeAnchor: SlopeAnchor | null
   smoothSelectedRoadIds: string[]
   propagateToNeighbors: boolean
+  polygonPoints: Array<[number, number, number]>
 
+  addPolygonPoint: (point: [number, number, number]) => void
+  undoLastPolygonPoint: () => void
+  closePolygon: () => void
+  cancelPolygon: () => void
   setPropagateToNeighbors: (enabled: boolean) => void
   setElevationEditMode: (enabled: boolean) => void
   setElevationTool: (tool: ElevationTool) => void
@@ -170,6 +175,73 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   slopeAnchor: null,
   smoothSelectedRoadIds: [],
   propagateToNeighbors: false,
+  polygonPoints: [],
+
+  addPolygonPoint: (point) => {
+    const state = get()
+    const points = state.polygonPoints
+
+    if (points.length >= 30) return
+
+    if (points.length >= 3) {
+      const first = points[0]
+      const dx = point[0] - first[0]
+      const dz = point[2] - first[2]
+      const dist = Math.sqrt(dx * dx + dz * dz)
+      if (dist < 1.5) {
+        get().closePolygon()
+        return
+      }
+    }
+
+    if (state.placementState !== 'polygonDrawing') {
+      set({ polygonPoints: [point], placementState: 'polygonDrawing' as PlacementState })
+    } else {
+      set({ polygonPoints: [...points, point] })
+    }
+  },
+
+  undoLastPolygonPoint: () => {
+    const points = get().polygonPoints
+    if (points.length <= 1) {
+      set({ polygonPoints: [], placementState: 'selecting' as PlacementState })
+    } else {
+      set({ polygonPoints: points.slice(0, -1) })
+    }
+  },
+
+  closePolygon: () => {
+    const state = get()
+    const points = state.polygonPoints
+    if (points.length < 3 || !state.selectedObjectType) return
+
+    const center: [number, number, number] = [
+      points.reduce((s, p) => s + p[0], 0) / points.length,
+      0,
+      points.reduce((s, p) => s + p[2], 0) / points.length,
+    ]
+
+    const newObject: PlacedObject = {
+      id: `obj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: state.selectedObjectType,
+      position: center,
+      rotation: 0,
+      polygonPoints: points,
+    }
+
+    const command: EditorCommand = {
+      execute: () => useCustomizationStore.getState().addObject(newObject),
+      undo: () => useCustomizationStore.getState().removeObject(newObject.id),
+      description: `Place ${newObject.type}`,
+    }
+    editorCommandStack.push(command)
+
+    set({ polygonPoints: [], placementState: 'selecting' as PlacementState })
+  },
+
+  cancelPolygon: () => {
+    set({ polygonPoints: [], placementState: get().selectedObjectType ? 'selecting' as PlacementState : 'idle' as PlacementState })
+  },
 
   setPropagateToNeighbors: (enabled) => set({ propagateToNeighbors: enabled }),
 

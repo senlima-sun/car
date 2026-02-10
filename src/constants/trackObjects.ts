@@ -87,9 +87,29 @@ export const OBJECT_CONFIGS: Record<ObjectType, ObjectConfig> = {
     friction: 1.0,
     restitution: 0,
   },
+  grass_patch: {
+    type: 'grass_patch',
+    label: 'Grass',
+    description: 'Grass runoff area',
+    isLinear: false,
+    defaultSize: { width: 10, height: 0.02, depth: 10 },
+    color: '#4a8c3f',
+    friction: 0.4,
+    restitution: 0,
+  },
+  gravel_patch: {
+    type: 'gravel_patch',
+    label: 'Gravel',
+    description: 'Gravel trap runoff area',
+    isLinear: false,
+    defaultSize: { width: 10, height: 0.025, depth: 10 },
+    color: '#8a7f6d',
+    friction: 0.65,
+    restitution: 0,
+  },
 }
 
-export const OBJECT_TYPES: ObjectType[] = ['cone', 'ramp', 'checkpoint', 'barrier', 'road', 'curb', 'pitbox']
+export const OBJECT_TYPES: ObjectType[] = ['cone', 'ramp', 'checkpoint', 'barrier', 'road', 'curb', 'pitbox', 'grass_patch', 'gravel_patch']
 
 // Pit road constants
 export const PIT_ROAD_WIDTH = 8

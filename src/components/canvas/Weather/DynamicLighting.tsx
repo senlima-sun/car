@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useRef, useMemo } from 'react'
+import { Group, DirectionalLight, Vector3 } from 'three'
+import { useFrame } from '@react-three/fiber'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
+import { useGameStore } from '../../../stores/useGameStore'
 import { lerp, computeAtmosphereFromDynamic } from './DynamicSky'
 
-// Color interpolation helper
 function lerpColor(from: string, to: string, t: number): string {
-  // Parse hex colors
   const fromR = parseInt(from.slice(1, 3), 16)
   const fromG = parseInt(from.slice(3, 5), 16)
   const fromB = parseInt(from.slice(5, 7), 16)
@@ -20,39 +21,68 @@ function lerpColor(from: string, to: string, t: number): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
 }
 
-export default function DynamicLighting() {
+interface DynamicLightingProps {
+  target?: React.RefObject<Group | null>
+}
+
+export default function DynamicLighting({ target }: DynamicLightingProps) {
   const temperature = useEnvironmentStore(s => s.temperature)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
+  const isCustomizeMode = useGameStore(s => s.status) === 'customize'
+  const sunLightRef = useRef<DirectionalLight>(null)
+  const worldPos = useRef(new Vector3())
 
   const config = useMemo(() => {
     return computeAtmosphereFromDynamic(temperature, rainIntensity)
   }, [temperature, rainIntensity])
 
+  useFrame(() => {
+    if (!sunLightRef.current || !target?.current) return
+
+    target.current.getWorldPosition(worldPos.current)
+    const carPos = worldPos.current
+
+    sunLightRef.current.position.set(
+      carPos.x + config.sunPosition[0] * 0.5,
+      config.sunPosition[1],
+      carPos.z + config.sunPosition[2] * 0.5,
+    )
+    sunLightRef.current.target.position.set(carPos.x, 0, carPos.z)
+    sunLightRef.current.target.updateMatrixWorld()
+  })
+
+  const shadowSize = isCustomizeMode ? 2048 : 4096
+
   return (
     <>
-      {/* Ambient light */}
       <ambientLight intensity={config.ambientIntensity} />
 
-      {/* Main sun light (shadows handled by FollowingSun in Scene) */}
       <directionalLight
+        ref={sunLightRef}
         position={config.sunPosition}
         intensity={config.sunIntensity}
         color={config.sunColor}
+        castShadow={!isCustomizeMode}
+        shadow-mapSize={[shadowSize, shadowSize]}
+        shadow-camera-left={-30}
+        shadow-camera-right={30}
+        shadow-camera-top={30}
+        shadow-camera-bottom={-30}
+        shadow-camera-near={0.5}
+        shadow-camera-far={100}
+        shadow-bias={-0.0005}
       />
 
-      {/* Fill light from opposite side */}
       <directionalLight
         position={[-30, 40, -20]}
         intensity={config.fillLightIntensity}
         color={config.fillLightColor}
       />
 
-      {/* Hemisphere light for natural sky/ground lighting */}
       <hemisphereLight
         args={[config.hemisphereSkyColor, config.hemisphereGroundColor, config.hemisphereIntensity]}
       />
 
-      {/* Front fill light to illuminate car face - scales with ambient */}
       <pointLight
         position={[0, 10, 30]}
         intensity={50 * config.ambientIntensity}
