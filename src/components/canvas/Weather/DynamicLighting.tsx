@@ -64,10 +64,10 @@ export default function DynamicLighting({ target }: DynamicLightingProps) {
         color={config.sunColor}
         castShadow={!isCustomizeMode}
         shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-camera-left={-30}
-        shadow-camera-right={30}
-        shadow-camera-top={30}
-        shadow-camera-bottom={-30}
+        shadow-camera-left={-20}
+        shadow-camera-right={20}
+        shadow-camera-top={20}
+        shadow-camera-bottom={-20}
         shadow-camera-near={0.5}
         shadow-camera-far={100}
         shadow-bias={-0.0005}

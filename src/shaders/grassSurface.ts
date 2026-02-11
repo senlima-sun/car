@@ -100,22 +100,14 @@ void main() {
 
   float largeNoise = snoise(worldXZ * 0.3 + uTime * 0.01) * 0.5 + 0.5;
   float medNoise = snoise(worldXZ * 1.2 + vec2(50.0, 80.0)) * 0.5 + 0.5;
-  float smallNoise = snoise(worldXZ * 4.0 + vec2(120.0, 200.0)) * 0.5 + 0.5;
-  float microNoise = valueNoise(worldXZ * 15.0);
 
   float baseBlend = largeNoise;
   vec3 baseColor = mix(darkGreen, medGreen, baseBlend);
   baseColor = mix(baseColor, lightGreen, medNoise * 0.4);
-  baseColor = mix(baseColor, darkGreen, smallNoise * 0.25);
 
   float windDirection = snoise(worldXZ * 0.1 + uTime * 0.05) * 0.5 + 0.5;
   float bladePattern = grassBladePattern(worldXZ, windDirection);
   baseColor += vec3(0.02, 0.04, 0.01) * bladePattern;
-
-  float detailBlade = grassBladePattern(worldXZ * 1.5, windDirection + 0.3);
-  baseColor += vec3(0.01, 0.025, 0.005) * detailBlade;
-
-  baseColor *= 0.85 + microNoise * 0.3;
 
   vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
   float ndotl = max(dot(vNormal, lightDir), 0.0);

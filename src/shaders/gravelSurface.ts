@@ -69,17 +69,14 @@ void main() {
 
   vec3 largePebbles = voronoi(uv, 3.0);
   vec3 mediumPebbles = voronoi(uv + vec2(17.3, 31.7), 6.0);
-  vec3 smallPebbles = voronoi(uv + vec2(53.1, 89.4), 12.0);
 
   float largeCellId = largePebbles.z;
   float mediumCellId = mediumPebbles.z;
-  float smallCellId = smallPebbles.z;
 
   float largeEdge = smoothstep(0.03, 0.08, largePebbles.y - largePebbles.x);
   float mediumEdge = smoothstep(0.02, 0.06, mediumPebbles.y - mediumPebbles.x);
-  float smallEdge = smoothstep(0.01, 0.05, smallPebbles.y - smallPebbles.x);
 
-  float combinedEdge = largeEdge * 0.5 + mediumEdge * 0.3 + smallEdge * 0.2;
+  float combinedEdge = largeEdge * 0.6 + mediumEdge * 0.4;
 
   vec3 sandyTan = vec3(0.722, 0.659, 0.541);
   vec3 stoneGrey = vec3(0.541, 0.522, 0.502);
@@ -99,12 +96,7 @@ void main() {
   mediumColor = mix(mediumColor, darkGrey, mediumVariation * 0.25);
   mediumColor *= 0.85 + mediumVariation * 0.3;
 
-  vec3 smallColor = mix(warmBrown, sandyTan, step(0.5, smallCellId));
-  float smallVariation = hash1(vec2(smallCellId * 419.2, smallCellId * 371.9));
-  smallColor = mix(smallColor, stoneGrey, smallVariation * 0.4);
-  smallColor *= 0.88 + smallVariation * 0.24;
-
-  vec3 pebbleColor = largeColor * 0.45 + mediumColor * 0.35 + smallColor * 0.2;
+  vec3 pebbleColor = largeColor * 0.55 + mediumColor * 0.45;
 
   vec3 gapColor = vec3(0.18, 0.15, 0.12);
   vec3 surfaceColor = mix(gapColor, pebbleColor, combinedEdge);

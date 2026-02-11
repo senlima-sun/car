@@ -96,10 +96,7 @@ export function useCarFrame({
   const cycleSemiAutoPreset = useErsStore(state => state.cycleSemiAutoPreset)
   const syncErsState = useErsStore(state => state.syncFromPhysics)
 
-  // Active Aero mode toggle and sync
   const toggleAeroMode = useActiveAeroStore(state => state.toggleMode)
-  // @ts-expect-error subscribed for reactivity, value unused
-  const _aeroMode = useActiveAeroStore(state => state.mode)
   const syncAeroState = useActiveAeroStore(state => state.syncFromPhysics)
 
   // Brake mode sync (physics engine is source of truth)
@@ -391,15 +388,14 @@ export function useCarFrame({
     // Update curb state in WASM
     physics.setOnCurb(isOnCurb, curbSide || undefined)
 
-    // Sync testing mode to ERS overtake availability
     physics.setErsOvertakeAvailable(useGameStore.getState().isTestingMode)
 
-    // Sync ERS mode from UI to physics engine (get fresh state to avoid stale closure)
-    physics.setErsMode(useErsStore.getState().mode)
+    const ersState = useErsStore.getState()
+    physics.setErsMode(ersState.mode)
 
-    // Sync Active Aero mode to physics (only in manual mode)
-    if (!useActiveAeroStore.getState().autoMode) {
-      physics.setAeroMode(useActiveAeroStore.getState().mode)
+    const aeroState = useActiveAeroStore.getState()
+    if (!aeroState.autoMode) {
+      physics.setAeroMode(aeroState.mode)
     }
 
     // Build input for WASM physics

@@ -86,7 +86,7 @@ const windshieldRainShader = {
       // Stationary droplets (when slow/stopped) - more droplets with higher rain
       if (speedFactor < 0.7) {
         float dropletStrength = (1.0 - speedFactor) * uRainIntensity;
-        for (float i = 0.0; i < 25.0; i++) {
+        for (float i = 0.0; i < 15.0; i++) {
           vec2 dropPos = vec2(
             hash(vec2(i, 0.0)),
             hash(vec2(0.0, i))
@@ -111,7 +111,7 @@ const windshieldRainShader = {
       // Fast-moving streaks (when driving fast) - more streaks with higher rain
       if (speedFactor > 0.2) {
         float streakStrength = speedFactor * uRainIntensity;
-        for (float i = 0.0; i < 40.0; i++) {
+        for (float i = 0.0; i < 20.0; i++) {
           vec2 streakStart = vec2(
             hash(vec2(i * 3.0, 1.0)),
             1.2 - fract(time * (0.8 + hash(vec2(i, 2.0)) * 0.4) + hash(vec2(i * 2.0, 3.0)))

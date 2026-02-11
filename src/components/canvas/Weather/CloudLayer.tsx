@@ -59,9 +59,8 @@ export default function CloudLayer() {
           position={pos}
           opacity={preset.opacity}
           speed={0.2}
-          width={30}
-          depth={8}
-          segments={12}
+          bounds={[30, 8, 8]}
+          segments={8}
           color={preset.color}
         />
       ))}
