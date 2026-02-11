@@ -192,17 +192,22 @@ impl CarPhysicsState {
             0.0
         };
 
-        if effective_throttle > 0.01 && effective_brake < 0.01 {
+        if effective_throttle > 0.01 && effective_brake < 0.01 && !input.handbrake {
             longitudinal_force += pt_out.drive_force * effective_throttle;
         }
 
-        if effective_brake > 0.01 || input.backward {
+        if input.handbrake && forward_speed.abs() > 0.05 {
+            let handbrake_force = (front_brake_force + rear_brake_force) * 2.5;
+            longitudinal_force -= handbrake_force * forward_speed.signum();
+            if forward_speed.abs() < 2.0 {
+                longitudinal_force -= forward_speed * CAR_MASS * 15.0;
+            }
+        } else if effective_brake > 0.01 || input.backward {
             if forward_speed > 0.1 {
                 let total_brake = (front_brake_force + rear_brake_force)
                     * weather_modifiers.brake_efficiency_multiplier
                     * tire_degradation.brake_efficiency;
-                let handbrake_mult = if input.handbrake { 1.2 } else { 1.0 };
-                longitudinal_force -= total_brake * handbrake_mult * effective_brake;
+                longitudinal_force -= total_brake * effective_brake;
 
                 if forward_speed < 1.0 {
                     longitudinal_force -= forward_speed * CAR_MASS * 8.0;
