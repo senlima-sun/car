@@ -186,7 +186,7 @@ impl CarPhysicsState {
 
         let effective_brake = if input.brake_analog > 0.01 {
             input.brake_analog.clamp(0.0, 1.0)
-        } else if input.brake {
+        } else if input.brake || input.backward {
             1.0
         } else {
             0.0
@@ -196,7 +196,7 @@ impl CarPhysicsState {
             longitudinal_force += pt_out.drive_force * effective_throttle;
         }
 
-        if effective_brake > 0.01 {
+        if effective_brake > 0.01 || input.backward {
             if forward_speed > 0.1 {
                 let total_brake = (front_brake_force + rear_brake_force)
                     * weather_modifiers.brake_efficiency_multiplier
@@ -207,12 +207,15 @@ impl CarPhysicsState {
                 if forward_speed < 1.0 {
                     longitudinal_force -= forward_speed * CAR_MASS * 8.0;
                 }
-            } else {
+            } else if input.backward {
+                let reverse_force = 8000.0;
+                longitudinal_force -= reverse_force;
+            } else if effective_brake > 0.01 {
                 longitudinal_force -= forward_speed * CAR_MASS * 20.0;
             }
         }
 
-        if effective_throttle < 0.01 && effective_brake < 0.01 && self.speed_ms > 1.0 {
+        if effective_throttle < 0.01 && effective_brake < 0.01 && !input.backward && self.speed_ms > 1.0 {
             let rpm_engine_brake = pt_out.engine_brake_force;
             let configured_brake = engine_braking_force;
             longitudinal_force -= rpm_engine_brake.max(configured_brake) * forward_speed.signum();
