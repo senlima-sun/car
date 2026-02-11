@@ -10,7 +10,6 @@ import { useCurbStore } from '../../../../stores/useCurbStore'
 import { useTrackTemperatureStore } from '../../../../stores/useTrackTemperatureStore'
 import { useThermalViewStore } from '../../../../stores/useThermalViewStore'
 import { useHeatmapStore } from '../../../../stores/useHeatmapStore'
-import { useDistanceGridStore } from '../../../../stores/useDistanceGridStore'
 import { useWindStore } from '../../../../stores/useWindStore'
 import { useWindViewStore } from '../../../../stores/useWindViewStore'
 import { useAquaplaningStore } from '../../../../stores/useAquaplaningStore'
@@ -79,7 +78,6 @@ export function useCarFrame({
   const toggleThermalView = useThermalViewStore(state => state.toggle)
   const toggleHeatmap = useHeatmapStore(state => state.toggleHeatmap)
   const toggleWindView = useWindViewStore(state => state.toggle)
-  const toggleDistanceGrid = useDistanceGridStore(state => state.toggleGrid)
 
   // Wind sync
   const syncWindState = useWindStore(state => state.syncFromPhysics)
@@ -104,6 +102,8 @@ export function useCarFrame({
 
   // Lap timer toggle
   const toggleLapRecording = useLapTimeStore(state => state.toggleRecording)
+  const recordPosition = useLapTimeStore(state => state.recordPosition)
+  const toggleRacingLine = useLapTimeStore(state => state.toggleRacingLine)
 
   // Pit stop
   const startPitStop = usePitStore(state => state.startPitStop)
@@ -125,7 +125,6 @@ export function useCarFrame({
   const lastCameraToggle = useRef(0)
   const lastFreeCamToggle = useRef(0)
   const lastHeatmapToggle = useRef(0)
-  const lastGridToggle = useRef(0)
   const lastErsPresetToggle = useRef(0)
   const lastOvertakeToggle = useRef(0)
   const lastAeroModeToggle = useRef(0)
@@ -221,7 +220,6 @@ export function useCarFrame({
       engineBrake,
       camera,
       heatmap,
-      distanceGrid,
       freeCamera,
       lapTimer,
       pitStop,
@@ -247,13 +245,6 @@ export function useCarFrame({
       toggleWindView()
       lastHeatmapToggle.current = state.clock.elapsedTime
       logger?.log('input', 'input.key.heatmap', 'useCarFrame', { key: 'H' }, { action: 'toggleHeatmap' })
-    }
-
-    // Distance grid toggle with debounce (Option/Alt key) - testing mode only
-    if (isTestingMode && distanceGrid && state.clock.elapsedTime - lastGridToggle.current > 0.3) {
-      toggleDistanceGrid()
-      lastGridToggle.current = state.clock.elapsedTime
-      logger?.log('input', 'input.key.distanceGrid', 'useCarFrame', { key: 'Alt' }, { action: 'toggleDistanceGrid' })
     }
 
     // Free camera toggle with debounce (F key) - testing mode only
@@ -315,9 +306,10 @@ export function useCarFrame({
       logger?.log('input', 'input.key.engineBrake', 'useCarFrame', { key: 'N' }, { action: 'cycleEngineBrakingLevel' })
     }
 
-    // Lap timer toggle with debounce (L key)
+    // Lap timer toggle with debounce (L key) - also toggles racing line
     if (lapTimer && state.clock.elapsedTime - lastLapTimerToggle.current > 0.3) {
       toggleLapRecording()
+      toggleRacingLine()
       lastLapTimerToggle.current = state.clock.elapsedTime
       logger?.log('input', 'input.key.lapTimer', 'useCarFrame', { key: 'L' }, { action: 'toggleLapRecording' })
     }
@@ -589,6 +581,8 @@ export function useCarFrame({
       store.steerAngle = steerVal
       store.wheelRotations = wheelRotationsRef.current
     }
+
+    recordPosition(pos.x, pos.y, pos.z, output.speed_kmh)
 
     // Update track temperature from normal driving
     if (output.speed_kmh > 3) {

@@ -2,6 +2,7 @@ import { useMemo, useCallback, useEffect } from 'react'
 import { Vector3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
+import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
@@ -254,14 +255,9 @@ export default function RoadSegment({
   const roadVisuals = (
     <>
       <mesh geometry={slopeGeometry} receiveShadow={!isGhost}>
-        <meshStandardMaterial
-          color={config.color}
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-          polygonOffset
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
+        <RoadSurfaceMaterial
+          isGhost={isGhost}
+          variant='road'
         />
       </mesh>
 

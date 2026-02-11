@@ -1,7 +1,8 @@
 import { useMemo, useCallback, useEffect } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
-import { GHOST_OPACITY, PIT_ROAD_COLOR, PIT_ROAD_EDGE_COLOR, PIT_ROAD_WIDTH } from '../../../constants/trackObjects'
+import { GHOST_OPACITY, PIT_ROAD_EDGE_COLOR, PIT_ROAD_WIDTH } from '../../../constants/trackObjects'
+import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
@@ -436,15 +437,10 @@ export default function CurvedPitRoadSegment({
   const roadVisuals = (
     <>
       <mesh geometry={roadGeometry} receiveShadow={!isGhost}>
-        <meshStandardMaterial
-          color={PIT_ROAD_COLOR}
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
+        <RoadSurfaceMaterial
+          isGhost={isGhost}
+          variant='pitroad'
           side={2}
-          polygonOffset
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
         />
       </mesh>
 

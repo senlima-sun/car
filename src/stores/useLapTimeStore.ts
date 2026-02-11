@@ -2,6 +2,8 @@ import { create } from 'zustand'
 
 const CROSSING_COOLDOWN_MS = 2000
 const WRONG_WAY_DISMISS_MS = 3000
+const MAX_LAP_SAMPLES = 3000
+const SAMPLE_INTERVAL_MS = 200
 
 interface SectorSplit {
   sectorNumber: number
@@ -31,12 +33,21 @@ interface LapTimeState {
   lastSectorSplit: SectorSplit | null
   lastSectorCrossingTimes: Map<number, number>
 
+  currentLapPositions: Float32Array
+  currentLapSpeeds: Float32Array
+  positionHead: number
+  lastSampleTime: number
+  bestLapPath: { positions: Float32Array; speeds: Float32Array; count: number } | null
+  racingLineVisible: boolean
+
   setActive: (active: boolean, sectorCheckpoints?: number) => void
   toggleRecording: () => void
   crossStartFinish: (isWrongWay?: boolean) => void
   crossSector: (checkpointOrder: number, isWrongWay?: boolean) => void
   updateCurrentTime: () => void
   setWrongWay: (wrongWay: boolean) => void
+  recordPosition: (x: number, y: number, z: number, speed: number) => void
+  toggleRacingLine: () => void
   reset: () => void
 }
 
@@ -58,6 +69,13 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
   bestSectorTimes: new Map(),
   lastSectorSplit: null,
   lastSectorCrossingTimes: new Map(),
+
+  currentLapPositions: new Float32Array(MAX_LAP_SAMPLES * 3),
+  currentLapSpeeds: new Float32Array(MAX_LAP_SAMPLES),
+  positionHead: 0,
+  lastSampleTime: 0,
+  bestLapPath: null,
+  racingLineVisible: false,
 
   setActive: (active, sectorCheckpoints = 0) => {
     if (!active) {
@@ -142,6 +160,8 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         currentLapTime: 0,
         lastStartFinishCrossingTime: now,
         currentLapInvalid: false,
+        positionHead: 0,
+        lastSampleTime: 0,
         ...sectorReset,
       })
       return
@@ -164,8 +184,19 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
     }
 
     if (!state.currentLapInvalid) {
-      const newBest =
-        state.bestLapTime === null || lapTime < state.bestLapTime ? lapTime : state.bestLapTime
+      const isNewBest = state.bestLapTime === null || lapTime < state.bestLapTime
+      const newBest = isNewBest ? lapTime : state.bestLapTime
+
+      let bestLapPath = state.bestLapPath
+      if (isNewBest && state.positionHead > 0) {
+        const count = state.positionHead
+        bestLapPath = {
+          positions: new Float32Array(state.currentLapPositions.buffer.slice(0, count * 3 * 4)),
+          speeds: new Float32Array(state.currentLapSpeeds.buffer.slice(0, count * 4)),
+          count,
+        }
+      }
+
       set({
         currentLapStart: now,
         currentLapTime: 0,
@@ -176,6 +207,9 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         lapCount: state.lapCount + 1,
         bestSectorTimes: newBestSectors,
         lastSectorSplit: lastSplit,
+        positionHead: 0,
+        lastSampleTime: 0,
+        bestLapPath,
         ...sectorReset,
       })
     } else {
@@ -188,6 +222,8 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         lapCount: state.lapCount + 1,
         bestSectorTimes: newBestSectors,
         lastSectorSplit: null,
+        positionHead: 0,
+        lastSampleTime: 0,
         ...sectorReset,
       })
     }
@@ -256,6 +292,27 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
     }
   },
 
+  recordPosition: (x, y, z, speed) => {
+    const state = get()
+    if (!state.isRecording || state.currentLapStart === null) return
+
+    const now = performance.now()
+    if (now - state.lastSampleTime < SAMPLE_INTERVAL_MS) return
+    if (state.positionHead >= MAX_LAP_SAMPLES) return
+
+    const head = state.positionHead
+    state.currentLapPositions[head * 3] = x
+    state.currentLapPositions[head * 3 + 1] = y
+    state.currentLapPositions[head * 3 + 2] = z
+    state.currentLapSpeeds[head] = speed
+
+    set({ positionHead: head + 1, lastSampleTime: now })
+  },
+
+  toggleRacingLine: () => {
+    set({ racingLineVisible: !get().racingLineVisible })
+  },
+
   reset: () =>
     set({
       isRecording: false,
@@ -274,5 +331,9 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
       bestSectorTimes: new Map(),
       lastSectorSplit: null,
       lastSectorCrossingTimes: new Map(),
+      positionHead: 0,
+      lastSampleTime: 0,
+      bestLapPath: null,
+      racingLineVisible: false,
     }),
 }))

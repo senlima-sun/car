@@ -7,7 +7,8 @@ import { grassFragmentShader, createGrassUniforms } from '@/shaders/grassSurface
 import Car from './Car/Car'
 import CameraController from './Camera/CameraController'
 import TrackTemperatureOverlay from './Track/TrackTemperatureOverlay'
-import DistanceGridOverlay from './Track/DistanceGridOverlay'
+import SkidMarkRenderer from './Track/SkidMarkRenderer'
+import RacingLine from './Track/RacingLine'
 import WindVisualization from './Weather/WindVisualization'
 import WeatherEffects from './Weather/WeatherEffects'
 import WindshieldRain from './Weather/WindshieldRain'
@@ -112,8 +113,11 @@ export default function Scene() {
       {/* Track temperature overlay (press H to toggle) */}
       <TrackTemperatureOverlay />
 
-      {/* Distance grid overlay (press Option/Alt to toggle) */}
-      <DistanceGridOverlay />
+      {/* Skid mark accumulation render target */}
+      <SkidMarkRenderer />
+
+      {/* Best lap racing line (press L to toggle) */}
+      <RacingLine />
 
       {/* Wind visualization (press H to toggle) */}
       <WindVisualization />
