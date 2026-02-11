@@ -1,5 +1,6 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useMemo } from 'react'
 import * as THREE from 'three'
+import { useLoader } from '@react-three/fiber'
 import {
   ASPHALT_FRAGMENT_INJECT,
   ASPHALT_VERTEX_INJECT,
@@ -41,6 +42,18 @@ export default function RoadSurfaceMaterial({
   polygonOffsetUnits = -1,
   color,
 }: RoadSurfaceMaterialProps) {
+  const [normalMap, roughnessMap] = useLoader(THREE.TextureLoader, [
+    '/textures/asphalt_normal.jpg',
+    '/textures/asphalt_roughness.jpg',
+  ])
+
+  useMemo(() => {
+    for (const tex of [normalMap, roughnessMap]) {
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+      tex.repeat.set(4, 4)
+    }
+  }, [normalMap, roughnessMap])
+
   const uniformsRef = useRef(createAsphaltUniforms())
 
   const onBeforeCompile = useCallback(
@@ -100,6 +113,9 @@ export default function RoadSurfaceMaterial({
       depthWrite={depthWrite ?? true}
       side={side}
       roughness={0.85}
+      normalMap={normalMap}
+      normalScale={new THREE.Vector2(0.6, 0.6)}
+      roughnessMap={roughnessMap}
       polygonOffset={polygonOffset}
       polygonOffsetFactor={polygonOffsetFactor}
       polygonOffsetUnits={polygonOffsetUnits}
