@@ -6,7 +6,7 @@ export const keyboardMap = [
   { name: 'backward', keys: ['KeyS', 'ArrowDown'] },
   { name: 'left', keys: ['KeyA', 'ArrowLeft'] },
   { name: 'right', keys: ['KeyD', 'ArrowRight'] },
-  { name: 'brake', keys: ['Space'] },
+  { name: 'handbrake', keys: ['Space'] },
   { name: 'ersPreset', keys: ['KeyG'] },
   { name: 'overtake', keys: ['KeyR'] },
   { name: 'aero', keys: ['KeyK'] },
@@ -48,10 +48,10 @@ export const CONTROL_CATEGORIES: Record<ControlCategory, { label: string; color:
 export const CONTROLS: ControlDefinition[] = [
   // Movement
   { id: 'forward', displayName: 'Accelerate', keys: ['W', '↑'], category: 'movement' },
-  { id: 'backward', displayName: 'Brake/Reverse', keys: ['S', '↓'], category: 'movement' },
+  { id: 'backward', displayName: 'Brake', keys: ['S', '↓'], category: 'movement' },
   { id: 'left', displayName: 'Steer Left', keys: ['A', '←'], category: 'movement' },
   { id: 'right', displayName: 'Steer Right', keys: ['D', '→'], category: 'movement' },
-  { id: 'brake', displayName: 'Handbrake', keys: ['Space'], category: 'movement' },
+  { id: 'handbrake', displayName: 'Handbrake', keys: ['Space'], category: 'movement' },
 
   // Driving Systems
   { id: 'ersPreset', displayName: 'ERS Preset', keys: ['G'], category: 'drivingSystems' },

@@ -7,6 +7,6 @@ export const CONTROLS = {
   left: 'KeyA',
   right: 'KeyD',
   toggleCamera: 'KeyC',
-  brake: 'Space',
+  handbrake: 'Space',
   drs: 'KeyE',
 } as const

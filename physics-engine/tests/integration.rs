@@ -350,21 +350,27 @@ fn test_speed_capped_by_max_speed() {
 }
 
 #[test]
-fn test_reverse_works() {
+fn test_backward_brakes_without_reversing() {
     let mut engine = make_engine();
     let mut state = SimState::new();
-    let input = CarInput {
-        backward: true,
-        ..Default::default()
-    };
 
     for _ in 0..120 {
-        step_sim(&mut engine, &mut state, &input);
+        step_sim(&mut engine, &mut state, &throttle_input());
+    }
+    assert!(state.forward_speed() > 5.0, "Car should be moving forward");
+
+    let brake_input = CarInput {
+        backward: true,
+        brake: true,
+        ..Default::default()
+    };
+    for _ in 0..300 {
+        step_sim(&mut engine, &mut state, &brake_input);
     }
 
     assert!(
-        state.forward_speed() < -0.5,
-        "After 2s of reverse, car should move backward (negative forward vel), got {:.2} m/s",
+        state.forward_speed() >= -0.1,
+        "Backward input should brake to stop, not reverse. Got {:.2} m/s",
         state.forward_speed()
     );
 }

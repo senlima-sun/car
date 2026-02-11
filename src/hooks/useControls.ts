@@ -11,6 +11,7 @@ interface ControlsState {
   ersPreset: boolean
   overtake: boolean
   aero: boolean
+  aeroAuto: boolean
   brakeIncr: boolean
   brakeDecr: boolean
   engineBrake: boolean
@@ -36,18 +37,19 @@ export function useControls(): () => ControlsState {
     const backward = keyboard.backward || touch.backward
     const left = keyboard.left || touch.left
     const right = keyboard.right || touch.right
-    const brake = keyboard.brake || touch.brake
+    const handbrake = keyboard.handbrake || touch.handbrake
 
     return {
       forward,
       backward,
       left,
       right,
-      brake,
-      handbrake: keyboard.handbrake || touch.handbrake,
+      brake: backward,
+      handbrake,
       ersPreset: keyboard.ersPreset,
       overtake: keyboard.overtake || false,
       aero: keyboard.aero,
+      aeroAuto: keyboard.aeroAuto || false,
       brakeIncr: keyboard.brakeIncr || false,
       brakeDecr: keyboard.brakeDecr || false,
       engineBrake: keyboard.engineBrake || false,
@@ -59,7 +61,7 @@ export function useControls(): () => ControlsState {
       pitStop: keyboard.pitStop || false,
       steer: left ? -1 : right ? 1 : 0,
       throttle: forward ? 1 : 0,
-      brakeAnalog: brake || backward ? 1 : 0,
+      brakeAnalog: backward ? 1 : 0,
     }
   }
 }

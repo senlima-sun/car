@@ -522,7 +522,7 @@ impl PhysicsEngine {
         let ers_boost = self.ers.update(
             dt,
             input.forward && !input.brake,
-            input.backward || input.brake,
+            input.brake,
             speed_ms,
         );
 
@@ -534,7 +534,7 @@ impl PhysicsEngine {
             delta_seconds: dt,
             speed_ms,
             steer_angle: self.car.get_steer_angle(),
-            is_braking: input.backward || input.brake,
+            is_braking: input.brake,
             is_throttle: input.forward && !input.brake,
             is_drifting: self.car.is_drifting(),
             lateral_g: 0.0,
@@ -618,7 +618,7 @@ impl PhysicsEngine {
         // Get engine temperature power multiplier
         let engine_power_multiplier = self.engine_temperature.get_state().power_multiplier;
 
-        let is_braking = input.backward || input.brake;
+        let is_braking = input.brake;
         self.brakes.update_disc_temps(
             dt,
             speed_ms,
@@ -702,7 +702,7 @@ impl PhysicsEngine {
             delta_seconds: dt,
             speed_ms: self.car.get_speed_ms(),
             steer_angle: self.car.get_steer_angle(),
-            is_braking: input.backward || input.brake,
+            is_braking: input.brake,
             is_throttle: input.forward && !input.brake,
             is_drifting: self.car.is_drifting(),
             is_handbrake: input.handbrake,
