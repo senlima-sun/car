@@ -115,8 +115,7 @@ export default function TrackTemperatureOverlay() {
       )
       materialRef.current.uniforms.heatmapVisible.value = isHeatmapVisible
 
-      // Get ambient conditions from WASM physics if initialized
-      if (physics.initialized) {
+      if (physics.initialized && wasmFrameCounter.current % 6 === 0) {
         try {
           const ambient = physics.getAmbientConditions()
           if (ambient) {
@@ -124,7 +123,7 @@ export default function TrackTemperatureOverlay() {
             materialRef.current.uniforms.ambientHumidity.value = ambient.humidity
           }
         } catch {
-          // Physics not ready yet, use defaults
+          // Physics not ready yet
         }
       }
     }

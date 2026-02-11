@@ -19,6 +19,7 @@ import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { useBrakeStore } from '../../../../stores/useBrakeStore'
 import { useLapTimeStore } from '../../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../../stores/usePitStore'
+import { useTireTrailStore } from '../../../../stores/useTireTrailStore'
 
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
@@ -43,6 +44,10 @@ export interface CarState {
   position: Vector3
   velocity: number
   rotation: number
+  skidIntensity: number
+  isDrifting: boolean
+  isBraking: boolean
+  speedKmh: number
 }
 
 interface UseCarFrameOptions {
@@ -113,6 +118,7 @@ export function useCarFrame({
 
 
   const updateCarPosition = useTrackTemperatureStore(state => state.updateCarPosition)
+  const addTrailPoint = useTireTrailStore(state => state.addPoint)
 
   // Controls
   const getKeys = useControls()
@@ -144,12 +150,15 @@ export function useCarFrame({
   const wheelPositionsRef = useRef(new Float32Array(8))
   const wheelIntensitiesRef = useRef(new Float32Array(4))
 
+  const prevWheelWorldRef = useRef(new Float32Array(8))
+
   const prevSpeedRef = useRef(0)
   const prevGearRef = useRef(0)
   const prevDriftRef = useRef(false)
   const prevGripRef = useRef(1)
   const lastTelemetryTime = useRef(0)
   const windSyncCounter = useRef(0)
+  const validationCounter = useRef(0)
 
   // Raycast suspension
   const suspension = useRaycastSuspension(chassisRef)
@@ -161,6 +170,10 @@ export function useCarFrame({
     position: new Vector3(0, 0, 0),
     velocity: 0,
     rotation: 0,
+    skidIntensity: 0,
+    isDrifting: false,
+    isBraking: false,
+    speedKmh: 0,
   })
 
   useFrame((state, delta) => {
@@ -313,7 +326,7 @@ export function useCarFrame({
     }
 
     // Restore rigid body when leaving free camera mode
-    if (prevCameraModeRef.current === 'free' && cameraMode !== 'free') {
+    if (prevCameraModeRef.current === 'free') {
       chassis.setGravityScale(1, true)
     }
     prevCameraModeRef.current = cameraMode
@@ -342,13 +355,15 @@ export function useCarFrame({
     const linvel = chassis.linvel()
     const angvel = chassis.angvel()
 
-    // Detect and recover from invalid physics state
-    const velocityIsInvalid =
-      !Number.isFinite(linvel.x) || !Number.isFinite(linvel.y) || !Number.isFinite(linvel.z)
-    const angVelIsInvalid =
-      !Number.isFinite(angvel.x) || !Number.isFinite(angvel.y) || !Number.isFinite(angvel.z)
-    const posIsInvalid =
-      !Number.isFinite(pos.x) || !Number.isFinite(pos.y) || !Number.isFinite(pos.z)
+    validationCounter.current++
+    const shouldValidate = validationCounter.current % 30 === 0
+
+    const velocityIsInvalid = shouldValidate &&
+      (!Number.isFinite(linvel.x) || !Number.isFinite(linvel.y) || !Number.isFinite(linvel.z))
+    const angVelIsInvalid = shouldValidate &&
+      (!Number.isFinite(angvel.x) || !Number.isFinite(angvel.y) || !Number.isFinite(angvel.z))
+    const posIsInvalid = shouldValidate &&
+      (!Number.isFinite(pos.x) || !Number.isFinite(pos.y) || !Number.isFinite(pos.z))
 
     if (velocityIsInvalid || angVelIsInvalid || posIsInvalid) {
       // Gradual recovery instead of hard freeze
@@ -661,11 +676,43 @@ export function useCarFrame({
       if (wheelIntensities.some(v => v > 0.01)) {
         physics.updateRubberDeposits(wheelPositions, wheelIntensities, dt)
       }
+
+      const prevWW = prevWheelWorldRef.current
+      const susOut = suspensionOutputRef.current
+      const isWet = trackWetness > 0.3
+      for (let i = 0; i < 4; i++) {
+        if (wheelIntensities[i] < 0.05) continue
+        const wx = wheelPositions[i * 2]
+        const wz = wheelPositions[i * 2 + 1]
+        const dx = wx - prevWW[i * 2]
+        const dz = wz - prevWW[i * 2 + 1]
+        const dirLen = Math.sqrt(dx * dx + dz * dz)
+        if (dirLen < 0.001) continue
+        const hitY = susOut ? susOut.wheels[i].hitY : pos.y
+        const baseWidth = 0.30
+        const slipWidthMult = 1 + Math.min(slipAngleAbs / 30, 0.5)
+        addTrailPoint(
+          i,
+          wx, wz,
+          hitY,
+          dx / dirLen, dz / dirLen,
+          wheelIntensities[i],
+          baseWidth * slipWidthMult,
+          isWet,
+        )
+      }
+      for (let i = 0; i < 8; i++) {
+        prevWheelWorldRef.current[i] = wheelPositions[i]
+      }
     }
 
     carStateRef.current.position = tempCarPosRef.current.set(pos.x, pos.y, pos.z)
     carStateRef.current.velocity = output.speed_kmh / 3.6
     carStateRef.current.rotation = yaw
+    carStateRef.current.skidIntensity = output.skid_intensity
+    carStateRef.current.isDrifting = output.is_drifting
+    carStateRef.current.isBraking = brake
+    carStateRef.current.speedKmh = output.speed_kmh
   })
 
   return { carStateRef, wheelRotations: wheelRotationsRef, suspensionOutputRef }
