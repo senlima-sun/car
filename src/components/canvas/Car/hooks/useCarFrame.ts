@@ -1,4 +1,4 @@
-import { useRef, MutableRefObject } from 'react'
+import { useRef, useEffect, MutableRefObject } from 'react'
 import { Vector3 } from 'three'
 import { useFrame } from '@react-three/fiber'
 import { RapierRigidBody } from '@react-three/rapier'
@@ -173,8 +173,29 @@ export function useCarFrame({
     speedKmh: 0,
   })
 
+  const tabResumeRef = useRef(false)
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        tabResumeRef.current = true
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
+
   useFrame((state, delta) => {
     if (!chassisRef.current) return
+
+    if (tabResumeRef.current) {
+      tabResumeRef.current = false
+      const chassis = chassisRef.current
+      const linvel = chassis.linvel()
+      chassis.setLinvel({ x: linvel.x, y: Math.max(linvel.y, -2), z: linvel.z }, true)
+      chassis.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      return
+    }
 
     if (prevGameStatusRef.current === 'customize' && gameStatus !== 'customize') {
       spawnFrameRef.current = 0
