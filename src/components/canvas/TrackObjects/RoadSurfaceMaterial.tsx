@@ -1,6 +1,5 @@
-import { useCallback, useRef, useMemo } from 'react'
+import { useCallback, useRef, useState, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { useLoader } from '@react-three/fiber'
 import {
   ASPHALT_FRAGMENT_INJECT,
   ASPHALT_VERTEX_INJECT,
@@ -10,6 +9,30 @@ import {
   createAsphaltUniforms,
 } from '../../../shaders/asphaltSurface'
 import { GHOST_OPACITY } from '../../../constants/trackObjects'
+
+const textureLoader = new THREE.TextureLoader()
+let cachedNormal: THREE.Texture | null = null
+let cachedRoughness: THREE.Texture | null = null
+let loadPromise: Promise<void> | null = null
+
+function ensureTextures(): Promise<void> {
+  if (cachedNormal && cachedRoughness) return Promise.resolve()
+  if (loadPromise) return loadPromise
+  loadPromise = Promise.all([
+    textureLoader.loadAsync('/textures/asphalt_normal.jpg'),
+    textureLoader.loadAsync('/textures/asphalt_roughness.jpg'),
+  ]).then(([normal, roughness]) => {
+    for (const tex of [normal, roughness]) {
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+      tex.repeat.set(4, 4)
+    }
+    cachedNormal = normal
+    cachedRoughness = roughness
+  })
+  return loadPromise
+}
+
+const NORMAL_SCALE = new THREE.Vector2(0.6, 0.6)
 
 interface RoadSurfaceMaterialProps {
   isGhost?: boolean
@@ -42,22 +65,23 @@ export default function RoadSurfaceMaterial({
   polygonOffsetUnits = -1,
   color,
 }: RoadSurfaceMaterialProps) {
-  const [normalMap, roughnessMap] = useLoader(THREE.TextureLoader, [
-    '/textures/asphalt_normal.jpg',
-    '/textures/asphalt_roughness.jpg',
-  ])
+  const [texturesReady, setTexturesReady] = useState(cachedNormal !== null)
+  const matRef = useRef<THREE.MeshStandardMaterial>(null)
+  const shaderRef = useRef<THREE.WebGLProgramParametersWithUniforms | null>(null)
 
-  useMemo(() => {
-    for (const tex of [normalMap, roughnessMap]) {
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-      tex.repeat.set(4, 4)
-    }
-  }, [normalMap, roughnessMap])
+  useEffect(() => {
+    if (texturesReady) return
+    ensureTextures().then(() => setTexturesReady(true))
+  }, [texturesReady])
 
   const uniformsRef = useRef(createAsphaltUniforms())
 
+  const cacheKey = useMemo(() => `asphalt-${variant}`, [variant])
+
   const onBeforeCompile = useCallback(
     (shader: THREE.WebGLProgramParametersWithUniforms) => {
+      shaderRef.current = shader
+
       shader.uniforms.uWetness = uniformsRef.current.uWetness
       shader.uniforms.uSkidMarkMap = uniformsRef.current.uSkidMarkMap
       shader.uniforms.uSkidMarkBounds = uniformsRef.current.uSkidMarkBounds
@@ -107,19 +131,21 @@ export default function RoadSurfaceMaterial({
 
   return (
     <meshStandardMaterial
+      ref={matRef}
       color={color ?? (variant === 'pitroad' ? '#3a3a3a' : '#4a4a4a')}
       transparent={transparent ?? false}
       opacity={opacity ?? 1}
       depthWrite={depthWrite ?? true}
       side={side}
       roughness={0.85}
-      normalMap={normalMap}
-      normalScale={new THREE.Vector2(0.6, 0.6)}
-      roughnessMap={roughnessMap}
+      normalMap={texturesReady ? cachedNormal : undefined}
+      normalScale={NORMAL_SCALE}
+      roughnessMap={texturesReady ? cachedRoughness : undefined}
       polygonOffset={polygonOffset}
       polygonOffsetFactor={polygonOffsetFactor}
       polygonOffsetUnits={polygonOffsetUnits}
       onBeforeCompile={onBeforeCompile}
+      customProgramCacheKey={cacheKey}
     />
   )
 }
