@@ -132,7 +132,7 @@ export default function SurfaceParticles() {
     }
 
     let visibleCount = 0
-    for (let i = 0; i < MAX_PARTICLES; i++) {
+    for (let i = 0; i < BASE_MAX_PARTICLES; i++) {
       const p = particles.current[i]
       if (!p.active) {
         tempMatrix.makeScale(0, 0, 0)
@@ -181,13 +181,13 @@ export default function SurfaceParticles() {
 
     mesh.instanceMatrix.needsUpdate = true
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
-    mesh.count = MAX_PARTICLES
+    mesh.count = BASE_MAX_PARTICLES
   })
 
   return (
     <instancedMesh
       ref={meshRef}
-      args={[geometry, material, MAX_PARTICLES]}
+      args={[geometry, material, BASE_MAX_PARTICLES]}
       frustumCulled={false}
     />
   )
