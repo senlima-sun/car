@@ -1,13 +1,13 @@
-import { useMemo, useCallback, useEffect } from 'react'
+import { useMemo } from 'react'
 import { Vector3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
-import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
+import { OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
-import { useSurfaceStore } from '../../../stores/useSurfaceStore'
-import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
-import { useElevationStore } from '../../../stores/useElevationStore'
-import { usePhysicsOptional } from '../../../wasm'
+import { useRoadSurfaces } from './hooks/useRoadSurfaces'
+import { useTemperatureRegistration } from './hooks/useTemperatureRegistration'
+import { EdgeLines } from './components/EdgeLines'
+import { RoadSelectionHighlight } from './components/RoadSelectionHighlight'
 
 interface RoadSegmentProps {
   position: [number, number, number]
@@ -19,9 +19,14 @@ interface RoadSegmentProps {
   width?: number
   startElevation?: number
   endElevation?: number
+  startLeftEdge?: [number, number, number]
+  startRightEdge?: [number, number, number]
+  endLeftEdge?: [number, number, number]
+  endRightEdge?: [number, number, number]
 }
 
 const config = OBJECT_CONFIGS.road
+const BLEND_SEGMENTS = 3
 
 export default function RoadSegment({
   position,
@@ -33,16 +38,19 @@ export default function RoadSegment({
   width: widthProp,
   startElevation,
   endElevation,
+  startLeftEdge,
+  startRightEdge,
+  endLeftEdge,
+  endRightEdge,
 }: RoadSegmentProps) {
   const width = widthProp ?? config.defaultSize.width
-  const enterSurface = useSurfaceStore(s => s.enterSurface)
-  const exitSurface = useSurfaceStore(s => s.exitSurface)
-  const enterElevation = useElevationStore(s => s.enterRoad)
-  const exitElevation = useElevationStore(s => s.exitRoad)
-  const physics = usePhysicsOptional()
-  const setRoadRegionTS = useTrackTemperatureStore(s => s.setRoadRegion)
+  const halfWidth = width / 2
 
-  const { length, calculatedRotation, midpoint, startElev, endElev, midElev } = useMemo(() => {
+  const hasEdgeOverrides = !!(
+    (startLeftEdge && startRightEdge) || (endLeftEdge && endRightEdge)
+  )
+
+  const { length, calculatedRotation, midpoint, startElev, endElev, midElev, roadBounds } = useMemo(() => {
     const startElevValue = startElevation ?? 0
     const endElevValue = endElevation ?? 0
     const midElevValue = (startElevValue + endElevValue) / 2
@@ -54,6 +62,24 @@ export default function RoadSegment({
       const len = direction.length()
       const rot = Math.atan2(direction.x, direction.z)
       const mid: [number, number, number] = [(start.x + end.x) / 2, midElevValue, (start.z + end.z) / 2]
+      const cos = Math.cos(rot)
+      const sin = Math.sin(rot)
+      const halfLength = len / 2
+      const hw = (widthProp ?? config.defaultSize.width) / 2
+
+      const corners = [
+        { x: -hw, z: -halfLength },
+        { x: hw, z: -halfLength },
+        { x: -hw, z: halfLength },
+        { x: hw, z: halfLength },
+      ].map(c => ({
+        x: mid[0] + c.x * cos - c.z * sin,
+        z: mid[2] + c.x * sin + c.z * cos,
+      }))
+
+      const xs = corners.map(c => c.x)
+      const zs = corners.map(c => c.z)
+
       return {
         length: len,
         calculatedRotation: rot,
@@ -61,53 +87,291 @@ export default function RoadSegment({
         startElev: startElevValue,
         endElev: endElevValue,
         midElev: midElevValue,
+        roadBounds: {
+          minX: Math.min(...xs),
+          maxX: Math.max(...xs),
+          minZ: Math.min(...zs),
+          maxZ: Math.max(...zs),
+        },
       }
     }
+
+    const len = 10
+    const hw = (widthProp ?? config.defaultSize.width) / 2
+    const cos = Math.cos(rotation)
+    const sin = Math.sin(rotation)
+    const halfLength = len / 2
+
+    const corners = [
+      { x: -hw, z: -halfLength },
+      { x: hw, z: -halfLength },
+      { x: -hw, z: halfLength },
+      { x: hw, z: halfLength },
+    ].map(c => ({
+      x: position[0] + c.x * cos - c.z * sin,
+      z: position[2] + c.x * sin + c.z * cos,
+    }))
+
+    const xs = corners.map(c => c.x)
+    const zs = corners.map(c => c.z)
+
     return {
-      length: 10,
+      length: len,
       calculatedRotation: rotation,
       midpoint: position,
       startElev: startElevValue,
       endElev: endElevValue,
       midElev: midElevValue,
+      roadBounds: {
+        minX: Math.min(...xs),
+        maxX: Math.max(...xs),
+        minZ: Math.min(...zs),
+        maxZ: Math.max(...zs),
+      },
     }
   }, [startPoint, endPoint, rotation, position, startElevation, endElevation])
 
   const finalRotation = startPoint && endPoint ? calculatedRotation : rotation
   const finalPosition = startPoint && endPoint ? midpoint : position
 
-  const dashCount = Math.max(1, Math.floor(length / 3))
+  const { handleEnterRoad, handleExitRoad } = useRoadSurfaces({
+    startElevation: startElevation ?? 0,
+    endElevation: endElevation ?? 0,
+    length,
+  })
 
-  const dashGeometry = useMemo(() => {
-    const geo = new BufferGeometry()
-    const dashW = 0.15
-    const dashLen = (length / dashCount) * 0.6
-    const vertices: number[] = []
-    const indices: number[] = []
-    const hw = dashW / 2
-    const hl = dashLen / 2
+  useTemperatureRegistration(isGhost, roadBounds)
 
-    for (let i = 0; i < dashCount; i++) {
-      const t = (i + 0.5) / dashCount
-      const dashY = (startElev - midElev) + (endElev - startElev) * t + 0.015
-      const dashZ = -length / 2 + (i + 0.5) * (length / dashCount)
-      const base = i * 4
+  const blendedGeometries = useMemo(() => {
+    if (!hasEdgeOverrides || !startPoint || !endPoint) return null
 
-      vertices.push(-hw, dashY, dashZ - hl)
-      vertices.push(hw, dashY, dashZ - hl)
-      vertices.push(-hw, dashY, dashZ + hl)
-      vertices.push(hw, dashY, dashZ + hl)
+    const segmentCount = Math.max(8, Math.ceil(length / 3))
+    const startElv = startElevation ?? 0
+    const endElv = endElevation ?? 0
 
-      indices.push(base, base + 2, base + 1, base + 1, base + 2, base + 3)
+    const dx = endPoint[0] - startPoint[0]
+    const dz = endPoint[2] - startPoint[2]
+    const len = Math.sqrt(dx * dx + dz * dz)
+    if (len < 0.001) return null
+
+    const dirX = dx / len
+    const dirZ = dz / len
+    const perpX = -dirZ
+    const perpZ = dirX
+
+    const hasStartSnap = !!(startLeftEdge && startRightEdge)
+    const hasEndSnap = !!(endLeftEdge && endRightEdge)
+
+    const CROSS_SEGS = 8
+    const roadVertices: number[] = []
+    const roadIndices: number[] = []
+    const roadUvs: number[] = []
+    const leftEdgeVertices: number[] = []
+    const leftEdgeIndices: number[] = []
+    const rightEdgeVertices: number[] = []
+    const rightEdgeIndices: number[] = []
+    const edgeWidth = 0.2
+    const edgeOffset = halfWidth - edgeWidth / 2
+
+    for (let i = 0; i <= segmentCount; i++) {
+      const t = i / segmentCount
+      const elevY = startElv + (endElv - startElv) * t + 0.01
+
+      const cx = startPoint[0] + dx * t
+      const cz = startPoint[2] + dz * t
+
+      const naturalLeftX = cx + perpX * halfWidth
+      const naturalLeftZ = cz + perpZ * halfWidth
+      const naturalRightX = cx - perpX * halfWidth
+      const naturalRightZ = cz - perpZ * halfWidth
+
+      let leftX: number, leftZ: number, rightX: number, rightZ: number
+
+      if (i === 0 && hasStartSnap) {
+        leftX = startLeftEdge![0]
+        leftZ = startLeftEdge![2]
+        rightX = startRightEdge![0]
+        rightZ = startRightEdge![2]
+      } else if (i === segmentCount && hasEndSnap) {
+        leftX = endLeftEdge![0]
+        leftZ = endLeftEdge![2]
+        rightX = endRightEdge![0]
+        rightZ = endRightEdge![2]
+      } else if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
+        const blend = i / (BLEND_SEGMENTS + 1)
+        leftX = startLeftEdge![0] + (naturalLeftX - startLeftEdge![0]) * blend
+        leftZ = startLeftEdge![2] + (naturalLeftZ - startLeftEdge![2]) * blend
+        rightX = startRightEdge![0] + (naturalRightX - startRightEdge![0]) * blend
+        rightZ = startRightEdge![2] + (naturalRightZ - startRightEdge![2]) * blend
+      } else if (
+        i < segmentCount &&
+        i >= segmentCount - BLEND_SEGMENTS &&
+        hasEndSnap
+      ) {
+        const blend = (segmentCount - i) / (BLEND_SEGMENTS + 1)
+        leftX = endLeftEdge![0] + (naturalLeftX - endLeftEdge![0]) * blend
+        leftZ = endLeftEdge![2] + (naturalLeftZ - endLeftEdge![2]) * blend
+        rightX = endRightEdge![0] + (naturalRightX - endRightEdge![0]) * blend
+        rightZ = endRightEdge![2] + (naturalRightZ - endRightEdge![2]) * blend
+      } else {
+        leftX = naturalLeftX
+        leftZ = naturalLeftZ
+        rightX = naturalRightX
+        rightZ = naturalRightZ
+      }
+
+      for (let k = 0; k <= CROSS_SEGS; k++) {
+        const tW = k / CROSS_SEGS
+        roadVertices.push(
+          leftX + (rightX - leftX) * tW,
+          elevY,
+          leftZ + (rightZ - leftZ) * tW,
+        )
+        roadUvs.push(tW, t)
+      }
+
+      if (i > 0) {
+        const row = i * (CROSS_SEGS + 1)
+        const prevRow = (i - 1) * (CROSS_SEGS + 1)
+        for (let k = 0; k < CROSS_SEGS; k++) {
+          const a = prevRow + k
+          const b = a + 1
+          const c = row + k
+          const d = c + 1
+          roadIndices.push(a, b, c, b, d, c)
+        }
+      }
+
+      const edgeY = elevY + 0.002
+      if (
+        (i === 0 && hasStartSnap) ||
+        (i === segmentCount && hasEndSnap)
+      ) {
+        const edgeDir = new Vector3(leftX - rightX, 0, leftZ - rightZ).normalize()
+        const lOuter = new Vector3(leftX, 0, leftZ).addScaledVector(
+          edgeDir,
+          -(halfWidth - edgeOffset - edgeWidth / 2),
+        )
+        const lInner = new Vector3(leftX, 0, leftZ).addScaledVector(
+          edgeDir,
+          -(halfWidth - edgeOffset + edgeWidth / 2),
+        )
+        const rInner = new Vector3(rightX, 0, rightZ).addScaledVector(
+          edgeDir,
+          halfWidth - edgeOffset + edgeWidth / 2,
+        )
+        const rOuter = new Vector3(rightX, 0, rightZ).addScaledVector(
+          edgeDir,
+          halfWidth - edgeOffset - edgeWidth / 2,
+        )
+        leftEdgeVertices.push(lOuter.x, edgeY, lOuter.z)
+        leftEdgeVertices.push(lInner.x, edgeY, lInner.z)
+        rightEdgeVertices.push(rInner.x, edgeY, rInner.z)
+        rightEdgeVertices.push(rOuter.x, edgeY, rOuter.z)
+      } else {
+        leftEdgeVertices.push(
+          cx + perpX * (edgeOffset + edgeWidth / 2),
+          edgeY,
+          cz + perpZ * (edgeOffset + edgeWidth / 2),
+        )
+        leftEdgeVertices.push(
+          cx + perpX * (edgeOffset - edgeWidth / 2),
+          edgeY,
+          cz + perpZ * (edgeOffset - edgeWidth / 2),
+        )
+        rightEdgeVertices.push(
+          cx - perpX * (edgeOffset - edgeWidth / 2),
+          edgeY,
+          cz - perpZ * (edgeOffset - edgeWidth / 2),
+        )
+        rightEdgeVertices.push(
+          cx - perpX * (edgeOffset + edgeWidth / 2),
+          edgeY,
+          cz - perpZ * (edgeOffset + edgeWidth / 2),
+        )
+      }
+
+      if (i > 0) {
+        const baseIdx = (i - 1) * 2
+        leftEdgeIndices.push(baseIdx, baseIdx + 1, baseIdx + 2)
+        leftEdgeIndices.push(baseIdx + 1, baseIdx + 3, baseIdx + 2)
+        rightEdgeIndices.push(baseIdx, baseIdx + 1, baseIdx + 2)
+        rightEdgeIndices.push(baseIdx + 1, baseIdx + 3, baseIdx + 2)
+      }
     }
 
-    geo.setAttribute('position', new Float32BufferAttribute(vertices, 3))
-    geo.setIndex(indices)
-    geo.computeVertexNormals()
-    return geo
-  }, [dashCount, length, startElev, endElev, midElev])
+    const roadGeo = new BufferGeometry()
+    roadGeo.setAttribute('position', new Float32BufferAttribute(roadVertices, 3))
+    roadGeo.setAttribute('uv', new Float32BufferAttribute(roadUvs, 2))
+    roadGeo.setIndex(roadIndices)
+    roadGeo.computeVertexNormals()
+
+    const leftGeo = new BufferGeometry()
+    leftGeo.setAttribute('position', new Float32BufferAttribute(leftEdgeVertices, 3))
+    leftGeo.setIndex(leftEdgeIndices)
+    leftGeo.computeVertexNormals()
+
+    const rightGeo = new BufferGeometry()
+    rightGeo.setAttribute('position', new Float32BufferAttribute(rightEdgeVertices, 3))
+    rightGeo.setIndex(rightEdgeIndices)
+    rightGeo.computeVertexNormals()
+
+    const overlap = 0.15
+    const collVerts: number[] = []
+    const collInds: number[] = []
+    const collSteps = Math.max(2, Math.ceil(segmentCount / 2))
+    for (let i = 0; i <= collSteps; i++) {
+      const ct = i / collSteps
+      const cElev = startElv + (endElv - startElv) * ct + 0.01
+      const cpx = startPoint[0] + dx * ct
+      const cpz = startPoint[2] + dz * ct
+      const lx = cpx + perpX * halfWidth
+      const lz = cpz + perpZ * halfWidth
+      const rx = cpx - perpX * halfWidth
+      const rz = cpz - perpZ * halfWidth
+
+      const extX = dirX * (i === 0 ? -overlap : i === collSteps ? overlap : 0)
+      const extZ = dirZ * (i === 0 ? -overlap : i === collSteps ? overlap : 0)
+
+      collVerts.push(lx + extX, cElev, lz + extZ)
+      collVerts.push(rx + extX, cElev, rz + extZ)
+      collVerts.push(lx + extX, -0.15, lz + extZ)
+      collVerts.push(rx + extX, -0.15, rz + extZ)
+
+      if (i > 0) {
+        const b = (i - 1) * 4
+        collInds.push(b, b + 1, b + 4, b + 1, b + 5, b + 4)
+        collInds.push(b + 2, b + 6, b + 3, b + 3, b + 6, b + 7)
+        collInds.push(b, b + 4, b + 2, b + 2, b + 4, b + 6)
+        collInds.push(b + 1, b + 3, b + 5, b + 3, b + 7, b + 5)
+      }
+    }
+
+    return {
+      roadGeo,
+      leftGeo,
+      rightGeo,
+      collisionData: {
+        vertices: new Float32Array(collVerts),
+        indices: new Uint32Array(collInds),
+      },
+    }
+  }, [
+    hasEdgeOverrides,
+    startPoint,
+    endPoint,
+    length,
+    halfWidth,
+    startElevation,
+    endElevation,
+    startLeftEdge,
+    startRightEdge,
+    endLeftEdge,
+    endRightEdge,
+  ])
 
   const { leftEdgeGeometry, rightEdgeGeometry } = useMemo(() => {
+    if (hasEdgeOverrides) return { leftEdgeGeometry: null, rightEdgeGeometry: null }
     const halfW = width / 2
     const edgeWidth = 0.2
     const edgeOffset = halfW - edgeWidth / 2
@@ -135,93 +399,54 @@ export default function RoadSegment({
       leftEdgeGeometry: createEdgeGeo(-1),
       rightEdgeGeometry: createEdgeGeo(1),
     }
-  }, [width, length, startElev, endElev, midElev])
+  }, [hasEdgeOverrides, width, length, startElev, endElev, midElev])
 
   const slopeGeometry = useMemo(() => {
+    if (hasEdgeOverrides) return null
     const geo = new BufferGeometry()
     const hw = width / 2
     const hl = length / 2
     const startY = (startElev - midElev) + 0.01
     const endY = (endElev - midElev) + 0.01
 
-    const vertices = new Float32Array([
-      -hw, startY, -hl,
-       hw, startY, -hl,
-      -hw, endY,    hl,
-       hw, endY,    hl,
-    ])
-    const indices = [0, 2, 1, 1, 2, 3]
-    const uvs = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1])
+    const widthSegs = 8
+    const lengthSegs = Math.max(2, Math.ceil(length / 3))
+    const verts: number[] = []
+    const uvs: number[] = []
+    const idx: number[] = []
 
-    geo.setAttribute('position', new Float32BufferAttribute(vertices, 3))
-    geo.setAttribute('uv', new Float32BufferAttribute(uvs, 2))
-    geo.setIndex(indices)
+    for (let j = 0; j <= lengthSegs; j++) {
+      const tLen = j / lengthSegs
+      const z = -hl + tLen * length
+      const y = startY + (endY - startY) * tLen
+      for (let i = 0; i <= widthSegs; i++) {
+        const tW = i / widthSegs
+        const x = -hw + tW * width
+        verts.push(x, y, z)
+        uvs.push(tW, tLen)
+      }
+    }
+
+    for (let j = 0; j < lengthSegs; j++) {
+      for (let i = 0; i < widthSegs; i++) {
+        const a = j * (widthSegs + 1) + i
+        const b = a + 1
+        const c = a + (widthSegs + 1)
+        const d = c + 1
+        idx.push(a, b, c, b, d, c)
+      }
+    }
+
+    geo.setAttribute('position', new Float32BufferAttribute(new Float32Array(verts), 3))
+    geo.setAttribute('uv', new Float32BufferAttribute(new Float32Array(uvs), 2))
+    geo.setIndex(idx)
     geo.computeVertexNormals()
     return geo
-  }, [width, length, startElev, endElev, midElev])
+  }, [hasEdgeOverrides, width, length, startElev, endElev, midElev])
 
-  // Surface detection callbacks
-  const handleEnterRoad = useCallback(() => {
-    enterSurface('road')
-    const midElev = ((startElevation ?? 0) + (endElevation ?? 0)) / 2
-    const slopeAngle = Math.atan2((endElevation ?? 0) - (startElevation ?? 0), length)
-    enterElevation(midElev, slopeAngle, 0)
-  }, [enterSurface, startElevation, endElevation, length, enterElevation])
-
-  const handleExitRoad = useCallback(() => {
-    exitSurface('road')
-    exitElevation()
-  }, [exitSurface, exitElevation])
-
-  // Register road cells for temperature tracking
-  // Roads retain heat better than non-road surfaces
-  useEffect(() => {
-    if (isGhost) return
-
-    // Calculate world-space bounds of the road
-    // Need to account for rotation when computing the bounding box
-    const cos = Math.cos(finalRotation)
-    const sin = Math.sin(finalRotation)
-    const halfWidth = width / 2
-    const halfLength = length / 2
-
-    // Calculate the 4 corners in local space, then rotate
-    const corners = [
-      { x: -halfWidth, z: -halfLength },
-      { x: halfWidth, z: -halfLength },
-      { x: -halfWidth, z: halfLength },
-      { x: halfWidth, z: halfLength },
-    ].map(c => ({
-      x: finalPosition[0] + c.x * cos - c.z * sin,
-      z: finalPosition[2] + c.x * sin + c.z * cos,
-    }))
-
-    // Find axis-aligned bounding box
-    const xs = corners.map(c => c.x)
-    const zs = corners.map(c => c.z)
-    const minX = Math.min(...xs)
-    const maxX = Math.max(...xs)
-    const minZ = Math.min(...zs)
-    const maxZ = Math.max(...zs)
-
-    // Register as road region in WASM physics engine
-    if (physics) {
-      physics.setRoadRegion(minX, minZ, maxX, maxZ, true)
-    }
-
-    // Register as road region in TypeScript temperature store (for visualization)
-    setRoadRegionTS(minX, minZ, maxX, maxZ, true)
-
-    // Cleanup: unregister on unmount
-    return () => {
-      if (physics) {
-        physics.setRoadRegion(minX, minZ, maxX, maxZ, false)
-      }
-      setRoadRegionTS(minX, minZ, maxX, maxZ, false)
-    }
-  }, [isGhost, physics, setRoadRegionTS, finalPosition, finalRotation, width, length])
 
   const rampColliderData = useMemo(() => {
+    if (hasEdgeOverrides) return null
     const hw = width / 2
     const hl = length / 2
     const overlap = 0.15
@@ -250,52 +475,68 @@ export default function RoadSegment({
     ])
 
     return { vertices, indices }
-  }, [width, length, startElev, endElev, midElev])
+  }, [hasEdgeOverrides, width, length, startElev, endElev, midElev])
+
+  if (hasEdgeOverrides && blendedGeometries) {
+    const { roadGeo, leftGeo, rightGeo, collisionData } = blendedGeometries
+
+    const roadVisuals = (
+      <>
+        <mesh geometry={roadGeo} receiveShadow={!isGhost}>
+          <RoadSurfaceMaterial isGhost={isGhost} variant='road' side={2} />
+        </mesh>
+        <EdgeLines leftGeometry={leftGeo} rightGeometry={rightGeo} isGhost={isGhost} />
+        <RoadSelectionHighlight
+          isSelected={isSelectedForCurb}
+          position={[finalPosition[0], (startElev + endElev) / 2 + 0.05, finalPosition[2]]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          width={width}
+          length={length}
+        />
+      </>
+    )
+
+    if (isGhost) {
+      return <group>{roadVisuals}</group>
+    }
+
+    return (
+      <RigidBody type='fixed' colliders={false}>
+        <CuboidCollider
+          args={[halfWidth, midElev > 0.1 ? midElev + 1 : 0.5, length / 2]}
+          position={finalPosition}
+          rotation={[0, finalRotation, 0]}
+          sensor
+          onIntersectionEnter={handleEnterRoad}
+          onIntersectionExit={handleExitRoad}
+        />
+        <TrimeshCollider
+          args={[collisionData.vertices, collisionData.indices]}
+          friction={config.friction}
+          collisionGroups={TRACK_COLLISION_GROUPS}
+        />
+        {roadVisuals}
+      </RigidBody>
+    )
+  }
 
   const roadVisuals = (
     <>
-      <mesh geometry={slopeGeometry} receiveShadow={!isGhost}>
-        <RoadSurfaceMaterial
-          isGhost={isGhost}
-          variant='road'
-        />
-      </mesh>
-
-      <mesh geometry={leftEdgeGeometry}>
-        <meshStandardMaterial
-          color='#ffffff'
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-          side={2}
-        />
-      </mesh>
-
-      <mesh geometry={rightEdgeGeometry}>
-        <meshStandardMaterial
-          color='#ffffff'
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-          side={2}
-        />
-      </mesh>
-
-      <mesh geometry={dashGeometry}>
-        <meshStandardMaterial
-          color='#ffcc00'
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-        />
-      </mesh>
-
-      {isSelectedForCurb && (
-        <mesh position={[0, (startElev + endElev) / 2 - midElev + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[width + 0.5, length + 0.5]} />
-          <meshBasicMaterial color='#22c55e' transparent opacity={0.3} depthWrite={false} />
+      {slopeGeometry && (
+        <mesh geometry={slopeGeometry} receiveShadow={!isGhost}>
+          <RoadSurfaceMaterial isGhost={isGhost} variant='road' side={2} />
         </mesh>
       )}
+
+      <EdgeLines leftGeometry={leftEdgeGeometry} rightGeometry={rightEdgeGeometry} isGhost={isGhost} />
+
+      <RoadSelectionHighlight
+        isSelected={isSelectedForCurb}
+        position={[0, (startElev + endElev) / 2 - midElev + 0.05, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        width={width}
+        length={length}
+      />
     </>
   )
 
@@ -322,11 +563,13 @@ export default function RoadSegment({
         onIntersectionExit={handleExitRoad}
       />
 
-      <TrimeshCollider
-        args={[rampColliderData.vertices, rampColliderData.indices]}
-        friction={config.friction}
-        collisionGroups={TRACK_COLLISION_GROUPS}
-      />
+      {rampColliderData && (
+        <TrimeshCollider
+          args={[rampColliderData.vertices, rampColliderData.indices]}
+          friction={config.friction}
+          collisionGroups={TRACK_COLLISION_GROUPS}
+        />
+      )}
 
       {roadVisuals}
     </RigidBody>

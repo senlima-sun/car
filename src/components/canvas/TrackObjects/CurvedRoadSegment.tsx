@@ -1,13 +1,13 @@
-import { useMemo, useCallback, useEffect } from 'react'
+import { useMemo } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
-import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
+import { OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
-import { useSurfaceStore } from '../../../stores/useSurfaceStore'
-import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
-import { useElevationStore } from '../../../stores/useElevationStore'
-import { usePhysicsOptional } from '../../../wasm'
+import { useRoadSurfaces } from './hooks/useRoadSurfaces'
+import { useTemperatureRegistration } from './hooks/useTemperatureRegistration'
+import { EdgeLines } from './components/EdgeLines'
+import { RoadSelectionHighlight } from './components/RoadSelectionHighlight'
 
 interface CurvedRoadSegmentProps {
   position: [number, number, number]
@@ -48,35 +48,22 @@ export default function CurvedRoadSegment({
 }: CurvedRoadSegmentProps) {
   const width = widthProp ?? config.defaultSize.width
   const halfWidth = width / 2
-  const enterSurface = useSurfaceStore(s => s.enterSurface)
-  const exitSurface = useSurfaceStore(s => s.exitSurface)
-  const enterElevation = useElevationStore(s => s.enterRoad)
-  const exitElevation = useElevationStore(s => s.exitRoad)
-  const physics = usePhysicsOptional()
-  const setRoadRegionTS = useTrackTemperatureStore(s => s.setRoadRegion)
 
-  // Surface detection callbacks
-  const handleEnterRoad = useCallback(() => {
-    enterSurface('road')
-    const midElev = ((startElevation ?? 0) + (endElevation ?? 0)) / 2
-    const startVec = new Vector3(...startPoint)
-    const endVec = new Vector3(...endPoint)
-    const curveLength = startVec.distanceTo(endVec)
-    const slopeAngle = Math.atan2((endElevation ?? 0) - (startElevation ?? 0), curveLength)
-    const bankingRad = ((banking ?? 0) * Math.PI) / 180
-    enterElevation(midElev, slopeAngle, bankingRad)
-  }, [enterSurface, startElevation, endElevation, startPoint, endPoint, banking, enterElevation])
+  const startVec = useMemo(() => new Vector3(...startPoint), [startPoint])
+  const endVec = useMemo(() => new Vector3(...endPoint), [endPoint])
+  const curveLength = useMemo(() => startVec.distanceTo(endVec), [startVec, endVec])
 
-  const handleExitRoad = useCallback(() => {
-    exitSurface('road')
-    exitElevation()
-  }, [exitSurface, exitElevation])
+  const { handleEnterRoad, handleExitRoad } = useRoadSurfaces({
+    startElevation: startElevation ?? 0,
+    endElevation: endElevation ?? 0,
+    length: curveLength,
+    banking,
+  })
 
   const {
     roadGeometry,
     leftEdgeGeometry,
     rightEdgeGeometry,
-    centerLineDashes,
     selectionGeometry,
     sensorColliders,
     collisionData,
@@ -153,6 +140,7 @@ export default function CurvedRoadSegment({
       return { leftPoint, rightPoint, leftY, rightY, tangent, perpendicular, elevationY }
     }
 
+    const CROSS_SEGS = 8
     const roadVertices: number[] = []
     const roadIndices: number[] = []
     const roadUvs: number[] = []
@@ -171,19 +159,26 @@ export default function CurvedRoadSegment({
 
       const { leftPoint, rightPoint, leftY, rightY, perpendicular, elevationY } = computeEdgePoints(i, p, t)
 
-      roadVertices.push(leftPoint.x, leftY, leftPoint.z)
-      roadVertices.push(rightPoint.x, rightY, rightPoint.z)
+      for (let k = 0; k <= CROSS_SEGS; k++) {
+        const tW = k / CROSS_SEGS
+        roadVertices.push(
+          leftPoint.x + (rightPoint.x - leftPoint.x) * tW,
+          leftY + (rightY - leftY) * tW,
+          leftPoint.z + (rightPoint.z - leftPoint.z) * tW,
+        )
+        roadUvs.push(tW, t)
+      }
 
-      roadUvs.push(0, t)
-      roadUvs.push(1, t)
-
-      // Create triangles (except for first point)
       if (i > 0) {
-        const baseIdx = (i - 1) * 2
-        // First triangle
-        roadIndices.push(baseIdx, baseIdx + 1, baseIdx + 2)
-        // Second triangle
-        roadIndices.push(baseIdx + 1, baseIdx + 3, baseIdx + 2)
+        const row = i * (CROSS_SEGS + 1)
+        const prevRow = (i - 1) * (CROSS_SEGS + 1)
+        for (let k = 0; k < CROSS_SEGS; k++) {
+          const a = prevRow + k
+          const b = a + 1
+          const c = row + k
+          const d = c + 1
+          roadIndices.push(a, b, c, b, d, c)
+        }
       }
 
       let leftEdgeOuter: Vector3
@@ -266,39 +261,6 @@ export default function CurvedRoadSegment({
     rightGeo.setIndex(rightEdgeIndices)
     rightGeo.computeVertexNormals()
 
-    const curveLength = curve.getLength()
-    const dashSpacing = 3
-    const dashCount = Math.max(1, Math.floor(curveLength / dashSpacing))
-    const dashW = 0.15 / 2
-    const dashL = 1.2 / 2
-
-    const dashVertices: number[] = []
-    const dashIndices: number[] = []
-
-    for (let i = 0; i < dashCount; i++) {
-      const t = (i + 0.5) / dashCount
-      const pos = curve.getPoint(t)
-      const tan = curve.getTangent(t)
-      const dashElevY = startElev + (endElev - startElev) * t + 0.015
-      const perp = new Vector3(-tan.z, 0, tan.x)
-      const base = i * 4
-
-      const fwd = new Vector3(tan.x, 0, tan.z).multiplyScalar(dashL)
-      const side = perp.clone().multiplyScalar(dashW)
-
-      dashVertices.push(pos.x - side.x - fwd.x, dashElevY, pos.z - side.z - fwd.z)
-      dashVertices.push(pos.x + side.x - fwd.x, dashElevY, pos.z + side.z - fwd.z)
-      dashVertices.push(pos.x - side.x + fwd.x, dashElevY, pos.z - side.z + fwd.z)
-      dashVertices.push(pos.x + side.x + fwd.x, dashElevY, pos.z + side.z + fwd.z)
-
-      dashIndices.push(base, base + 2, base + 1, base + 1, base + 2, base + 3)
-    }
-
-    const dashGeo = new BufferGeometry()
-    dashGeo.setAttribute('position', new Float32BufferAttribute(dashVertices, 3))
-    dashGeo.setIndex(dashIndices)
-    dashGeo.computeVertexNormals()
-
     const selectionVertices: number[] = []
     const selectionIndices: number[] = []
     const selectionExpand = 0.5
@@ -341,6 +303,7 @@ export default function CurvedRoadSegment({
 
     const sensorData: { position: [number, number, number]; rotation: number; length: number }[] =
       []
+    const curveLength = curve.getLength()
     const numSensors = Math.max(4, Math.ceil(curveLength / 8))
     for (let i = 0; i < numSensors; i++) {
       const t1 = i / numSensors
@@ -439,7 +402,6 @@ export default function CurvedRoadSegment({
       roadGeometry: roadGeo,
       leftEdgeGeometry: leftGeo,
       rightEdgeGeometry: rightGeo,
-      centerLineDashes: dashGeo,
       selectionGeometry: selectionGeo,
       sensorColliders: sensorData,
       collisionData,
@@ -459,29 +421,7 @@ export default function CurvedRoadSegment({
     banking,
   ])
 
-  // Register road cells for temperature tracking
-  // Roads retain heat better than non-road surfaces
-  useEffect(() => {
-    if (isGhost || !roadBounds) return
-
-    const { minX, minZ, maxX, maxZ } = roadBounds
-
-    // Register as road region in WASM physics engine
-    if (physics) {
-      physics.setRoadRegion(minX, minZ, maxX, maxZ, true)
-    }
-
-    // Register as road region in TypeScript temperature store (for visualization)
-    setRoadRegionTS(minX, minZ, maxX, maxZ, true)
-
-    // Cleanup: unregister on unmount
-    return () => {
-      if (physics) {
-        physics.setRoadRegion(minX, minZ, maxX, maxZ, false)
-      }
-      setRoadRegionTS(minX, minZ, maxX, maxZ, false)
-    }
-  }, [isGhost, physics, setRoadRegionTS, roadBounds])
+  useTemperatureRegistration(isGhost, roadBounds)
 
   // Visual elements
   const roadVisuals = (
@@ -495,49 +435,9 @@ export default function CurvedRoadSegment({
         />
       </mesh>
 
-      {/* Left edge line */}
-      <mesh geometry={leftEdgeGeometry}>
-        <meshStandardMaterial
-          color='#ffffff'
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-          side={2}
-        />
-      </mesh>
+      <EdgeLines leftGeometry={leftEdgeGeometry} rightGeometry={rightEdgeGeometry} isGhost={isGhost} />
 
-      {/* Right edge line */}
-      <mesh geometry={rightEdgeGeometry}>
-        <meshStandardMaterial
-          color='#ffffff'
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-          side={2}
-        />
-      </mesh>
-
-      <mesh geometry={centerLineDashes}>
-        <meshStandardMaterial
-          color='#ffcc00'
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-        />
-      </mesh>
-
-      {/* Selection highlight for auto curb mode */}
-      {isSelectedForCurb && (
-        <mesh geometry={selectionGeometry}>
-          <meshBasicMaterial
-            color='#22c55e'
-            transparent
-            opacity={0.3}
-            depthWrite={false}
-            side={2}
-          />
-        </mesh>
-      )}
+      <RoadSelectionHighlight isSelected={isSelectedForCurb} geometry={selectionGeometry} />
     </>
   )
 
