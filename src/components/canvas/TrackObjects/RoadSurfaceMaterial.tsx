@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect, useMemo } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import * as THREE from 'three'
 import {
   ASPHALT_FRAGMENT_INJECT,
@@ -76,8 +76,6 @@ export default function RoadSurfaceMaterial({
 
   const uniformsRef = useRef(createAsphaltUniforms())
 
-  const cacheKey = useMemo(() => `asphalt-${variant}`, [variant])
-
   const onBeforeCompile = useCallback(
     (shader: THREE.WebGLProgramParametersWithUniforms) => {
       shaderRef.current = shader
@@ -131,7 +129,6 @@ export default function RoadSurfaceMaterial({
 
   return (
     <meshStandardMaterial
-      ref={matRef}
       color={color ?? (variant === 'pitroad' ? '#3a3a3a' : '#4a4a4a')}
       transparent={transparent ?? false}
       opacity={opacity ?? 1}
@@ -145,7 +142,12 @@ export default function RoadSurfaceMaterial({
       polygonOffsetFactor={polygonOffsetFactor}
       polygonOffsetUnits={polygonOffsetUnits}
       onBeforeCompile={onBeforeCompile}
-      customProgramCacheKey={cacheKey}
+      ref={(mat: THREE.MeshStandardMaterial | null) => {
+        if (mat) {
+          matRef.current = mat
+          mat.customProgramCacheKey = () => `asphalt-${variant}`
+        }
+      }}
     />
   )
 }
