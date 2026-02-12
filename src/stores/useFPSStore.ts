@@ -6,6 +6,6 @@ interface FPSState {
 }
 
 export const useFPSStore = create<FPSState>(set => ({
-  fps: 60,
-  updateFPS: (fps: number) => set({ fps }),
+  fps: 120,
+  updateFPS: (fps: number) => set({ fps: Math.min(999, Math.max(0, Math.round(fps))) }),
 }))

@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { RapierRigidBody } from '@react-three/rapier'
 import { useControls } from '../../../../hooks/useControls'
 import { type CarInput } from '../../../../wasm'
+import { usePhysicsAccumulator } from '../../../../hooks/usePhysicsAccumulator'
 import { useRaycastSuspension } from './useRaycastSuspension'
 import { useCarInputControl } from './useCarInputControl'
 import { useCarLifecycle } from './useCarLifecycle'
@@ -29,6 +30,7 @@ export function useCarFrame({
   startPosition,
 }: UseCarFrameOptions) {
   const getKeys = useControls()
+  const accumulator = usePhysicsAccumulator()
 
   const suspension = useRaycastSuspension(chassisRef)
 
@@ -71,7 +73,7 @@ export function useCarFrame({
 
     if (lifecycle.handleSpawnProtection()) {
       if (physicsStep.suspensionOutputRef.current === null) {
-        physicsStep.step(dt, {
+        physicsStep.step(accumulator.fixedTimeStep, {
           forward: false,
           backward: false,
           left: false,
@@ -98,8 +100,15 @@ export function useCarFrame({
       brake_analog: keys.brakeAnalog,
     }
 
-    const result = physicsStep.step(dt, input)
-    if (!result) return
+    const { steps, alpha } = accumulator.accumulate(dt)
+
+    let result = null
+    for (let i = 0; i < steps; i++) {
+      result = physicsStep.step(accumulator.fixedTimeStep, input)
+      if (!result) return
+    }
+
+    if (!result && steps === 0) return
 
     const { output, syncResult, windSyncNeeded, suspensionOutput } = result
 

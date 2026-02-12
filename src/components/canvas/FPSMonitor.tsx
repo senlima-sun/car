@@ -12,19 +12,19 @@ export default function FPSMonitor() {
   useFrame((state, delta) => {
     const now = state.clock.elapsedTime
 
-    if (delta > 0) {
+    if (delta > 0 && delta < 1) {
       frameTimesRef.current.push(delta)
       sampleFrame(delta)
     }
 
-    if (frameTimesRef.current.length > 60) {
+    if (frameTimesRef.current.length > 120) {
       frameTimesRef.current.shift()
     }
 
-    if (now - lastUpdateRef.current > 0.25 && frameTimesRef.current.length > 0) {
+    if (now - lastUpdateRef.current > 0.2 && frameTimesRef.current.length > 0) {
       const avgDelta =
         frameTimesRef.current.reduce((a, b) => a + b, 0) / frameTimesRef.current.length
-      const fps = Math.round(1 / avgDelta)
+      const fps = 1 / avgDelta
       updateFPS(fps)
       lastUpdateRef.current = now
     }
