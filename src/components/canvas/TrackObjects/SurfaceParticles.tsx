@@ -3,8 +3,9 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useCarStore } from '../../../stores/useCarStore'
+import { usePerformanceStore } from '../../../stores/usePerformanceStore'
 
-const MAX_PARTICLES = 80
+const BASE_MAX_PARTICLES = 80
 const MIN_SPEED_KMH = 20
 const PARTICLE_LIFETIME = 1.2
 
@@ -48,7 +49,7 @@ export default function SurfaceParticles() {
   const material = useMemo(() => new THREE.MeshBasicMaterial({ toneMapped: false }), [])
 
   if (particles.current.length === 0) {
-    particles.current = Array.from({ length: MAX_PARTICLES }, () => ({
+    particles.current = Array.from({ length: BASE_MAX_PARTICLES }, () => ({
       active: false,
       life: 0,
       maxLife: PARTICLE_LIFETIME,
@@ -64,6 +65,12 @@ export default function SurfaceParticles() {
     if (!mesh) return
 
     const dt = Math.min(delta, 0.05)
+    const perfTier = usePerformanceStore.getState().tier
+    const maxParticles = Math.floor(BASE_MAX_PARTICLES * (
+      perfTier === 'ultra' ? 1.2 :
+      perfTier === 'high' ? 1.0 :
+      perfTier === 'medium' ? 0.6 : 0.3
+    ))
     const surface = useSurfaceStore.getState().currentSurface
     const speed = useCarStore.getState().speed
     const position = useCarStore.getState().position
@@ -75,7 +82,8 @@ export default function SurfaceParticles() {
 
     if (isOffRoad && speed > MIN_SPEED_KMH && position) {
       const speedFactor = Math.min((speed - MIN_SPEED_KMH) / 80, 1.0)
-      const spawnRate = 15 + speedFactor * 50
+      const baseSpawnRate = 15 + speedFactor * 50
+      const spawnRate = baseSpawnRate * (maxParticles / BASE_MAX_PARTICLES)
       spawnAccum.current += spawnRate * dt
 
       const yaw = rotation

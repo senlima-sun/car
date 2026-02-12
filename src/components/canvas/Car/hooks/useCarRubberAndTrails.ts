@@ -122,6 +122,8 @@ export function useCarRubberAndTrails({ physics }: RubberAndTrailsOptions) {
       const susOut = suspensionOutput
       const isWet = trackWetness > 0.3
 
+      const minDistanceThreshold = dt > 0.012 ? 0.003 : 0.001
+
       for (let i = 0; i < 4; i++) {
         if (wheelIntensities[i] < 0.05) continue
         const wx = wheelPositions[i * 2]
@@ -129,7 +131,7 @@ export function useCarRubberAndTrails({ physics }: RubberAndTrailsOptions) {
         const dx = wx - prevWW[i * 2]
         const dz = wz - prevWW[i * 2 + 1]
         const dirLen = Math.sqrt(dx * dx + dz * dz)
-        if (dirLen < 0.001) continue
+        if (dirLen < minDistanceThreshold) continue
         const hitY = susOut ? susOut.wheels[i].hitY : pos.y
         const baseWidth = 0.30
         const slipWidthMult = 1 + Math.min(slipAngleAbs / 30, 0.5)
