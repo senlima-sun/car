@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import { usePerformanceStore } from '../../../../stores/usePerformanceStore'
-import type { CarState } from '../hooks/useCarFrame'
+import type { CarState } from '../hooks/types'
 import { tireSmokeVertexShader, tireSmokeFragmentShader } from '../../../../shaders/tireSmoke'
 
 const SMOKE_COUNT = 300

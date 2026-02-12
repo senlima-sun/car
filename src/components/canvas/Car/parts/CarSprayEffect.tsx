@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import { useTrackTemperatureStore } from '../../../../stores/useTrackTemperatureStore'
 import { usePerformanceStore } from '../../../../stores/usePerformanceStore'
-import type { CarState } from '../hooks/useCarFrame'
+import type { CarState } from '../hooks/types'
 
 const MIN_SPEED_FOR_SPRAY = 8 // m/s (~29 km/h)
 
