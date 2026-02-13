@@ -1,20 +1,13 @@
 import { create } from 'zustand'
-
-// Curb state tracking for WASM physics integration
-// Physics calculations are handled by the Rust/WASM engine
+import type { CurbType } from '../types/trackObjects'
 
 interface CurbState {
-  // Is car currently on any curb
   isOnCurb: boolean
-
-  // Which side of the track (for in/out turn determination)
   curbSide: 'left' | 'right' | null
-
-  // Number of curbs currently in contact (for overlapping curbs)
+  curbType: CurbType | null
   contactCount: number
 
-  // Actions
-  enterCurb: (side: 'left' | 'right') => void
+  enterCurb: (side: 'left' | 'right', curbType?: CurbType) => void
   exitCurb: () => void
   reset: () => void
 }
@@ -22,15 +15,17 @@ interface CurbState {
 export const useCurbStore = create<CurbState>((set, get) => ({
   isOnCurb: false,
   curbSide: null,
+  curbType: null,
   contactCount: 0,
 
-  enterCurb: side => {
+  enterCurb: (side, curbType) => {
     const state = get()
     const newContactCount = state.contactCount + 1
 
     set({
       isOnCurb: true,
       curbSide: side,
+      curbType: curbType ?? 'apex',
       contactCount: newContactCount,
     })
   },
@@ -43,6 +38,7 @@ export const useCurbStore = create<CurbState>((set, get) => ({
       set({
         isOnCurb: false,
         curbSide: null,
+        curbType: null,
         contactCount: 0,
       })
     } else {
@@ -56,6 +52,7 @@ export const useCurbStore = create<CurbState>((set, get) => ({
     set({
       isOnCurb: false,
       curbSide: null,
+      curbType: null,
       contactCount: 0,
     })
   },

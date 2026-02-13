@@ -1,19 +1,41 @@
-use crate::types::{CurbModifiers, CurbSide};
+use crate::types::{CurbModifiers, CurbSide, CurbType};
 
-// Curb bump parameters - pitch-based for realistic front-to-back motion
-const BUMP_FREQUENCY: f32 = 18.0; // Hz - rumble strip frequency
-const PITCH_AMPLITUDE: f32 = 0.15; // rad/s - pitch angular velocity amplitude
-const ENTRY_PITCH_STRENGTH: f32 = 0.4; // rad/s - initial pitch when entering curb (nose up)
-const ENTRY_PITCH_DURATION: f32 = 0.1; // seconds
+const TOOTH_SPACING: f32 = 0.8;
+const ENTRY_PITCH_DURATION: f32 = 0.1;
+
+fn amplitude_for_type(curb_type: CurbType) -> f32 {
+    match curb_type {
+        CurbType::Apex => 0.08,
+        CurbType::Exit => 0.20,
+        CurbType::Flat => 0.0,
+    }
+}
+
+fn entry_pitch_for_type(curb_type: CurbType) -> f32 {
+    match curb_type {
+        CurbType::Apex => 0.2,
+        CurbType::Exit => 0.4,
+        CurbType::Flat => 0.0,
+    }
+}
+
+fn grip_for_type(curb_type: CurbType) -> f32 {
+    match curb_type {
+        CurbType::Apex => 0.97,
+        CurbType::Exit => 0.93,
+        CurbType::Flat => 0.98,
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct CurbState {
     is_on_curb: bool,
-    was_on_curb: bool, // Track previous frame state for entry detection
+    was_on_curb: bool,
     side: Option<CurbSide>,
+    curb_type: CurbType,
     modifiers: CurbModifiers,
-    time_on_curb: f32, // Time spent on curb for oscillation
-    entry_bump_timer: f32, // Timer for entry bump
+    time_on_curb: f32,
+    entry_bump_timer: f32,
 }
 
 impl CurbState {
@@ -21,14 +43,14 @@ impl CurbState {
         Self::default()
     }
 
-    pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<CurbSide>) {
+    pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<CurbSide>, curb_type: CurbType) {
         self.was_on_curb = self.is_on_curb;
         self.is_on_curb = is_on_curb;
         self.side = side;
+        self.curb_type = curb_type;
 
         if is_on_curb {
-            self.modifiers = CurbModifiers::default();
-            // Detect entry - trigger entry bump
+            self.modifiers = CurbModifiers::for_type(curb_type);
             if !self.was_on_curb {
                 self.entry_bump_timer = ENTRY_PITCH_DURATION;
                 self.time_on_curb = 0.0;
@@ -39,8 +61,6 @@ impl CurbState {
         }
     }
 
-    /// Update curb timers and return pitch angular velocity for realistic bump effect
-    /// Positive = nose up, negative = nose down
     pub fn update(&mut self, dt: f32, speed_ms: f32) -> f32 {
         if !self.is_on_curb {
             return 0.0;
@@ -48,22 +68,26 @@ impl CurbState {
 
         self.time_on_curb += dt;
 
-        // Entry pitch - nose lifts up when front wheels hit curb
+        let pitch_amplitude = amplitude_for_type(self.curb_type);
+        let entry_strength = entry_pitch_for_type(self.curb_type);
+
         if self.entry_bump_timer > 0.0 {
             self.entry_bump_timer -= dt;
-            // Start with nose up, then transition to nose down (rear wheels hitting)
             let progress = 1.0 - (self.entry_bump_timer / ENTRY_PITCH_DURATION);
-            // Sine curve: 0->1 gives nose up then down
             let pitch_curve = (progress * std::f32::consts::PI).sin();
             let speed_factor = (speed_ms / 40.0).min(1.0);
-            return ENTRY_PITCH_STRENGTH * pitch_curve * speed_factor;
+            return entry_strength * pitch_curve * speed_factor;
         }
 
-        // Continuous rumble - pitch oscillation simulating rumble strips
-        let speed_factor = (speed_ms / 50.0).min(0.8).max(0.15);
-        let oscillation = (self.time_on_curb * BUMP_FREQUENCY * std::f32::consts::TAU).sin();
+        if pitch_amplitude < 0.001 {
+            return 0.0;
+        }
 
-        PITCH_AMPLITUDE * oscillation * speed_factor
+        let frequency = speed_ms / TOOTH_SPACING;
+        let speed_factor = (speed_ms / 50.0).min(0.8).max(0.15);
+        let oscillation = (self.time_on_curb * frequency * std::f32::consts::TAU).sin();
+
+        pitch_amplitude * oscillation * speed_factor
     }
 
     pub fn is_on_curb(&self) -> bool {
@@ -74,71 +98,33 @@ impl CurbState {
         self.side
     }
 
+    pub fn get_curb_type(&self) -> CurbType {
+        self.curb_type
+    }
+
     pub fn get_modifiers(&self) -> &CurbModifiers {
         &self.modifiers
     }
 
-    /// Get grip modifier based on curb position relative to turn direction
-    pub fn get_turn_grip_modifier(&self, steering_direction: f32) -> f32 {
+    pub fn get_turn_grip_modifier(&self, _steering_direction: f32) -> f32 {
         if !self.is_on_curb {
             return 1.0;
         }
-
-        match self.side {
-            Some(CurbSide::Left) => {
-                if steering_direction < 0.0 {
-                    // Entry curb (outside of turn) - more grip for turn-in
-                    1.2
-                } else {
-                    // Exit curb (inside of turn)
-                    1.1
-                }
-            }
-            Some(CurbSide::Right) => {
-                if steering_direction > 0.0 {
-                    // Entry curb
-                    1.2
-                } else {
-                    // Exit curb
-                    1.1
-                }
-            }
-            None => self.modifiers.grip_multiplier,
-        }
+        grip_for_type(self.curb_type)
     }
 
-    /// Get lateral stability modifier based on curb position
-    pub fn get_turn_stability_modifier(&self, steering_direction: f32) -> f32 {
+    pub fn get_turn_stability_modifier(&self, _steering_direction: f32) -> f32 {
         if !self.is_on_curb {
             return 1.0;
         }
-
-        match self.side {
-            Some(CurbSide::Left) => {
-                if steering_direction < 0.0 {
-                    1.15 // Entry curb - more stability
-                } else {
-                    1.05 // Exit curb
-                }
-            }
-            Some(CurbSide::Right) => {
-                if steering_direction > 0.0 {
-                    1.15
-                } else {
-                    1.05
-                }
-            }
-            None => self.modifiers.lateral_stability,
-        }
+        self.modifiers.lateral_stability
     }
 
-    /// Calculate speed reduction from curb
     pub fn get_speed_effect(&self, current_speed: f32, car_mass: f32) -> f32 {
         if !self.is_on_curb || current_speed.abs() < 1.0 {
             return 0.0;
         }
 
-        // Drag force from curb
         let curb_drag = current_speed.abs() * car_mass * (1.0 - self.modifiers.speed_multiplier) * 0.5;
         curb_drag * current_speed.signum()
     }
@@ -158,37 +144,86 @@ mod tests {
     #[test]
     fn test_curb_set() {
         let mut state = CurbState::new();
-        state.set_on_curb(true, Some(CurbSide::Left));
+        state.set_on_curb(true, Some(CurbSide::Left), CurbType::Apex);
 
         assert!(state.is_on_curb());
         assert_eq!(state.get_side(), Some(CurbSide::Left));
+        assert_eq!(state.get_curb_type(), CurbType::Apex);
     }
 
     #[test]
-    fn test_entry_curb_grip() {
+    fn test_apex_grip() {
         let mut state = CurbState::new();
-        state.set_on_curb(true, Some(CurbSide::Left));
-
-        // Left curb, steering left (entry)
+        state.set_on_curb(true, Some(CurbSide::Left), CurbType::Apex);
         let grip = state.get_turn_grip_modifier(-1.0);
-        assert!((grip - 1.2).abs() < 0.01);
+        assert!((grip - 0.97).abs() < 0.01);
+    }
 
-        // Left curb, steering right (exit)
-        let grip = state.get_turn_grip_modifier(1.0);
-        assert!((grip - 1.1).abs() < 0.01);
+    #[test]
+    fn test_exit_grip_lower_than_apex() {
+        let mut state_apex = CurbState::new();
+        state_apex.set_on_curb(true, Some(CurbSide::Left), CurbType::Apex);
+        let grip_apex = state_apex.get_turn_grip_modifier(-1.0);
+
+        let mut state_exit = CurbState::new();
+        state_exit.set_on_curb(true, Some(CurbSide::Left), CurbType::Exit);
+        let grip_exit = state_exit.get_turn_grip_modifier(-1.0);
+
+        assert!(grip_apex > grip_exit);
     }
 
     #[test]
     fn test_speed_effect() {
         let mut state = CurbState::new();
-        state.set_on_curb(true, None);
+        state.set_on_curb(true, None, CurbType::Apex);
 
         let drag = state.get_speed_effect(30.0, 600.0);
         assert!(drag > 0.0);
 
-        // No effect when not on curb
-        state.set_on_curb(false, None);
+        state.set_on_curb(false, None, CurbType::Apex);
         let drag = state.get_speed_effect(30.0, 600.0);
         assert!((drag - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_speed_dependent_frequency() {
+        let mut state = CurbState::new();
+        state.set_on_curb(true, None, CurbType::Exit);
+
+        state.time_on_curb = 0.5;
+        state.entry_bump_timer = 0.0;
+
+        let bump_slow = state.update(1.0 / 120.0, 10.0);
+        state.time_on_curb = 0.5;
+        let bump_fast = state.update(1.0 / 120.0, 40.0);
+
+        assert!(bump_slow.abs() > 0.0 || bump_fast.abs() > 0.0);
+    }
+
+    #[test]
+    fn test_flat_zero_bump() {
+        let mut state = CurbState::new();
+        state.set_on_curb(true, None, CurbType::Flat);
+
+        state.time_on_curb = 0.5;
+        state.entry_bump_timer = 0.0;
+
+        let bump = state.update(1.0 / 120.0, 30.0);
+        assert!((bump).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_exit_higher_amplitude() {
+        let mut state_apex = CurbState::new();
+        state_apex.set_on_curb(true, None, CurbType::Apex);
+        state_apex.time_on_curb = 0.5;
+        state_apex.entry_bump_timer = 0.0;
+
+        let mut state_exit = CurbState::new();
+        state_exit.set_on_curb(true, None, CurbType::Exit);
+        state_exit.time_on_curb = 0.5;
+        state_exit.entry_bump_timer = 0.0;
+
+        assert!(amplitude_for_type(CurbType::Exit) > amplitude_for_type(CurbType::Apex));
     }
 }

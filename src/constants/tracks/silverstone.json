@@ -8006,7 +8006,8 @@
       "parentRoadId": "road_9",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_1",
@@ -8019,8 +8020,9 @@
       "rotation": 0,
       "parentRoadId": "road_9",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_2",
@@ -8032,9 +8034,10 @@
       ],
       "rotation": 0,
       "parentRoadId": "road_10",
-      "edgeSide": "left",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_3",
@@ -8045,10 +8048,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_10",
+      "parentRoadId": "road_11",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_4",
@@ -8059,10 +8063,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_11",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_12",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_5",
@@ -8073,10 +8078,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_11",
+      "parentRoadId": "road_13",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_6",
@@ -8089,8 +8095,9 @@
       "rotation": 0,
       "parentRoadId": "road_12",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_7",
@@ -8101,10 +8108,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_12",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_13",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_8",
@@ -8115,10 +8123,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_13",
+      "parentRoadId": "road_14",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_9",
@@ -8129,10 +8138,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_13",
+      "parentRoadId": "road_14",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_10",
@@ -8143,10 +8153,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_14",
-      "edgeSide": "left",
+      "parentRoadId": "road_15",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_11",
@@ -8157,10 +8168,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_14",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_15",
+      "edgeSide": "left",
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_12",
@@ -8171,10 +8183,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_15",
+      "parentRoadId": "road_16",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_13",
@@ -8185,10 +8198,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_15",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_17",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_14",
@@ -8199,10 +8213,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_16",
+      "parentRoadId": "road_18",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_15",
@@ -8213,10 +8228,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_16",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_19",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_16",
@@ -8227,10 +8243,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_17",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_18",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_17",
@@ -8241,10 +8258,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_17",
+      "parentRoadId": "road_19",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_18",
@@ -8255,10 +8273,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_18",
-      "edgeSide": "left",
+      "parentRoadId": "road_20",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_19",
@@ -8269,10 +8288,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_18",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_20",
+      "edgeSide": "left",
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_20",
@@ -8283,10 +8303,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_19",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_8",
+      "edgeSide": "right",
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_21",
@@ -8297,10 +8318,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_19",
-      "edgeSide": "right",
+      "parentRoadId": "road_21",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_22",
@@ -8311,10 +8333,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_20",
+      "parentRoadId": "road_24",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_23",
@@ -8325,10 +8348,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_20",
+      "parentRoadId": "road_24",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_24",
@@ -8339,10 +8363,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_24",
-      "edgeSide": "left",
+      "parentRoadId": "road_25",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_25",
@@ -8353,10 +8378,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_24",
+      "parentRoadId": "road_26",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_26",
@@ -8367,10 +8393,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_25",
+      "parentRoadId": "road_26",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_27",
@@ -8381,10 +8408,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_25",
-      "edgeSide": "right",
+      "parentRoadId": "road_27",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_28",
@@ -8395,10 +8423,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_26",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_27",
+      "edgeSide": "right",
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_29",
@@ -8409,10 +8438,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_26",
+      "parentRoadId": "road_23",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_30",
@@ -8423,10 +8453,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_27",
-      "edgeSide": "left",
+      "parentRoadId": "road_28",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_31",
@@ -8437,10 +8468,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_27",
+      "parentRoadId": "road_29",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_32",
@@ -8453,8 +8485,9 @@
       "rotation": 0,
       "parentRoadId": "road_29",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_33",
@@ -8465,10 +8498,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_29",
-      "edgeSide": "right",
+      "parentRoadId": "road_30",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_34",
@@ -8479,10 +8513,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_30",
+      "parentRoadId": "road_31",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_35",
@@ -8493,10 +8528,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_30",
+      "parentRoadId": "road_31",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_36",
@@ -8507,10 +8543,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_31",
-      "edgeSide": "left",
+      "parentRoadId": "road_32",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_37",
@@ -8521,10 +8558,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_31",
+      "parentRoadId": "road_33",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_38",
@@ -8535,10 +8573,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_32",
+      "parentRoadId": "road_33",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_39",
@@ -8549,10 +8588,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_32",
-      "edgeSide": "right",
+      "parentRoadId": "road_34",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_40",
@@ -8563,10 +8603,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_33",
+      "parentRoadId": "road_35",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_41",
@@ -8577,10 +8618,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_33",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_36",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_42",
@@ -8591,10 +8633,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_34",
+      "parentRoadId": "road_37",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_43",
@@ -8605,10 +8648,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_34",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_38",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_44",
@@ -8619,10 +8663,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_35",
+      "parentRoadId": "road_39",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_45",
@@ -8633,10 +8678,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_35",
+      "parentRoadId": "road_37",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_46",
@@ -8647,10 +8693,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_36",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_38",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_47",
@@ -8661,10 +8708,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_36",
+      "parentRoadId": "road_39",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_48",
@@ -8675,10 +8723,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_37",
+      "parentRoadId": "road_28",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_49",
@@ -8689,10 +8738,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_37",
+      "parentRoadId": "road_40",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_50",
@@ -8703,10 +8753,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_38",
-      "edgeSide": "left",
+      "parentRoadId": "road_54",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_51",
@@ -8717,10 +8768,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_38",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_54",
+      "edgeSide": "left",
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_52",
@@ -8731,10 +8783,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_39",
+      "parentRoadId": "road_55",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_53",
@@ -8745,10 +8798,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_39",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_56",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_54",
@@ -8759,10 +8813,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_54",
+      "parentRoadId": "road_57",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_55",
@@ -8773,10 +8828,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_54",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_58",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_56",
@@ -8787,10 +8843,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_55",
+      "parentRoadId": "road_59",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_57",
@@ -8801,10 +8858,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_55",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_60",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_58",
@@ -8815,10 +8873,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_56",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_58",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_59",
@@ -8829,10 +8888,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_56",
+      "parentRoadId": "road_59",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_60",
@@ -8843,10 +8903,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_57",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_60",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_61",
@@ -8857,10 +8918,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_57",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_53",
+      "edgeSide": "left",
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_62",
@@ -8871,10 +8933,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_58",
-      "edgeSide": "left",
+      "parentRoadId": "road_61",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_63",
@@ -8885,10 +8948,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_58",
+      "parentRoadId": "road_62",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_64",
@@ -8899,10 +8963,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_59",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_63",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_65",
@@ -8913,10 +8978,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_59",
+      "parentRoadId": "road_64",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_66",
@@ -8927,10 +8993,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_60",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_65",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_67",
@@ -8941,10 +9008,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_60",
+      "parentRoadId": "road_66",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_68",
@@ -8955,10 +9023,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_62",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_67",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_69",
@@ -8969,10 +9038,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_62",
+      "parentRoadId": "road_68",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_70",
@@ -8983,10 +9053,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_63",
+      "parentRoadId": "road_65",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_71",
@@ -8997,10 +9068,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_63",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_66",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_72",
@@ -9011,10 +9083,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_64",
+      "parentRoadId": "road_67",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_73",
@@ -9025,10 +9098,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_64",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_68",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_74",
@@ -9039,10 +9113,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_65",
+      "parentRoadId": "road_69",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_75",
@@ -9053,10 +9128,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_65",
+      "parentRoadId": "road_69",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_76",
@@ -9067,10 +9143,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_66",
+      "parentRoadId": "road_61",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_77",
@@ -9081,10 +9158,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_66",
+      "parentRoadId": "road_70",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_78",
@@ -9095,10 +9173,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_67",
-      "edgeSide": "left",
+      "parentRoadId": "road_71",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_79",
@@ -9109,10 +9188,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_67",
+      "parentRoadId": "road_72",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_80",
@@ -9123,10 +9203,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_68",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_73",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_81",
@@ -9137,10 +9218,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_68",
+      "parentRoadId": "road_74",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_82",
@@ -9151,10 +9233,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_69",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_75",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_83",
@@ -9165,10 +9248,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_69",
+      "parentRoadId": "road_76",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_84",
@@ -9179,10 +9263,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_71",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_77",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_85",
@@ -9193,10 +9278,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_71",
+      "parentRoadId": "road_78",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_86",
@@ -9207,10 +9293,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_72",
+      "parentRoadId": "road_75",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_87",
@@ -9221,10 +9308,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_72",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_76",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_88",
@@ -9235,10 +9323,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_73",
+      "parentRoadId": "road_77",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_89",
@@ -9249,10 +9338,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_73",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_78",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_90",
@@ -9263,10 +9353,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_74",
+      "parentRoadId": "road_79",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_91",
@@ -9277,10 +9368,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_74",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_80",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_92",
@@ -9291,10 +9383,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_75",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_80",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_93",
@@ -9305,10 +9398,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_75",
+      "parentRoadId": "road_81",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_94",
@@ -9319,10 +9413,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_76",
+      "parentRoadId": "road_81",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_95",
@@ -9333,10 +9428,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_76",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_70",
+      "edgeSide": "left",
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_96",
@@ -9347,10 +9443,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_77",
+      "parentRoadId": "road_82",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_97",
@@ -9361,10 +9458,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_77",
+      "parentRoadId": "road_89",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_98",
@@ -9375,10 +9473,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_78",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_90",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_99",
@@ -9389,10 +9488,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_78",
+      "parentRoadId": "road_91",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_100",
@@ -9403,10 +9503,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_79",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_92",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_101",
@@ -9417,10 +9518,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_79",
+      "parentRoadId": "road_93",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_102",
@@ -9431,10 +9533,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_80",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_94",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_103",
@@ -9445,10 +9548,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_80",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_92",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_104",
@@ -9459,10 +9563,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_81",
+      "parentRoadId": "road_93",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_105",
@@ -9473,10 +9578,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_81",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_94",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_106",
@@ -9487,10 +9593,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_89",
+      "parentRoadId": "road_95",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_107",
@@ -9501,10 +9608,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_89",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_96",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_108",
@@ -9515,10 +9623,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_90",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_96",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_109",
@@ -9529,10 +9638,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_90",
+      "parentRoadId": "road_97",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_110",
@@ -9543,10 +9653,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_91",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_98",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_111",
@@ -9557,10 +9668,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_91",
+      "parentRoadId": "road_99",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_112",
@@ -9571,10 +9683,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_92",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_100",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_113",
@@ -9585,10 +9698,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_92",
+      "parentRoadId": "road_101",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_114",
@@ -9599,10 +9713,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_93",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_102",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_115",
@@ -9613,10 +9728,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_93",
+      "parentRoadId": "road_103",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_116",
@@ -9627,10 +9743,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_94",
+      "parentRoadId": "road_100",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_117",
@@ -9641,10 +9758,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_94",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_101",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_118",
@@ -9655,10 +9773,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_95",
+      "parentRoadId": "road_102",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_119",
@@ -9669,10 +9788,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_95",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_103",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_120",
@@ -9683,10 +9803,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_96",
+      "parentRoadId": "road_88",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_121",
@@ -9697,10 +9818,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_96",
-      "edgeSide": "right",
+      "parentRoadId": "road_104",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_122",
@@ -9711,10 +9833,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_97",
+      "parentRoadId": "road_107",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_123",
@@ -9725,10 +9848,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_97",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_108",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_124",
@@ -9739,10 +9863,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_98",
+      "parentRoadId": "road_109",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_125",
@@ -9753,10 +9878,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_98",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_110",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_126",
@@ -9767,10 +9893,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_99",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_109",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_127",
@@ -9781,10 +9908,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_99",
+      "parentRoadId": "road_110",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_128",
@@ -9795,10 +9923,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_100",
-      "edgeSide": "left",
+      "parentRoadId": "road_111",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_129",
@@ -9809,10 +9938,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_100",
+      "parentRoadId": "road_112",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_130",
@@ -9823,10 +9953,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_101",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_113",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_131",
@@ -9837,10 +9968,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_101",
+      "parentRoadId": "road_114",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_132",
@@ -9851,10 +9983,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_102",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_115",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_133",
@@ -9865,10 +9998,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_102",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_113",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_134",
@@ -9879,10 +10013,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_103",
+      "parentRoadId": "road_114",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_135",
@@ -9893,10 +10028,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_103",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_115",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_136",
@@ -9907,10 +10043,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_107",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_106",
+      "edgeSide": "right",
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_137",
@@ -9921,10 +10058,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_107",
-      "edgeSide": "right",
+      "parentRoadId": "road_116",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_138",
@@ -9935,10 +10073,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_108",
+      "parentRoadId": "road_117",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_139",
@@ -9949,10 +10088,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_108",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_118",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_140",
@@ -9963,10 +10103,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_109",
+      "parentRoadId": "road_119",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_141",
@@ -9977,10 +10118,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_109",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_120",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_142",
@@ -9991,10 +10133,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_110",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_119",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_143",
@@ -10005,10 +10148,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_110",
+      "parentRoadId": "road_120",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_144",
@@ -10019,10 +10163,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_111",
-      "edgeSide": "left",
+      "parentRoadId": "road_121",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_145",
@@ -10033,10 +10178,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_111",
+      "parentRoadId": "road_122",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_146",
@@ -10047,10 +10193,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_112",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_123",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_147",
@@ -10061,10 +10208,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_112",
+      "parentRoadId": "road_124",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_148",
@@ -10075,10 +10223,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_113",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_125",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_149",
@@ -10089,10 +10238,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_113",
+      "parentRoadId": "road_126",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_150",
@@ -10103,10 +10253,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_114",
+      "parentRoadId": "road_124",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_151",
@@ -10117,10 +10268,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_114",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_125",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_152",
@@ -10131,10 +10283,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_115",
+      "parentRoadId": "road_126",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_153",
@@ -10145,10 +10298,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_115",
-      "edgeSide": "right",
+      "parentRoadId": "road_127",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_154",
@@ -10159,10 +10313,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_117",
+      "parentRoadId": "road_128",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_155",
@@ -10173,10 +10328,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_117",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_129",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_156",
@@ -10187,10 +10343,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_118",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_128",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_157",
@@ -10201,10 +10358,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_118",
+      "parentRoadId": "road_129",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_158",
@@ -10215,10 +10373,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_119",
-      "edgeSide": "left",
+      "parentRoadId": "road_130",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_159",
@@ -10229,10 +10388,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_119",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_130",
+      "edgeSide": "left",
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_160",
@@ -10243,10 +10403,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_120",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_116",
+      "edgeSide": "right",
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_161",
@@ -10257,10 +10418,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_120",
-      "edgeSide": "right",
+      "parentRoadId": "road_131",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_162",
@@ -10271,10 +10433,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_121",
-      "edgeSide": "left",
+      "parentRoadId": "road_145",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_163",
@@ -10285,10 +10448,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_121",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_145",
+      "edgeSide": "left",
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_164",
@@ -10299,10 +10463,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_122",
+      "parentRoadId": "road_146",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_165",
@@ -10313,10 +10478,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_122",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_147",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_166",
@@ -10327,10 +10493,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_123",
+      "parentRoadId": "road_148",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_167",
@@ -10341,10 +10508,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_123",
+      "parentRoadId": "road_147",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_168",
@@ -10355,10 +10523,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_124",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_148",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_169",
@@ -10369,10 +10538,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_124",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_144",
+      "edgeSide": "left",
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_170",
@@ -10383,10 +10553,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_125",
-      "edgeSide": "left",
+      "parentRoadId": "road_149",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_171",
@@ -10397,10 +10568,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_125",
+      "parentRoadId": "road_150",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_172",
@@ -10411,10 +10583,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_126",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_151",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_173",
@@ -10425,10 +10598,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_126",
+      "parentRoadId": "road_152",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_174",
@@ -10439,10 +10613,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_127",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_153",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_175",
@@ -10453,10 +10628,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_127",
+      "parentRoadId": "road_154",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_176",
@@ -10467,10 +10643,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_128",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_155",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_177",
@@ -10481,10 +10658,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_128",
+      "parentRoadId": "road_156",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_178",
@@ -10495,10 +10673,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_129",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_157",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_179",
@@ -10509,10 +10688,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_129",
+      "parentRoadId": "road_158",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_180",
@@ -10523,10 +10703,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_130",
+      "parentRoadId": "road_154",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_181",
@@ -10537,10 +10718,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_130",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_155",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_182",
@@ -10551,10 +10733,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_145",
+      "parentRoadId": "road_156",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_183",
@@ -10565,10 +10748,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_145",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_157",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_184",
@@ -10579,10 +10763,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_146",
+      "parentRoadId": "road_158",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_185",
@@ -10593,10 +10778,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_146",
-      "edgeSide": "right",
+      "parentRoadId": "road_159",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_186",
@@ -10607,10 +10793,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_147",
+      "parentRoadId": "road_160",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_187",
@@ -10621,10 +10808,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_147",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_161",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_188",
@@ -10635,10 +10823,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_148",
+      "parentRoadId": "road_162",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_189",
@@ -10649,10 +10838,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_148",
+      "parentRoadId": "road_161",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_190",
@@ -10663,10 +10853,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_150",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_162",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_191",
@@ -10677,10 +10868,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_150",
+      "parentRoadId": "road_163",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_192",
@@ -10691,10 +10883,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_151",
+      "parentRoadId": "road_163",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_193",
@@ -10705,10 +10898,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_151",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_149",
+      "edgeSide": "left",
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_194",
@@ -10719,10 +10913,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_152",
+      "parentRoadId": "road_164",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "curb_195",
@@ -10733,10 +10928,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_152",
-      "edgeSide": "right",
+      "parentRoadId": "road_165",
+      "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_196",
@@ -10747,10 +10943,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_153",
+      "parentRoadId": "road_166",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_197",
@@ -10761,10 +10958,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_153",
+      "parentRoadId": "road_166",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_198",
@@ -10775,10 +10973,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_154",
-      "edgeSide": "left",
+      "parentRoadId": "road_167",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_199",
@@ -10789,10 +10988,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_154",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_167",
+      "edgeSide": "left",
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_200",
@@ -10803,10 +11003,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_155",
+      "parentRoadId": "road_168",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_201",
@@ -10817,10 +11018,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_155",
+      "parentRoadId": "road_168",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_202",
@@ -10831,10 +11033,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_156",
-      "edgeSide": "left",
+      "parentRoadId": "road_169",
+      "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_203",
@@ -10845,10 +11048,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_156",
+      "parentRoadId": "road_170",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_204",
@@ -10859,10 +11063,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_157",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_171",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_205",
@@ -10873,10 +11078,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_157",
+      "parentRoadId": "road_172",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_206",
@@ -10887,10 +11093,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_158",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_173",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_207",
@@ -10901,10 +11108,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_158",
+      "parentRoadId": "road_174",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_208",
@@ -10915,10 +11123,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_159",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_175",
+      "edgeSide": "right",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "apex"
     },
     {
       "id": "curb_209",
@@ -10929,10 +11138,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_159",
+      "parentRoadId": "road_176",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_210",
@@ -10943,10 +11153,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_160",
+      "parentRoadId": "road_173",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_211",
@@ -10957,10 +11168,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_160",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_174",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_212",
@@ -10971,10 +11183,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_161",
+      "parentRoadId": "road_175",
       "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0,
+      "endT": 1,
+      "curbType": "exit"
     },
     {
       "id": "curb_213",
@@ -10985,10 +11198,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_161",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_176",
+      "edgeSide": "left",
+      "startT": 0,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_214",
@@ -10999,10 +11213,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_162",
+      "parentRoadId": "road_177",
       "edgeSide": "left",
       "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.95,
+      "curbType": "apex"
     },
     {
       "id": "curb_215",
@@ -11013,10 +11228,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_162",
+      "parentRoadId": "road_177",
       "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "startT": 0.5,
+      "endT": 0.95,
+      "curbType": "exit"
     },
     {
       "id": "curb_216",
@@ -11027,10 +11243,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_163",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
+      "parentRoadId": "road_164",
+      "edgeSide": "right",
+      "startT": 0.7,
+      "endT": 0.95,
+      "curbType": "flat"
     },
     {
       "id": "curb_217",
@@ -11041,374 +11258,11 @@
         0
       ],
       "rotation": 0,
-      "parentRoadId": "road_163",
+      "parentRoadId": "road_178",
       "edgeSide": "right",
       "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_218",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_165",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_219",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_165",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_220",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_166",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_221",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_166",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_222",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_167",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_223",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_167",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_224",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_168",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_225",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_168",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_226",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_169",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_227",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_169",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_228",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_170",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_229",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_170",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_230",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_171",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_231",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_171",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_232",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_172",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_233",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_172",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_234",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_173",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_235",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_173",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_236",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_174",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_237",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_174",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_238",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_175",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_239",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_175",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_240",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_176",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_241",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_176",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_242",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_177",
-      "edgeSide": "left",
-      "startT": 0.05,
-      "endT": 0.95
-    },
-    {
-      "id": "curb_243",
-      "type": "curb",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": 0,
-      "parentRoadId": "road_177",
-      "edgeSide": "right",
-      "startT": 0.05,
-      "endT": 0.95
+      "endT": 0.3,
+      "curbType": "flat"
     },
     {
       "id": "checkpoint_sf",
@@ -11478,344 +11332,6 @@
       "checkpointType": "sector",
       "checkpointOrder": 2,
       "width": 12
-    },
-    {
-      "id": "pitroad_entry_curve",
-      "type": "road",
-      "position": [
-        -468.8599,
-        0,
-        -406.53
-      ],
-      "rotation": 0,
-      "startPoint": [
-        -485.7955,
-        0,
-        -418.0475
-      ],
-      "endPoint": [
-        -451.9243,
-        0,
-        -395.0126
-      ],
-      "controlPoint": [
-        -464.8044,
-        0,
-        -409.4545
-      ],
-      "trackMode": "pitroad-curve",
-      "startLeftEdge": [
-        -489.0399,
-        0,
-        -415.7079
-      ],
-      "startRightEdge": [
-        -482.5511,
-        0,
-        -420.3871
-      ],
-      "endLeftEdge": [
-        -455.1687,
-        0,
-        -392.673
-      ],
-      "endRightEdge": [
-        -448.6799,
-        0,
-        -397.3522
-      ],
-      "width": 8
-    },
-    {
-      "id": "pitroad_0",
-      "type": "road",
-      "position": [
-        -438.8599,
-        0,
-        -376.8957
-      ],
-      "rotation": 0,
-      "startPoint": [
-        -451.9243,
-        0,
-        -395.0126
-      ],
-      "endPoint": [
-        -425.7955,
-        0,
-        -358.7789
-      ],
-      "trackMode": "pitroad",
-      "startLeftEdge": [
-        -455.1687,
-        0,
-        -392.673
-      ],
-      "startRightEdge": [
-        -448.6799,
-        0,
-        -397.3522
-      ],
-      "endLeftEdge": [
-        -429.0399,
-        0,
-        -356.4393
-      ],
-      "endRightEdge": [
-        -422.5511,
-        0,
-        -361.1185
-      ],
-      "width": 8
-    },
-    {
-      "id": "pitroad_1",
-      "type": "road",
-      "position": [
-        -412.7311,
-        0,
-        -340.6621
-      ],
-      "rotation": 0,
-      "startPoint": [
-        -425.7955,
-        0,
-        -358.7789
-      ],
-      "endPoint": [
-        -399.6667,
-        0,
-        -322.5452
-      ],
-      "trackMode": "pitroad",
-      "startLeftEdge": [
-        -429.0399,
-        0,
-        -356.4393
-      ],
-      "startRightEdge": [
-        -422.5511,
-        0,
-        -361.1185
-      ],
-      "endLeftEdge": [
-        -402.9111,
-        0,
-        -320.2056
-      ],
-      "endRightEdge": [
-        -396.4223,
-        0,
-        -324.8848
-      ],
-      "width": 8
-    },
-    {
-      "id": "pitroad_2",
-      "type": "road",
-      "position": [
-        -386.6023,
-        0,
-        -304.4284
-      ],
-      "rotation": 0,
-      "startPoint": [
-        -399.6667,
-        0,
-        -322.5452
-      ],
-      "endPoint": [
-        -373.5379,
-        0,
-        -286.3116
-      ],
-      "trackMode": "pitroad",
-      "startLeftEdge": [
-        -402.9111,
-        0,
-        -320.2056
-      ],
-      "startRightEdge": [
-        -396.4223,
-        0,
-        -324.8848
-      ],
-      "endLeftEdge": [
-        -376.7823,
-        0,
-        -283.972
-      ],
-      "endRightEdge": [
-        -370.2935,
-        0,
-        -288.6512
-      ],
-      "width": 8
-    },
-    {
-      "id": "pitroad_exit_curve",
-      "type": "road",
-      "position": [
-        -367.9551,
-        0,
-        -266.6019
-      ],
-      "rotation": 0,
-      "startPoint": [
-        -373.5379,
-        0,
-        -286.3116
-      ],
-      "endPoint": [
-        -362.3722,
-        0,
-        -246.8923
-      ],
-      "controlPoint": [
-        -363.8996,
-        0,
-        -269.5264
-      ],
-      "trackMode": "pitroad-curve",
-      "startLeftEdge": [
-        -376.7823,
-        0,
-        -283.972
-      ],
-      "startRightEdge": [
-        -370.2935,
-        0,
-        -288.6512
-      ],
-      "endLeftEdge": [
-        -365.6166,
-        0,
-        -244.5527
-      ],
-      "endRightEdge": [
-        -359.1278,
-        0,
-        -249.2319
-      ],
-      "width": 8
-    },
-    {
-      "id": "pitbox_0",
-      "type": "pitbox",
-      "position": [
-        -406.2423,
-        0,
-        -345.3413
-      ],
-      "rotation": 0.6248,
-      "parentRoadId": "pitroad_1",
-      "edgeSide": "right"
-    },
-    {
-      "id": "gravel_turn1",
-      "type": "gravel_patch",
-      "position": [-245, 0, -115],
-      "rotation": 0,
-      "polygonPoints": [
-        [-289, 0, -145],
-        [-267, 0, -114],
-        [-235, 0, -99],
-        [-216, 0, -96],
-        [-179, 0, -97],
-        [-170, 0, -112],
-        [-210, 0, -112],
-        [-230, 0, -115],
-        [-260, 0, -128],
-        [-280, 0, -155]
-      ]
-    },
-    {
-      "id": "grass_turn1",
-      "type": "grass_patch",
-      "position": [-235, 0, -130],
-      "rotation": 0,
-      "polygonPoints": [
-        [-295, 0, -160],
-        [-280, 0, -155],
-        [-260, 0, -128],
-        [-230, 0, -115],
-        [-210, 0, -112],
-        [-170, 0, -112],
-        [-160, 0, -130],
-        [-200, 0, -130],
-        [-240, 0, -135],
-        [-270, 0, -148],
-        [-290, 0, -170]
-      ]
-    },
-    {
-      "id": "gravel_copse",
-      "type": "gravel_patch",
-      "position": [15, 0, -80],
-      "rotation": 0,
-      "polygonPoints": [
-        [-21, 0, -94],
-        [3, 0, -83],
-        [28, 0, -66],
-        [54, 0, -43],
-        [65, 0, -55],
-        [38, 0, -78],
-        [10, 0, -95],
-        [-15, 0, -106]
-      ]
-    },
-    {
-      "id": "grass_copse",
-      "type": "grass_patch",
-      "position": [20, 0, -100],
-      "rotation": 0,
-      "polygonPoints": [
-        [-25, 0, -110],
-        [-15, 0, -106],
-        [10, 0, -95],
-        [38, 0, -78],
-        [65, 0, -55],
-        [78, 0, -68],
-        [48, 0, -95],
-        [15, 0, -115],
-        [-20, 0, -128]
-      ]
-    },
-    {
-      "id": "gravel_stowe",
-      "type": "gravel_patch",
-      "position": [440, 0, 190],
-      "rotation": 0,
-      "polygonPoints": [
-        [410, 0, 231],
-        [424, 0, 208],
-        [438, 0, 184],
-        [443, 0, 151],
-        [439, 0, 136],
-        [453, 0, 130],
-        [458, 0, 155],
-        [452, 0, 190],
-        [438, 0, 218],
-        [420, 0, 240]
-      ]
-    },
-    {
-      "id": "grass_stowe",
-      "type": "grass_patch",
-      "position": [455, 0, 190],
-      "rotation": 0,
-      "polygonPoints": [
-        [420, 0, 240],
-        [438, 0, 218],
-        [452, 0, 190],
-        [458, 0, 155],
-        [453, 0, 130],
-        [468, 0, 122],
-        [475, 0, 155],
-        [468, 0, 200],
-        [455, 0, 230],
-        [435, 0, 255]
-      ]
     }
   ]
 }

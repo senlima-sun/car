@@ -164,7 +164,8 @@ mod tests {
         state.set_surface(SurfaceType::Curb);
         state.update(TRANSITION_DURATION + 0.01);
 
-        assert!(state.get_grip_modifier() > 1.0);
+        assert!(state.get_grip_modifier() < 1.0);
+        assert!(state.get_grip_modifier() > 0.9);
         assert!(state.get_speed_modifier() < 1.0);
     }
 

@@ -822,15 +822,15 @@ impl SurfaceModifiers {
         }
     }
 
-    /// Curb surface - racing curbs provide slight advantage
+    /// Curb surface - slightly reduced grip vs asphalt
     pub fn curb() -> Self {
         Self {
-            grip_multiplier: 1.15,
-            speed_multiplier: 0.92,
+            grip_multiplier: 0.97,
+            speed_multiplier: 0.96,
             tire_wear_multiplier: 1.1,
-            drag_multiplier: 1.5,
-            brake_efficiency: 1.0,
-            steer_response: 1.0,
+            drag_multiplier: 1.1,
+            brake_efficiency: 0.95,
+            steer_response: 0.95,
         }
     }
 
@@ -885,6 +885,15 @@ impl SurfaceModifiers {
 // Curb Types
 // ============================================================================
 
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum CurbType {
+    #[default]
+    Apex,
+    Exit,
+    Flat,
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct CurbModifiers {
     pub speed_multiplier: f32,
@@ -895,11 +904,31 @@ pub struct CurbModifiers {
 
 impl Default for CurbModifiers {
     fn default() -> Self {
-        Self {
-            speed_multiplier: 0.92,
-            grip_multiplier: 1.15,
-            lateral_stability: 1.1,
-            drag_multiplier: 1.5,
+        Self::for_type(CurbType::Apex)
+    }
+}
+
+impl CurbModifiers {
+    pub fn for_type(curb_type: CurbType) -> Self {
+        match curb_type {
+            CurbType::Apex => Self {
+                speed_multiplier: 0.96,
+                grip_multiplier: 0.97,
+                lateral_stability: 0.95,
+                drag_multiplier: 1.1,
+            },
+            CurbType::Exit => Self {
+                speed_multiplier: 0.93,
+                grip_multiplier: 0.93,
+                lateral_stability: 0.90,
+                drag_multiplier: 1.15,
+            },
+            CurbType::Flat => Self {
+                speed_multiplier: 0.99,
+                grip_multiplier: 0.98,
+                lateral_stability: 0.98,
+                drag_multiplier: 1.02,
+            },
         }
     }
 }
@@ -1866,9 +1895,10 @@ mod tests {
     }
 
     #[test]
-    fn surface_modifiers_curb_increases_grip() {
+    fn surface_modifiers_curb_reduces_grip_slightly() {
         let curb = SurfaceModifiers::curb();
-        assert!(curb.grip_multiplier > 1.0);
+        assert!(curb.grip_multiplier < 1.0);
+        assert!(curb.grip_multiplier > 0.9);
     }
 
     #[test]
@@ -1892,12 +1922,30 @@ mod tests {
     }
 
     #[test]
-    fn curb_modifiers_default_values() {
+    fn curb_modifiers_default_is_apex() {
         let cm = CurbModifiers::default();
-        assert_approx(cm.speed_multiplier, 0.92);
-        assert_approx(cm.grip_multiplier, 1.15);
-        assert_approx(cm.lateral_stability, 1.1);
-        assert_approx(cm.drag_multiplier, 1.5);
+        let apex = CurbModifiers::for_type(CurbType::Apex);
+        assert_approx(cm.grip_multiplier, apex.grip_multiplier);
+        assert_approx(cm.drag_multiplier, apex.drag_multiplier);
+    }
+
+    #[test]
+    fn curb_modifiers_per_type_grip_order() {
+        let apex = CurbModifiers::for_type(CurbType::Apex);
+        let exit = CurbModifiers::for_type(CurbType::Exit);
+        let flat = CurbModifiers::for_type(CurbType::Flat);
+        assert!(flat.grip_multiplier > apex.grip_multiplier);
+        assert!(apex.grip_multiplier > exit.grip_multiplier);
+    }
+
+    #[test]
+    fn curb_modifiers_all_below_road() {
+        let apex = CurbModifiers::for_type(CurbType::Apex);
+        let exit = CurbModifiers::for_type(CurbType::Exit);
+        let flat = CurbModifiers::for_type(CurbType::Flat);
+        assert!(apex.grip_multiplier < 1.0);
+        assert!(exit.grip_multiplier < 1.0);
+        assert!(flat.grip_multiplier < 1.0);
     }
 
     #[test]

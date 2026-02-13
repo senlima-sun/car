@@ -72,7 +72,7 @@ export const OBJECT_CONFIGS: Record<ObjectType, ObjectConfig> = {
     label: 'Curb',
     description: 'F1-style kerb stripe',
     isLinear: false,
-    defaultSize: { width: 1.5, height: 0.1, depth: 1 },
+    defaultSize: { width: 0.8, height: 0.05, depth: 1 },
     color: TRACK_OBJECT.curb,
     friction: 0.7,
     restitution: 0.1,

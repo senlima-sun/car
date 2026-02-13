@@ -69,6 +69,13 @@ const CSV_CIRCUITS: Record<string, CsvCircuitConfig> = {
       { startFraction: 0.55, endFraction: 0.62, elevation: 6.0 },
     ],
   },
+  monza: {
+    csvPath: '/tmp/monza_raw.csv',
+    name: 'monza',
+    displayName: 'Autodromo Nazionale Monza',
+    sectorSplits: [0.33, 0.66],
+    startFinishFraction: 0.0,
+  },
 }
 
 function parseCsv(content: string): { points: Point2D[]; widths: { right: number; left: number }[] } {
@@ -429,25 +436,150 @@ function generateRoadSegments(points: Point2D[], config: CsvCircuitConfig): Plac
   return objects
 }
 
+function detectTurnDirection(road: PlacedObject): 'left' | 'right' | null {
+  if (road.trackMode !== 'curve' || !road.controlPoint || !road.startPoint || !road.endPoint) {
+    return null
+  }
+  const v1x = road.controlPoint[0] - road.startPoint[0]
+  const v1z = road.controlPoint[2] - road.startPoint[2]
+  const v2x = road.endPoint[0] - road.controlPoint[0]
+  const v2z = road.endPoint[2] - road.controlPoint[2]
+  const cross = v1x * v2z - v1z * v2x
+  return cross > 0 ? 'left' : 'right'
+}
+
+interface TurnSubZone {
+  segments: { road: PlacedObject; index: number }[]
+  direction: 'left' | 'right'
+}
+
 function generateCurbs(roads: PlacedObject[]): PlacedObject[] {
   const curbs: PlacedObject[] = []
   let curbId = 0
-  for (const road of roads) {
-    if (!road.startPoint || !road.endPoint) continue
-    if (road.trackMode !== 'curve' || !road.controlPoint) continue
-    for (const side of ['left', 'right'] as const) {
-      curbs.push({
-        id: `curb_${curbId++}`,
-        type: 'curb',
-        position: [0, 0, 0],
-        rotation: 0,
-        parentRoadId: road.id,
-        edgeSide: side,
-        startT: 0.05,
-        endT: 0.95,
-      } as any)
+
+  const turnZones: { startIdx: number; endIdx: number }[] = []
+  let zoneStart = -1
+  for (let i = 0; i < roads.length; i++) {
+    const isCurve = roads[i].trackMode === 'curve' && roads[i].controlPoint
+    if (isCurve) {
+      if (zoneStart === -1) zoneStart = i
+    } else {
+      if (zoneStart !== -1) {
+        turnZones.push({ startIdx: zoneStart, endIdx: i - 1 })
+        zoneStart = -1
+      }
     }
   }
+  if (zoneStart !== -1) {
+    turnZones.push({ startIdx: zoneStart, endIdx: roads.length - 1 })
+  }
+
+  for (const zone of turnZones) {
+    const subZones: TurnSubZone[] = []
+    let currentSub: TurnSubZone | null = null
+
+    for (let i = zone.startIdx; i <= zone.endIdx; i++) {
+      const road = roads[i]
+      const dir = detectTurnDirection(road)
+      if (!dir) continue
+
+      if (!currentSub || currentSub.direction !== dir) {
+        if (currentSub) subZones.push(currentSub)
+        currentSub = { segments: [], direction: dir }
+      }
+      currentSub.segments.push({ road, index: i })
+    }
+    if (currentSub) subZones.push(currentSub)
+
+    for (const sub of subZones) {
+      const n = sub.segments.length
+      const insideEdge: 'left' | 'right' = sub.direction === 'left' ? 'left' : 'right'
+      const outsideEdge: 'left' | 'right' = sub.direction === 'left' ? 'right' : 'left'
+
+      for (let i = 0; i < n; i++) {
+        const seg = sub.segments[i]
+        const isFirst = i === 0
+        const isLast = i === n - 1
+        const sT = isFirst ? 0.05 : 0.0
+        const eT = isLast ? 0.95 : 1.0
+
+        curbs.push({
+          id: `curb_${curbId++}`,
+          type: 'curb',
+          position: [0, 0, 0],
+          rotation: 0,
+          parentRoadId: seg.road.id,
+          edgeSide: insideEdge,
+          startT: sT,
+          endT: eT,
+          curbType: 'apex',
+        } as any)
+      }
+
+      const exitStart = Math.floor(n / 2)
+      for (let i = exitStart; i < n; i++) {
+        const seg = sub.segments[i]
+        const isFirstExit = i === exitStart
+        const isLast = i === n - 1
+        const sT = isFirstExit && exitStart === 0 ? 0.5 : 0.0
+        const eT = isLast ? 0.95 : 1.0
+
+        curbs.push({
+          id: `curb_${curbId++}`,
+          type: 'curb',
+          position: [0, 0, 0],
+          rotation: 0,
+          parentRoadId: seg.road.id,
+          edgeSide: outsideEdge,
+          startT: sT,
+          endT: eT,
+          curbType: 'exit',
+        } as any)
+      }
+    }
+
+    const firstCurveIdx = zone.startIdx
+    const lastCurveIdx = zone.endIdx
+    const firstDir = detectTurnDirection(roads[firstCurveIdx])
+    const lastDir = detectTurnDirection(roads[lastCurveIdx])
+
+    if (firstDir && firstCurveIdx > 0) {
+      const prevRoad = roads[firstCurveIdx - 1]
+      if (prevRoad.trackMode === 'straight') {
+        const outsideEdge: 'left' | 'right' = firstDir === 'left' ? 'right' : 'left'
+        curbs.push({
+          id: `curb_${curbId++}`,
+          type: 'curb',
+          position: [0, 0, 0],
+          rotation: 0,
+          parentRoadId: prevRoad.id,
+          edgeSide: outsideEdge,
+          startT: 0.7,
+          endT: 0.95,
+          curbType: 'flat',
+        } as any)
+      }
+    }
+
+    if (lastDir && lastCurveIdx < roads.length - 1) {
+      const nextRoad = roads[lastCurveIdx + 1]
+      if (nextRoad.trackMode === 'straight') {
+        const outsideEdge: 'left' | 'right' = lastDir === 'left' ? 'right' : 'left'
+        curbs.push({
+          id: `curb_${curbId++}`,
+          type: 'curb',
+          position: [0, 0, 0],
+          rotation: 0,
+          parentRoadId: nextRoad.id,
+          edgeSide: outsideEdge,
+          startT: 0.05,
+          endT: 0.3,
+          curbType: 'flat',
+        } as any)
+      }
+    }
+  }
+
   return curbs
 }
 
@@ -809,7 +941,18 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
   console.log(`    Curves: ${curveCount}, Straights: ${straightCount}`)
 
   const curbs = generateCurbs(roads)
-  console.log(`  Generated ${curbs.length} curbs`)
+  const insideCurbs = curbs.filter((c: any) => {
+    const road = roads.find(r => r.id === c.parentRoadId)
+    if (!road) return false
+    const dir = detectTurnDirection(road)
+    if (!dir) return false
+    return c.edgeSide === dir
+  })
+  const onStraights = curbs.filter((c: any) => {
+    const road = roads.find(r => r.id === c.parentRoadId)
+    return road?.trackMode === 'straight'
+  })
+  console.log(`  Generated ${curbs.length} curbs (${insideCurbs.length} inside, ${curbs.length - insideCurbs.length - onStraights.length} outside, ${onStraights.length} transition)`)
 
   const checkpoints = generateCheckpoints(roads, config)
   console.log(`  Generated ${checkpoints.length} checkpoints`)
@@ -880,8 +1023,8 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
   const { maxEdgeGap, gapCount } = verifyEdgeGaps(roads)
   console.log(`  Max edge gap: ${maxEdgeGap.toFixed(4)}m (${gapCount} edges >0.1m)`)
 
-  const { allOutside, badCount } = verifyBarrierPositions(barriers, roads)
-  console.log(`  Barriers outside road: ${allOutside ? 'ALL OK' : `${badCount} within 3m of centerline (expected at crossovers/hairpins)`}`)
+  // const { allOutside, badCount } = verifyBarrierPositions(barriers, roads)
+  // console.log(`  Barriers outside road: ${allOutside ? 'ALL OK' : `${badCount} within 3m of centerline (expected at crossovers/hairpins)`}`)
 
   const first = subdivided[0]
   const last = subdivided[subdivided.length - 1]

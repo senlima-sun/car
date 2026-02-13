@@ -1,5 +1,5 @@
 import { PlacedObject } from '../stores/useCustomizationStore'
-import { isCurveMode } from '../types/trackObjects'
+import { isCurveMode, type CurbType } from '../types/trackObjects'
 
 // Constants for curb positioning along road (parametric t values 0-1)
 export const CURB_POSITIONS = {
@@ -117,16 +117,18 @@ function createCurb(
   edgeSide: 'left' | 'right',
   startT: number,
   endT: number,
+  curbType: CurbType = 'apex',
 ): PlacedObject {
   return {
     id: generateId(),
     type: 'curb',
-    position: [0, 0, 0], // Position calculated from parent road at render time
+    position: [0, 0, 0],
     rotation: 0,
     parentRoadId,
     edgeSide,
     startT,
     endT,
+    curbType,
   }
 }
 
@@ -151,28 +153,27 @@ export function generateCurbsForRoads(
 
       const { insideEdge, outsideEdge } = getEdges(turnDir)
 
-      // 2. Generate apex curb (inside of curve)
       generatedCurbs.push(
-        createCurb(road.id, insideEdge, CURB_POSITIONS.apex.startT, CURB_POSITIONS.apex.endT),
+        createCurb(road.id, insideEdge, CURB_POSITIONS.apex.startT, CURB_POSITIONS.apex.endT, 'apex'),
       )
 
-      // 3. Generate entry curb on curve (outside, start portion)
       generatedCurbs.push(
         createCurb(
           road.id,
           outsideEdge,
           CURB_POSITIONS.entryOnCurve.startT,
           CURB_POSITIONS.entryOnCurve.endT,
+          'exit',
         ),
       )
 
-      // 4. Generate exit curb on curve (outside, end portion)
       generatedCurbs.push(
         createCurb(
           road.id,
           outsideEdge,
           CURB_POSITIONS.exitOnCurve.startT,
           CURB_POSITIONS.exitOnCurve.endT,
+          'exit',
         ),
       )
 
@@ -193,7 +194,7 @@ export function generateCurbsForRoads(
             : 1 - CURB_POSITIONS.entryOnStraight.startT
 
         generatedCurbs.push(
-          createCurb(beforeConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT),
+          createCurb(beforeConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT, 'flat'),
         )
       }
 
@@ -214,7 +215,7 @@ export function generateCurbsForRoads(
             : 1 - CURB_POSITIONS.exitOnStraight.startT
 
         generatedCurbs.push(
-          createCurb(afterConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT),
+          createCurb(afterConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT, 'flat'),
         )
       }
     }

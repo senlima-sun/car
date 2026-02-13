@@ -28,6 +28,7 @@ export function useCarPhysicsStep({
 }: PhysicsStepOptions) {
   const isOnCurb = useCurbStore(state => state.isOnCurb)
   const curbSide = useCurbStore(state => state.curbSide)
+  const curbType = useCurbStore(state => state.curbType)
 
   const suspensionOutputRef = useRef<SuspensionOutput | null>(null)
   const surfaceNormalRef = useRef<[number, number, number]>([0, 1, 0])
@@ -75,7 +76,7 @@ export function useCarPhysicsStep({
       return null
     }
 
-    physics.setOnCurb(isOnCurb, curbSide || undefined)
+    physics.setOnCurb(isOnCurb, curbSide || undefined, curbType || undefined)
     physics.setErsOvertakeAvailable(useGameStore.getState().isTestingMode)
 
     const ersState = useErsStore.getState()

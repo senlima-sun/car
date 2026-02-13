@@ -11,7 +11,7 @@ use crate::tires::{TempInput, TireMaterialSystem, TireState, TireTemperatureStat
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
     AeroMode, AmbientConditions, AmbientEnvironment, AquaplaningState, BrakeState, CarInput,
-    CarPhysicsOutput, CurbSide, EngineBrakingLevel, ErsMode, GripBreakdown, PerWheelWear,
+    CarPhysicsOutput, CurbSide, CurbType, EngineBrakingLevel, ErsMode, GripBreakdown, PerWheelWear,
     SemiAutoConfig, SemiAutoPreset, SurfaceFrictionBreakdown, SurfaceModifiers, SurfaceType,
     TemperatureOutput, TireCompound, TireThermalShock, TrackBounds, WeatherModifiers, WindModifiers,
     WindState,
@@ -282,8 +282,8 @@ impl PhysicsEngine {
     // Curb API
     // ========================================================================
 
-    pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<CurbSide>) {
-        self.curb.set_on_curb(is_on_curb, side);
+    pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<CurbSide>, curb_type: CurbType) {
+        self.curb.set_on_curb(is_on_curb, side, curb_type);
     }
 
     pub fn is_on_curb(&self) -> bool {

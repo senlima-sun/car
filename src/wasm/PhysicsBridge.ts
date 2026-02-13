@@ -588,8 +588,8 @@ export function getTireWearPerWheel(): PerWheelWear {
 /**
  * Set curb contact state
  */
-export function setOnCurb(isOnCurb: boolean, side?: 'left' | 'right'): void {
-  getPhysicsEngine().set_on_curb(isOnCurb, side)
+export function setOnCurb(isOnCurb: boolean, side?: 'left' | 'right', curbType?: string): void {
+  getPhysicsEngine().set_on_curb(isOnCurb, side, curbType)
 }
 
 /**

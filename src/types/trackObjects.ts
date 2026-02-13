@@ -1,6 +1,7 @@
 export type ObjectType = 'cone' | 'ramp' | 'checkpoint' | 'barrier' | 'road' | 'curb' | 'pitbox' | 'grass_patch' | 'gravel_patch'
 export type TrackMode = 'straight' | 'curve' | 'pitroad' | 'pitroad-curve'
 export type CheckpointType = 'start-finish' | 'sector'
+export type CurbType = 'apex' | 'exit' | 'flat'
 
 export interface PlacedObject {
   id: string
@@ -27,6 +28,8 @@ export interface PlacedObject {
   endElevation?: number
   banking?: number
   polygonPoints?: Array<[number, number, number]>
+  curbType?: CurbType
+  rippleHeight?: number
 }
 
 export type PlacementState =
@@ -59,6 +62,10 @@ export interface SnapPointWithDirection {
   leftEdge: [number, number, number]
   rightEdge: [number, number, number]
   tangent: [number, number, number]
+  elevation: number
+  banking: number
+  roadId: string
+  endpoint: 'start' | 'end'
 }
 
 export interface RoadEdgeResult {

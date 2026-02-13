@@ -2,12 +2,13 @@ import { useMemo, useCallback } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { GHOST_OPACITY, OBJECT_CONFIGS } from '../../../constants/trackObjects'
-import { CURB_PROFILE, CURB_WIDTH, CURB_PEAK_HEIGHT } from '../../../constants/curb'
+import { CURB_WIDTH, CURB_PEAK_HEIGHTS, STRIPE_WIDTH, getProfileForType, TOOTH_SPACING } from '../../../constants/curb'
 import { ROAD_HALF_WIDTH, TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { PlacedObject } from '../../../stores/useCustomizationStore'
 import { getElevationAtT } from '../../../utils/roadGeometry'
+import type { CurbType } from '../../../types/trackObjects'
 
 const curbConfig = OBJECT_CONFIGS.curb
 
@@ -17,13 +18,13 @@ interface CurvedCurbSegmentProps {
   isGhost?: boolean
 }
 
-// Helper to get height from curb profile at normalized position (0-1 across width)
-function getProfileHeight(normalizedX: number): number {
+function getProfileHeight(normalizedX: number, curbType: CurbType): number {
+  const profile = getProfileForType(curbType)
   const x = normalizedX * CURB_WIDTH
 
-  for (let i = 0; i < CURB_PROFILE.length - 1; i++) {
-    const p1 = CURB_PROFILE[i]
-    const p2 = CURB_PROFILE[i + 1]
+  for (let i = 0; i < profile.length - 1; i++) {
+    const p1 = profile[i]
+    const p2 = profile[i + 1]
 
     if (x >= p1.x && x <= p2.x) {
       const t = (x - p1.x) / (p2.x - p1.x)
@@ -44,6 +45,9 @@ export default function CurvedCurbSegment({
   const enterSurface = useSurfaceStore(s => s.enterSurface)
   const exitSurface = useSurfaceStore(s => s.exitSurface)
 
+  const curbType: CurbType = curb.curbType || 'apex'
+  const peakHeight = CURB_PEAK_HEIGHTS[curbType]
+
   const { stripeGeometries, collisionData, sensorData } = useMemo(() => {
     if (
       !curb.startT ||
@@ -62,44 +66,45 @@ export default function CurvedCurbSegment({
 
     const curve = new QuadraticBezierCurve3(start, control, end)
 
-    // Calculate segment of curve to use
     const tStart = Math.min(curb.startT, curb.endT)
     const tEnd = Math.max(curb.startT, curb.endT)
     const tRange = tEnd - tStart
 
-    // Calculate stripe positions along the curve for alternating colors
     const curveLength = curve.getLength() * tRange
-    const stripeLength = 2
-    const stripeCount = Math.max(2, Math.ceil(curveLength / stripeLength))
+    const stripeCount = Math.max(2, Math.ceil(curveLength / STRIPE_WIDTH))
 
     const edgeSign = curb.edgeSide === 'left' ? 1 : -1
 
     const stripes: { geometry: BufferGeometry; color: string }[] = []
 
-    // Profile subdivisions for 3D shape
-    const profileSubdivisions = 6 // Number of points across the curb width
+    const profileSubdivisions = 6
+
+    let cumulativeArcLength = 0
 
     for (let s = 0; s < stripeCount; s++) {
       const segStart = tStart + (s / stripeCount) * tRange
       const segEnd = tStart + ((s + 1) / stripeCount) * tRange
-      const segmentPoints = 8 // Points along the curve segment
+      const segmentPoints = 8
 
       const vertices: number[] = []
       const indices: number[] = []
 
-      // Generate vertices with 3D profile
       for (let i = 0; i <= segmentPoints; i++) {
         const t = segStart + (i / segmentPoints) * (segEnd - segStart)
         const pos = curve.getPoint(t)
         const tangent = curve.getTangent(t)
         const perp = new Vector3(-tangent.z, 0, tangent.x).normalize()
 
-        // Generate points across the curb width with height profile
+        const arcPos = cumulativeArcLength + (i / segmentPoints) * (curveLength / stripeCount)
+        const sawtoothMod = curbType === 'exit'
+          ? Math.abs(((arcPos / TOOTH_SPACING) % 1) * 2 - 1)
+          : 1.0
+
         for (let p = 0; p <= profileSubdivisions; p++) {
           const normalizedWidth = p / profileSubdivisions
-          const height = getProfileHeight(normalizedWidth)
+          const baseHeight = getProfileHeight(normalizedWidth, curbType)
+          const height = curbType === 'exit' ? baseHeight * sawtoothMod : baseHeight
 
-          // Calculate position: inner edge to outer edge
           const innerOffset = ROAD_HALF_WIDTH * edgeSign
           const outerOffset = (ROAD_HALF_WIDTH + CURB_WIDTH) * edgeSign
           const widthOffset = innerOffset + (outerOffset - innerOffset) * normalizedWidth
@@ -108,7 +113,8 @@ export default function CurvedCurbSegment({
         }
       }
 
-      // Generate indices for the 3D mesh
+      cumulativeArcLength += curveLength / stripeCount
+
       const vertsPerRow = profileSubdivisions + 1
       for (let i = 0; i < segmentPoints; i++) {
         for (let p = 0; p < profileSubdivisions; p++) {
@@ -133,7 +139,6 @@ export default function CurvedCurbSegment({
       })
     }
 
-    // Generate combined collision trimesh from all stripe vertices
     const allCollisionVerts: number[] = []
     const allCollisionIndices: number[] = []
     let vertexOffset = 0
@@ -157,7 +162,6 @@ export default function CurvedCurbSegment({
       indices: new Uint32Array(allCollisionIndices),
     }
 
-    // Calculate sensor position (center of curb segment)
     const midT = (tStart + tEnd) / 2
     const midPos = curve.getPoint(midT)
     const midTangent = curve.getTangent(midT)
@@ -171,22 +175,22 @@ export default function CurvedCurbSegment({
       sensorData: {
         position: [
           midPos.x + midPerp.x * sensorOffset,
-          CURB_PEAK_HEIGHT / 2 + sensorElevation,
+          peakHeight / 2 + sensorElevation,
           midPos.z + midPerp.z * sensorOffset,
         ] as [number, number, number],
         length: curveLength,
       },
     }
-  }, [curb, parentRoad])
+  }, [curb, parentRoad, curbType, peakHeight])
 
   if (stripeGeometries.length === 0) return null
 
   const handleEnter = useCallback(() => {
     if (!isGhost && curb.edgeSide) {
-      enterCurb(curb.edgeSide)
+      enterCurb(curb.edgeSide, curbType)
       enterSurface('curb')
     }
-  }, [isGhost, curb.edgeSide, enterCurb, enterSurface])
+  }, [isGhost, curb.edgeSide, curbType, enterCurb, enterSurface])
 
   const handleExit = useCallback(() => {
     if (!isGhost) {
@@ -195,7 +199,6 @@ export default function CurvedCurbSegment({
     }
   }, [isGhost, exitCurb, exitSurface])
 
-  // Ghost mode - visual only
   if (isGhost) {
     return (
       <group>
@@ -214,7 +217,6 @@ export default function CurvedCurbSegment({
     )
   }
 
-  // Normal mode - sensor only for surface detection (no solid collision to allow driving over)
   return (
     <RigidBody
       type='fixed'
@@ -225,7 +227,7 @@ export default function CurvedCurbSegment({
       {sensorData && (
         <CuboidCollider
           position={sensorData.position}
-          args={[CURB_WIDTH / 2, CURB_PEAK_HEIGHT / 2, sensorData.length / 2]}
+          args={[CURB_WIDTH / 2, peakHeight / 2, sensorData.length / 2]}
           sensor
           onIntersectionEnter={handleEnter}
           onIntersectionExit={handleExit}
@@ -248,7 +250,6 @@ export default function CurvedCurbSegment({
   )
 }
 
-// Preview version for curved curb during drag
 interface CurvedCurbPreviewProps {
   parentRoad: PlacedObject
   edge: 'left' | 'right'
@@ -281,8 +282,7 @@ export function CurvedCurbPreview({
     if (tRange < 0.01) return []
 
     const curveLength = curve.getLength() * tRange
-    const stripeLength = 2
-    const stripeCount = Math.max(2, Math.ceil(curveLength / stripeLength))
+    const stripeCount = Math.max(2, Math.ceil(curveLength / STRIPE_WIDTH))
 
     const edgeSign = edge === 'left' ? 1 : -1
     const profileSubdivisions = 6
@@ -306,7 +306,7 @@ export function CurvedCurbPreview({
 
         for (let p = 0; p <= profileSubdivisions; p++) {
           const normalizedWidth = p / profileSubdivisions
-          const height = getProfileHeight(normalizedWidth)
+          const height = getProfileHeight(normalizedWidth, 'apex')
 
           const innerOffset = ROAD_HALF_WIDTH * edgeSign
           const outerOffset = (ROAD_HALF_WIDTH + CURB_WIDTH) * edgeSign

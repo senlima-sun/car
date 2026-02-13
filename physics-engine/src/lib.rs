@@ -19,7 +19,7 @@ mod wind;
 use engine::PhysicsEngine as PhysicsEngineInternal;
 use serde_wasm_bindgen::{from_value, to_value};
 use types::{
-    AeroMode, AmbientEnvironment, CarInput, CurbSide, ErsMode, SemiAutoPreset, SurfaceType,
+    AeroMode, AmbientEnvironment, CarInput, CurbSide, CurbType, ErsMode, SemiAutoPreset, SurfaceType,
     TireCompound, TrackBounds,
 };
 use wasm_bindgen::prelude::*;
@@ -412,13 +412,18 @@ impl PhysicsEngine {
 
     /// Set whether the car is on a curb
     #[wasm_bindgen]
-    pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<String>) {
+    pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<String>, curb_type: Option<String>) {
         let curb_side = side.and_then(|s| match s.as_str() {
             "left" | "Left" => Some(CurbSide::Left),
             "right" | "Right" => Some(CurbSide::Right),
             _ => None,
         });
-        self.inner.set_on_curb(is_on_curb, curb_side);
+        let ct = curb_type.map(|s| match s.as_str() {
+            "exit" | "Exit" => CurbType::Exit,
+            "flat" | "Flat" => CurbType::Flat,
+            _ => CurbType::Apex,
+        }).unwrap_or(CurbType::Apex);
+        self.inner.set_on_curb(is_on_curb, curb_side, ct);
     }
 
     /// Check if car is on curb

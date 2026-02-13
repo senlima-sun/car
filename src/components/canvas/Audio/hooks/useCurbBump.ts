@@ -4,10 +4,17 @@ import { Howl } from 'howler'
 import { useAudioStore } from '@/stores/useAudioStore'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSurfaceStore } from '@/stores/useSurfaceStore'
+import { useCurbStore } from '@/stores/useCurbStore'
 import { createHowl } from '../utils/audioLoader'
 
 const CURB_BUMP_SRC = '/audio/effects/curb_bump.mp3'
 const DEBOUNCE_MS = 300
+
+const VOLUME_BY_TYPE = {
+  apex: 0.6,
+  exit: 1.0,
+  flat: 0.0,
+} as const
 
 export function useCurbBump() {
   const howlRef = useRef<Howl | null>(null)
@@ -37,12 +44,16 @@ export function useCurbBump() {
     }
 
     const onCurb = useSurfaceStore.getState().currentSurface === 'curb'
+    const curbType = useCurbStore.getState().curbType || 'apex'
     const now = performance.now()
 
     if (onCurb && !prevOnCurb.current && now - lastPlayTime.current > DEBOUNCE_MS) {
-      howl.volume(masterVolume * effectsVolume)
-      howl.play()
-      lastPlayTime.current = now
+      const typeVolume = VOLUME_BY_TYPE[curbType]
+      if (typeVolume > 0) {
+        howl.volume(masterVolume * effectsVolume * typeVolume)
+        howl.play()
+        lastPlayTime.current = now
+      }
     }
 
     prevOnCurb.current = onCurb
