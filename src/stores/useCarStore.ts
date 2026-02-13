@@ -8,6 +8,9 @@ interface CarState {
   rotation: [number, number, number, number]
   steerAngle: number
   wheelRotations: [number, number, number, number]
+  lateralG: number
+  longitudinalG: number
+  skidIntensity: number
 
   updateTelemetry: (data: Partial<Omit<CarState, 'updateTelemetry' | 'reset'>>) => void
   reset: () => void
@@ -21,6 +24,9 @@ const initialState = {
   rotation: [0, 0, 0, 1] as [number, number, number, number],
   steerAngle: 0,
   wheelRotations: [0, 0, 0, 0] as [number, number, number, number],
+  lateralG: 0,
+  longitudinalG: 0,
+  skidIntensity: 0,
 }
 
 export const useCarStore = create<CarState>(set => ({

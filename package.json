@@ -5,23 +5,29 @@
   "type": "module",
   "scripts": {
     "dev": "bun run build/dev.ts",
-    "dev:server": "bun run build/dev-server.ts",
     "dev:wasm": "bun run build/watch-wasm.ts",
-
-    "build": "bun run build:wasm && bun run build/build.ts",
-    "preview": "bun run build/preview-server.ts",
+    "build": "bun run build:wasm && vite build",
+    "preview": "vite preview",
     "format": "prettier --write .",
     "build:wasm": "cd physics-engine && wasm-pack build --target web --out-dir ../src/wasm/pkg",
     "build:wasm:release": "cd physics-engine && wasm-pack build --target web --out-dir ../src/wasm/pkg --release",
     "test:wasm": "cd physics-engine && cargo test",
-    "test": "bun test"
+    "test": "bun test",
+    "validate:audio": "bun scripts/validate-audio.ts",
+    "compress:glb": "bunx --bun @gltf-transform/cli webp public/models/f1_2026.glb /tmp/f1_webp.glb && bunx --bun @gltf-transform/cli draco /tmp/f1_webp.glb public/models/f1_2026.glb && rm /tmp/f1_webp.glb"
   },
   "dependencies": {
+    "@base-ui-components/react": "^1.0.0-rc.0",
+    "@elevenlabs/elevenlabs-js": "^2.35.0",
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/extensions": "^4.3.0",
+    "@napi-rs/canvas": "^0.1.91",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
     "@react-three/rapier": "^2.2.0",
+    "draco3dgltf": "^1.5.7",
+    "howler": "^2.2.4",
     "posthog-js": "^1.306.1",
-
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "tailwindcss": "^4.1.18",
@@ -29,13 +35,16 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "@types/bun": "latest",
-
+    "@types/howler": "^2.2.12",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.182.0",
-    "bun-plugin-tailwind": "^0.1.2",
+    "@vitejs/plugin-react": "^5.1.4",
+    "dotenv": "^17.3.1",
     "prettier": "^3.7.4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   }
 }

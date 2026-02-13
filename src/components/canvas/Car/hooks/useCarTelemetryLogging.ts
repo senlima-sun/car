@@ -8,6 +8,7 @@ import { WHEEL_RADIUS as DIM_WHEEL_RADIUS } from '../../../../constants/dimensio
 export function useCarTelemetryLogging() {
   const updateTelemetry = useCarStore(state => state.updateTelemetry)
   const recordPosition = useLapTimeStore(state => state.recordPosition)
+  const recordGhostFrame = useLapTimeStore(state => state.recordGhostFrame)
   const checkPitLaneSpeed = usePitStore(state => state.checkPitLaneSpeed)
 
   const wheelRotationsRef = useRef<[number, number, number, number]>([0, 0, 0, 0])
@@ -69,15 +70,27 @@ export function useCarTelemetryLogging() {
         rotation: [rot.x, rot.y, rot.z, rot.w],
         steerAngle: steerVal,
         wheelRotations: wheelRotationsRef.current,
+        lateralG: output.lateral_g ?? 0,
+        longitudinalG: output.longitudinal_g ?? 0,
+        skidIntensity: output.skid_intensity ?? 0,
       })
       lastTelemetryTime.current = now
     } else {
       const store = useCarStore.getState()
       store.steerAngle = steerVal
       store.wheelRotations = wheelRotationsRef.current
+      store.lateralG = output.lateral_g ?? 0
+      store.longitudinalG = output.longitudinal_g ?? 0
+      store.skidIntensity = output.skid_intensity ?? 0
     }
 
     recordPosition(pos.x, pos.y, pos.z, output.speed_kmh)
+    recordGhostFrame(
+      pos.x, pos.y, pos.z,
+      rot.x, rot.y, rot.z, rot.w,
+      steerVal,
+      wheelRotationsRef.current,
+    )
     checkPitLaneSpeed(output.speed_kmh / 3.6)
   }
 
