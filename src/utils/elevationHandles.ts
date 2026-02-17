@@ -113,14 +113,15 @@ export function findRoadPath(
   toEndpoint: 'start' | 'end',
   placedObjects: PlacedObject[],
 ): { roadId: string; endpoint: 'start' | 'end' }[] | null {
-  const roads = placedObjects.filter(o => o.type === 'road' && o.startPoint && o.endPoint)
-
   type Node = { roadId: string; endpoint: 'start' | 'end' }
   const nodeKey = (n: Node) => `${n.roadId}:${n.endpoint}`
   const targetKey = nodeKey({ roadId: toRoadId, endpoint: toEndpoint })
 
   const queue: { node: Node; path: Node[] }[] = [
-    { node: { roadId: fromRoadId, endpoint: fromEndpoint }, path: [{ roadId: fromRoadId, endpoint: fromEndpoint }] },
+    {
+      node: { roadId: fromRoadId, endpoint: fromEndpoint },
+      path: [{ roadId: fromRoadId, endpoint: fromEndpoint }],
+    },
   ]
   const visited = new Set<string>()
   visited.add(nodeKey({ roadId: fromRoadId, endpoint: fromEndpoint }))
@@ -171,8 +172,10 @@ export function computeRoadGrade(road: PlacedObject): number {
     for (let i = 1; i <= SAMPLES; i++) {
       const t = i / SAMPLES
       const t1 = 1 - t
-      const x = t1 * t1 * road.startPoint[0] + 2 * t1 * t * road.controlPoint[0] + t * t * road.endPoint[0]
-      const z = t1 * t1 * road.startPoint[2] + 2 * t1 * t * road.controlPoint[2] + t * t * road.endPoint[2]
+      const x =
+        t1 * t1 * road.startPoint[0] + 2 * t1 * t * road.controlPoint[0] + t * t * road.endPoint[0]
+      const z =
+        t1 * t1 * road.startPoint[2] + 2 * t1 * t * road.controlPoint[2] + t * t * road.endPoint[2]
       arcLength += Math.sqrt((x - prevX) ** 2 + (z - prevZ) ** 2)
       prevX = x
       prevZ = z
@@ -220,7 +223,9 @@ export function smoothElevations(
           if (cp.roadId === road.id && cp.endpoint === ep) continue
           const cpData = snapshot.get(cp.roadId)
           const cpHeight = cpData
-            ? (cp.endpoint === 'start' ? cpData.startElevation : cpData.endElevation)
+            ? cp.endpoint === 'start'
+              ? cpData.startElevation
+              : cpData.endElevation
             : cp.elevation
           neighborSum += cpHeight
           neighborCount++
@@ -255,7 +260,9 @@ export function propagateElevation(
   visited.add(`${changedRoadId}:${changedEndpoint}`)
 
   type QueueItem = { roadId: string; endpoint: 'start' | 'end'; height: number; depth: number }
-  const queue: QueueItem[] = [{ roadId: changedRoadId, endpoint: changedEndpoint, height: newHeight, depth: 0 }]
+  const queue: QueueItem[] = [
+    { roadId: changedRoadId, endpoint: changedEndpoint, height: newHeight, depth: 0 },
+  ]
 
   while (queue.length > 0) {
     const { roadId, endpoint, height, depth } = queue.shift()!
@@ -266,8 +273,9 @@ export function propagateElevation(
       visited.add(oppositeKey)
       const road = placedObjects.find(o => o.id === roadId)
       if (road) {
-        const currentH = oppositeEndpoint === 'start' ? (road.startElevation ?? 0) : (road.endElevation ?? 0)
-        const blended = Math.round(((currentH + height) / 2) / 0.25) * 0.25
+        const currentH =
+          oppositeEndpoint === 'start' ? (road.startElevation ?? 0) : (road.endElevation ?? 0)
+        const blended = Math.round((currentH + height) / 2 / 0.25) * 0.25
         const prop = oppositeEndpoint === 'start' ? 'startElevation' : 'endElevation'
         result.push({ id: roadId, prop, height: blended })
 
@@ -279,7 +287,12 @@ export function propagateElevation(
               visited.add(cpKey)
               const cpProp = cp.endpoint === 'start' ? 'startElevation' : 'endElevation'
               result.push({ id: cp.roadId, prop: cpProp, height: blended })
-              queue.push({ roadId: cp.roadId, endpoint: cp.endpoint, height: blended, depth: depth + 1 })
+              queue.push({
+                roadId: cp.roadId,
+                endpoint: cp.endpoint,
+                height: blended,
+                depth: depth + 1,
+              })
             }
           }
         }
@@ -296,7 +309,12 @@ export function propagateElevation(
           const blended = Math.round((height * falloff) / 0.25) * 0.25
           const cpProp = cp.endpoint === 'start' ? 'startElevation' : 'endElevation'
           result.push({ id: cp.roadId, prop: cpProp, height: blended })
-          queue.push({ roadId: cp.roadId, endpoint: cp.endpoint, height: blended, depth: depth + 1 })
+          queue.push({
+            roadId: cp.roadId,
+            endpoint: cp.endpoint,
+            height: blended,
+            depth: depth + 1,
+          })
         }
       }
     }

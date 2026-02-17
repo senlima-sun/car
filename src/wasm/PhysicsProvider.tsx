@@ -44,10 +44,16 @@ import {
   // Road temperature API
   setRoadCell,
   setRoadRegion,
+  // Water depth
+  getWaterDepth,
+  // Track texture dirty check + active surface cells
+  isTrackTextureDirty,
+  getActiveSurfaceCells,
   // Rubber deposit / tire marks API
   updateRubberDeposits,
   getTrackWetness,
   getRubberDepositMultiplier,
+  updateRubberFrame,
   // ERS API
   setErsMode,
   getErsMode,
@@ -86,6 +92,7 @@ import {
   TrackBounds,
   PerWheelWear,
   StepAndSyncOutput,
+  RubberFrameResult,
   TireCompound,
   SurfaceType,
 } from './PhysicsBridge'
@@ -100,6 +107,7 @@ export type {
   TrackBounds,
   PerWheelWear,
   StepAndSyncOutput,
+  RubberFrameResult,
 }
 export { TireCompound, SurfaceType }
 
@@ -143,10 +151,16 @@ interface PhysicsContextValue {
   // Road temperature API
   setRoadCell: typeof setRoadCell
   setRoadRegion: typeof setRoadRegion
+  // Water depth
+  getWaterDepth: typeof getWaterDepth
+  // Track texture dirty check + active surface cells
+  isTrackTextureDirty: typeof isTrackTextureDirty
+  getActiveSurfaceCells: typeof getActiveSurfaceCells
   // Rubber deposit / tire marks API
   updateRubberDeposits: typeof updateRubberDeposits
   getTrackWetness: typeof getTrackWetness
   getRubberDepositMultiplier: typeof getRubberDepositMultiplier
+  updateRubberFrame: typeof updateRubberFrame
   // ERS API
   setErsMode: typeof setErsMode
   getErsMode: typeof getErsMode
@@ -200,7 +214,9 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
           setInitialized(true)
           console.log('[PhysicsProvider] WASM physics engine ready')
           if (import.meta.env.DEV) {
-            getLogger().log('system', 'system.wasm.ready', 'PhysicsProvider', { timestamp: Date.now() })
+            getLogger().log('system', 'system.wasm.ready', 'PhysicsProvider', {
+              timestamp: Date.now(),
+            })
           }
         }
       } catch (err) {
@@ -218,71 +234,78 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
     }
   }, [])
 
-  const value: PhysicsContextValue = useMemo(() => ({
-    initialized,
-    stepPhysics,
-    stepAndSync,
-    getWeatherModifiers,
-    getAmbientConditions,
-    setCustomWeather,
-    getRainIntensity,
-    setEnvironment,
-    getAirDensity,
-    getSurfaceFrictionBreakdown,
-    setWind,
-    setWindEnabled,
-    isWindEnabled,
-    getWindState,
-    getWindModifiers,
-    setTireCompound,
-    getTireCompound,
-    getTireWear,
-    getTireWearPerWheel,
-    resetTireWear,
-    getEffectiveGrip,
-    setOnCurb,
-    isOnCurb,
-    setSurface,
-    getSurface,
-    isOnRoad,
-    isOffTrack,
-    getSurfaceModifiers,
-    initTrackTemperature,
-    getTrackTextureData,
-    getTrackCellCount,
-    updateCarDriving,
-    setRoadCell,
-    setRoadRegion,
-    updateRubberDeposits,
-    getTrackWetness,
-    getRubberDepositMultiplier,
-    setErsMode,
-    getErsMode,
-    getErsBatteryCharge,
-    setErsBatteryCharge,
-    setErsOvertakeAvailable,
-    getErsState,
-    setErsSemiAutoPreset,
-    getErsSemiAutoPreset,
-    getErsSemiAutoConfig,
-    setErsLapMode,
-    setErsExpertMode,
-    activateErsOvertake,
-    deactivateErsOvertake,
-    isErsOvertakeOverride,
-    setAeroMode,
-    getAeroMode,
-    getActiveAeroState,
-    toggleAeroAuto,
-    setBrakeBias,
-    getBrakeBias,
-    increaseBrakeBias,
-    decreaseBrakeBias,
-    setEngineBrakingLevel,
-    getEngineBrakingLevel,
-    cycleEngineBrakingLevel,
-    getBrakeState,
-  }), [initialized])
+  const value: PhysicsContextValue = useMemo(
+    () => ({
+      initialized,
+      stepPhysics,
+      stepAndSync,
+      getWeatherModifiers,
+      getAmbientConditions,
+      setCustomWeather,
+      getRainIntensity,
+      setEnvironment,
+      getAirDensity,
+      getSurfaceFrictionBreakdown,
+      setWind,
+      setWindEnabled,
+      isWindEnabled,
+      getWindState,
+      getWindModifiers,
+      setTireCompound,
+      getTireCompound,
+      getTireWear,
+      getTireWearPerWheel,
+      resetTireWear,
+      getEffectiveGrip,
+      setOnCurb,
+      isOnCurb,
+      setSurface,
+      getSurface,
+      isOnRoad,
+      isOffTrack,
+      getSurfaceModifiers,
+      initTrackTemperature,
+      getTrackTextureData,
+      getTrackCellCount,
+      updateCarDriving,
+      setRoadCell,
+      setRoadRegion,
+      getWaterDepth,
+      isTrackTextureDirty,
+      getActiveSurfaceCells,
+      updateRubberDeposits,
+      getTrackWetness,
+      getRubberDepositMultiplier,
+      updateRubberFrame,
+      setErsMode,
+      getErsMode,
+      getErsBatteryCharge,
+      setErsBatteryCharge,
+      setErsOvertakeAvailable,
+      getErsState,
+      setErsSemiAutoPreset,
+      getErsSemiAutoPreset,
+      getErsSemiAutoConfig,
+      setErsLapMode,
+      setErsExpertMode,
+      activateErsOvertake,
+      deactivateErsOvertake,
+      isErsOvertakeOverride,
+      setAeroMode,
+      getAeroMode,
+      getActiveAeroState,
+      toggleAeroAuto,
+      setBrakeBias,
+      getBrakeBias,
+      increaseBrakeBias,
+      decreaseBrakeBias,
+      setEngineBrakingLevel,
+      getEngineBrakingLevel,
+      cycleEngineBrakingLevel,
+      getBrakeState,
+    }),
+    [initialized],
+  )
 
   if (error) {
     return (

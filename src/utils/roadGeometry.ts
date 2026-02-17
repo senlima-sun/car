@@ -8,8 +8,10 @@ import type {
 import { type ObjectType, isLinearObject, isCurveMode, isWallType } from '../types/trackObjects'
 import { getOutwardTangent } from './roadSnapping'
 
+export const smoothstep = (t: number): number => t * t * (3 - 2 * t)
+
 const SNAP_THRESHOLD = 5
-import { TRACK_WIDTH, WALL_WIDTH } from '../constants/dimensions'
+import { TRACK_WIDTH, WALL_WIDTH, ROAD_HALF_WIDTH } from '../constants/dimensions'
 import { OBJECT_CONFIGS } from '../constants/trackObjects'
 
 const ROAD_WIDTH = TRACK_WIDTH
@@ -371,7 +373,7 @@ export const getRoadEdgePositionAt = (
   road: PlacedObject,
   edge: 'left' | 'right',
   t: number,
-  halfWidth: number = 8,
+  halfWidth: number = ROAD_HALF_WIDTH,
 ): [number, number, number] => {
   if (isCurveMode(road.trackMode) && road.controlPoint && road.startPoint && road.endPoint) {
     const t1 = 1 - t

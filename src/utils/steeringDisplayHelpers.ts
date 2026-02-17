@@ -1,12 +1,5 @@
 import { TIRE_WEAR_CRITICAL, TIRE_WEAR_WARNING } from '@/constants/tires'
-import {
-  STATUS,
-  ERS_MODE,
-  AERO_MODE,
-  ENGINE_BRAKING,
-  GEAR,
-  PERFORMANCE,
-} from '@/constants/colors'
+import { STATUS, ERS_MODE, AERO_MODE, ENGINE_BRAKING, GEAR, PERFORMANCE } from '@/constants/colors'
 
 export function formatLapTime(ms: number): string {
   if (ms === 0) return '-:--.---'

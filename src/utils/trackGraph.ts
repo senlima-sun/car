@@ -92,9 +92,7 @@ export const buildFromObjects = (objects: PlacedObject[]): TrackGraph => {
   const edges = new Map<string, GraphEdge>()
   const adjacency = new Map<string, Set<string>>()
 
-  const roads = objects.filter(
-    (obj) => isLinearObject(obj.type) && obj.startPoint && obj.endPoint,
-  )
+  const roads = objects.filter(obj => isLinearObject(obj.type) && obj.startPoint && obj.endPoint)
 
   for (const road of roads) {
     const startKey = resolveNodeKey(nodes, road.startPoint!)
@@ -192,7 +190,7 @@ export const removeRoad = (graph: TrackGraph, roadId: string): TrackGraph => {
 
   const startNode = nodes.get(startNodeKey)
   if (startNode) {
-    startNode.edges = startNode.edges.filter((e) => e !== edgeId)
+    startNode.edges = startNode.edges.filter(e => e !== edgeId)
     if (startNode.edges.length === 0) {
       nodes.delete(startNodeKey)
       adjacency.delete(startNodeKey)
@@ -204,7 +202,7 @@ export const removeRoad = (graph: TrackGraph, roadId: string): TrackGraph => {
 
   const endNode = nodes.get(endNodeKey)
   if (endNode) {
-    endNode.edges = endNode.edges.filter((e) => e !== edgeId)
+    endNode.edges = endNode.edges.filter(e => e !== edgeId)
     if (endNode.edges.length === 0) {
       nodes.delete(endNodeKey)
       adjacency.delete(endNodeKey)
@@ -265,7 +263,7 @@ export const findConnectedRoads = (graph: TrackGraph, roadId: string): string[] 
     }
   }
 
-  return Array.from(visitedEdges).map((eId) => graph.edges.get(eId)!.roadId)
+  return Array.from(visitedEdges).map(eId => graph.edges.get(eId)!.roadId)
 }
 
 export const isCircuit = (graph: TrackGraph, startNodeKey?: string): CircuitResult => {
@@ -329,11 +327,7 @@ export const isCircuit = (graph: TrackGraph, startNodeKey?: string): CircuitResu
   return { isClosed, gapLocations, danglingBranches, pathLengths }
 }
 
-export const getAllPaths = (
-  graph: TrackGraph,
-  startKey: string,
-  endKey: string,
-): string[][] => {
+export const getAllPaths = (graph: TrackGraph, startKey: string, endKey: string): string[][] => {
   const MAX_DEPTH = 50
   const results: string[][] = []
 
@@ -459,7 +453,10 @@ export const validateFlowDirections = (
 
         if (currentExitsAtNode && !neighborEntersAtNode) {
           const alreadyReported = issues.some(
-            i => i.type === 'discontinuity' && i.position[0] === node.position[0] && i.position[2] === node.position[2],
+            i =>
+              i.type === 'discontinuity' &&
+              i.position[0] === node.position[0] &&
+              i.position[2] === node.position[2],
           )
           if (!alreadyReported) {
             issues.push({
@@ -479,7 +476,7 @@ export const validateFlowDirections = (
       const edgeId = `edge_${road.id}`
       const edge = graph.edges.get(edgeId)
       const pos: [number, number, number] = edge
-        ? graph.nodes.get(edge.startNodeKey)?.position ?? [0, 0, 0]
+        ? (graph.nodes.get(edge.startNodeKey)?.position ?? [0, 0, 0])
         : road.position
       issues.push({
         type: 'isolated',
@@ -511,9 +508,7 @@ export const propagateFlowDirection = (
   if (!checkpoint.startPoint || !checkpoint.endPoint || allRoadEdgeIds.size === 0) {
     return {
       directions,
-      unvisitedRoadIds: Array.from(allRoadEdgeIds).map(
-        eId => graph.edges.get(eId)!.roadId,
-      ),
+      unvisitedRoadIds: Array.from(allRoadEdgeIds).map(eId => graph.edges.get(eId)!.roadId),
     }
   }
 
@@ -538,9 +533,7 @@ export const propagateFlowDirection = (
 
     const midX = (startNode.position[0] + endNode.position[0]) / 2
     const midZ = (startNode.position[2] + endNode.position[2]) / 2
-    const dist = Math.sqrt(
-      (midX - checkpointCenter[0]) ** 2 + (midZ - checkpointCenter[2]) ** 2,
-    )
+    const dist = Math.sqrt((midX - checkpointCenter[0]) ** 2 + (midZ - checkpointCenter[2]) ** 2)
     if (dist < closestDist) {
       closestDist = dist
       closestEdgeId = edgeId
@@ -550,9 +543,7 @@ export const propagateFlowDirection = (
   if (!closestEdgeId) {
     return {
       directions,
-      unvisitedRoadIds: Array.from(allRoadEdgeIds).map(
-        eId => graph.edges.get(eId)!.roadId,
-      ),
+      unvisitedRoadIds: Array.from(allRoadEdgeIds).map(eId => graph.edges.get(eId)!.roadId),
     }
   }
 
@@ -572,8 +563,7 @@ export const propagateFlowDirection = (
 
   const entryNodeKey =
     initialDirection === 'forward' ? startEdge.endNodeKey : startEdge.startNodeKey
-  const exitNodeKey =
-    initialDirection === 'forward' ? startEdge.startNodeKey : startEdge.endNodeKey
+  const exitNodeKey = initialDirection === 'forward' ? startEdge.startNodeKey : startEdge.endNodeKey
 
   queue.push({ nodeKey: entryNodeKey, incomingEdgeId: closestEdgeId })
   queue.push({ nodeKey: exitNodeKey, incomingEdgeId: closestEdgeId })

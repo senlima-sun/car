@@ -36,10 +36,7 @@ export class SpatialIndex {
     }
   }
 
-  findNearest(
-    pos: [number, number, number],
-    threshold: number = 2,
-  ): SnapPointWithDirection | null {
+  findNearest(pos: [number, number, number], threshold: number = 2): SnapPointWithDirection | null {
     const cx = Math.floor(pos[0] / this.cellSize)
     const cz = Math.floor(pos[2] / this.cellSize)
     const searchRadius = Math.ceil(threshold / this.cellSize)

@@ -15,13 +15,11 @@ export const keyboardMap = [
   { name: 'brakeDecr', keys: ['BracketLeft'] },
   { name: 'camera', keys: ['KeyC'] },
   { name: 'heatmap', keys: ['KeyH'] },
-  { name: 'distanceGrid', keys: ['AltLeft', 'AltRight'] },
   { name: 'freeCamera', keys: ['KeyF'] },
   { name: 'lapTimer', keys: ['KeyL'] },
   { name: 'pitStop', keys: ['KeyP'] },
 ]
 
-// Control categories for KeymapModal
 export type ControlCategory =
   | 'movement'
   | 'drivingSystems'
@@ -92,7 +90,8 @@ export const CONTROLS: ControlDefinition[] = [
   // Racing
   { id: 'lapTimer', displayName: 'Lap Timer', keys: ['L'], category: 'racingMode' },
   { id: 'pitStop', displayName: 'Pit Stop', keys: ['P'], category: 'racingMode' },
-  { id: 'trackEditor', displayName: 'Track Editor', keys: ['T'], category: 'racingMode' },
+  { id: 'trackEditor', displayName: 'Track Editor', keys: ['F1'], category: 'racingMode' },
+  { id: 'settings', displayName: 'Settings / Help', keys: ['Esc'], category: 'racingMode' },
 
   // Testing (gated by testing mode)
   {
@@ -115,26 +114,6 @@ export const CONTROLS: ControlDefinition[] = [
     keys: ['H'],
     category: 'testingMode',
     testingModeOnly: true,
-  },
-  {
-    id: 'distanceGrid',
-    displayName: 'Distance Grid',
-    keys: ['Alt'],
-    category: 'testingMode',
-    testingModeOnly: true,
-  },
-  {
-    id: 'debugPanel',
-    displayName: 'Debug Panel',
-    keys: ['`'],
-    category: 'testingMode',
-    testingModeOnly: true,
-  },
-  {
-    id: 'toggleTestingMode',
-    displayName: 'Testing Mode',
-    keys: ['Shift', '\\'],
-    category: 'testingMode',
   },
 ]
 

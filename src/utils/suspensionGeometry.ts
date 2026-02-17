@@ -10,8 +10,12 @@ function clamp(v: number, min: number, max: number) {
 }
 
 function cylinderBetween(
-  ax: number, ay: number, az: number,
-  bx: number, by: number, bz: number,
+  ax: number,
+  ay: number,
+  az: number,
+  bx: number,
+  by: number,
+  bz: number,
 ): LinkageTransform {
   const dx = bx - ax
   const dy = by - ay
@@ -63,23 +67,39 @@ export function computeSuspensionLinkage(
 
   const upperWishbone: SuspensionCornerOutput['upperWishbone'] = {
     armA: cylinderBetween(
-      upperChassisX, upperChassisY, upperArmSpreadA,
-      uprightX, uprightTopY, uprightZ,
+      upperChassisX,
+      upperChassisY,
+      upperArmSpreadA,
+      uprightX,
+      uprightTopY,
+      uprightZ,
     ),
     armB: cylinderBetween(
-      upperChassisX, upperChassisY, upperArmSpreadB,
-      uprightX, uprightTopY, uprightZ,
+      upperChassisX,
+      upperChassisY,
+      upperArmSpreadB,
+      uprightX,
+      uprightTopY,
+      uprightZ,
     ),
   }
 
   const lowerWishbone: SuspensionCornerOutput['lowerWishbone'] = {
     armA: cylinderBetween(
-      lowerChassisX, lowerChassisY, lowerArmSpreadA,
-      uprightX, uprightBotY, uprightZ,
+      lowerChassisX,
+      lowerChassisY,
+      lowerArmSpreadA,
+      uprightX,
+      uprightBotY,
+      uprightZ,
     ),
     armB: cylinderBetween(
-      lowerChassisX, lowerChassisY, lowerArmSpreadB,
-      uprightX, uprightBotY, uprightZ,
+      lowerChassisX,
+      lowerChassisY,
+      lowerArmSpreadB,
+      uprightX,
+      uprightBotY,
+      uprightZ,
     ),
   }
 
@@ -99,8 +119,12 @@ export function computeSuspensionLinkage(
   const pushrodUpperZ = baseZ
 
   const pushrod = cylinderBetween(
-    pushrodLowerX, pushrodLowerY, pushrodLowerZ,
-    pushrodUpperX, pushrodUpperY, pushrodUpperZ,
+    pushrodLowerX,
+    pushrodLowerY,
+    pushrodLowerZ,
+    pushrodUpperX,
+    pushrodUpperY,
+    pushrodUpperZ,
   )
 
   const rockerPivotX = pushrodUpperX
@@ -111,8 +135,12 @@ export function computeSuspensionLinkage(
   const rockerEndY = rockerPivotY + S.ROCKER_LENGTH * Math.sin(rockerAngle)
 
   const rocker = cylinderBetween(
-    rockerPivotX, rockerPivotY, rockerPivotZ,
-    rockerEndX, rockerEndY, rockerPivotZ,
+    rockerPivotX,
+    rockerPivotY,
+    rockerPivotZ,
+    rockerEndX,
+    rockerEndY,
+    rockerPivotZ,
   )
 
   const springTopX = rockerEndX

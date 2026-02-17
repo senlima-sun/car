@@ -61,6 +61,7 @@ export interface CarPhysicsOutput {
   linear_velocity: [number, number, number]
   angular_velocity: [number, number, number]
   speed_kmh: number
+  forward_speed_ms: number
   gear: number
   rpm: number
   current_gear_ratio: number
@@ -79,6 +80,7 @@ export interface CarPhysicsOutput {
   active_aero: ActiveAeroState
   grip_breakdown: GripBreakdown
   tire_material: TireMaterialOutput
+  downforce_newtons: number
 }
 
 export interface WeatherModifiers {
@@ -402,7 +404,15 @@ export function stepPhysics(
   const safeAngvel = sanitizeVec3(angvel)
   const safeDelta = sanitize(delta, 0.016)
 
-  return eng.step(safeDelta, input, position, rotation, safeLinvel, safeAngvel, surfaceNormal) as CarPhysicsOutput
+  return eng.step(
+    safeDelta,
+    input,
+    position,
+    rotation,
+    safeLinvel,
+    safeAngvel,
+    surfaceNormal,
+  ) as CarPhysicsOutput
 }
 
 /**
@@ -421,7 +431,17 @@ export function stepAndSync(
   const safeLinvel = sanitizeVec3(linvel)
   const safeAngvel = sanitizeVec3(angvel)
   const safeDelta = sanitize(delta, 0.016)
-  return eng.step_and_sync(safeDelta, input, position, rotation, safeLinvel, safeAngvel, surfaceNormal) as StepAndSyncOutput
+  const result = eng.step_and_sync(
+    safeDelta,
+    input,
+    position,
+    rotation,
+    safeLinvel,
+    safeAngvel,
+    surfaceNormal,
+  ) as StepAndSyncOutput
+
+  return result
 }
 
 /**
@@ -470,7 +490,13 @@ export function setEnvironment(
   pressureHpa: number,
   cloudCover: number,
 ): void {
-  getPhysicsEngine().set_environment(celsius, humidity, precipitationRateMmh, pressureHpa, cloudCover)
+  getPhysicsEngine().set_environment(
+    celsius,
+    humidity,
+    precipitationRateMmh,
+    pressureHpa,
+    cloudCover,
+  )
 }
 
 /**
@@ -814,18 +840,22 @@ export function setErsOvertakeAvailable(available: boolean): void {
 }
 
 /**
- * Get current ERS state from physics output
+ * Get current ERS state directly from WASM engine
  */
 export function getErsState(): ErsState {
+  const raw = getPhysicsEngine().get_ers_state() as ErsState | null
+  if (raw && typeof raw.battery_charge === 'number') {
+    return raw
+  }
   return {
     battery_charge: getErsBatteryCharge(),
     mode: getErsMode(),
-    power_flow: 0, // Will be updated from physics output
+    power_flow: 0,
     is_deploying: false,
     is_harvesting: false,
-    super_clip_active: false, // Will be updated from physics output
-    harvest_source: 'None', // Will be updated from physics output
-    overtake_available: false, // Will be updated from physics output
+    super_clip_active: false,
+    harvest_source: 'None',
+    overtake_available: false,
     semi_auto: {
       coast_recommended: false,
       coast_benefit: 0,
@@ -944,6 +974,23 @@ export function updateRubberDeposits(
 }
 
 /**
+ * Check if track temperature texture needs update
+ * Avoids expensive getTrackTextureData() call when nothing changed
+ */
+export function isTrackTextureDirty(): boolean {
+  return getPhysicsEngine().is_track_texture_dirty()
+}
+
+/**
+ * Get active surface cells with water/ice data
+ * Returns flat Float32Array: [worldX, worldZ, waterDepth, wetness, iceFraction, ...] per cell
+ * Only includes cells with waterDepth > 0.1 or ice > 0.1
+ */
+export function getActiveSurfaceCells(): Float32Array {
+  return new Float32Array(getPhysicsEngine().get_active_surface_cells())
+}
+
+/**
  * Get track wetness at a position (0.0 to 1.0)
  * Used for rubber intensity calculation - wet tracks reduce rubber transfer
  */
@@ -957,6 +1004,31 @@ export function getTrackWetness(x: number, z: number): number {
  */
 export function getRubberDepositMultiplier(): number {
   return getPhysicsEngine().get_rubber_deposit_multiplier()
+}
+
+export interface RubberFrameResult {
+  compoundMult: number
+  wetness: number
+}
+
+/**
+ * Batched rubber frame update — combines updateCarDriving, getRubberDepositMultiplier,
+ * getTrackWetness, and updateRubberDeposits into a single FFI call.
+ */
+export function updateRubberFrame(
+  carX: number,
+  carZ: number,
+  speedMs: number,
+  delta: number,
+  wheelPositions: Float32Array,
+  wheelIntensities: Float32Array,
+): RubberFrameResult {
+  const result = new Float32Array(
+    getPhysicsEngine().update_rubber_frame(
+      carX, carZ, speedMs, delta, wheelPositions, wheelIntensities,
+    ),
+  )
+  return { compoundMult: result[0], wetness: result[1] }
 }
 
 // ============================================================================

@@ -44,6 +44,11 @@ export {
   // Road temperature API
   setRoadCell,
   setRoadRegion,
+  // Water depth
+  getWaterDepth,
+  // Track texture dirty check + active surface cells
+  isTrackTextureDirty,
+  getActiveSurfaceCells,
   getDebugState,
   createDefaultInput,
   inputFromKeyboard,
