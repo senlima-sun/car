@@ -1,5 +1,24 @@
 import * as THREE from 'three'
-import { HASH_GLSL, SIMPLEX_NOISE_GLSL, VALUE_NOISE_GLSL } from './noiseLib'
+import { SIMPLEX_NOISE_GLSL } from './noiseLib'
+
+export const ASPHALT_VERTEX_NOISE_PREAMBLE = /* glsl */ `
+${SIMPLEX_NOISE_GLSL}
+float asphaltFBM(vec2 p) {
+  float v = 0.0;
+  v += _snoise(p * 2.0) * 0.5;
+  v += _snoise(p * 5.0) * 0.25;
+  v += _snoise(p * 12.0) * 0.125;
+  return v;
+}
+`
+
+export const ASPHALT_VERTEX_DISPLACEMENT = /* glsl */ `
+{
+  vec4 asphaltWP = modelMatrix * vec4(transformed, 1.0);
+  float disp = asphaltFBM(asphaltWP.xz) * 0.008;
+  transformed.y += disp;
+}
+`
 
 export const ASPHALT_VERTEX_INJECT = /* glsl */ `
 varying vec3 vAsphaltWorldPos;
@@ -11,112 +30,106 @@ vAsphaltWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
 
 export const ASPHALT_FRAGMENT_INJECT = /* glsl */ `
 varying vec3 vAsphaltWorldPos;
-uniform float uWetness;
+uniform float uRainIntensity;
+uniform float uTemperature;
+uniform float uPitDarken;
 uniform sampler2D uSkidMarkMap;
 uniform vec4 uSkidMarkBounds;
-
-${HASH_GLSL}
 ${SIMPLEX_NOISE_GLSL}
-${VALUE_NOISE_GLSL}
+
+float _asphaltValNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = fract(sin(dot(i, vec2(127.1, 311.7))) * 43758.5453);
+  float b = fract(sin(dot(i + vec2(1.0, 0.0), vec2(127.1, 311.7))) * 43758.5453);
+  float c = fract(sin(dot(i + vec2(0.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);
+  float d = fract(sin(dot(i + vec2(1.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
 `
 
 export const ASPHALT_COLOR_INJECT = /* glsl */ `
 {
   vec2 wXZ = vAsphaltWorldPos.xz;
 
-  // --- Layer 1: Aggregate base color ---
-  float n1 = _valNoise(wXZ * 8.0) * 0.5 + 0.5;
-  float n2 = _valNoise(wXZ * 20.0 + vec2(73.1, 91.7)) * 0.5 + 0.5;
-  float n3 = _valNoise(wXZ * 50.0 + vec2(137.0, 211.0)) * 0.5 + 0.5;
+  float wet = clamp(uRainIntensity, 0.0, 1.0);
+  float frost = clamp(smoothstep(5.0, -5.0, uTemperature), 0.0, 1.0);
 
-  vec3 darkAsphalt = vec3(0.165, 0.165, 0.175);
-  vec3 medAsphalt = vec3(0.200, 0.195, 0.205);
-  vec3 lightAsphalt = vec3(0.230, 0.225, 0.230);
+  vec3 darkAsphalt = vec3(0.18, 0.18, 0.19);
+  vec3 midAsphalt = vec3(0.26, 0.26, 0.27);
+  vec3 lightAsphalt = vec3(0.33, 0.32, 0.31);
 
-  vec3 asphaltCol = mix(darkAsphalt, medAsphalt, n1);
-  asphaltCol = mix(asphaltCol, lightAsphalt, n2 * 0.4);
+  float n1 = _snoise(wXZ * 0.5) * 0.5 + 0.5;
+  float n2 = _snoise(wXZ * 2.0 + vec2(37.0, 91.0)) * 0.5 + 0.5;
+  float n3 = _asphaltValNoise(wXZ * 8.0);
+  float micro = _asphaltValNoise(wXZ * 30.0);
 
-  // Brown/blue aggregate color shifts
-  float brownShift = _valNoise(wXZ * 12.0 + vec2(200.0, 300.0));
-  float blueShift = _valNoise(wXZ * 15.0 + vec2(400.0, 100.0));
-  asphaltCol += vec3(0.015, 0.008, 0.0) * brownShift;
-  asphaltCol += vec3(-0.005, -0.002, 0.01) * blueShift;
+  vec3 col = mix(darkAsphalt, midAsphalt, n1);
+  col = mix(col, lightAsphalt, n2 * 0.3);
+  col *= 0.9 + n3 * 0.2;
+  col += vec3(micro * 0.04 - 0.02);
 
-  // Fine aggregate grain
-  asphaltCol *= 0.92 + n3 * 0.16;
+  float ao = _asphaltValNoise(wXZ * 4.0 + vec2(200.0, 150.0));
+  col *= mix(0.85, 1.0, ao);
 
-  // --- Layer 2: Roller marks (anisotropic along road direction) ---
-  float rollerNoise = _valNoise(vec2(wXZ.x * 3.0, wXZ.y * 40.0));
-  float rollerFine = _valNoise(vec2(wXZ.x * 5.0, wXZ.y * 80.0));
-  float roller = rollerNoise * 0.6 + rollerFine * 0.4;
-  asphaltCol *= 0.97 + roller * 0.06;
-
-  // --- Layer 3: Micro cracks ---
-  float crack1 = _snoise(wXZ * 100.0);
-  float crack2 = _snoise(wXZ * 70.0 + vec2(500.0, 700.0));
-  float crackMask = smoothstep(0.65, 0.75, abs(crack1)) * smoothstep(0.7, 0.8, abs(crack2));
-  asphaltCol = mix(asphaltCol, asphaltCol * 0.75, crackMask * 0.3);
-
-  // --- Layer 4: Oil stains ---
-  float oilNoise = _snoise(wXZ * 2.5 + vec2(1000.0, 2000.0));
-  float oilMask = smoothstep(0.55, 0.7, oilNoise);
-  vec3 oilColor = asphaltCol * 0.8;
-  // Subtle iridescence on oil patches
-  float iridescence = _snoise(wXZ * 30.0) * 0.5 + 0.5;
-  oilColor += vec3(
-    sin(iridescence * 6.28) * 0.015,
-    sin(iridescence * 6.28 + 2.09) * 0.015,
-    sin(iridescence * 6.28 + 4.19) * 0.015
-  );
-  asphaltCol = mix(asphaltCol, oilColor, oilMask * 0.5);
-
-  // --- Layer 5: Edge wear (UV.u-based) ---
-  float edgeU = gl_FragCoord.x; // fallback; real UV below
   #ifdef HAS_ROAD_UV
     float roadU = vRoadUV.x;
     float edgeWear = smoothstep(0.0, 0.15, roadU) * smoothstep(1.0, 0.85, roadU);
     edgeWear = 1.0 - edgeWear;
-    asphaltCol = mix(asphaltCol, asphaltCol * 1.15 + vec3(0.02), edgeWear * 0.4);
+    col = mix(col, col * 1.15 + vec3(0.02), edgeWear * 0.4);
   #endif
 
-  // --- Wetness effect ---
-  float wet = uWetness;
-  asphaltCol *= mix(1.0, 0.7, wet);
+  col *= mix(1.0, 0.65, wet);
 
-  // --- Skid mark overlay ---
+  col = mix(col, col * vec3(0.9, 0.95, 1.1), frost * 0.4);
+
+  col *= uPitDarken;
+
   if (uSkidMarkBounds.z > uSkidMarkBounds.x && uSkidMarkBounds.w > uSkidMarkBounds.y) {
     vec2 skidUV = (wXZ - uSkidMarkBounds.xy) / (uSkidMarkBounds.zw - uSkidMarkBounds.xy);
     if (skidUV.x >= 0.0 && skidUV.x <= 1.0 && skidUV.y >= 0.0 && skidUV.y <= 1.0) {
       vec4 skidSample = texture2D(uSkidMarkMap, skidUV);
       float rubberIntensity = skidSample.r;
       vec3 rubberColor = vec3(0.06, 0.06, 0.08);
-      asphaltCol = mix(asphaltCol, rubberColor, rubberIntensity * 0.8);
+      col = mix(col, rubberColor, rubberIntensity * 0.8);
 
-      // Wet skid marks (G channel) - lighter gray with sheen
       float wetMark = skidSample.g;
       vec3 wetMarkColor = vec3(0.15, 0.16, 0.18);
-      asphaltCol = mix(asphaltCol, wetMarkColor, wetMark * 0.5 * wet);
+      col = mix(col, wetMarkColor, wetMark * 0.5 * wet);
     }
   }
 
-  diffuseColor.rgb = asphaltCol;
+  diffuseColor.rgb = col;
 }
 `
 
-export const ASPHALT_PIT_COLOR_INJECT = ASPHALT_COLOR_INJECT.replace(
-  'vec3 darkAsphalt = vec3(0.165, 0.165, 0.175);',
-  'vec3 darkAsphalt = vec3(0.145, 0.145, 0.155);',
-).replace(
-  'vec3 medAsphalt = vec3(0.200, 0.195, 0.205);',
-  'vec3 medAsphalt = vec3(0.180, 0.175, 0.185);',
-).replace(
-  'vec3 lightAsphalt = vec3(0.230, 0.225, 0.230);',
-  'vec3 lightAsphalt = vec3(0.210, 0.205, 0.210);',
-)
+export const ASPHALT_ROUGHNESS_INJECT = /* glsl */ `
+{
+  float wet = clamp(uRainIntensity, 0.0, 1.0);
+  float frost = clamp(smoothstep(5.0, -5.0, uTemperature), 0.0, 1.0);
+  vec2 wXZ = vAsphaltWorldPos.xz;
+  float rn = _asphaltValNoise(wXZ * 6.0 + vec2(500.0, 600.0));
+  roughnessFactor = 0.78 + rn * 0.14;
+  roughnessFactor *= mix(1.0, 0.3, wet);
+  roughnessFactor *= mix(1.0, 1.15, frost);
+}
+`
+
+export const ASPHALT_METALNESS_INJECT = /* glsl */ `
+{
+  float wet = clamp(uRainIntensity, 0.0, 1.0);
+  float frost = clamp(smoothstep(5.0, -5.0, uTemperature), 0.0, 1.0);
+  metalnessFactor = mix(metalnessFactor, 0.6, wet * wet);
+  metalnessFactor = mix(metalnessFactor, 0.4, frost * 0.5);
+}
+`
 
 export function createAsphaltUniforms(): Record<string, THREE.IUniform> {
   return {
-    uWetness: { value: 0.0 },
+    uRainIntensity: { value: 0.0 },
+    uTemperature: { value: 25.0 },
+    uPitDarken: { value: 1.0 },
     uSkidMarkMap: { value: null },
     uSkidMarkBounds: { value: new THREE.Vector4(0, 0, 0, 0) },
   }
