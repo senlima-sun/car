@@ -25,7 +25,7 @@ impl Default for WeatherState {
         let env = AmbientEnvironment::default_dry();
         let ambient = env.to_legacy_ambient();
         let mut state = Self {
-            current_modifiers: WeatherModifiers::dry(),
+            current_modifiers: WeatherModifiers::default(),
             current_ambient: ambient,
             environment: env,
             water_film_mm: 0.0,

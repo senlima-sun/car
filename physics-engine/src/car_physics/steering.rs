@@ -1,4 +1,4 @@
-use super::WHEELBASE;
+use crate::constants::car::WHEELBASE;
 use crate::utils::smoothstep;
 
 /// Get maximum steering angle based on speed and tire condition (degrees)
@@ -22,11 +22,10 @@ pub fn get_max_steer_angle(speed_kmh: f32, wear_multiplier: f32, instability: f3
     // Apply tire wear degradation (reduced max steering with worn tires)
     let degraded_angle = base_angle * wear_multiplier;
 
-    // Add instability wobble based on speed (creates unpredictable handling)
     if instability > 0.001 && speed_kmh > 30.0 {
-        // Use speed to create a pseudo-random wobble effect
-        let wobble = (speed_kmh * 0.1).sin() * instability * base_angle;
-        (degraded_angle + wobble).max(3.0) // Minimum 3 degrees
+        let speed_factor = ((speed_kmh - 30.0) / 200.0).min(1.0);
+        let reduction = instability * base_angle * speed_factor * 0.5;
+        (degraded_angle - reduction).max(3.0)
     } else {
         degraded_angle
     }
@@ -101,11 +100,20 @@ mod tests {
 
     #[test]
     fn test_max_steer_instability() {
-        // With instability, angle should vary slightly
         let stable_angle = get_max_steer_angle(100.0, 1.0, 0.0);
         let unstable_angle = get_max_steer_angle(100.0, 1.0, 0.15);
-        // Instability should cause some variation
-        assert!((stable_angle - unstable_angle).abs() < stable_angle * 0.2);
+        assert!(
+            unstable_angle < stable_angle,
+            "Worn tires should reduce max steer: stable={:.2}, unstable={:.2}",
+            stable_angle,
+            unstable_angle,
+        );
+        assert!(
+            unstable_angle > stable_angle * 0.8,
+            "Reduction should be moderate: {:.2} vs {:.2}",
+            unstable_angle,
+            stable_angle,
+        );
     }
 
     #[test]

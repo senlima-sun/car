@@ -3,6 +3,7 @@
 mod active_aero;
 mod brakes;
 mod car_physics;
+mod constants;
 mod curb;
 pub mod engine;
 mod engine_temp;
@@ -206,6 +207,12 @@ impl PhysicsEngine {
     #[wasm_bindgen]
     pub fn get_ers_mode(&self) -> ErsMode {
         self.inner.get_ers_mode()
+    }
+
+    /// Get full ERS state as JavaScript object
+    #[wasm_bindgen]
+    pub fn get_ers_state(&self) -> JsValue {
+        to_value(&self.inner.get_ers_state()).unwrap_or(JsValue::NULL)
     }
 
     /// Get ERS battery charge (0.0 to 1.0)
@@ -618,6 +625,16 @@ impl PhysicsEngine {
         self.inner.update_rubber_deposits(&positions, &intensities, delta_seconds);
     }
 
+    #[wasm_bindgen]
+    pub fn is_track_texture_dirty(&self) -> bool {
+        self.inner.is_track_texture_dirty()
+    }
+
+    #[wasm_bindgen]
+    pub fn get_active_surface_cells(&self) -> Vec<f32> {
+        self.inner.get_active_surface_cells()
+    }
+
     /// Get track wetness at a position (for rubber intensity calculation)
     #[wasm_bindgen]
     pub fn get_track_wetness(&self, x: f32, z: f32) -> f32 {
@@ -628,6 +645,42 @@ impl PhysicsEngine {
     #[wasm_bindgen]
     pub fn get_rubber_deposit_multiplier(&self) -> f32 {
         self.inner.get_rubber_deposit_multiplier()
+    }
+
+    /// Batched rubber frame update — combines updateCarDriving, getRubberDepositMultiplier,
+    /// getTrackWetness, and updateRubberDeposits into a single FFI call.
+    /// Returns Float32Array [compoundMult, wetness]
+    #[wasm_bindgen]
+    pub fn update_rubber_frame(
+        &mut self,
+        car_x: f32,
+        car_z: f32,
+        speed_ms: f32,
+        delta: f32,
+        wheel_positions: &[f32],
+        wheel_intensities: &[f32],
+    ) -> Vec<f32> {
+        if wheel_positions.len() < 8 || wheel_intensities.len() < 4 {
+            return vec![1.0, 0.0];
+        }
+
+        let positions = [
+            [wheel_positions[0], wheel_positions[1]],
+            [wheel_positions[2], wheel_positions[3]],
+            [wheel_positions[4], wheel_positions[5]],
+            [wheel_positions[6], wheel_positions[7]],
+        ];
+        let intensities = [
+            wheel_intensities[0],
+            wheel_intensities[1],
+            wheel_intensities[2],
+            wheel_intensities[3],
+        ];
+
+        let (compound_mult, wetness) = self.inner.update_rubber_frame(
+            car_x, car_z, speed_ms, delta, &positions, &intensities,
+        );
+        vec![compound_mult, wetness]
     }
 
     // ========================================================================

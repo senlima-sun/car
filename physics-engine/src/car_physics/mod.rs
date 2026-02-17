@@ -5,29 +5,9 @@ pub mod steering;
 pub mod tire_model;
 pub mod weight_transfer;
 
+use crate::constants::car::*;
 use crate::types::{CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers, WindModifiers};
 use crate::utils::{lerp, sanitize, Quat, Vec3};
-
-// ============================================================================
-// Vehicle Constants
-// ============================================================================
-
-pub const CAR_MASS: f32 = 768.0;
-pub const WHEELBASE: f32 = 3.4;
-pub const TRACK_WIDTH: f32 = 1.7;
-pub const CG_HEIGHT: f32 = 0.35;
-pub const WEIGHT_DIST_FRONT: f32 = 0.47;
-
-pub const BASE_MAX_SPEED: f32 = 86.1; // m/s = 310 km/h
-pub const BASE_TIRE_GRIP_COEFFICIENT: f32 = 1.85;
-pub const BASE_DRAG_COEFFICIENT: f32 = 0.85;
-pub const BASE_DOWNFORCE_COEFFICIENT: f32 = 2.8;
-pub const BASE_BRAKE_FORCE: f32 = 40000.0;
-pub const BASE_ENGINE_BRAKE: f32 = 2500.0;
-
-pub const DRIFT_ENTRY_SLIP_ANGLE: f32 = 18.0; // degrees
-pub const DRIFT_EXIT_SLIP_ANGLE: f32 = 8.0;
-pub const MIN_DRIFT_SPEED: f32 = 30.0; // km/h
 
 // ============================================================================
 // Car Physics State
@@ -47,6 +27,8 @@ pub struct CarPhysicsState {
     prev_forward_speed: f32,
     prev_lateral_speed: f32,
     target_angular_velocity: f32,
+    long_g_filtered: f32,
+    lat_g_filtered: f32,
 }
 
 impl Default for CarPhysicsState {
@@ -64,6 +46,8 @@ impl Default for CarPhysicsState {
             prev_forward_speed: 0.0,
             prev_lateral_speed: 0.0,
             target_angular_velocity: 0.0,
+            long_g_filtered: 0.0,
+            lat_g_filtered: 0.0,
         }
     }
 }
@@ -109,6 +93,7 @@ impl CarPhysicsState {
         let lateral_speed = current_linvel.dot(right_dir);
         self.speed_ms = forward_speed.abs();
         self.speed_kmh = self.speed_ms * 3.6;
+        let signed_forward_speed = forward_speed;
 
         let effective_throttle_for_pt = input.throttle > 0.01 || (input.forward && !input.brake);
 
@@ -165,8 +150,8 @@ impl CarPhysicsState {
         let target_steer = steer_input * max_steer.to_radians();
 
         // Steering speed affected by both weather and wind (crosswinds make steering harder)
-        let steer_speed = 3.5 * weather_modifiers.steer_response_multiplier * wind_modifiers.steering_difficulty;
-        let center_speed = 5.0 + self.speed_ms * 0.04;
+        let steer_speed = 12.0 * weather_modifiers.steer_response_multiplier * wind_modifiers.steering_difficulty;
+        let center_speed = 8.0 + self.speed_ms * 0.06;
 
         if steer_input.abs() > 0.01 {
             self.steer_angle = lerp(self.steer_angle, target_steer, dt * steer_speed);
@@ -261,14 +246,21 @@ impl CarPhysicsState {
 
         let downforce = aerodynamics::get_downforce_with_density(self.speed_ms, active_aero_downforce_mult, air_density);
         let total_load = gravity_normal + downforce;
-        let downforce_grip_bonus = 1.0 + (downforce / gravity_normal.max(1.0)) * 0.3;
+        let load_sensitivity = 0.015;
+        let load_ratio = total_load / gravity_normal.max(1.0);
+        let downforce_grip_bonus = load_ratio.powf(1.0 - load_sensitivity * (load_ratio - 1.0).max(0.0));
 
-        // Weight transfer (use safe_dt to prevent division by very small numbers)
-        let safe_dt = dt.max(0.001); // Minimum 1ms to prevent NaN
-        let long_g = ((forward_speed - self.prev_forward_speed) / safe_dt / 9.81)
-            .clamp(-10.0, 10.0); // Clamp to reasonable G-force values
-        let lat_g = ((lateral_speed - self.prev_lateral_speed) / safe_dt / 9.81)
+        let safe_dt = dt.max(0.001);
+        let long_g_raw = ((forward_speed - self.prev_forward_speed) / safe_dt / 9.81)
             .clamp(-10.0, 10.0);
+        let lat_g_raw = ((lateral_speed - self.prev_lateral_speed) / safe_dt / 9.81)
+            .clamp(-10.0, 10.0);
+
+        let ema_alpha = (dt * 30.0).min(1.0);
+        self.long_g_filtered += (long_g_raw - self.long_g_filtered) * ema_alpha;
+        self.lat_g_filtered += (lat_g_raw - self.lat_g_filtered) * ema_alpha;
+        let long_g = self.long_g_filtered;
+        let lat_g = self.lat_g_filtered;
 
         let weight_transfer = weight_transfer::calculate_weight_transfer(
             sanitize(long_g, 0.0),
@@ -358,18 +350,23 @@ impl CarPhysicsState {
             (self.slip_angle_smoothed.abs() / 45.0).min(0.5)
         };
 
+        let roll_pitch_damping = 1.0 - (12.0 * dt).min(1.0);
+        let damped_angvel_x = current_angvel.x * roll_pitch_damping;
+        let damped_angvel_z = current_angvel.z * roll_pitch_damping;
+
         CarPhysicsOutput {
             linear_velocity: [
                 sanitize(new_velocity.x, 0.0),
-                sanitize(current_linvel.y, 0.0), // Keep Y velocity (gravity)
+                sanitize(current_linvel.y, 0.0),
                 sanitize(new_velocity.z, 0.0),
             ],
             angular_velocity: [
-                sanitize(current_angvel.x * 0.95, 0.0), // Dampen roll
-                sanitize(final_ang_vel, 0.0),           // Yaw (steering)
-                sanitize(current_angvel.z * 0.95, 0.0), // Dampen pitch
+                sanitize(damped_angvel_x, 0.0),
+                sanitize(final_ang_vel, 0.0),
+                sanitize(damped_angvel_z, 0.0),
             ],
             speed_kmh: self.speed_kmh,
+            forward_speed_ms: sanitize(signed_forward_speed, 0.0),
             gear: self.gear,
             rpm: self.rpm,
             current_gear_ratio: pt_out.gear_ratio,
@@ -388,6 +385,7 @@ impl CarPhysicsState {
             active_aero: Default::default(),
             grip_breakdown: Default::default(),
             tire_material: Default::default(),
+            downforce_newtons: sanitize(downforce, 0.0),
         }
     }
 

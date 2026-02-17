@@ -1,6 +1,5 @@
+use crate::constants::surface::TRANSITION_DURATION;
 use crate::types::{SurfaceModifiers, SurfaceType};
-
-const TRANSITION_DURATION: f32 = 0.3;
 
 #[derive(Debug)]
 pub struct SurfaceState {

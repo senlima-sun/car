@@ -1,7 +1,7 @@
-use super::{DRIFT_ENTRY_SLIP_ANGLE, DRIFT_EXIT_SLIP_ANGLE, MIN_DRIFT_SPEED};
+use crate::constants::car::{DRIFT_ENTRY_SLIP_ANGLE, DRIFT_EXIT_SLIP_ANGLE, MIN_DRIFT_SPEED};
 
 const DRIFT_LATERAL_CORRECTION: f32 = 0.62;
-const NORMAL_LATERAL_CORRECTION: f32 = 0.92;
+const NORMAL_LATERAL_CORRECTION_MAX: f32 = 0.95;
 
 #[derive(Debug, Default)]
 pub struct DriftState {
@@ -54,8 +54,7 @@ impl DriftState {
         let base_correction = if self.is_drifting {
             DRIFT_LATERAL_CORRECTION
         } else {
-            // Grip affects correction when not drifting
-            (0.78 + grip * 0.05).min(NORMAL_LATERAL_CORRECTION)
+            (0.6 + grip * 0.25).min(NORMAL_LATERAL_CORRECTION_MAX)
         };
 
         // Apply weather and tire wear penalties
@@ -86,7 +85,7 @@ mod tests {
         let mut state = DriftState::new();
 
         // High slip angle, sufficient speed (fresh tires: 1.0 multipliers)
-        state.update(20.0, 50.0, 1.0, 1.0, 1.0);
+        state.update(15.0, 50.0, 1.0, 1.0, 1.0);
         assert!(state.is_drifting());
     }
 
@@ -104,7 +103,7 @@ mod tests {
         let mut state = DriftState::new();
 
         // Enter drift
-        state.update(20.0, 50.0, 1.0, 1.0, 1.0);
+        state.update(15.0, 50.0, 1.0, 1.0, 1.0);
         assert!(state.is_drifting());
 
         // Exit drift with low slip angle
@@ -116,13 +115,13 @@ mod tests {
     fn test_drift_hysteresis() {
         let mut state = DriftState::new();
 
-        // Enter drift at 19° (> 18°)
-        state.update(19.0, 50.0, 1.0, 1.0, 1.0);
+        // Enter drift at 15° (> 14°)
+        state.update(15.0, 50.0, 1.0, 1.0, 1.0);
         assert!(state.is_drifting());
 
-        // Still drifting at 10° (between 8° and 18°)
+        // Still drifting at 10° (between 8° and 14°)
         state.update(10.0, 50.0, 1.0, 1.0, 1.0);
-        assert!(state.is_drifting()); // Should still be drifting due to hysteresis
+        assert!(state.is_drifting());
 
         // Exit at 7° (< 8°)
         state.update(7.0, 50.0, 1.0, 1.0, 1.0);
@@ -133,14 +132,14 @@ mod tests {
     fn test_weather_affects_thresholds() {
         let mut state = DriftState::new();
 
-        // Normal weather: 19° triggers drift (> 18°)
-        state.update(19.0, 50.0, 1.0, 1.0, 1.0);
+        // Normal weather: 15° triggers drift (> 14°)
+        state.update(15.0, 50.0, 1.0, 1.0, 1.0);
         assert!(state.is_drifting());
 
         state.reset();
 
-        // Rain (0.5 multiplier): 10° should trigger drift (> 9°)
-        state.update(10.0, 50.0, 0.5, 1.0, 1.0);
+        // Rain (0.5 multiplier): 8° should trigger drift (> 7°)
+        state.update(8.0, 50.0, 0.5, 1.0, 1.0);
         assert!(state.is_drifting());
     }
 
@@ -148,14 +147,14 @@ mod tests {
     fn test_worn_tires_easier_drift_entry() {
         let mut state = DriftState::new();
 
-        // Fresh tires: 17° should NOT trigger drift (< 18°)
-        state.update(17.0, 50.0, 1.0, 1.0, 1.0);
+        // Fresh tires: 13° should NOT trigger drift (< 14°)
+        state.update(13.0, 50.0, 1.0, 1.0, 1.0);
         assert!(!state.is_drifting());
 
         state.reset();
 
-        // Worn tires (0.5 entry multiplier): 10° should trigger drift (> 9°)
-        state.update(10.0, 50.0, 1.0, 0.5, 1.0);
+        // Worn tires (0.5 entry multiplier): 8° should trigger drift (> 7°)
+        state.update(8.0, 50.0, 1.0, 0.5, 1.0);
         assert!(state.is_drifting());
     }
 
@@ -163,13 +162,11 @@ mod tests {
     fn test_lateral_correction() {
         let mut state = DriftState::new();
 
-        // Normal driving - with grip 1.0: (0.78 + 1.0 * 0.05) = 0.83, clamped to 0.92
-        // Fresh tires (1.0 correction penalty)
         let correction = state.get_lateral_correction(1.0, 1.0, 1.0, 1.0);
-        assert!(correction > 0.8 && correction <= 0.92);
+        assert!(correction > 0.8 && correction <= 0.95,
+            "grip=1.0 correction should be ~0.85, got {:.3}", correction);
 
-        // Enter drift
-        state.update(20.0, 50.0, 1.0, 1.0, 1.0);
+        state.update(15.0, 50.0, 1.0, 1.0, 1.0);
         let drift_correction = state.get_lateral_correction(1.0, 1.0, 1.0, 1.0);
         assert!(drift_correction < 0.65);
     }
@@ -178,14 +175,12 @@ mod tests {
     fn test_worn_tires_lateral_correction() {
         let state = DriftState::new();
 
-        // Fresh tires
         let fresh_correction = state.get_lateral_correction(1.0, 1.0, 1.0, 1.0);
-
-        // Worn tires (0.7 correction penalty)
         let worn_correction = state.get_lateral_correction(1.0, 1.0, 1.0, 0.7);
 
-        // Worn tires should have less correction (more sliding)
-        assert!(worn_correction < fresh_correction);
-        assert!((worn_correction / fresh_correction - 0.7).abs() < 0.1);
+        assert!(worn_correction < fresh_correction,
+            "worn={:.3} should be < fresh={:.3}", worn_correction, fresh_correction);
+        assert!((worn_correction / fresh_correction - 0.7).abs() < 0.15,
+            "ratio={:.3}, expected ~0.7", worn_correction / fresh_correction);
     }
 }

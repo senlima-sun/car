@@ -1,7 +1,8 @@
 use crate::active_aero::ActiveAeroPhysicsState;
 use crate::brakes::BrakePhysicsState;
 use crate::car_physics::weight_transfer::calculate_weight_transfer;
-use crate::car_physics::{CarPhysicsState, BASE_BRAKE_FORCE};
+use crate::car_physics::CarPhysicsState;
+use crate::constants::car::BASE_BRAKE_FORCE;
 use crate::curb::CurbState;
 use crate::engine_temp::EngineTemperatureState;
 use crate::ers::ErsPhysicsState;
@@ -168,6 +169,10 @@ impl PhysicsEngine {
 
     pub fn get_ers_mode(&self) -> ErsMode {
         self.ers.get_mode()
+    }
+
+    pub fn get_ers_state(&self) -> crate::types::ErsState {
+        self.ers.get_state()
     }
 
     pub fn get_ers_battery_charge(&self) -> f32 {
@@ -393,6 +398,16 @@ impl PhysicsEngine {
         self.track_temperature.check_aquaplaning(x, z, speed_ms)
     }
 
+    /// Check for aquaplaning at per-wheel positions
+    pub fn check_aquaplaning_per_wheel(
+        &self,
+        wheel_positions: &[[f32; 2]; 4],
+        speed_ms: f32,
+    ) -> AquaplaningState {
+        self.track_temperature
+            .check_aquaplaning_per_wheel(wheel_positions, speed_ms)
+    }
+
     /// Check if tires are in thermal shock
     pub fn is_tire_thermal_shock(&self) -> bool {
         self.tire_temperature.is_in_thermal_shock()
@@ -417,6 +432,14 @@ impl PhysicsEngine {
         );
     }
 
+    pub fn is_track_texture_dirty(&self) -> bool {
+        self.track_temperature.is_texture_dirty()
+    }
+
+    pub fn get_active_surface_cells(&self) -> Vec<f32> {
+        self.track_temperature.get_active_surface_cells()
+    }
+
     /// Get track wetness at position (for rubber intensity calculation)
     pub fn get_track_wetness(&self, x: f32, z: f32) -> f32 {
         self.track_temperature.get_wetness_at(x, z)
@@ -425,6 +448,28 @@ impl PhysicsEngine {
     /// Get tire compound rubber deposit multiplier
     pub fn get_rubber_deposit_multiplier(&self) -> f32 {
         self.tires.get_rubber_deposit_multiplier()
+    }
+
+    pub fn update_rubber_frame(
+        &mut self,
+        car_x: f32,
+        car_z: f32,
+        speed_ms: f32,
+        delta: f32,
+        wheel_positions: &[[f32; 2]; 4],
+        wheel_intensities: &[f32; 4],
+    ) -> (f32, f32) {
+        self.track_temperature.update_car_driving(car_x, car_z, speed_ms, delta);
+        let compound_mult = self.tires.get_rubber_deposit_multiplier();
+        let wetness = self.track_temperature.get_wetness_at(car_x, car_z);
+        if wheel_intensities.iter().any(|&v| v > 0.01) {
+            self.track_temperature.update_rubber_per_wheel(
+                wheel_positions,
+                wheel_intensities,
+                delta,
+            );
+        }
+        (compound_mult, wetness)
     }
 
     // ========================================================================
@@ -507,10 +552,20 @@ impl PhysicsEngine {
             car_position[2],
         );
 
-        // Check for aquaplaning conditions
-        let aquaplaning = self.track_temperature.check_aquaplaning(
-            car_position[0],
-            car_position[2],
+        // Compute wheel world positions for per-wheel aquaplaning
+        let fwd = quat.forward();
+        let right = quat.right();
+        let half_wb = 3.38 / 2.0;
+        let half_tw = 1.525 / 2.0;
+        let wheel_xz: [[f32; 2]; 4] = [
+            [car_position[0] - right.x * half_tw + fwd.x * half_wb, car_position[2] - right.z * half_tw + fwd.z * half_wb], // FL
+            [car_position[0] + right.x * half_tw + fwd.x * half_wb, car_position[2] + right.z * half_tw + fwd.z * half_wb], // FR
+            [car_position[0] - right.x * half_tw - fwd.x * half_wb, car_position[2] - right.z * half_tw - fwd.z * half_wb], // RL
+            [car_position[0] + right.x * half_tw - fwd.x * half_wb, car_position[2] + right.z * half_tw - fwd.z * half_wb], // RR
+        ];
+
+        let aquaplaning = self.track_temperature.check_aquaplaning_per_wheel(
+            &wheel_xz,
             speed_ms,
         );
 
@@ -529,8 +584,8 @@ impl PhysicsEngine {
         // Update active aero wing positions (auto mode uses speed for adjustment)
         self.active_aero.update(dt, speed_ms);
 
-        // Update tire temperatures (use default weight transfer for now, will be refined after car step)
-        let temp_input = TempInput {
+        // Pre-step cooling pass (ambient/airflow cooling only — no G-force data needed)
+        let cooling_input = TempInput {
             delta_seconds: dt,
             speed_ms,
             steer_angle: self.car.get_steer_angle(),
@@ -544,7 +599,7 @@ impl PhysicsEngine {
             track_temperature: track_temp,
             wind_cooling_multiplier: wind_modifiers.cooling_multiplier,
         };
-        self.tire_temperature.update(&temp_input);
+        self.tire_temperature.update_cooling(&cooling_input);
 
         // Bidirectional heat exchange between tires and track
         // Always active - even when stationary, hot tires transfer heat to track
@@ -606,8 +661,7 @@ impl PhysicsEngine {
         // Speed modifier from surface
         let surface_speed = surface_modifiers.speed_multiplier;
 
-        // Update curb and get pitch angular velocity for bump effect
-        let curb_pitch = self.curb.update(dt, speed_ms);
+        let curb_vibration = self.curb.update(dt, speed_ms);
 
         // Get active aero multipliers
         let active_aero_state = self.active_aero.get_state();
@@ -678,15 +732,31 @@ impl PhysicsEngine {
             }
         }
 
-        // Apply curb bump as pitch rotation (X axis = pitch in Three.js)
-        // Positive pitch = nose up
-        if curb_pitch.abs() > 0.01 {
-            output.angular_velocity[0] += curb_pitch;
+        if curb_vibration.abs() > 0.001 {
+            let vibration_force = curb_vibration * 2000.0;
+            output.linear_velocity[1] += vibration_force * dt / 768.0;
         }
 
+        // Post-step heating pass — use actual G-forces from car.step() output
+        let weight_transfer_post = calculate_weight_transfer(output.longitudinal_g, output.lateral_g);
+        let heating_input = TempInput {
+            delta_seconds: dt,
+            speed_ms: self.car.get_speed_ms(),
+            steer_angle: self.car.get_steer_angle(),
+            is_braking: input.backward || input.brake,
+            is_throttle: input.forward && !input.brake,
+            is_drifting: self.car.is_drifting(),
+            lateral_g: output.lateral_g,
+            longitudinal_g: output.longitudinal_g,
+            weight_transfer: weight_transfer_post,
+            ambient,
+            track_temperature: track_temp,
+            wind_cooling_multiplier: wind_modifiers.cooling_multiplier,
+        };
+        self.tire_temperature.update_heating(&heating_input);
+
         // Calculate weight transfer for tire wear (use actual G-forces from output)
-        let weight_transfer_wear =
-            calculate_weight_transfer(output.longitudinal_g, output.lateral_g);
+        let weight_transfer_wear = weight_transfer_post;
 
         // Get per-wheel tire temperatures for wear calculation
         let tire_temps = self.tire_temperature.get_temperatures();
@@ -712,6 +782,8 @@ impl PhysicsEngine {
             lateral_g: output.lateral_g,
             longitudinal_g: output.longitudinal_g,
             tire_temperatures: tire_temp_array,
+            slip_angle: output.slip_angle,
+            surface_wear_multiplier: surface_modifiers.tire_wear_multiplier,
         };
         self.tires.update_wear_per_wheel(&wear_input);
 

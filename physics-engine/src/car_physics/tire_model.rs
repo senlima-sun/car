@@ -1,5 +1,5 @@
 use super::weight_transfer::WeightTransferResult;
-use super::CAR_MASS;
+use crate::constants::car::CAR_MASS;
 
 const HANDBRAKE_REAR_GRIP: f32 = 0.2;
 const THROTTLE_OVERSTEER_FACTOR: f32 = 0.90;

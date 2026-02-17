@@ -1,41 +1,13 @@
+use crate::constants::curb::{amplitude_for_type, grip_for_type, TOOTH_SPACING};
 use crate::types::{CurbModifiers, CurbSide, CurbType};
-
-const TOOTH_SPACING: f32 = 0.8;
-const ENTRY_PITCH_DURATION: f32 = 0.1;
-
-fn amplitude_for_type(curb_type: CurbType) -> f32 {
-    match curb_type {
-        CurbType::Apex => 0.08,
-        CurbType::Exit => 0.20,
-        CurbType::Flat => 0.0,
-    }
-}
-
-fn entry_pitch_for_type(curb_type: CurbType) -> f32 {
-    match curb_type {
-        CurbType::Apex => 0.2,
-        CurbType::Exit => 0.4,
-        CurbType::Flat => 0.0,
-    }
-}
-
-fn grip_for_type(curb_type: CurbType) -> f32 {
-    match curb_type {
-        CurbType::Apex => 0.97,
-        CurbType::Exit => 0.93,
-        CurbType::Flat => 0.98,
-    }
-}
 
 #[derive(Debug, Default)]
 pub struct CurbState {
     is_on_curb: bool,
-    was_on_curb: bool,
     side: Option<CurbSide>,
     curb_type: CurbType,
     modifiers: CurbModifiers,
     time_on_curb: f32,
-    entry_bump_timer: f32,
 }
 
 impl CurbState {
@@ -44,20 +16,14 @@ impl CurbState {
     }
 
     pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<CurbSide>, curb_type: CurbType) {
-        self.was_on_curb = self.is_on_curb;
         self.is_on_curb = is_on_curb;
         self.side = side;
         self.curb_type = curb_type;
 
         if is_on_curb {
             self.modifiers = CurbModifiers::for_type(curb_type);
-            if !self.was_on_curb {
-                self.entry_bump_timer = ENTRY_PITCH_DURATION;
-                self.time_on_curb = 0.0;
-            }
         } else {
             self.time_on_curb = 0.0;
-            self.entry_bump_timer = 0.0;
         }
     }
 
@@ -68,18 +34,9 @@ impl CurbState {
 
         self.time_on_curb += dt;
 
-        let pitch_amplitude = amplitude_for_type(self.curb_type);
-        let entry_strength = entry_pitch_for_type(self.curb_type);
+        let vibration_amplitude = amplitude_for_type(self.curb_type);
 
-        if self.entry_bump_timer > 0.0 {
-            self.entry_bump_timer -= dt;
-            let progress = 1.0 - (self.entry_bump_timer / ENTRY_PITCH_DURATION);
-            let pitch_curve = (progress * std::f32::consts::PI).sin();
-            let speed_factor = (speed_ms / 40.0).min(1.0);
-            return entry_strength * pitch_curve * speed_factor;
-        }
-
-        if pitch_amplitude < 0.001 {
+        if vibration_amplitude < 0.001 {
             return 0.0;
         }
 
@@ -87,7 +44,7 @@ impl CurbState {
         let speed_factor = (speed_ms / 50.0).min(0.8).max(0.15);
         let oscillation = (self.time_on_curb * frequency * std::f32::consts::TAU).sin();
 
-        pitch_amplitude * oscillation * speed_factor
+        vibration_amplitude * oscillation * speed_factor
     }
 
     pub fn is_on_curb(&self) -> bool {
@@ -191,7 +148,6 @@ mod tests {
         state.set_on_curb(true, None, CurbType::Exit);
 
         state.time_on_curb = 0.5;
-        state.entry_bump_timer = 0.0;
 
         let bump_slow = state.update(1.0 / 120.0, 10.0);
         state.time_on_curb = 0.5;
@@ -206,7 +162,6 @@ mod tests {
         state.set_on_curb(true, None, CurbType::Flat);
 
         state.time_on_curb = 0.5;
-        state.entry_bump_timer = 0.0;
 
         let bump = state.update(1.0 / 120.0, 30.0);
         assert!((bump).abs() < 0.001);
@@ -214,16 +169,26 @@ mod tests {
 
     #[test]
     fn test_exit_higher_amplitude() {
-        let mut state_apex = CurbState::new();
-        state_apex.set_on_curb(true, None, CurbType::Apex);
-        state_apex.time_on_curb = 0.5;
-        state_apex.entry_bump_timer = 0.0;
-
-        let mut state_exit = CurbState::new();
-        state_exit.set_on_curb(true, None, CurbType::Exit);
-        state_exit.time_on_curb = 0.5;
-        state_exit.entry_bump_timer = 0.0;
-
         assert!(amplitude_for_type(CurbType::Exit) > amplitude_for_type(CurbType::Apex));
+    }
+
+    #[test]
+    fn test_vibration_zero_when_off_curb() {
+        let mut state = CurbState::new();
+        let vib = state.update(1.0 / 120.0, 30.0);
+        assert!((vib).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_vibration_increases_with_speed() {
+        let mut state = CurbState::new();
+        state.set_on_curb(true, None, CurbType::Exit);
+        state.time_on_curb = 0.25;
+
+        let vib_slow = state.update(1.0 / 120.0, 5.0).abs();
+        state.time_on_curb = 0.25;
+        let vib_fast = state.update(1.0 / 120.0, 45.0).abs();
+
+        assert!(vib_fast > vib_slow);
     }
 }

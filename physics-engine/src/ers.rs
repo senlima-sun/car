@@ -20,13 +20,13 @@ const HARVEST_COAST_MULT: f32 = 1.0;
 const HARVEST_CLIP_MULT: f32 = 1.0;
 
 // Balanced mode: moderate deploy with good recovery
-const BALANCED_DEPLOY_MULT: f32 = 0.45;
+const BALANCED_DEPLOY_MULT: f32 = 0.60;
 const BALANCED_HARVEST_MULT: f32 = 0.95;
 const BALANCED_COAST_MULT: f32 = 0.85;
 const BALANCED_CLIP_MULT: f32 = 0.85;
 
 // Attack mode: high deploy, some recovery
-const ATTACK_DEPLOY_MULT: f32 = 0.70; // Reduced from 0.85
+const ATTACK_DEPLOY_MULT: f32 = 0.85;
 const ATTACK_HARVEST_MULT: f32 = 0.5; // Increased from 0.4
 const ATTACK_COAST_MULT: f32 = 0.4; // Increased from 0.3
 const ATTACK_CLIP_MULT: f32 = 0.3; // Was 0.0, now some super clip even in attack
@@ -54,8 +54,8 @@ const OPTIMAL_HARVEST_SPEED: f32 = 80.0; // ~288 km/h for max brake harvest
 // ============================================================================
 
 // Critical battery protection
-const CRITICAL_BATTERY_THRESHOLD: f32 = 0.15; // 15% critical
-const CRITICAL_DEPLOY_MULT: f32 = 0.20; // 20% deploy when critical
+const CRITICAL_BATTERY_THRESHOLD: f32 = 0.10; // 10% critical
+const CRITICAL_DEPLOY_MULT: f32 = 0.35; // 35% deploy when critical
 
 // Speed efficiency curve for deploy (efficiency peaks at 40-70 m/s)
 const DEPLOY_EFFICIENCY_MIN_SPEED: f32 = 10.0; // ~36 km/h
@@ -186,7 +186,7 @@ impl ErsPhysicsState {
         // Below minimum target: prioritize charging
         if battery < target_min {
             let urgency = 1.0 - (battery / target_min);
-            let deploy = (0.15 + (1.0 - urgency) * 0.35) * preset_deploy_scale; // 15-50% * scale
+            let deploy = (0.25 + (1.0 - urgency) * 0.35) * preset_deploy_scale; // 25-60% * scale
             let harvest = 0.8 + urgency * 0.2; // 80-100% harvest
             return (deploy.min(1.0), harvest, harvest, harvest);
         }
@@ -194,14 +194,14 @@ impl ErsPhysicsState {
         // In target range: balanced operation
         if battery <= target_max {
             let position = (battery - target_min) / (target_max - target_min);
-            let deploy = (0.30 + position * 0.20) * preset_deploy_scale; // 30-50% * scale
+            let deploy = (0.40 + position * 0.20) * preset_deploy_scale; // 40-60% * scale
             let harvest = 1.0 - position * 0.10; // 100-90% harvest (increased)
             return (deploy.min(1.0), harvest, harvest, harvest * 0.95);
         }
 
         // Above maximum target: push deploy harder, maintain good harvest
         let excess = (battery - target_max) / (1.0 - target_max);
-        let deploy = (0.55 + excess * 0.30) * preset_deploy_scale; // 55-85% * scale
+        let deploy = (0.65 + excess * 0.25) * preset_deploy_scale; // 65-90% * scale
         let harvest = 0.85 - excess * 0.15; // 85-70% harvest (maintain recovery)
         (deploy.min(1.0), harvest, harvest * 0.95, harvest * 0.9)
     }
@@ -413,8 +413,8 @@ impl ErsPhysicsState {
 
                 // Calculate force boost (Power = Force × Velocity)
                 // At reference speed (50 m/s), 350 kW = 7000 N
-                let reference_speed = 50.0;
-                let effective_speed = speed_ms.max(reference_speed);
+                let reference_speed = 40.0;
+                let effective_speed = speed_ms.clamp(reference_speed, 70.0);
 
                 force_boost = (deploy_power * 1000.0 / effective_speed) * DEPLOY_EFFICIENCY;
 

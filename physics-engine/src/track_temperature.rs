@@ -519,7 +519,43 @@ impl TrackTemperatureGrid {
         AquaplaningState {
             is_aquaplaning,
             intensity,
-            affected_wheels: [true, true, true, true], // All wheels affected
+            affected_wheels: [true, true, true, true],
+        }
+    }
+
+    pub fn check_aquaplaning_per_wheel(
+        &self,
+        wheel_positions: &[[f32; 2]; 4],
+        speed_ms: f32,
+    ) -> AquaplaningState {
+        if speed_ms < AQUAPLANING_MIN_SPEED {
+            return AquaplaningState::default();
+        }
+
+        let mut affected = [false; 4];
+        let mut max_intensity: f32 = 0.0;
+
+        for (i, pos) in wheel_positions.iter().enumerate() {
+            let water_depth = self.get_water_depth_at(pos[0], pos[1]);
+            if water_depth < AQUAPLANING_WATER_THRESHOLD {
+                continue;
+            }
+            let speed_factor = (speed_ms - AQUAPLANING_MIN_SPEED) * AQUAPLANING_SPEED_FACTOR;
+            let water_factor = (water_depth - AQUAPLANING_WATER_THRESHOLD)
+                / (MAX_WATER_DEPTH - AQUAPLANING_WATER_THRESHOLD);
+            let intensity = (speed_factor * water_factor).clamp(0.0, 1.0);
+            if intensity > AQUAPLANING_INTENSITY_THRESHOLD {
+                affected[i] = true;
+                max_intensity = max_intensity.max(intensity);
+            }
+        }
+
+        let is_aquaplaning = affected.iter().any(|&a| a);
+
+        AquaplaningState {
+            is_aquaplaning,
+            intensity: max_intensity,
+            affected_wheels: affected,
         }
     }
 
@@ -642,6 +678,23 @@ impl TrackTemperatureGrid {
                 }
             }
         }
+    }
+
+    pub fn get_active_surface_cells(&self) -> Vec<f32> {
+        let mut result = Vec::new();
+        for ((cx, cz), cell) in &self.cells {
+            let water = cell.water_depth.max(cell.wetness);
+            let ice = cell.ice_formation;
+            if water < 0.1 && ice < 0.1 {
+                continue;
+            }
+            result.push(*cx as f32 * self.cell_size + self.cell_size * 0.5);
+            result.push(*cz as f32 * self.cell_size + self.cell_size * 0.5);
+            result.push(cell.water_depth);
+            result.push(cell.wetness);
+            result.push(ice);
+        }
+        result
     }
 
     /// Get wetness at a world position (for rubber intensity calculation)

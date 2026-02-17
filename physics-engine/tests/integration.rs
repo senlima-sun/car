@@ -1,5 +1,5 @@
 use car_physics_engine::engine::PhysicsEngine;
-use car_physics_engine::types::{CarInput, SurfaceType, TireCompound};
+use car_physics_engine::types::{CarInput, ErsMode, ErsState, HarvestSource, SemiAutoState, SurfaceType, TireCompound};
 
 const DT: f32 = 1.0 / 60.0;
 const IDENTITY_QUAT: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
@@ -343,8 +343,8 @@ fn test_speed_capped_by_max_speed() {
         max_speed_seen
     );
     assert!(
-        max_speed_seen < 320.0,
-        "Speed should be capped below 320 km/h (BASE_MAX_SPEED=310), got {:.1} km/h",
+        max_speed_seen < 330.0,
+        "Speed should be capped below 330 km/h (BASE_MAX_SPEED=320), got {:.1} km/h",
         max_speed_seen
     );
 }
@@ -429,3 +429,173 @@ fn test_handbrake_induces_drift() {
         max_slip
     );
 }
+
+#[test]
+fn test_ers_recovers_energy_on_braking() {
+    let mut engine = make_engine();
+    engine.set_ers_mode(ErsMode::SemiAuto);
+    let mut state = SimState::new();
+
+    for _ in 0..300 {
+        step_sim(&mut engine, &mut state, &throttle_input());
+    }
+
+    let speed_before_brake = state.speed_kmh();
+    let battery_after_accel = engine.get_ers_battery_charge();
+
+    assert!(
+        speed_before_brake > 100.0,
+        "Should reach 100+ km/h before braking, got {:.1}",
+        speed_before_brake
+    );
+    assert!(
+        battery_after_accel < 1.0,
+        "Battery should have depleted during acceleration, got {:.4}",
+        battery_after_accel
+    );
+
+    let battery_before_brake = battery_after_accel;
+    for _ in 0..180 {
+        let output = step_sim(&mut engine, &mut state, &brake_input());
+        if output.ers.is_harvesting {
+            println!(
+                "HARVESTING: battery={:.4}, flow={:.1}kW, source={:?}, speed={:.1}",
+                output.ers.battery_charge,
+                output.ers.power_flow,
+                output.ers.harvest_source,
+                state.speed_kmh()
+            );
+        }
+    }
+
+    let battery_after_brake = engine.get_ers_battery_charge();
+    println!(
+        "Battery: before_brake={:.4}, after_brake={:.4}, recovered={:.4}",
+        battery_before_brake,
+        battery_after_brake,
+        battery_after_brake - battery_before_brake
+    );
+
+    assert!(
+        battery_after_brake > battery_before_brake,
+        "Battery should increase during braking: before={:.4}, after={:.4}",
+        battery_before_brake,
+        battery_after_brake
+    );
+}
+
+#[test]
+fn test_ers_output_reflects_harvesting_state() {
+    let mut engine = make_engine();
+    engine.set_ers_mode(ErsMode::SemiAuto);
+    let mut state = SimState::new();
+
+    for _ in 0..300 {
+        step_sim(&mut engine, &mut state, &throttle_input());
+    }
+
+    assert!(state.speed_kmh() > 100.0);
+
+    let output = step_sim(&mut engine, &mut state, &brake_input());
+    println!("After first brake step:");
+    println!("  output.ers.is_harvesting = {}", output.ers.is_harvesting);
+    println!("  output.ers.power_flow = {:.2}", output.ers.power_flow);
+    println!("  output.ers.battery_charge = {:.4}", output.ers.battery_charge);
+    println!("  output.ers.harvest_source = {:?}", output.ers.harvest_source);
+    println!("  output.ers.mode = {:?}", output.ers.mode);
+    println!("  output.ers.is_deploying = {}", output.ers.is_deploying);
+
+    assert!(
+        output.ers.is_harvesting,
+        "ERS should be harvesting during braking at high speed"
+    );
+    assert!(
+        output.ers.power_flow < 0.0,
+        "Power flow should be negative during harvesting, got {:.2}",
+        output.ers.power_flow
+    );
+}
+
+#[test]
+fn test_step_output_ers_field_populated() {
+    let mut engine = make_engine();
+    engine.set_ers_mode(ErsMode::SemiAuto);
+    let mut state = SimState::new();
+
+    // Accelerate to build speed
+    for _ in 0..120 {
+        step_sim(&mut engine, &mut state, &throttle_input());
+    }
+    
+    let output = step_sim(&mut engine, &mut state, &throttle_input());
+    
+    // Verify ERS fields in output are populated (not default zeros)
+    println!("output.ers.mode = {:?}", output.ers.mode);
+    println!("output.ers.battery_charge = {:.4}", output.ers.battery_charge);
+    println!("output.ers.is_deploying = {}", output.ers.is_deploying);
+    println!("output.ers.power_flow = {:.2}", output.ers.power_flow);
+    
+    // After accelerating, battery should be < 1.0 and deploying should be true
+    assert!(output.ers.battery_charge < 1.0, 
+        "output.ers.battery_charge should be < 1.0 after acceleration, got {:.4}", 
+        output.ers.battery_charge);
+    assert!(output.ers.is_deploying, 
+        "output.ers.is_deploying should be true during acceleration");
+    assert_eq!(output.ers.mode, ErsMode::SemiAuto,
+        "output.ers.mode should be SemiAuto");
+}
+
+#[test]
+fn test_ers_serde_serialization_format() {
+    let state = ErsState {
+        battery_charge: 0.75,
+        mode: ErsMode::SemiAuto,
+        power_flow: -233.07,
+        is_deploying: false,
+        is_harvesting: true,
+        super_clip_active: false,
+        harvest_source: HarvestSource::Braking,
+        overtake_available: false,
+        semi_auto: SemiAutoState::default(),
+    };
+
+    let json = serde_json::to_string(&state).unwrap();
+    println!("ErsState JSON: {}", json);
+
+    assert!(json.contains("\"SemiAuto\""), "mode should serialize as 'SemiAuto', got: {}", json);
+    assert!(json.contains("\"Braking\""), "harvest_source should serialize as 'Braking', got: {}", json);
+    assert!(json.contains("\"is_harvesting\":true"), "is_harvesting should be true");
+}
+
+#[test]
+fn test_step_and_sync_output_contains_ers() {
+    let mut engine = make_engine();
+    engine.set_ers_mode(ErsMode::SemiAuto);
+    let mut state = SimState::new();
+
+    for _ in 0..120 {
+        step_sim(&mut engine, &mut state, &throttle_input());
+    }
+
+    let sync_output = engine.step_and_sync(
+        DT,
+        throttle_input(),
+        state.position,
+        state.rotation,
+        state.linvel,
+        state.angvel,
+        [0.0, 1.0, 0.0],
+    );
+
+    let json = serde_json::to_string(&sync_output).unwrap();
+    println!("StepAndSyncOutput JSON length: {}", json.len());
+
+    assert!(json.contains("\"ers\""), "StepAndSyncOutput should contain 'ers' field");
+    assert!(json.contains("\"is_harvesting\""), "ers should contain 'is_harvesting'");
+    assert!(json.contains("\"battery_charge\""), "ers should contain 'battery_charge'");
+
+    let battery_in_output = sync_output.physics.ers.battery_charge;
+    println!("Battery in output.physics.ers: {:.4}", battery_in_output);
+    assert!(battery_in_output < 1.0, "Battery should be < 1.0 after acceleration");
+}
+

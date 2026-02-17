@@ -1,26 +1,5 @@
-use super::{BASE_DOWNFORCE_COEFFICIENT, BASE_DRAG_COEFFICIENT};
-
-const DEFAULT_AIR_DENSITY: f32 = 1.225;
-const FRONTAL_AREA: f32 = 1.5;
-
-pub fn get_engine_force(speed_ms: f32, ers_boost: f32) -> f32 {
-    let speed_kmh = speed_ms * 3.6;
-
-    let base_force = if speed_kmh < 60.0 {
-        16000.0
-    } else if speed_kmh < 150.0 {
-        let t = (speed_kmh - 60.0) / 90.0;
-        16000.0 - t * 5000.0
-    } else if speed_kmh < 250.0 {
-        let t = (speed_kmh - 150.0) / 100.0;
-        11000.0 - t * 4000.0
-    } else {
-        let t = ((speed_kmh - 250.0) / 60.0).min(1.0);
-        6000.0 - t * t * 2500.0
-    };
-
-    base_force + ers_boost
-}
+use crate::constants::aero::{DEFAULT_AIR_DENSITY, FRONTAL_AREA};
+use crate::constants::car::{BASE_DOWNFORCE_COEFFICIENT, BASE_DRAG_COEFFICIENT};
 
 pub fn get_drag_force(speed_ms: f32, active_aero_mult: f32) -> f32 {
     get_drag_force_with_density(speed_ms, active_aero_mult, DEFAULT_AIR_DENSITY)
@@ -43,35 +22,6 @@ pub fn get_downforce_with_density(speed_ms: f32, active_aero_mult: f32, air_dens
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_engine_force_low_speed() {
-        let force = get_engine_force(10.0, 0.0); // ~36 km/h
-        assert!((force - 16000.0).abs() < 100.0);
-    }
-
-    #[test]
-    fn test_engine_force_mid_speed() {
-        let force = get_engine_force(30.0, 0.0); // ~108 km/h
-        assert!(force < 16000.0);
-        assert!(force > 10000.0);
-    }
-
-    #[test]
-    fn test_engine_force_high_speed() {
-        let force = get_engine_force(70.0, 0.0); // ~252 km/h
-        assert!(force < 8000.0);
-        assert!(force > 3500.0);
-    }
-
-    #[test]
-    fn test_ers_boost() {
-        let force_no_ers = get_engine_force(50.0, 0.0);
-        let ers_boost = 2000.0; // 2000 N from ERS
-        let force_with_ers = get_engine_force(50.0, ers_boost);
-
-        assert!((force_with_ers - force_no_ers - ers_boost).abs() < 0.1);
-    }
 
     #[test]
     fn test_drag_increases_with_speed() {

@@ -27,6 +27,8 @@ pub struct WearInput {
     pub lateral_g: f32,          // Lateral G-force (cornering force)
     pub longitudinal_g: f32,     // Longitudinal G-force (accel/brake)
     pub tire_temperatures: [f32; 4], // Per-wheel tire temperature (0.0 to 1.0)
+    pub slip_angle: f32,              // degrees, from CarPhysicsOutput
+    pub surface_wear_multiplier: f32, // from SurfaceState.get_tire_wear_modifier()
 }
 
 #[derive(Debug)]
@@ -89,66 +91,71 @@ impl TireState {
     }
 
     /// Update per-wheel tire wear based on driving conditions
+    ///
+    /// Uses a hybrid additive-multiplicative model:
+    /// wear = base_rate × combined_intensity × env_modifiers × per_wheel_mults × dt
+    ///
+    /// combined_intensity is an additive sum of wear sources (prevents multiplicative explosion):
+    /// - Cornering: 0.2 + G×0.25 + G²×0.45 (primary F1 wear source; 0.2 baseline = straights nearly free)
+    /// - Longitudinal: G² × 0.3 (braking/accel; zero when coasting)
+    /// - Excess slip: ((slip-9°)/15)×0.8 when slip>9° (tire-saving mechanic)
+    /// - Drift/handbrake: +1.5 when active (additive penalty)
     pub fn update_wear_per_wheel(&mut self, input: &WearInput) {
-        // Skip wear calculation if not moving
         if input.speed_ms < 0.5 {
             return;
         }
 
         let base_rate = self.config.degradation_rate;
 
-        // Speed factor - normalized around 30 m/s (108 km/h)
-        let speed_factor = (input.speed_ms / 30.0).clamp(0.2, 2.0);
+        let lat_g = input.lateral_g.abs();
+        let lon_g = input.longitudinal_g.abs();
 
-        // Weather compatibility penalty (based on ambient conditions)
-        let weather_penalty = if self.is_optimal_conditions(&input.ambient) {
-            1.0
+        let cornering_wear = 0.2 + lat_g * 0.25 + lat_g * lat_g * 0.45;
+        let longitudinal_wear = lon_g * lon_g * 0.3;
+
+        let excess_slip = if input.slip_angle.abs() > 9.0 {
+            ((input.slip_angle.abs() - 9.0) / 15.0).min(1.5) * 0.8
         } else {
-            1.5
+            0.0
         };
 
-        // Track temperature effect (0.5 = neutral)
-        // Range: 0.8 (cold) to 1.2 (hot)
-        let track_temp_factor = 0.8 + input.track_temperature * 0.4;
+        let rear_drift_penalty = if input.is_drifting || input.is_handbrake {
+            1.5
+        } else {
+            0.0
+        };
 
-        // =====================================================================
-        // Lateral G-force effect (cornering wear)
-        // Higher lateral G = more tire scrubbing = more wear
-        // Effect: 1.0 at 0G, up to 2.5x at 2G+ cornering
-        // =====================================================================
-        let lateral_g_factor = 1.0 + (input.lateral_g.abs() / 2.0).min(1.0) * 1.5;
+        let base_intensity = (cornering_wear + longitudinal_wear + excess_slip).min(5.0);
+        let rear_intensity = (base_intensity + rear_drift_penalty).min(5.0);
 
-        // =====================================================================
-        // Longitudinal G-force effect (accel/brake wear)
-        // Hard braking/acceleration increases wear
-        // Effect: 1.0 at 0G, up to 1.8x at 1.5G+
-        // =====================================================================
-        let longitudinal_g_factor = 1.0 + (input.longitudinal_g.abs() / 1.5).min(1.0) * 0.8;
+        let weather_mod = if self.is_optimal_conditions(&input.ambient) {
+            1.0
+        } else {
+            1.3
+        };
 
-        // Common multiplier for all wheels (before per-wheel temperature)
-        let common_factor = base_rate
-            * speed_factor
-            * weather_penalty
-            * track_temp_factor
-            * lateral_g_factor
-            * longitudinal_g_factor;
+        let track_temp_mod = 0.85 + input.track_temperature * 0.3;
 
-        // Steering effects
+        let surface_mod = if input.surface_wear_multiplier > 0.0 {
+            input.surface_wear_multiplier
+        } else {
+            1.0
+        };
+
+        let env_factor = weather_mod * track_temp_mod * surface_mod;
+        let front_common = base_rate * base_intensity * env_factor;
+        let rear_common = base_rate * rear_intensity * env_factor;
+
         let steer_abs = input.steer_angle.abs();
         let is_turning_left = input.steer_angle < -0.02;
         let is_turning_right = input.steer_angle > 0.02;
 
-        // Front wheels wear more when steering (up to 3x at max steer ~0.5 rad)
-        let front_steer_mult = 1.0 + (steer_abs / 0.5).min(1.0) * 2.0;
+        let front_steer_mult = 1.0 + (steer_abs / 0.5).min(1.0) * 0.8;
 
-        // Outer wheel bias during cornering - enhanced by lateral G
-        // Up to 80% extra wear on outer wheel at high G
-        let base_outer_bias = (steer_abs / 0.5).min(1.0) * 0.5;
-        let g_outer_bias = (input.lateral_g.abs() / 1.5).min(1.0) * 0.3;
+        let base_outer_bias = (steer_abs / 0.5).min(1.0) * 0.3;
+        let g_outer_bias = (lat_g / 1.5).min(1.0) * 0.2;
         let outer_bias = base_outer_bias + g_outer_bias;
 
-        // Weight transfer factors - loaded wheels wear more
-        // Base load is ~1/4 of car weight (600kg * 9.81 / 4)
         let base_load = 1471.5;
         let load_sensitivity = 0.3;
 
@@ -169,30 +176,14 @@ impl TireState {
                 / base_load
                 * load_sensitivity;
 
-        // Braking: front wheels wear 40% more
-        let brake_front_mult = if input.is_braking { 1.4 } else { 1.0 };
+        let brake_front_mult = if input.is_braking { 1.25 } else { 1.0 };
 
-        // Throttle: rear wheels wear 20% more under power
         let throttle_rear_mult = if input.is_throttle && !input.is_drifting {
             1.2
         } else {
             1.0
         };
 
-        // Drift/handbrake: rear wheels wear 3x more
-        let drift_rear_mult = if input.is_drifting || input.is_handbrake {
-            3.0
-        } else {
-            1.0
-        };
-
-        // =====================================================================
-        // Per-wheel tire temperature effect
-        // Hot tires (above optimal window ~0.5) degrade faster
-        // Cold tires have slightly less wear but poor grip
-        // Temperature scale: 0.0 = cold, 0.5 = optimal, 1.0 = overheating
-        // Effect: 0.9x at cold, 1.0x at optimal, up to 2.0x when overheating
-        // =====================================================================
         let tire_temp_mults: [f32; 4] = [
             Self::calculate_tire_temp_wear_mult(input.tire_temperatures[FL]),
             Self::calculate_tire_temp_wear_mult(input.tire_temperatures[FR]),
@@ -200,60 +191,52 @@ impl TireState {
             Self::calculate_tire_temp_wear_mult(input.tire_temperatures[RR]),
         ];
 
-        // Calculate individual wheel wear rates
-        // Front Left
         let fl_outer_mult = if is_turning_right {
             1.0 + outer_bias
         } else {
             1.0
         };
-        let fl_rate = common_factor
+        let fl_rate = front_common
             * front_steer_mult
             * fl_load_mult.max(0.5)
             * fl_outer_mult
             * brake_front_mult
             * tire_temp_mults[FL];
 
-        // Front Right
         let fr_outer_mult = if is_turning_left {
             1.0 + outer_bias
         } else {
             1.0
         };
-        let fr_rate = common_factor
+        let fr_rate = front_common
             * front_steer_mult
             * fr_load_mult.max(0.5)
             * fr_outer_mult
             * brake_front_mult
             * tire_temp_mults[FR];
 
-        // Rear Left - affected by drift and throttle, slight outer bias
         let rl_outer_mult = if is_turning_right {
             1.0 + outer_bias * 0.3
         } else {
             1.0
         };
-        let rl_rate = common_factor
+        let rl_rate = rear_common
             * rl_load_mult.max(0.5)
             * rl_outer_mult
-            * drift_rear_mult
             * throttle_rear_mult
             * tire_temp_mults[RL];
 
-        // Rear Right
         let rr_outer_mult = if is_turning_left {
             1.0 + outer_bias * 0.3
         } else {
             1.0
         };
-        let rr_rate = common_factor
+        let rr_rate = rear_common
             * rr_load_mult.max(0.5)
             * rr_outer_mult
-            * drift_rear_mult
             * throttle_rear_mult
             * tire_temp_mults[RR];
 
-        // Apply wear (clamped to 0.0-1.0)
         self.wheels[FL] = (self.wheels[FL] + fl_rate * input.delta_seconds).min(1.0);
         self.wheels[FR] = (self.wheels[FR] + fr_rate * input.delta_seconds).min(1.0);
         self.wheels[RL] = (self.wheels[RL] + rl_rate * input.delta_seconds).min(1.0);
@@ -460,13 +443,14 @@ impl TireTemperatureState {
         self.thermal_shock = [TireThermalShock::default(); 4];
     }
 
-    /// Update tire temperatures based on driving conditions
-    pub fn update(&mut self, input: &TempInput) {
+    /// Update tire temperatures — cooling pass only (airflow, ambient, track conduction)
+    /// Call BEFORE car.step() so cooling is frame-accurate
+    pub fn update_cooling(&mut self, input: &TempInput) {
         let dt = input.delta_seconds.min(0.05);
 
-        // If stationary, just cool towards ambient
+        let ambient_target = input.ambient.temperature * 0.4;
+
         if input.speed_ms < 0.5 {
-            let ambient_target = input.ambient.temperature * 0.4; // Map ambient to tire scale
             for wheel in 0..4 {
                 for edge in 0..2 {
                     let diff = ambient_target - self.temps[wheel][edge];
@@ -476,11 +460,36 @@ impl TireTemperatureState {
             return;
         }
 
-        // Base heat from driving (friction with road)
+        let base_airflow = TIRE_COOLING_RATE_AIRFLOW * (input.speed_ms / 40.0).min(1.0);
+        let wind_factor = if input.wind_cooling_multiplier > 0.0 {
+            input.wind_cooling_multiplier
+        } else {
+            1.0
+        };
+        let airflow_cooling = base_airflow * wind_factor;
+        let cooling = airflow_cooling + TIRE_COOLING_RATE_AMBIENT;
+
+        for wheel in 0..4 {
+            for edge in 0..2 {
+                let ambient_pull = (ambient_target - self.temps[wheel][edge]) * 0.02;
+                let net = -cooling * dt + ambient_pull * dt;
+                self.temps[wheel][edge] = (self.temps[wheel][edge] + net).clamp(0.0, 1.0);
+            }
+        }
+    }
+
+    /// Update tire temperatures — heating pass only (friction, braking, cornering, drift, track)
+    /// Call AFTER car.step() so actual G-forces and weight transfer are used
+    pub fn update_heating(&mut self, input: &TempInput) {
+        let dt = input.delta_seconds.min(0.05);
+
+        if input.speed_ms < 0.5 {
+            return;
+        }
+
         let speed_factor = (input.speed_ms / 30.0).min(1.5);
         let base_heat = TIRE_HEAT_RATE_FRICTION * speed_factor;
 
-        // Braking heat (more on front)
         let brake_heat_front = if input.is_braking {
             TIRE_HEAT_RATE_BRAKING
         } else {
@@ -492,106 +501,70 @@ impl TireTemperatureState {
             0.0
         };
 
-        // Cornering heat (outer edge gets more)
         let lateral_load = input.lateral_g.abs();
         let cornering_heat = TIRE_HEAT_RATE_CORNERING * lateral_load.min(1.5);
 
-        // Which side is outer (loaded) during turn
         let turning_left = input.steer_angle < -0.02;
         let turning_right = input.steer_angle > 0.02;
 
-        // Drift/wheelspin heat (rear tires)
         let drift_heat = if input.is_drifting {
             TIRE_HEAT_RATE_SPINNING
         } else if input.is_throttle && input.speed_ms < 10.0 {
-            // Wheelspin at low speed
             TIRE_HEAT_RATE_SPINNING * 0.5
         } else {
             0.0
         };
 
-        // Cooling from airflow (enhanced by wind)
-        let base_airflow = TIRE_COOLING_RATE_AIRFLOW * (input.speed_ms / 40.0).min(1.0);
-        let wind_factor = if input.wind_cooling_multiplier > 0.0 {
-            input.wind_cooling_multiplier
-        } else {
-            1.0
-        };
-        let airflow_cooling = base_airflow * wind_factor;
-
-        // Ambient cooling target
-        let ambient_target = input.ambient.temperature * 0.4;
-
-        // Track temperature contribution (heat transfer from hot track)
         let track_heat = if input.track_temperature > 0.3 {
             TRACK_TEMP_TRANSFER_RATE * (input.track_temperature - 0.3) * speed_factor
         } else {
             0.0
         };
 
-        // Update each wheel
         for wheel in 0..4 {
             let is_front = wheel < 2;
             let is_left = wheel == 0 || wheel == 2;
 
-            // Weight transfer affects heat generation
             let load_mult = self.get_load_multiplier(wheel, &input.weight_transfer);
 
             for edge in 0..2 {
                 let is_inner = edge == 0;
 
-                // Calculate heat generation for this tire edge
                 let mut heat = base_heat;
 
-                // Braking heat
                 heat += if is_front {
                     brake_heat_front
                 } else {
                     brake_heat_rear
                 };
 
-                // Cornering heat distribution (outer edge gets more)
                 let outer_bonus = if turning_left && !is_left {
-                    // Turning left, right side is outer
-                    if is_inner {
-                        0.6
-                    } else {
-                        1.4
-                    }
+                    if is_inner { 0.6 } else { 1.4 }
                 } else if turning_right && is_left {
-                    // Turning right, left side is outer
-                    if is_inner {
-                        0.6
-                    } else {
-                        1.4
-                    }
+                    if is_inner { 0.6 } else { 1.4 }
                 } else {
                     1.0
                 };
                 heat += cornering_heat * outer_bonus;
 
-                // Drift heat on rear
                 if !is_front {
                     heat += drift_heat;
                 }
 
-                // Track heat
                 heat += track_heat;
 
-                // Apply load multiplier
                 heat *= load_mult;
 
-                // Cooling
-                let cooling = airflow_cooling + TIRE_COOLING_RATE_AMBIENT;
-
-                // Ambient pull
-                let ambient_pull = (ambient_target - self.temps[wheel][edge]) * 0.02;
-
-                // Net change
-                let net = (heat - cooling) * dt + ambient_pull * dt;
+                let net = heat * dt;
                 self.temps[wheel][edge] = (self.temps[wheel][edge] + net).clamp(0.0, 1.0);
             }
         }
+    }
+
+    /// Legacy combined update (delegates to cooling + heating)
+    pub fn update(&mut self, input: &TempInput) {
+        self.update_cooling(input);
+        self.update_heating(input);
     }
 
     fn get_load_multiplier(&self, wheel: usize, wt: &WeightTransferResult) -> f32 {
@@ -966,6 +939,8 @@ mod tests {
             lateral_g: 0.0,
             longitudinal_g: 0.0,
             tire_temperatures: [0.45; 4], // Optimal temp
+            slip_angle: 0.0,
+            surface_wear_multiplier: 1.0,
         };
 
         // Run for 60 seconds
@@ -1000,6 +975,8 @@ mod tests {
             lateral_g: 0.0,
             longitudinal_g: 0.0,
             tire_temperatures: [0.45; 4],
+            slip_angle: 0.0,
+            surface_wear_multiplier: 1.0,
         };
 
         let turning_input = WearInput {
@@ -1040,6 +1017,8 @@ mod tests {
             lateral_g: 1.0, // Right turn generates positive lateral G
             longitudinal_g: 0.0,
             tire_temperatures: [0.45; 4],
+            slip_angle: 0.0,
+            surface_wear_multiplier: 1.0,
         };
 
         for _ in 0..30 {
@@ -1069,6 +1048,8 @@ mod tests {
             lateral_g: 0.5, // Some lateral G during drift
             longitudinal_g: 0.0,
             tire_temperatures: [0.45; 4],
+            slip_angle: 0.0,
+            surface_wear_multiplier: 1.0,
         };
 
         for _ in 0..30 {
@@ -1101,6 +1082,8 @@ mod tests {
             lateral_g: 0.0,
             longitudinal_g: -0.8, // Negative G from braking
             tire_temperatures: [0.45; 4],
+            slip_angle: 0.0,
+            surface_wear_multiplier: 1.0,
         };
 
         for _ in 0..30 {
@@ -1111,8 +1094,8 @@ mod tests {
         let front_avg = (wear.front_left + wear.front_right) / 2.0;
         let rear_avg = (wear.rear_left + wear.rear_right) / 2.0;
 
-        // Front should wear 40% more when braking
-        assert!(front_avg > rear_avg * 1.3);
+        // Front should wear more when braking (brake_front_mult=1.25)
+        assert!(front_avg > rear_avg * 1.2);
     }
 
     #[test]
@@ -1136,6 +1119,8 @@ mod tests {
             lateral_g: 0.0,
             longitudinal_g: 0.0,
             tire_temperatures: [0.45; 4],
+            slip_angle: 0.0,
+            surface_wear_multiplier: 1.0,
         };
 
         let rain_input = WearInput {
@@ -1148,8 +1133,8 @@ mod tests {
             state2.update_wear_per_wheel(&rain_input);
         }
 
-        // Wrong weather should cause 1.5x wear
-        assert!(state2.get_wear() > state1.get_wear() * 1.4);
+        // Wrong weather should cause 1.3x wear
+        assert!(state2.get_wear() > state1.get_wear() * 1.2);
     }
 
     #[test]
@@ -1248,6 +1233,8 @@ mod tests {
             lateral_g: 0.0,
             longitudinal_g: 0.0,
             tire_temperatures: [0.45; 4],
+            slip_angle: 0.0,
+            surface_wear_multiplier: 1.0,
         };
 
         let high_g_input = WearInput {
@@ -1283,6 +1270,8 @@ mod tests {
             lateral_g: 0.0,
             longitudinal_g: 0.0,
             tire_temperatures: [0.45; 4], // Optimal temperature
+            slip_angle: 0.0,
+            surface_wear_multiplier: 1.0,
         };
 
         let overheated_input = WearInput {
@@ -1340,6 +1329,8 @@ mod tests {
             lateral_g: 0.0,
             longitudinal_g: 0.0,
             tire_temperatures: [0.45; 4],
+            slip_angle: 0.0,
+            surface_wear_multiplier: 1.0,
         };
 
         let hard_accel_input = WearInput {

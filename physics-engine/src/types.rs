@@ -83,16 +83,6 @@ pub struct SurfaceFrictionBreakdown {
     pub effective_mu: f32,
 }
 
-/// Internal weather condition for modifier blending (not exposed to JS)
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
-pub enum WeatherCondition {
-    #[default]
-    Dry,
-    Hot,
-    Rain,
-    Cold,
-}
-
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct WeatherModifiers {
     pub friction_slip_multiplier: f32,
@@ -107,91 +97,6 @@ pub struct WeatherModifiers {
     pub max_speed_multiplier: f32,
 }
 
-impl WeatherModifiers {
-    pub fn dry() -> Self {
-        Self {
-            friction_slip_multiplier: 1.0,
-            drag_multiplier: 1.0,
-            downforce_multiplier: 1.0,
-            engine_efficiency_multiplier: 1.0,
-            brake_efficiency_multiplier: 1.0,
-            steer_response_multiplier: 1.0,
-            max_steer_angle_multiplier: 1.0,
-            drift_entry_slip_angle_multiplier: 1.0,
-            drift_lateral_correction_multiplier: 1.0,
-            max_speed_multiplier: 1.0,
-        }
-    }
-
-    pub fn hot() -> Self {
-        Self {
-            friction_slip_multiplier: 1.1,
-            drag_multiplier: 0.98,
-            downforce_multiplier: 0.98,
-            engine_efficiency_multiplier: 1.0,
-            brake_efficiency_multiplier: 0.92,
-            steer_response_multiplier: 1.0,
-            max_steer_angle_multiplier: 1.0,
-            drift_entry_slip_angle_multiplier: 1.1,
-            drift_lateral_correction_multiplier: 1.05,
-            max_speed_multiplier: 1.0,
-        }
-    }
-
-    pub fn rain() -> Self {
-        Self {
-            friction_slip_multiplier: 0.5,
-            drag_multiplier: 1.1,
-            downforce_multiplier: 0.9,
-            engine_efficiency_multiplier: 1.0,
-            brake_efficiency_multiplier: 0.55,
-            steer_response_multiplier: 0.8,
-            max_steer_angle_multiplier: 1.0,
-            drift_entry_slip_angle_multiplier: 0.5,
-            drift_lateral_correction_multiplier: 0.5,
-            max_speed_multiplier: 1.0,
-        }
-    }
-
-    pub fn cold() -> Self {
-        Self {
-            friction_slip_multiplier: 0.25,
-            drag_multiplier: 1.05,
-            downforce_multiplier: 1.05,
-            engine_efficiency_multiplier: 1.0,
-            brake_efficiency_multiplier: 0.35,
-            steer_response_multiplier: 0.7,
-            max_steer_angle_multiplier: 1.0,
-            drift_entry_slip_angle_multiplier: 0.3,
-            drift_lateral_correction_multiplier: 0.35,
-            max_speed_multiplier: 1.0,
-        }
-    }
-
-    pub fn for_condition(condition: WeatherCondition) -> Self {
-        match condition {
-            WeatherCondition::Dry => Self::dry(),
-            WeatherCondition::Hot => Self::hot(),
-            WeatherCondition::Rain => Self::rain(),
-            WeatherCondition::Cold => Self::cold(),
-        }
-    }
-
-    pub fn lerp(&self, other: &Self, t: f32) -> Self {
-        Self {
-            friction_slip_multiplier: lerp(self.friction_slip_multiplier, other.friction_slip_multiplier, t),
-            drag_multiplier: lerp(self.drag_multiplier, other.drag_multiplier, t),
-            downforce_multiplier: lerp(self.downforce_multiplier, other.downforce_multiplier, t),
-            engine_efficiency_multiplier: lerp(self.engine_efficiency_multiplier, other.engine_efficiency_multiplier, t),
-            brake_efficiency_multiplier: lerp(self.brake_efficiency_multiplier, other.brake_efficiency_multiplier, t),
-            steer_response_multiplier: lerp(self.steer_response_multiplier, other.steer_response_multiplier, t),
-            max_steer_angle_multiplier: lerp(self.max_steer_angle_multiplier, other.max_steer_angle_multiplier, t),
-            drift_entry_slip_angle_multiplier: lerp(self.drift_entry_slip_angle_multiplier, other.drift_entry_slip_angle_multiplier, t),
-            drift_lateral_correction_multiplier: lerp(self.drift_lateral_correction_multiplier, other.drift_lateral_correction_multiplier, t),
-            max_speed_multiplier: lerp(self.max_speed_multiplier, other.max_speed_multiplier, t),
-        }
-    }
-}
 
 // ============================================================================
 // Wind Types
@@ -484,7 +389,7 @@ impl TireConfig {
         match compound {
             TireCompound::Soft => Self {
                 grip_multiplier: 1.15,
-                degradation_rate: 0.0015,
+                degradation_rate: 0.000525,
                 optimal_temp_range: (15.0, 50.0), // Good in warm/hot conditions
                 rain_suitability: 0.3,            // Poor in rain
                 wrong_conditions_penalty: 0.25,
@@ -498,7 +403,7 @@ impl TireConfig {
             },
             TireCompound::Medium => Self {
                 grip_multiplier: 1.0,
-                degradation_rate: 0.0008,
+                degradation_rate: 0.000350,
                 optimal_temp_range: (10.0, 45.0), // Wide temperature range
                 rain_suitability: 0.4,            // Moderate in rain
                 wrong_conditions_penalty: 0.3,
@@ -512,7 +417,7 @@ impl TireConfig {
             },
             TireCompound::Hard => Self {
                 grip_multiplier: 0.92,
-                degradation_rate: 0.0004,
+                degradation_rate: 0.000245,
                 optimal_temp_range: (20.0, 50.0), // Needs heat to work
                 rain_suitability: 0.35,           // Poor in rain
                 wrong_conditions_penalty: 0.35,
@@ -526,7 +431,7 @@ impl TireConfig {
             },
             TireCompound::Wet => Self {
                 grip_multiplier: 0.75,
-                degradation_rate: 0.0008,
+                degradation_rate: 0.000315,
                 optimal_temp_range: (5.0, 30.0),  // Works in cooler temps
                 rain_suitability: 1.0,            // Excellent in rain
                 wrong_conditions_penalty: 0.5,
@@ -540,7 +445,7 @@ impl TireConfig {
             },
             TireCompound::Intermediate => Self {
                 grip_multiplier: 0.88,
-                degradation_rate: 0.0006,
+                degradation_rate: 0.000263,
                 optimal_temp_range: (0.0, 25.0),  // Works in cold/wet conditions
                 rain_suitability: 0.8,            // Good in rain
                 wrong_conditions_penalty: 0.7,
@@ -594,6 +499,7 @@ pub struct CarPhysicsOutput {
     pub linear_velocity: [f32; 3],
     pub angular_velocity: [f32; 3],
     pub speed_kmh: f32,
+    pub forward_speed_ms: f32,
     pub gear: i8,
     pub rpm: f32,
     pub current_gear_ratio: f32,
@@ -612,6 +518,7 @@ pub struct CarPhysicsOutput {
     pub active_aero: ActiveAeroState,
     pub grip_breakdown: GripBreakdown,
     pub tire_material: TireMaterialOutput,
+    pub downforce_newtons: f32,
 }
 
 /// Combined output for step + sync (reduces FFI calls per frame)
@@ -1279,117 +1186,11 @@ mod tests {
     }
 
     #[test]
-    fn weather_modifiers_lerp_at_t_zero_returns_self() {
-        let dry = WeatherModifiers::dry();
-        let rain = WeatherModifiers::rain();
-        let result = dry.lerp(&rain, 0.0);
-        assert_approx(result.friction_slip_multiplier, dry.friction_slip_multiplier);
-        assert_approx(result.drag_multiplier, dry.drag_multiplier);
-        assert_approx(result.downforce_multiplier, dry.downforce_multiplier);
-        assert_approx(result.engine_efficiency_multiplier, dry.engine_efficiency_multiplier);
-        assert_approx(result.brake_efficiency_multiplier, dry.brake_efficiency_multiplier);
-        assert_approx(result.steer_response_multiplier, dry.steer_response_multiplier);
-        assert_approx(result.max_steer_angle_multiplier, dry.max_steer_angle_multiplier);
-        assert_approx(result.drift_entry_slip_angle_multiplier, dry.drift_entry_slip_angle_multiplier);
-        assert_approx(result.drift_lateral_correction_multiplier, dry.drift_lateral_correction_multiplier);
-        assert_approx(result.max_speed_multiplier, dry.max_speed_multiplier);
-    }
-
-    #[test]
-    fn weather_modifiers_lerp_at_t_one_returns_other() {
-        let dry = WeatherModifiers::dry();
-        let rain = WeatherModifiers::rain();
-        let result = dry.lerp(&rain, 1.0);
-        assert_approx(result.friction_slip_multiplier, rain.friction_slip_multiplier);
-        assert_approx(result.drag_multiplier, rain.drag_multiplier);
-        assert_approx(result.downforce_multiplier, rain.downforce_multiplier);
-        assert_approx(result.brake_efficiency_multiplier, rain.brake_efficiency_multiplier);
-        assert_approx(result.steer_response_multiplier, rain.steer_response_multiplier);
-        assert_approx(result.drift_entry_slip_angle_multiplier, rain.drift_entry_slip_angle_multiplier);
-        assert_approx(result.drift_lateral_correction_multiplier, rain.drift_lateral_correction_multiplier);
-    }
-
-    #[test]
-    fn weather_modifiers_lerp_at_t_half_returns_midpoint() {
-        let dry = WeatherModifiers::dry();
-        let rain = WeatherModifiers::rain();
-        let result = dry.lerp(&rain, 0.5);
-        let expected_friction = (dry.friction_slip_multiplier + rain.friction_slip_multiplier) / 2.0;
-        let expected_drag = (dry.drag_multiplier + rain.drag_multiplier) / 2.0;
-        let expected_brake = (dry.brake_efficiency_multiplier + rain.brake_efficiency_multiplier) / 2.0;
-        assert_approx(result.friction_slip_multiplier, expected_friction);
-        assert_approx(result.drag_multiplier, expected_drag);
-        assert_approx(result.brake_efficiency_multiplier, expected_brake);
-    }
-
-    #[test]
-    fn weather_modifiers_dry_all_ones() {
-        let dry = WeatherModifiers::dry();
-        assert_approx(dry.friction_slip_multiplier, 1.0);
-        assert_approx(dry.drag_multiplier, 1.0);
-        assert_approx(dry.downforce_multiplier, 1.0);
-        assert_approx(dry.engine_efficiency_multiplier, 1.0);
-        assert_approx(dry.brake_efficiency_multiplier, 1.0);
-        assert_approx(dry.steer_response_multiplier, 1.0);
-        assert_approx(dry.max_steer_angle_multiplier, 1.0);
-        assert_approx(dry.drift_entry_slip_angle_multiplier, 1.0);
-        assert_approx(dry.drift_lateral_correction_multiplier, 1.0);
-        assert_approx(dry.max_speed_multiplier, 1.0);
-    }
-
-    #[test]
-    fn weather_modifiers_rain_reduces_friction_and_braking() {
-        let rain = WeatherModifiers::rain();
-        assert!(rain.friction_slip_multiplier < 1.0);
-        assert!(rain.brake_efficiency_multiplier < 1.0);
-        assert!(rain.steer_response_multiplier < 1.0);
-    }
-
-    #[test]
-    fn weather_modifiers_cold_has_lowest_friction() {
-        let cold = WeatherModifiers::cold();
-        let rain = WeatherModifiers::rain();
-        assert!(cold.friction_slip_multiplier < rain.friction_slip_multiplier);
-        assert!(cold.brake_efficiency_multiplier < rain.brake_efficiency_multiplier);
-    }
-
-    #[test]
-    fn weather_modifiers_hot_increases_friction() {
-        let hot = WeatherModifiers::hot();
-        assert!(hot.friction_slip_multiplier > 1.0);
-    }
-
-    #[test]
-    fn weather_modifiers_for_condition_matches_named_constructors() {
-        let dry_direct = WeatherModifiers::dry();
-        let dry_via = WeatherModifiers::for_condition(WeatherCondition::Dry);
-        assert_approx(dry_direct.friction_slip_multiplier, dry_via.friction_slip_multiplier);
-        assert_approx(dry_direct.drag_multiplier, dry_via.drag_multiplier);
-
-        let hot_direct = WeatherModifiers::hot();
-        let hot_via = WeatherModifiers::for_condition(WeatherCondition::Hot);
-        assert_approx(hot_direct.friction_slip_multiplier, hot_via.friction_slip_multiplier);
-
-        let rain_direct = WeatherModifiers::rain();
-        let rain_via = WeatherModifiers::for_condition(WeatherCondition::Rain);
-        assert_approx(rain_direct.friction_slip_multiplier, rain_via.friction_slip_multiplier);
-
-        let cold_direct = WeatherModifiers::cold();
-        let cold_via = WeatherModifiers::for_condition(WeatherCondition::Cold);
-        assert_approx(cold_direct.friction_slip_multiplier, cold_via.friction_slip_multiplier);
-    }
-
-    #[test]
     fn weather_modifiers_default_is_all_zeros() {
         let def = WeatherModifiers::default();
         assert_approx(def.friction_slip_multiplier, 0.0);
         assert_approx(def.drag_multiplier, 0.0);
         assert_approx(def.max_speed_multiplier, 0.0);
-    }
-
-    #[test]
-    fn weather_condition_default_is_dry() {
-        assert_eq!(WeatherCondition::default(), WeatherCondition::Dry);
     }
 
     #[test]
@@ -1668,7 +1469,7 @@ mod tests {
     fn tire_config_soft_specific_values() {
         let soft = TireConfig::for_compound(TireCompound::Soft);
         assert_approx(soft.grip_multiplier, 1.15);
-        assert_approx(soft.degradation_rate, 0.0015);
+        assert_approx(soft.degradation_rate, 0.000525);
         assert_approx(soft.rain_suitability, 0.3);
         assert_approx(soft.rubber_deposit_multiplier, 1.4);
     }
@@ -1677,7 +1478,7 @@ mod tests {
     fn tire_config_medium_specific_values() {
         let medium = TireConfig::for_compound(TireCompound::Medium);
         assert_approx(medium.grip_multiplier, 1.0);
-        assert_approx(medium.degradation_rate, 0.0008);
+        assert_approx(medium.degradation_rate, 0.000350);
         assert_approx(medium.rain_suitability, 0.4);
         assert_approx(medium.rubber_deposit_multiplier, 1.0);
     }
@@ -1686,7 +1487,7 @@ mod tests {
     fn tire_config_hard_specific_values() {
         let hard = TireConfig::for_compound(TireCompound::Hard);
         assert_approx(hard.grip_multiplier, 0.92);
-        assert_approx(hard.degradation_rate, 0.0004);
+        assert_approx(hard.degradation_rate, 0.000245);
         assert_approx(hard.rubber_deposit_multiplier, 0.7);
     }
 
@@ -1694,6 +1495,7 @@ mod tests {
     fn tire_config_wet_specific_values() {
         let wet = TireConfig::for_compound(TireCompound::Wet);
         assert_approx(wet.grip_multiplier, 0.75);
+        assert_approx(wet.degradation_rate, 0.000315);
         assert_approx(wet.rain_suitability, 1.0);
         assert_approx(wet.rubber_deposit_multiplier, 0.3);
     }
@@ -1702,6 +1504,7 @@ mod tests {
     fn tire_config_intermediate_specific_values() {
         let inter = TireConfig::for_compound(TireCompound::Intermediate);
         assert_approx(inter.grip_multiplier, 0.88);
+        assert_approx(inter.degradation_rate, 0.000263);
         assert_approx(inter.rain_suitability, 0.8);
         assert_approx(inter.rubber_deposit_multiplier, 0.5);
     }

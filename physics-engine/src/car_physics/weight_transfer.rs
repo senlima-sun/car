@@ -1,7 +1,7 @@
-use super::{CAR_MASS, CG_HEIGHT, TRACK_WIDTH, WEIGHT_DIST_FRONT, WHEELBASE};
+use crate::constants::car::{CAR_MASS, CG_HEIGHT, TRACK_WIDTH, WEIGHT_DIST_FRONT, WHEELBASE};
 
-const LONGITUDINAL_TRANSFER_FACTOR: f32 = 0.5;
-const LATERAL_TRANSFER_FACTOR: f32 = 0.4;
+const LONGITUDINAL_TRANSFER_FACTOR: f32 = 0.85;
+const LATERAL_TRANSFER_FACTOR: f32 = 0.80;
 
 #[derive(Debug, Clone, Copy)]
 pub struct WeightTransferResult {

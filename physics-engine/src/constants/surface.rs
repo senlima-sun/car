@@ -1,0 +1,1 @@
+pub const TRANSITION_DURATION: f32 = 0.3;
