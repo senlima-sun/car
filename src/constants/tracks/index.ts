@@ -1,6 +1,7 @@
 import type { PlacedObject } from '@/stores/useCustomizationStore'
 import silverstoneData from './silverstone.json'
 import suzukaData from './suzuka.json'
+import monzaData from './monza.json'
 
 export interface PresetTrack {
   id: string
@@ -13,6 +14,7 @@ export interface PresetTrack {
 export const PRESET_TRACKS: PresetTrack[] = [
   silverstoneData as PresetTrack,
   suzukaData as PresetTrack,
+  monzaData as PresetTrack,
 ]
 
 export function getPresetTrack(id: string): PresetTrack | undefined {

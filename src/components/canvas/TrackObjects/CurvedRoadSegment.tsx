@@ -4,6 +4,7 @@ import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
+import { smoothstep } from '../../../utils/roadGeometry'
 import { useRoadSurfaces } from './hooks/useRoadSurfaces'
 import { useTemperatureRegistration } from './hooks/useTemperatureRegistration'
 import { EdgeLines } from './components/EdgeLines'
@@ -80,7 +81,10 @@ export default function CurvedRoadSegment({
 
     const curve = new QuadraticBezierCurve3(start, control, end)
     const curveLen = curve.getLength()
-    const segmentCount = Math.max(MIN_CURVE_SEGMENTS, Math.min(MAX_CURVE_SEGMENTS, Math.ceil(curveLen / METERS_PER_SEGMENT)))
+    const segmentCount = Math.max(
+      MIN_CURVE_SEGMENTS,
+      Math.min(MAX_CURVE_SEGMENTS, Math.ceil(curveLen / METERS_PER_SEGMENT)),
+    )
     const points = curve.getPoints(segmentCount)
 
     const BLEND_SEGMENTS = 3
@@ -93,9 +97,9 @@ export default function CurvedRoadSegment({
 
       let tangent: Vector3
       if (i === 0) {
-        tangent = new Vector3().subVectors(points[1], points[0]).normalize()
+        tangent = new Vector3().subVectors(control, start).normalize()
       } else if (i === points.length - 1) {
-        tangent = new Vector3().subVectors(points[i], points[i - 1]).normalize()
+        tangent = new Vector3().subVectors(end, control).normalize()
       } else {
         tangent = new Vector3().subVectors(points[i + 1], points[i - 1]).normalize()
       }
@@ -117,13 +121,13 @@ export default function CurvedRoadSegment({
         leftPoint = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
         rightPoint = new Vector3(endRightEdge![0], 0, endRightEdge![2])
       } else if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
-        const blend = i / (BLEND_SEGMENTS + 1)
+        const blend = smoothstep(i / (BLEND_SEGMENTS + 1))
         const snapLeft = new Vector3(startLeftEdge![0], 0, startLeftEdge![2])
         const snapRight = new Vector3(startRightEdge![0], 0, startRightEdge![2])
         leftPoint = new Vector3().lerpVectors(snapLeft, naturalLeft, blend)
         rightPoint = new Vector3().lerpVectors(snapRight, naturalRight, blend)
       } else if (i < points.length - 1 && i >= points.length - 1 - BLEND_SEGMENTS && hasEndSnap) {
-        const blend = (points.length - 1 - i) / (BLEND_SEGMENTS + 1)
+        const blend = smoothstep((points.length - 1 - i) / (BLEND_SEGMENTS + 1))
         const snapLeft = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
         const snapRight = new Vector3(endRightEdge![0], 0, endRightEdge![2])
         leftPoint = new Vector3().lerpVectors(snapLeft, naturalLeft, blend)
@@ -157,7 +161,11 @@ export default function CurvedRoadSegment({
       const p = points[i]
       const t = i / (points.length - 1)
 
-      const { leftPoint, rightPoint, leftY, rightY, perpendicular, elevationY } = computeEdgePoints(i, p, t)
+      const { leftPoint, rightPoint, leftY, rightY, perpendicular, elevationY } = computeEdgePoints(
+        i,
+        p,
+        t,
+      )
 
       for (let k = 0; k <= CROSS_SEGS; k++) {
         const tW = k / CROSS_SEGS
@@ -272,9 +280,9 @@ export default function CurvedRoadSegment({
 
       let tangent: Vector3
       if (i === 0) {
-        tangent = new Vector3().subVectors(points[1], points[0]).normalize()
+        tangent = new Vector3().subVectors(control, start).normalize()
       } else if (i === points.length - 1) {
-        tangent = new Vector3().subVectors(points[i], points[i - 1]).normalize()
+        tangent = new Vector3().subVectors(end, control).normalize()
       } else {
         tangent = new Vector3().subVectors(points[i + 1], points[i - 1]).normalize()
       }
@@ -333,7 +341,12 @@ export default function CurvedRoadSegment({
       const p = points[idx]
       const t = idx / (points.length - 1)
 
-      const { leftPoint: lp, rightPoint: rp, leftY: topLeftY, rightY: topRightY } = computeEdgePoints(idx, p, t)
+      const {
+        leftPoint: lp,
+        rightPoint: rp,
+        leftY: topLeftY,
+        rightY: topRightY,
+      } = computeEdgePoints(idx, p, t)
 
       const botLeftY = topLeftY - 0.15
       const botRightY = topRightY - 0.15
@@ -362,7 +375,12 @@ export default function CurvedRoadSegment({
       const p = points[idx]
       const t = 1.0
 
-      const { leftPoint: lp, rightPoint: rp, leftY: topLeftY, rightY: topRightY } = computeEdgePoints(idx, p, t)
+      const {
+        leftPoint: lp,
+        rightPoint: rp,
+        leftY: topLeftY,
+        rightY: topRightY,
+      } = computeEdgePoints(idx, p, t)
 
       const botLeftY = topLeftY - 0.15
       const botRightY = topRightY - 0.15
@@ -428,14 +446,14 @@ export default function CurvedRoadSegment({
     <>
       {/* Road surface */}
       <mesh geometry={roadGeometry} receiveShadow={!isGhost}>
-        <RoadSurfaceMaterial
-          isGhost={isGhost}
-          variant='road'
-          side={2}
-        />
+        <RoadSurfaceMaterial isGhost={isGhost} variant='road' side={2} />
       </mesh>
 
-      <EdgeLines leftGeometry={leftEdgeGeometry} rightGeometry={rightEdgeGeometry} isGhost={isGhost} />
+      <EdgeLines
+        leftGeometry={leftEdgeGeometry}
+        rightGeometry={rightEdgeGeometry}
+        isGhost={isGhost}
+      />
 
       <RoadSelectionHighlight isSelected={isSelectedForCurb} geometry={selectionGeometry} />
     </>

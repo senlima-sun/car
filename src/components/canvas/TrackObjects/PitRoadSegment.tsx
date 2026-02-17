@@ -5,7 +5,6 @@ import { GHOST_OPACITY, PIT_ROAD_EDGE_COLOR, PIT_ROAD_WIDTH } from '../../../con
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
-import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
 import { useElevationStore } from '../../../stores/useElevationStore'
 import { usePhysicsOptional } from '../../../wasm'
 
@@ -38,7 +37,6 @@ export default function PitRoadSegment({
   const enterElevation = useElevationStore(s => s.enterRoad)
   const exitElevation = useElevationStore(s => s.exitRoad)
   const physics = usePhysicsOptional()
-  const setRoadRegionTS = useTrackTemperatureStore(s => s.setRoadRegion)
 
   const { length, calculatedRotation, midpoint, startElev, endElev, midElev } = useMemo(() => {
     const startElevValue = startElevation ?? 0
@@ -51,7 +49,11 @@ export default function PitRoadSegment({
       const direction = end.clone().sub(start)
       const len = direction.length()
       const rot = Math.atan2(direction.x, direction.z)
-      const mid: [number, number, number] = [(start.x + end.x) / 2, midElevValue, (start.z + end.z) / 2]
+      const mid: [number, number, number] = [
+        (start.x + end.x) / 2,
+        midElevValue,
+        (start.z + end.z) / 2,
+      ]
       return {
         length: len,
         calculatedRotation: rot,
@@ -79,18 +81,26 @@ export default function PitRoadSegment({
     const edgeWidth = 0.2
     const edgeOffset = halfW - edgeWidth / 2
     const hl = length / 2
-    const startY = (startElev - midElev) + 0.012
-    const endY = (endElev - midElev) + 0.012
+    const startY = startElev - midElev + 0.012
+    const endY = endElev - midElev + 0.012
 
     const createEdgeGeo = (sign: number) => {
       const geo = new BufferGeometry()
       const inner = sign * (edgeOffset - edgeWidth / 2)
       const outer = sign * (edgeOffset + edgeWidth / 2)
       const vertices = new Float32Array([
-        inner, startY, -hl,
-        outer, startY, -hl,
-        inner, endY, hl,
-        outer, endY, hl,
+        inner,
+        startY,
+        -hl,
+        outer,
+        startY,
+        -hl,
+        inner,
+        endY,
+        hl,
+        outer,
+        endY,
+        hl,
       ])
       geo.setAttribute('position', new Float32BufferAttribute(vertices, 3))
       geo.setIndex([0, 2, 1, 1, 2, 3])
@@ -108,14 +118,22 @@ export default function PitRoadSegment({
     const geo = new BufferGeometry()
     const hw = width / 2
     const hl = length / 2
-    const startY = (startElev - midElev) + 0.01
-    const endY = (endElev - midElev) + 0.01
+    const startY = startElev - midElev + 0.01
+    const endY = endElev - midElev + 0.01
 
     const vertices = new Float32Array([
-      -hw, startY, -hl,
-       hw, startY, -hl,
-      -hw, endY,    hl,
-       hw, endY,    hl,
+      -hw,
+      startY,
+      -hl,
+      hw,
+      startY,
+      -hl,
+      -hw,
+      endY,
+      hl,
+      hw,
+      endY,
+      hl,
     ])
     const indices = [0, 2, 1, 1, 2, 3]
     const uvs = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1])
@@ -168,42 +186,51 @@ export default function PitRoadSegment({
       physics.setRoadRegion(minX, minZ, maxX, maxZ, true)
     }
 
-    setRoadRegionTS(minX, minZ, maxX, maxZ, true)
-
     return () => {
       if (physics) {
         physics.setRoadRegion(minX, minZ, maxX, maxZ, false)
       }
-      setRoadRegionTS(minX, minZ, maxX, maxZ, false)
     }
-  }, [isGhost, physics, setRoadRegionTS, finalPosition, finalRotation, width, length])
+  }, [isGhost, physics, finalPosition, finalRotation, width, length])
 
   const rampColliderData = useMemo(() => {
     const hw = width / 2
     const hl = length / 2
     const overlap = 0.15
-    const topStartY = (startElev - midElev) + 0.01
-    const topEndY = (endElev - midElev) + 0.01
+    const topStartY = startElev - midElev + 0.01
+    const topEndY = endElev - midElev + 0.01
     const botY = -0.15
 
     const vertices = new Float32Array([
-      -hw, topStartY, -(hl + overlap),
-       hw, topStartY, -(hl + overlap),
-      -hw, topEndY,    (hl + overlap),
-       hw, topEndY,    (hl + overlap),
-      -hw, botY, -(hl + overlap),
-       hw, botY, -(hl + overlap),
-      -hw, botY,  (hl + overlap),
-       hw, botY,  (hl + overlap),
+      -hw,
+      topStartY,
+      -(hl + overlap),
+      hw,
+      topStartY,
+      -(hl + overlap),
+      -hw,
+      topEndY,
+      hl + overlap,
+      hw,
+      topEndY,
+      hl + overlap,
+      -hw,
+      botY,
+      -(hl + overlap),
+      hw,
+      botY,
+      -(hl + overlap),
+      -hw,
+      botY,
+      hl + overlap,
+      hw,
+      botY,
+      hl + overlap,
     ])
 
     const indices = new Uint32Array([
-      0, 1, 2, 2, 1, 3,
-      4, 6, 5, 5, 6, 7,
-      0, 4, 1, 1, 4, 5,
-      2, 3, 6, 6, 3, 7,
-      0, 2, 4, 4, 2, 6,
-      1, 5, 3, 3, 5, 7,
+      0, 1, 2, 2, 1, 3, 4, 6, 5, 5, 6, 7, 0, 4, 1, 1, 4, 5, 2, 3, 6, 6, 3, 7, 0, 2, 4, 4, 2, 6, 1,
+      5, 3, 3, 5, 7,
     ])
 
     return { vertices, indices }
@@ -212,10 +239,7 @@ export default function PitRoadSegment({
   const roadVisuals = (
     <>
       <mesh geometry={slopeGeometry} receiveShadow={!isGhost}>
-        <RoadSurfaceMaterial
-          isGhost={isGhost}
-          variant='pitroad'
-        />
+        <RoadSurfaceMaterial isGhost={isGhost} variant='pitroad' />
       </mesh>
 
       <mesh geometry={leftEdgeGeometry}>
@@ -239,7 +263,10 @@ export default function PitRoadSegment({
       </mesh>
 
       {isSelectedForCurb && (
-        <mesh position={[0, (startElev + endElev) / 2 - midElev + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh
+          position={[0, (startElev + endElev) / 2 - midElev + 0.05, 0]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
           <planeGeometry args={[width + 0.5, length + 0.5]} />
           <meshBasicMaterial color='#22c55e' transparent opacity={0.3} depthWrite={false} />
         </mesh>

@@ -1,11 +1,23 @@
 import { useMemo, useCallback } from 'react'
 import { BufferGeometry, Float32BufferAttribute } from 'three'
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
-import { GHOST_OPACITY, OBJECT_CONFIGS } from '../../../constants/trackObjects'
-import { CURB_WIDTH, CURB_PEAK_HEIGHTS, STRIPE_WIDTH, getProfileForType, TOOTH_SPACING } from '../../../constants/curb'
+import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
+import { OBJECT_CONFIGS } from '../../../constants/trackObjects'
+import {
+  CURB_WIDTH,
+  CURB_PEAK_HEIGHTS,
+  STRIPE_WIDTH,
+  TOOTH_SPACING,
+  TOOTH_RAMP,
+  TOOTH_FLAT,
+  TOOTH_DROP,
+  getProfileForType,
+  getSawtoothHeight,
+} from '../../../constants/curb'
+import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { PlacedObject, getRoadEdgePositionAt } from '../../../stores/useCustomizationStore'
+import CurbSurfaceMaterial from './CurbSurfaceMaterial'
 import type { CurbType } from '../../../types/trackObjects'
 
 const curbConfig = OBJECT_CONFIGS.curb
@@ -16,34 +28,77 @@ interface CurbSegmentProps {
   isGhost?: boolean
 }
 
-function createCurbGeometry(length: number, stripeCount: number, curbType: CurbType): BufferGeometry {
-  const vertices: number[] = []
-  const indices: number[] = []
-  const colors: number[] = []
+function buildToothZPositions(halfLength: number, length: number): number[] {
+  const zPositions = new Set<number>()
 
-  const profile = getProfileForType(curbType)
-  const profilePoints = profile.length
-  const lengthSegments = Math.max(2, Math.ceil(length / STRIPE_WIDTH))
+  zPositions.add(-halfLength)
+  zPositions.add(halfLength)
 
-  for (let i = 0; i <= lengthSegments; i++) {
-    const z = (i / lengthSegments - 0.5) * length
+  const baseSegments = Math.max(2, Math.ceil(length / STRIPE_WIDTH))
+  for (let i = 0; i <= baseSegments; i++) {
+    zPositions.add((i / baseSegments - 0.5) * length)
+  }
 
-    const sawtoothMod = curbType === 'exit'
-      ? Math.abs(((z / TOOTH_SPACING) % 1) * 2 - 1)
-      : 1.0
+  const startZ = -halfLength
+  const endZ = halfLength
+  const firstToothStart = Math.ceil(startZ / TOOTH_SPACING) * TOOTH_SPACING
 
-    for (let j = 0; j < profilePoints; j++) {
-      const p = profile[j]
-      const h = curbType === 'exit' ? p.y * sawtoothMod : p.y
-      vertices.push(p.x - CURB_WIDTH / 2, h, z)
-
-      const stripeIndex = Math.floor((i / lengthSegments) * stripeCount)
-      const isRed = stripeIndex % 2 === 0
-      colors.push(isRed ? 1 : 1, isRed ? 0 : 1, isRed ? 0 : 1)
+  for (let toothBase = firstToothStart; toothBase < endZ; toothBase += TOOTH_SPACING) {
+    const transitions = [
+      toothBase,
+      toothBase + TOOTH_RAMP * TOOTH_SPACING,
+      toothBase + (TOOTH_RAMP + TOOTH_FLAT) * TOOTH_SPACING,
+      toothBase + (TOOTH_RAMP + TOOTH_FLAT + TOOTH_DROP) * TOOTH_SPACING,
+    ]
+    for (const tz of transitions) {
+      if (tz >= startZ && tz <= endZ) {
+        zPositions.add(tz)
+      }
     }
   }
 
-  for (let i = 0; i < lengthSegments; i++) {
+  return Array.from(zPositions).sort((a, b) => a - b)
+}
+
+interface CurbGeometryResult {
+  geometry: BufferGeometry
+  collisionVertices: Float32Array
+  collisionIndices: Uint32Array
+}
+
+function createCurbGeometry(length: number, curbType: CurbType): CurbGeometryResult {
+  const vertices: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+
+  const profile = getProfileForType(curbType)
+  const profilePoints = profile.length
+  const halfLength = length / 2
+
+  const isExit = curbType === 'exit'
+  const zRows = isExit
+    ? buildToothZPositions(halfLength, length)
+    : (() => {
+        const segs = Math.max(2, Math.ceil(length / STRIPE_WIDTH))
+        const arr: number[] = []
+        for (let i = 0; i <= segs; i++) arr.push((i / segs - 0.5) * length)
+        return arr
+      })()
+
+  for (const z of zRows) {
+    const sawMod = isExit ? getSawtoothHeight(z) : 1.0
+    const vCoord = z + halfLength
+
+    for (let j = 0; j < profilePoints; j++) {
+      const p = profile[j]
+      const h = isExit ? p.y * sawMod : p.y
+      vertices.push(p.x - CURB_WIDTH / 2, h, z)
+      uvs.push(p.x / CURB_WIDTH, vCoord)
+    }
+  }
+
+  const rowCount = zRows.length
+  for (let i = 0; i < rowCount - 1; i++) {
     for (let j = 0; j < profilePoints - 1; j++) {
       const a = i * profilePoints + j
       const b = i * profilePoints + j + 1
@@ -57,11 +112,15 @@ function createCurbGeometry(length: number, stripeCount: number, curbType: CurbT
 
   const geometry = new BufferGeometry()
   geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3))
-  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3))
+  geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2))
   geometry.setIndex(indices)
   geometry.computeVertexNormals()
 
-  return geometry
+  return {
+    geometry,
+    collisionVertices: new Float32Array(vertices),
+    collisionIndices: new Uint32Array(indices),
+  }
 }
 
 export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbSegmentProps) {
@@ -73,52 +132,31 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
   const curbType: CurbType = curb.curbType || 'apex'
   const peakHeight = CURB_PEAK_HEIGHTS[curbType]
 
-  const { geometry, rotation, midpoint, curbLength } = useMemo(() => {
+  const result = useMemo(() => {
     if (!curb.startT || !curb.endT || !curb.edgeSide) {
-      return {
-        geometry: null,
-        rotation: 0,
-        midpoint: [0, 0, 0] as [number, number, number],
-        curbLength: 0,
-      }
+      return null
     }
 
-    const startT = curb.startT
-    const endT = curb.endT
-
-    const startPos = getRoadEdgePositionAt(parentRoad, curb.edgeSide, startT)
-    const endPos = getRoadEdgePositionAt(parentRoad, curb.edgeSide, endT)
+    const startPos = getRoadEdgePositionAt(parentRoad, curb.edgeSide, curb.startT)
+    const endPos = getRoadEdgePositionAt(parentRoad, curb.edgeSide, curb.endT)
 
     const dx = endPos[0] - startPos[0]
     const dz = endPos[2] - startPos[2]
     const length = Math.sqrt(dx * dx + dz * dz)
 
-    if (length === 0) {
-      return {
-        geometry: null,
-        rotation: 0,
-        midpoint: [0, 0, 0] as [number, number, number],
-        curbLength: 0,
-      }
-    }
+    if (length === 0) return null
 
     const rot = Math.atan2(dx, dz)
-
     const mid: [number, number, number] = [
       (startPos[0] + endPos[0]) / 2,
       (startPos[1] + endPos[1]) / 2,
       (startPos[2] + endPos[2]) / 2,
     ]
 
-    const stripes = Math.max(2, Math.ceil(length / STRIPE_WIDTH))
-    const geo = createCurbGeometry(length, stripes, curbType)
+    const { geometry, collisionVertices, collisionIndices } = createCurbGeometry(length, curbType)
 
-    return { geometry: geo, rotation: rot, midpoint: mid, curbLength: length }
+    return { geometry, collisionVertices, collisionIndices, rotation: rot, midpoint: mid, curbLength: length }
   }, [curb, parentRoad, curbType])
-
-  if (!geometry || curbLength === 0) return null
-
-  const perpOffset = curb.edgeSide === 'left' ? CURB_WIDTH / 2 : -CURB_WIDTH / 2
 
   const handleEnter = useCallback(() => {
     if (!isGhost && curb.edgeSide) {
@@ -134,16 +172,15 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
     }
   }, [isGhost, exitCurb, exitSurface])
 
+  if (!result) return null
+
+  const perpOffset = curb.edgeSide === 'left' ? CURB_WIDTH / 2 : -CURB_WIDTH / 2
+
   if (isGhost) {
     return (
-      <group position={midpoint} rotation={[0, rotation, 0]}>
-        <mesh position={[perpOffset, 0, 0]} geometry={geometry} receiveShadow={false}>
-          <meshStandardMaterial
-            vertexColors
-            transparent
-            opacity={GHOST_OPACITY}
-            depthWrite={false}
-          />
+      <group position={result.midpoint} rotation={[0, result.rotation, 0]}>
+        <mesh position={[perpOffset, 0, 0]} geometry={result.geometry} receiveShadow={false}>
+          <CurbSurfaceMaterial curbType={curbType} isGhost />
         </mesh>
       </group>
     )
@@ -152,23 +189,31 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
   return (
     <RigidBody
       type='fixed'
-      position={midpoint}
-      rotation={[0, rotation, 0]}
+      position={result.midpoint}
+      rotation={[0, result.rotation, 0]}
       friction={curbConfig.friction}
       restitution={curbConfig.restitution}
       colliders={false}
     >
       <group position={[perpOffset, 0, 0]}>
         <CuboidCollider
-          args={[CURB_WIDTH / 2, peakHeight / 2, curbLength / 2]}
+          args={[CURB_WIDTH / 2, peakHeight / 2, result.curbLength / 2]}
           position={[0, peakHeight / 2, 0]}
           sensor
           onIntersectionEnter={handleEnter}
           onIntersectionExit={handleExit}
         />
 
-        <mesh geometry={geometry} receiveShadow castShadow>
-          <meshStandardMaterial vertexColors />
+        {result.collisionVertices.length > 0 && (
+          <TrimeshCollider
+            args={[result.collisionVertices, result.collisionIndices]}
+            friction={curbConfig.friction}
+            collisionGroups={TRACK_COLLISION_GROUPS}
+          />
+        )}
+
+        <mesh geometry={result.geometry} receiveShadow castShadow>
+          <CurbSurfaceMaterial curbType={curbType} />
         </mesh>
       </group>
     </RigidBody>
@@ -188,19 +233,12 @@ export function CurbPreview({
   edge,
   isGhost = true,
 }: CurbPreviewProps) {
-  const { geometry, rotation, midpoint, curbLength } = useMemo(() => {
+  const previewResult = useMemo(() => {
     const dx = endPosition[0] - startPosition[0]
     const dz = endPosition[2] - startPosition[2]
     const length = Math.sqrt(dx * dx + dz * dz)
 
-    if (length < 0.1) {
-      return {
-        geometry: null,
-        rotation: 0,
-        midpoint: [0, 0, 0] as [number, number, number],
-        curbLength: 0,
-      }
-    }
+    if (length < 0.1) return null
 
     const rot = Math.atan2(dx, dz)
     const mid: [number, number, number] = [
@@ -209,25 +247,19 @@ export function CurbPreview({
       (startPosition[2] + endPosition[2]) / 2,
     ]
 
-    const stripeCount = Math.max(2, Math.ceil(length / STRIPE_WIDTH))
-    const geo = createCurbGeometry(length, stripeCount, 'apex')
+    const { geometry } = createCurbGeometry(length, 'apex')
 
-    return { geometry: geo, rotation: rot, midpoint: mid, curbLength: length }
+    return { geometry, rotation: rot, midpoint: mid }
   }, [startPosition, endPosition])
 
-  if (!geometry || curbLength === 0) return null
+  if (!previewResult) return null
 
   const perpOffset = edge === 'left' ? CURB_WIDTH / 2 : -CURB_WIDTH / 2
 
   return (
-    <group position={midpoint} rotation={[0, rotation, 0]}>
-      <mesh position={[perpOffset, 0, 0]} geometry={geometry}>
-        <meshStandardMaterial
-          vertexColors
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-        />
+    <group position={previewResult.midpoint} rotation={[0, previewResult.rotation, 0]}>
+      <mesh position={[perpOffset, 0, 0]} geometry={previewResult.geometry}>
+        <CurbSurfaceMaterial curbType='apex' isGhost={isGhost} />
       </mesh>
     </group>
   )

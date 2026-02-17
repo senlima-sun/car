@@ -120,33 +120,34 @@ function SurfaceMaterial({
   const isGrass = surfaceType === 'grass_patch'
   const matRef = useRef<THREE.MeshStandardMaterial>(null)
 
-  const onBeforeCompile = useCallback((shader: THREE.Shader) => {
-    shader.uniforms.uSurfaceTime = timeRef.current
+  const onBeforeCompile = useCallback(
+    (shader: THREE.WebGLProgramParametersWithUniforms) => {
+      shader.uniforms.uSurfaceTime = timeRef.current
 
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <common>',
-      `#include <common>
-varying vec3 vSurfaceWorldPos;`
-    )
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <worldpos_vertex>',
-      `#include <worldpos_vertex>
-vSurfaceWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`
-    )
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vSurfaceWorldPos;`,
+      )
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <worldpos_vertex>',
+        `#include <worldpos_vertex>
+vSurfaceWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
+      )
 
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <common>',
-      `#include <common>
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        `#include <common>
 varying vec3 vSurfaceWorldPos;
 uniform float uSurfaceTime;
 ${isGrass ? GRASS_NOISE : GRAVEL_NOISE}
-`
-    )
+`,
+      )
 
-    if (isGrass) {
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
+      if (isGrass) {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <color_fragment>',
+          `#include <color_fragment>
 {
   vec2 wXZ = vSurfaceWorldPos.xz;
   vec3 dk=vec3(0.227,0.420,0.271);vec3 md=vec3(0.353,0.612,0.310);vec3 lt=vec3(0.482,0.769,0.416);
@@ -163,12 +164,12 @@ ${isGrass ? GRASS_NOISE : GRAVEL_NOISE}
   col*=0.85+mn*0.3;
   diffuseColor.rgb=col;
 }
-`
-      )
-    } else {
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
+`,
+        )
+      } else {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <color_fragment>',
+          `#include <color_fragment>
 {
   vec2 uv=vSurfaceWorldPos.xz;
   vec3 lp=_voronoi(uv,3.0);vec3 mp=_voronoi(uv+vec2(17.3,31.7),6.0);vec3 sp=_voronoi(uv+vec2(53.1,89.4),12.0);
@@ -186,10 +187,12 @@ ${isGrass ? GRASS_NOISE : GRAVEL_NOISE}
   col+=vec3(_hash1(floor(uv*50.0))*0.06)-vec3(0.03);
   diffuseColor.rgb=col;
 }
-`
-      )
-    }
-  }, [isGrass, timeRef])
+`,
+        )
+      }
+    },
+    [isGrass, timeRef],
+  )
 
   return (
     <meshStandardMaterial
@@ -205,7 +208,11 @@ ${isGrass ? GRASS_NOISE : GRAVEL_NOISE}
   )
 }
 
-export default function SurfacePatch({ polygonPoints, surfaceType, isGhost = false }: SurfacePatchProps) {
+export default function SurfacePatch({
+  polygonPoints,
+  surfaceType,
+  isGhost = false,
+}: SurfacePatchProps) {
   if (!polygonPoints || polygonPoints.length < 3) return null
 
   const y = SURFACE_Y[surfaceType]
@@ -226,7 +233,9 @@ export default function SurfacePatch({ polygonPoints, surfaceType, isGhost = fal
   }, [polygonPoints, y])
 
   useEffect(() => {
-    return () => { geometry.dispose() }
+    return () => {
+      geometry.dispose()
+    }
   }, [geometry])
 
   useFrame((_state, delta) => {
@@ -269,12 +278,7 @@ export default function SurfacePatch({ polygonPoints, surfaceType, isGhost = fal
 
   return (
     <RigidBody type='fixed' colliders={false}>
-      <mesh
-        geometry={geometry}
-        rotation={[Math.PI / 2, 0, 0]}
-        position={[0, y, 0]}
-        receiveShadow
-      >
+      <mesh geometry={geometry} rotation={[Math.PI / 2, 0, 0]} position={[0, y, 0]} receiveShadow>
         <SurfaceMaterial surfaceType={surfaceType} timeRef={timeRef} />
       </mesh>
       <TrimeshCollider

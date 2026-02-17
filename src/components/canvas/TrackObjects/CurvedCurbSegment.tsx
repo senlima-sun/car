@@ -1,13 +1,24 @@
 import { useMemo, useCallback } from 'react'
 import { Vector3, QuadraticBezierCurve3, BufferGeometry, Float32BufferAttribute } from 'three'
 import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
-import { GHOST_OPACITY, OBJECT_CONFIGS } from '../../../constants/trackObjects'
-import { CURB_WIDTH, CURB_PEAK_HEIGHTS, STRIPE_WIDTH, getProfileForType, TOOTH_SPACING } from '../../../constants/curb'
-import { ROAD_HALF_WIDTH, TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
+import { OBJECT_CONFIGS } from '../../../constants/trackObjects'
+import {
+  CURB_WIDTH,
+  CURB_PEAK_HEIGHTS,
+  STRIPE_WIDTH,
+  TOOTH_SPACING,
+  TOOTH_RAMP,
+  TOOTH_FLAT,
+  TOOTH_DROP,
+  getProfileForType,
+  getSawtoothHeight,
+} from '../../../constants/curb'
+import { ROAD_HALF_WIDTH, TRACK_WIDTH, TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { PlacedObject } from '../../../stores/useCustomizationStore'
 import { getElevationAtT } from '../../../utils/roadGeometry'
+import CurbSurfaceMaterial from './CurbSurfaceMaterial'
 import type { CurbType } from '../../../types/trackObjects'
 
 const curbConfig = OBJECT_CONFIGS.curb
@@ -35,6 +46,122 @@ function getProfileHeight(normalizedX: number, curbType: CurbType): number {
   return 0
 }
 
+function buildCurveArcSamples(
+  curve: QuadraticBezierCurve3,
+  tStart: number,
+  tEnd: number,
+  curveLength: number,
+  curbType: CurbType,
+): number[] {
+  const tRange = tEnd - tStart
+  const baseCount = Math.max(8, Math.ceil(curveLength / (STRIPE_WIDTH * 0.5)))
+  const tSamples = new Set<number>()
+
+  for (let i = 0; i <= baseCount; i++) {
+    tSamples.add(tStart + (i / baseCount) * tRange)
+  }
+
+  if (curbType === 'exit') {
+    const totalArc = curveLength
+    const firstTooth = Math.ceil(0 / TOOTH_SPACING) * TOOTH_SPACING
+    for (let toothBase = firstTooth; toothBase < totalArc; toothBase += TOOTH_SPACING) {
+      const transitions = [
+        toothBase,
+        toothBase + TOOTH_RAMP * TOOTH_SPACING,
+        toothBase + (TOOTH_RAMP + TOOTH_FLAT) * TOOTH_SPACING,
+        toothBase + (TOOTH_RAMP + TOOTH_FLAT + TOOTH_DROP) * TOOTH_SPACING,
+      ]
+      for (const arcT of transitions) {
+        const normalizedArc = arcT / totalArc
+        if (normalizedArc >= 0 && normalizedArc <= 1) {
+          tSamples.add(tStart + normalizedArc * tRange)
+        }
+      }
+    }
+  }
+
+  return Array.from(tSamples).sort((a, b) => a - b)
+}
+
+interface UnifiedGeometryResult {
+  geometry: BufferGeometry
+  collisionVertices: Float32Array
+  collisionIndices: Uint32Array
+}
+
+function createUnifiedCurvedGeometry(
+  curve: QuadraticBezierCurve3,
+  tStart: number,
+  tEnd: number,
+  curveLength: number,
+  edgeSign: number,
+  curbType: CurbType,
+  parentRoad: PlacedObject,
+  roadHalfWidth: number = ROAD_HALF_WIDTH,
+): UnifiedGeometryResult {
+  const profileSubdivisions = 6
+  const vertsPerRow = profileSubdivisions + 1
+  const isExit = curbType === 'exit'
+
+  const tSamples = buildCurveArcSamples(curve, tStart, tEnd, curveLength, curbType)
+  const tRange = tEnd - tStart
+
+  const vertices: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+
+  for (let ri = 0; ri < tSamples.length; ri++) {
+    const t = tSamples[ri]
+    const pos = curve.getPoint(t)
+    const tangent = curve.getTangent(t)
+    const perp = new Vector3(-tangent.z, 0, tangent.x).normalize()
+    const elevationY = getElevationAtT(parentRoad, t)
+
+    const normalizedArc = (t - tStart) / tRange
+    const arcPos = normalizedArc * curveLength
+    const sawMod = isExit ? getSawtoothHeight(arcPos) : 1.0
+
+    for (let p = 0; p <= profileSubdivisions; p++) {
+      const normalizedWidth = p / profileSubdivisions
+      const baseHeight = getProfileHeight(normalizedWidth, curbType)
+      const height = isExit ? baseHeight * sawMod : baseHeight
+
+      const innerOffset = roadHalfWidth * edgeSign
+      const outerOffset = (roadHalfWidth + CURB_WIDTH) * edgeSign
+      const widthOffset = innerOffset + (outerOffset - innerOffset) * normalizedWidth
+
+      vertices.push(pos.x + perp.x * widthOffset, height + elevationY, pos.z + perp.z * widthOffset)
+
+      uvs.push(normalizedWidth, arcPos)
+    }
+  }
+
+  const rowCount = tSamples.length
+  for (let i = 0; i < rowCount - 1; i++) {
+    for (let p = 0; p < profileSubdivisions; p++) {
+      const a = i * vertsPerRow + p
+      const b = i * vertsPerRow + p + 1
+      const c = (i + 1) * vertsPerRow + p
+      const d = (i + 1) * vertsPerRow + p + 1
+
+      indices.push(a, c, b)
+      indices.push(b, c, d)
+    }
+  }
+
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3))
+  geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2))
+  geometry.setIndex(indices)
+  geometry.computeVertexNormals()
+
+  return {
+    geometry,
+    collisionVertices: new Float32Array(vertices),
+    collisionIndices: new Uint32Array(indices),
+  }
+}
+
 export default function CurvedCurbSegment({
   curb,
   parentRoad,
@@ -48,7 +175,7 @@ export default function CurvedCurbSegment({
   const curbType: CurbType = curb.curbType || 'apex'
   const peakHeight = CURB_PEAK_HEIGHTS[curbType]
 
-  const { stripeGeometries, collisionData, sensorData } = useMemo(() => {
+  const result = useMemo(() => {
     if (
       !curb.startT ||
       !curb.endT ||
@@ -57,121 +184,46 @@ export default function CurvedCurbSegment({
       !parentRoad.endPoint ||
       !parentRoad.controlPoint
     ) {
-      return { stripeGeometries: [], collisionData: { vertices: new Float32Array(0), indices: new Uint32Array(0) }, sensorData: null }
+      return null
     }
 
     const start = new Vector3(...parentRoad.startPoint)
     const control = new Vector3(...parentRoad.controlPoint)
     const end = new Vector3(...parentRoad.endPoint)
-
     const curve = new QuadraticBezierCurve3(start, control, end)
 
     const tStart = Math.min(curb.startT, curb.endT)
     const tEnd = Math.max(curb.startT, curb.endT)
     const tRange = tEnd - tStart
-
     const curveLength = curve.getLength() * tRange
-    const stripeCount = Math.max(2, Math.ceil(curveLength / STRIPE_WIDTH))
+
+    if (curveLength < 0.01) return null
 
     const edgeSign = curb.edgeSide === 'left' ? 1 : -1
+    const parentHalfWidth = (parentRoad.width ?? TRACK_WIDTH) / 2
 
-    const stripes: { geometry: BufferGeometry; color: string }[] = []
-
-    const profileSubdivisions = 6
-
-    let cumulativeArcLength = 0
-
-    for (let s = 0; s < stripeCount; s++) {
-      const segStart = tStart + (s / stripeCount) * tRange
-      const segEnd = tStart + ((s + 1) / stripeCount) * tRange
-      const segmentPoints = 8
-
-      const vertices: number[] = []
-      const indices: number[] = []
-
-      for (let i = 0; i <= segmentPoints; i++) {
-        const t = segStart + (i / segmentPoints) * (segEnd - segStart)
-        const pos = curve.getPoint(t)
-        const tangent = curve.getTangent(t)
-        const perp = new Vector3(-tangent.z, 0, tangent.x).normalize()
-
-        const arcPos = cumulativeArcLength + (i / segmentPoints) * (curveLength / stripeCount)
-        const sawtoothMod = curbType === 'exit'
-          ? Math.abs(((arcPos / TOOTH_SPACING) % 1) * 2 - 1)
-          : 1.0
-
-        for (let p = 0; p <= profileSubdivisions; p++) {
-          const normalizedWidth = p / profileSubdivisions
-          const baseHeight = getProfileHeight(normalizedWidth, curbType)
-          const height = curbType === 'exit' ? baseHeight * sawtoothMod : baseHeight
-
-          const innerOffset = ROAD_HALF_WIDTH * edgeSign
-          const outerOffset = (ROAD_HALF_WIDTH + CURB_WIDTH) * edgeSign
-          const widthOffset = innerOffset + (outerOffset - innerOffset) * normalizedWidth
-
-          vertices.push(pos.x + perp.x * widthOffset, height, pos.z + perp.z * widthOffset)
-        }
-      }
-
-      cumulativeArcLength += curveLength / stripeCount
-
-      const vertsPerRow = profileSubdivisions + 1
-      for (let i = 0; i < segmentPoints; i++) {
-        for (let p = 0; p < profileSubdivisions; p++) {
-          const a = i * vertsPerRow + p
-          const b = i * vertsPerRow + p + 1
-          const c = (i + 1) * vertsPerRow + p
-          const d = (i + 1) * vertsPerRow + p + 1
-
-          indices.push(a, c, b)
-          indices.push(b, c, d)
-        }
-      }
-
-      const geo = new BufferGeometry()
-      geo.setAttribute('position', new Float32BufferAttribute(vertices, 3))
-      geo.setIndex(indices)
-      geo.computeVertexNormals()
-
-      stripes.push({
-        geometry: geo,
-        color: s % 2 === 0 ? '#ff0000' : '#ffffff',
-      })
-    }
-
-    const allCollisionVerts: number[] = []
-    const allCollisionIndices: number[] = []
-    let vertexOffset = 0
-
-    for (const stripe of stripes) {
-      const posAttr = stripe.geometry.getAttribute('position')
-      const idx = stripe.geometry.getIndex()
-      if (!posAttr || !idx) continue
-
-      for (let i = 0; i < posAttr.count; i++) {
-        allCollisionVerts.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i))
-      }
-      for (let i = 0; i < idx.count; i++) {
-        allCollisionIndices.push(idx.getX(i) + vertexOffset)
-      }
-      vertexOffset += posAttr.count
-    }
-
-    const collisionData = {
-      vertices: new Float32Array(allCollisionVerts),
-      indices: new Uint32Array(allCollisionIndices),
-    }
+    const { geometry, collisionVertices, collisionIndices } = createUnifiedCurvedGeometry(
+      curve,
+      tStart,
+      tEnd,
+      curveLength,
+      edgeSign,
+      curbType,
+      parentRoad,
+      parentHalfWidth,
+    )
 
     const midT = (tStart + tEnd) / 2
     const midPos = curve.getPoint(midT)
     const midTangent = curve.getTangent(midT)
     const midPerp = new Vector3(-midTangent.z, 0, midTangent.x).normalize()
-    const sensorOffset = (ROAD_HALF_WIDTH + CURB_WIDTH / 2) * edgeSign
+    const sensorOffset = (parentHalfWidth + CURB_WIDTH / 2) * edgeSign
     const sensorElevation = getElevationAtT(parentRoad, midT)
 
     return {
-      stripeGeometries: stripes,
-      collisionData,
+      geometry,
+      collisionVertices,
+      collisionIndices,
       sensorData: {
         position: [
           midPos.x + midPerp.x * sensorOffset,
@@ -183,7 +235,7 @@ export default function CurvedCurbSegment({
     }
   }, [curb, parentRoad, curbType, peakHeight])
 
-  if (stripeGeometries.length === 0) return null
+  if (!result) return null
 
   const handleEnter = useCallback(() => {
     if (!isGhost && curb.edgeSide) {
@@ -202,17 +254,9 @@ export default function CurvedCurbSegment({
   if (isGhost) {
     return (
       <group>
-        {stripeGeometries.map((stripe, i) => (
-          <mesh key={i} geometry={stripe.geometry} receiveShadow={false}>
-            <meshStandardMaterial
-              color={stripe.color}
-              transparent
-              opacity={GHOST_OPACITY}
-              depthWrite={false}
-              side={2}
-            />
-          </mesh>
-        ))}
+        <mesh geometry={result.geometry} receiveShadow={false}>
+          <CurbSurfaceMaterial curbType={curbType} isGhost />
+        </mesh>
       </group>
     )
   }
@@ -224,28 +268,27 @@ export default function CurvedCurbSegment({
       restitution={curbConfig.restitution}
       colliders={false}
     >
-      {sensorData && (
+      {result.sensorData && (
         <CuboidCollider
-          position={sensorData.position}
-          args={[CURB_WIDTH / 2, peakHeight / 2, sensorData.length / 2]}
+          position={result.sensorData.position}
+          args={[CURB_WIDTH / 2, peakHeight / 2, result.sensorData.length / 2]}
           sensor
           onIntersectionEnter={handleEnter}
           onIntersectionExit={handleExit}
         />
       )}
 
-      {collisionData.vertices.length > 0 && (
+      {result.collisionVertices.length > 0 && (
         <TrimeshCollider
-          args={[collisionData.vertices, collisionData.indices]}
+          args={[result.collisionVertices, result.collisionIndices]}
           friction={curbConfig.friction}
           collisionGroups={TRACK_COLLISION_GROUPS}
         />
       )}
-      {stripeGeometries.map((stripe, i) => (
-        <mesh key={i} geometry={stripe.geometry} receiveShadow castShadow>
-          <meshStandardMaterial color={stripe.color} side={2} />
-        </mesh>
-      ))}
+
+      <mesh geometry={result.geometry} receiveShadow castShadow>
+        <CurbSurfaceMaterial curbType={curbType} />
+      </mesh>
     </RigidBody>
   )
 }
@@ -265,9 +308,9 @@ export function CurvedCurbPreview({
   endT,
   isGhost = true,
 }: CurvedCurbPreviewProps) {
-  const stripeGeometries = useMemo(() => {
+  const geometry = useMemo(() => {
     if (!parentRoad.startPoint || !parentRoad.endPoint || !parentRoad.controlPoint) {
-      return []
+      return null
     }
 
     const start = new Vector3(...parentRoad.startPoint)
@@ -279,85 +322,33 @@ export function CurvedCurbPreview({
     const tEnd = Math.max(startT, endT)
     const tRange = tEnd - tStart
 
-    if (tRange < 0.01) return []
+    if (tRange < 0.01) return null
 
     const curveLength = curve.getLength() * tRange
-    const stripeCount = Math.max(2, Math.ceil(curveLength / STRIPE_WIDTH))
-
     const edgeSign = edge === 'left' ? 1 : -1
-    const profileSubdivisions = 6
+    const parentHalfWidth = (parentRoad.width ?? TRACK_WIDTH) / 2
 
-    const stripes: { geometry: BufferGeometry; color: string }[] = []
+    const { geometry: geo } = createUnifiedCurvedGeometry(
+      curve,
+      tStart,
+      tEnd,
+      curveLength,
+      edgeSign,
+      'apex',
+      parentRoad,
+      parentHalfWidth,
+    )
 
-    for (let s = 0; s < stripeCount; s++) {
-      const segStart = tStart + (s / stripeCount) * tRange
-      const segEnd = tStart + ((s + 1) / stripeCount) * tRange
-      const segmentPoints = 8
-
-      const vertices: number[] = []
-      const indices: number[] = []
-
-      for (let i = 0; i <= segmentPoints; i++) {
-        const t = segStart + (i / segmentPoints) * (segEnd - segStart)
-        const pos = curve.getPoint(t)
-        const tangent = curve.getTangent(t)
-        const perp = new Vector3(-tangent.z, 0, tangent.x).normalize()
-        const elevationY = getElevationAtT(parentRoad, t)
-
-        for (let p = 0; p <= profileSubdivisions; p++) {
-          const normalizedWidth = p / profileSubdivisions
-          const height = getProfileHeight(normalizedWidth, 'apex')
-
-          const innerOffset = ROAD_HALF_WIDTH * edgeSign
-          const outerOffset = (ROAD_HALF_WIDTH + CURB_WIDTH) * edgeSign
-          const widthOffset = innerOffset + (outerOffset - innerOffset) * normalizedWidth
-
-          vertices.push(pos.x + perp.x * widthOffset, height + elevationY, pos.z + perp.z * widthOffset)
-        }
-      }
-
-      const vertsPerRow = profileSubdivisions + 1
-      for (let i = 0; i < segmentPoints; i++) {
-        for (let p = 0; p < profileSubdivisions; p++) {
-          const a = i * vertsPerRow + p
-          const b = i * vertsPerRow + p + 1
-          const c = (i + 1) * vertsPerRow + p
-          const d = (i + 1) * vertsPerRow + p + 1
-
-          indices.push(a, c, b)
-          indices.push(b, c, d)
-        }
-      }
-
-      const geo = new BufferGeometry()
-      geo.setAttribute('position', new Float32BufferAttribute(vertices, 3))
-      geo.setIndex(indices)
-      geo.computeVertexNormals()
-
-      stripes.push({
-        geometry: geo,
-        color: s % 2 === 0 ? '#ff0000' : '#ffffff',
-      })
-    }
-
-    return stripes
+    return geo
   }, [parentRoad, edge, startT, endT])
 
-  if (stripeGeometries.length === 0) return null
+  if (!geometry) return null
 
   return (
     <group>
-      {stripeGeometries.map((stripe, i) => (
-        <mesh key={i} geometry={stripe.geometry}>
-          <meshStandardMaterial
-            color={stripe.color}
-            transparent={isGhost}
-            opacity={isGhost ? GHOST_OPACITY : 1}
-            depthWrite={!isGhost}
-            side={2}
-          />
-        </mesh>
-      ))}
+      <mesh geometry={geometry}>
+        <CurbSurfaceMaterial curbType='apex' isGhost={isGhost} />
+      </mesh>
     </group>
   )
 }

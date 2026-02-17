@@ -4,6 +4,7 @@ import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
+import { smoothstep } from '../../../utils/roadGeometry'
 import { useRoadSurfaces } from './hooks/useRoadSurfaces'
 import { useTemperatureRegistration } from './hooks/useTemperatureRegistration'
 import { EdgeLines } from './components/EdgeLines'
@@ -46,26 +47,64 @@ export default function RoadSegment({
   const width = widthProp ?? config.defaultSize.width
   const halfWidth = width / 2
 
-  const hasEdgeOverrides = !!(
-    (startLeftEdge && startRightEdge) || (endLeftEdge && endRightEdge)
-  )
+  const hasEdgeOverrides = !!((startLeftEdge && startRightEdge) || (endLeftEdge && endRightEdge))
 
-  const { length, calculatedRotation, midpoint, startElev, endElev, midElev, roadBounds } = useMemo(() => {
-    const startElevValue = startElevation ?? 0
-    const endElevValue = endElevation ?? 0
-    const midElevValue = (startElevValue + endElevValue) / 2
+  const { length, calculatedRotation, midpoint, startElev, endElev, midElev, roadBounds } =
+    useMemo(() => {
+      const startElevValue = startElevation ?? 0
+      const endElevValue = endElevation ?? 0
+      const midElevValue = (startElevValue + endElevValue) / 2
 
-    if (startPoint && endPoint) {
-      const start = new Vector3(...startPoint)
-      const end = new Vector3(...endPoint)
-      const direction = end.clone().sub(start)
-      const len = direction.length()
-      const rot = Math.atan2(direction.x, direction.z)
-      const mid: [number, number, number] = [(start.x + end.x) / 2, midElevValue, (start.z + end.z) / 2]
-      const cos = Math.cos(rot)
-      const sin = Math.sin(rot)
-      const halfLength = len / 2
+      if (startPoint && endPoint) {
+        const start = new Vector3(...startPoint)
+        const end = new Vector3(...endPoint)
+        const direction = end.clone().sub(start)
+        const len = direction.length()
+        const rot = Math.atan2(direction.x, direction.z)
+        const mid: [number, number, number] = [
+          (start.x + end.x) / 2,
+          midElevValue,
+          (start.z + end.z) / 2,
+        ]
+        const cos = Math.cos(rot)
+        const sin = Math.sin(rot)
+        const halfLength = len / 2
+        const hw = (widthProp ?? config.defaultSize.width) / 2
+
+        const corners = [
+          { x: -hw, z: -halfLength },
+          { x: hw, z: -halfLength },
+          { x: -hw, z: halfLength },
+          { x: hw, z: halfLength },
+        ].map(c => ({
+          x: mid[0] + c.x * cos - c.z * sin,
+          z: mid[2] + c.x * sin + c.z * cos,
+        }))
+
+        const xs = corners.map(c => c.x)
+        const zs = corners.map(c => c.z)
+
+        return {
+          length: len,
+          calculatedRotation: rot,
+          midpoint: mid,
+          startElev: startElevValue,
+          endElev: endElevValue,
+          midElev: midElevValue,
+          roadBounds: {
+            minX: Math.min(...xs),
+            maxX: Math.max(...xs),
+            minZ: Math.min(...zs),
+            maxZ: Math.max(...zs),
+          },
+        }
+      }
+
+      const len = 10
       const hw = (widthProp ?? config.defaultSize.width) / 2
+      const cos = Math.cos(rotation)
+      const sin = Math.sin(rotation)
+      const halfLength = len / 2
 
       const corners = [
         { x: -hw, z: -halfLength },
@@ -73,8 +112,8 @@ export default function RoadSegment({
         { x: -hw, z: halfLength },
         { x: hw, z: halfLength },
       ].map(c => ({
-        x: mid[0] + c.x * cos - c.z * sin,
-        z: mid[2] + c.x * sin + c.z * cos,
+        x: position[0] + c.x * cos - c.z * sin,
+        z: position[2] + c.x * sin + c.z * cos,
       }))
 
       const xs = corners.map(c => c.x)
@@ -82,8 +121,8 @@ export default function RoadSegment({
 
       return {
         length: len,
-        calculatedRotation: rot,
-        midpoint: mid,
+        calculatedRotation: rotation,
+        midpoint: position,
         startElev: startElevValue,
         endElev: endElevValue,
         midElev: midElevValue,
@@ -94,42 +133,7 @@ export default function RoadSegment({
           maxZ: Math.max(...zs),
         },
       }
-    }
-
-    const len = 10
-    const hw = (widthProp ?? config.defaultSize.width) / 2
-    const cos = Math.cos(rotation)
-    const sin = Math.sin(rotation)
-    const halfLength = len / 2
-
-    const corners = [
-      { x: -hw, z: -halfLength },
-      { x: hw, z: -halfLength },
-      { x: -hw, z: halfLength },
-      { x: hw, z: halfLength },
-    ].map(c => ({
-      x: position[0] + c.x * cos - c.z * sin,
-      z: position[2] + c.x * sin + c.z * cos,
-    }))
-
-    const xs = corners.map(c => c.x)
-    const zs = corners.map(c => c.z)
-
-    return {
-      length: len,
-      calculatedRotation: rotation,
-      midpoint: position,
-      startElev: startElevValue,
-      endElev: endElevValue,
-      midElev: midElevValue,
-      roadBounds: {
-        minX: Math.min(...xs),
-        maxX: Math.max(...xs),
-        minZ: Math.min(...zs),
-        maxZ: Math.max(...zs),
-      },
-    }
-  }, [startPoint, endPoint, rotation, position, startElevation, endElevation])
+    }, [startPoint, endPoint, rotation, position, startElevation, endElevation])
 
   const finalRotation = startPoint && endPoint ? calculatedRotation : rotation
   const finalPosition = startPoint && endPoint ? midpoint : position
@@ -198,17 +202,13 @@ export default function RoadSegment({
         rightX = endRightEdge![0]
         rightZ = endRightEdge![2]
       } else if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
-        const blend = i / (BLEND_SEGMENTS + 1)
+        const blend = smoothstep(i / (BLEND_SEGMENTS + 1))
         leftX = startLeftEdge![0] + (naturalLeftX - startLeftEdge![0]) * blend
         leftZ = startLeftEdge![2] + (naturalLeftZ - startLeftEdge![2]) * blend
         rightX = startRightEdge![0] + (naturalRightX - startRightEdge![0]) * blend
         rightZ = startRightEdge![2] + (naturalRightZ - startRightEdge![2]) * blend
-      } else if (
-        i < segmentCount &&
-        i >= segmentCount - BLEND_SEGMENTS &&
-        hasEndSnap
-      ) {
-        const blend = (segmentCount - i) / (BLEND_SEGMENTS + 1)
+      } else if (i < segmentCount && i >= segmentCount - BLEND_SEGMENTS && hasEndSnap) {
+        const blend = smoothstep((segmentCount - i) / (BLEND_SEGMENTS + 1))
         leftX = endLeftEdge![0] + (naturalLeftX - endLeftEdge![0]) * blend
         leftZ = endLeftEdge![2] + (naturalLeftZ - endLeftEdge![2]) * blend
         rightX = endRightEdge![0] + (naturalRightX - endRightEdge![0]) * blend
@@ -222,11 +222,7 @@ export default function RoadSegment({
 
       for (let k = 0; k <= CROSS_SEGS; k++) {
         const tW = k / CROSS_SEGS
-        roadVertices.push(
-          leftX + (rightX - leftX) * tW,
-          elevY,
-          leftZ + (rightZ - leftZ) * tW,
-        )
+        roadVertices.push(leftX + (rightX - leftX) * tW, elevY, leftZ + (rightZ - leftZ) * tW)
         roadUvs.push(tW, t)
       }
 
@@ -243,10 +239,7 @@ export default function RoadSegment({
       }
 
       const edgeY = elevY + 0.002
-      if (
-        (i === 0 && hasStartSnap) ||
-        (i === segmentCount && hasEndSnap)
-      ) {
+      if ((i === 0 && hasStartSnap) || (i === segmentCount && hasEndSnap)) {
         const edgeDir = new Vector3(leftX - rightX, 0, leftZ - rightZ).normalize()
         const lOuter = new Vector3(leftX, 0, leftZ).addScaledVector(
           edgeDir,
@@ -376,18 +369,26 @@ export default function RoadSegment({
     const edgeWidth = 0.2
     const edgeOffset = halfW - edgeWidth / 2
     const hl = length / 2
-    const startY = (startElev - midElev) + 0.012
-    const endY = (endElev - midElev) + 0.012
+    const startY = startElev - midElev + 0.012
+    const endY = endElev - midElev + 0.012
 
     const createEdgeGeo = (sign: number) => {
       const geo = new BufferGeometry()
       const inner = sign * (edgeOffset - edgeWidth / 2)
       const outer = sign * (edgeOffset + edgeWidth / 2)
       const vertices = new Float32Array([
-        inner, startY, -hl,
-        outer, startY, -hl,
-        inner, endY, hl,
-        outer, endY, hl,
+        inner,
+        startY,
+        -hl,
+        outer,
+        startY,
+        -hl,
+        inner,
+        endY,
+        hl,
+        outer,
+        endY,
+        hl,
       ])
       geo.setAttribute('position', new Float32BufferAttribute(vertices, 3))
       geo.setIndex([0, 2, 1, 1, 2, 3])
@@ -406,8 +407,8 @@ export default function RoadSegment({
     const geo = new BufferGeometry()
     const hw = width / 2
     const hl = length / 2
-    const startY = (startElev - midElev) + 0.01
-    const endY = (endElev - midElev) + 0.01
+    const startY = startElev - midElev + 0.01
+    const endY = endElev - midElev + 0.01
 
     const widthSegs = 8
     const lengthSegs = Math.max(2, Math.ceil(length / 3))
@@ -444,34 +445,45 @@ export default function RoadSegment({
     return geo
   }, [hasEdgeOverrides, width, length, startElev, endElev, midElev])
 
-
   const rampColliderData = useMemo(() => {
     if (hasEdgeOverrides) return null
     const hw = width / 2
     const hl = length / 2
     const overlap = 0.15
-    const topStartY = (startElev - midElev) + 0.01
-    const topEndY = (endElev - midElev) + 0.01
+    const topStartY = startElev - midElev + 0.01
+    const topEndY = endElev - midElev + 0.01
     const botY = -0.15
 
     const vertices = new Float32Array([
-      -hw, topStartY, -(hl + overlap),
-       hw, topStartY, -(hl + overlap),
-      -hw, topEndY,    (hl + overlap),
-       hw, topEndY,    (hl + overlap),
-      -hw, botY, -(hl + overlap),
-       hw, botY, -(hl + overlap),
-      -hw, botY,  (hl + overlap),
-       hw, botY,  (hl + overlap),
+      -hw,
+      topStartY,
+      -(hl + overlap),
+      hw,
+      topStartY,
+      -(hl + overlap),
+      -hw,
+      topEndY,
+      hl + overlap,
+      hw,
+      topEndY,
+      hl + overlap,
+      -hw,
+      botY,
+      -(hl + overlap),
+      hw,
+      botY,
+      -(hl + overlap),
+      -hw,
+      botY,
+      hl + overlap,
+      hw,
+      botY,
+      hl + overlap,
     ])
 
     const indices = new Uint32Array([
-      0, 1, 2, 2, 1, 3,
-      4, 6, 5, 5, 6, 7,
-      0, 4, 1, 1, 4, 5,
-      2, 3, 6, 6, 3, 7,
-      0, 2, 4, 4, 2, 6,
-      1, 5, 3, 3, 5, 7,
+      0, 1, 2, 2, 1, 3, 4, 6, 5, 5, 6, 7, 0, 4, 1, 1, 4, 5, 2, 3, 6, 6, 3, 7, 0, 2, 4, 4, 2, 6, 1,
+      5, 3, 3, 5, 7,
     ])
 
     return { vertices, indices }
@@ -528,7 +540,11 @@ export default function RoadSegment({
         </mesh>
       )}
 
-      <EdgeLines leftGeometry={leftEdgeGeometry} rightGeometry={rightEdgeGeometry} isGhost={isGhost} />
+      <EdgeLines
+        leftGeometry={leftEdgeGeometry}
+        rightGeometry={rightEdgeGeometry}
+        isGhost={isGhost}
+      />
 
       <RoadSelectionHighlight
         isSelected={isSelectedForCurb}

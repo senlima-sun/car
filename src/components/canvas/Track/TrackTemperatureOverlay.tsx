@@ -3,8 +3,9 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import {
   useTrackTemperatureStore,
-  TRACK_TEMP_CONFIG,
+  computeTrackBounds,
 } from '../../../stores/useTrackTemperatureStore'
+import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { useHeatmapStore } from '../../../stores/useHeatmapStore'
 import {
@@ -14,7 +15,6 @@ import {
 } from '../../../shaders/trackSurface'
 import { usePhysics } from '../../../wasm'
 
-// Helper to compute shader weather type from dynamic conditions
 function computeWeatherType(temperature: number, rainIntensity: number): number {
   if (rainIntensity > 0.3) return WEATHER_TYPE_MAP.rain
   if (temperature < 5) return WEATHER_TYPE_MAP.cold
@@ -24,98 +24,84 @@ function computeWeatherType(temperature: number, rainIntensity: number): number 
 
 export default function TrackTemperatureOverlay() {
   const materialRef = useRef<THREE.ShaderMaterial>(null)
-  const wasmFrameCounter = useRef(0)
+  const frameCounter = useRef(0)
+  const prevWeatherType = useRef(-1)
+  const prevHeatmapVisible = useRef(false)
 
   const dataTexture = useTrackTemperatureStore(s => s.dataTexture)
-  const textureNeedsUpdate = useTrackTemperatureStore(s => s.textureNeedsUpdate)
+  const setWorldBounds = useTrackTemperatureStore(s => s.setWorldBounds)
   const initializeTexture = useTrackTemperatureStore(s => s.initializeTexture)
-  const updateTexture = useTrackTemperatureStore(s => s.updateTexture)
-  const updateWeatherEffects = useTrackTemperatureStore(s => s.updateWeatherEffects)
 
+  const placedObjects = useCustomizationStore(s => s.placedObjects)
   const temperature = useEnvironmentStore(s => s.temperature)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
   const isHeatmapVisible = useHeatmapStore(s => s.isVisible)
 
   const physics = usePhysics()
 
-  // Initialize texture on mount
+  const bounds = useMemo(() => computeTrackBounds(placedObjects), [placedObjects])
+
   useEffect(() => {
     initializeTexture()
   }, [initializeTexture])
 
-  // Initialize WASM track temperature grid with matching bounds
   useEffect(() => {
     if (physics.initialized) {
-      physics.initTrackTemperature(TRACK_TEMP_CONFIG.gridSize, {
-        min_x: TRACK_TEMP_CONFIG.worldBounds.minX,
-        max_x: TRACK_TEMP_CONFIG.worldBounds.maxX,
-        min_z: TRACK_TEMP_CONFIG.worldBounds.minZ,
-        max_z: TRACK_TEMP_CONFIG.worldBounds.maxZ,
+      physics.initTrackTemperature(2, {
+        min_x: bounds.minX,
+        max_x: bounds.maxX,
+        min_z: bounds.minZ,
+        max_z: bounds.maxZ,
       })
+      setWorldBounds(bounds)
     }
-  }, [physics, physics.initialized])
+  }, [physics, physics.initialized, bounds, setWorldBounds])
 
-  // Create shader uniforms
   const uniforms = useMemo(
     () => ({
       temperatureMap: { value: null as THREE.DataTexture | null },
       worldBoundsMin: {
-        value: new THREE.Vector2(
-          TRACK_TEMP_CONFIG.worldBounds.minX,
-          TRACK_TEMP_CONFIG.worldBounds.minZ,
-        ),
+        value: new THREE.Vector2(bounds.minX, bounds.minZ),
       },
       worldBoundsMax: {
-        value: new THREE.Vector2(
-          TRACK_TEMP_CONFIG.worldBounds.maxX,
-          TRACK_TEMP_CONFIG.worldBounds.maxZ,
-        ),
+        value: new THREE.Vector2(bounds.maxX, bounds.maxZ),
       },
       weatherType: { value: WEATHER_TYPE_MAP.dry },
-      ambientTemp: { value: 0.643 }, // ~25C default
+      ambientTemp: { value: 0.643 },
       ambientHumidity: { value: 0.3 },
       heatmapVisible: { value: false },
     }),
     [],
   )
 
-  // Update shader uniforms each frame
-  useFrame((_, delta) => {
-    // Update weather effects (temperature decay, wetness changes)
-    updateWeatherEffects(temperature, rainIntensity, delta)
+  useFrame(() => {
+    frameCounter.current++
 
-    // Update texture if needed
-    if (textureNeedsUpdate) {
-      updateTexture()
-    }
-
-    // Merge rubber data from WASM into the texture's B channel (~10Hz, every 6 frames)
-    wasmFrameCounter.current++
-    if (wasmFrameCounter.current % 6 === 0 && dataTexture && physics.initialized) {
-      try {
+    if (frameCounter.current % 6 === 0 && dataTexture && physics.initialized) {
+      if (physics.isTrackTextureDirty()) {
         const wasmData = physics.getTrackTextureData()
-        const textureData = dataTexture.image.data as Uint8Array
-        const len = Math.min(wasmData.length, textureData.length)
-
-        for (let i = 0; i < len; i += 4) {
-          textureData[i + 2] = wasmData[i + 2]
-        }
+        ;(dataTexture.image.data as Uint8Array).set(wasmData)
         dataTexture.needsUpdate = true
-      } catch {
-        // WASM not ready yet
       }
     }
 
-    // Update shader uniforms
     if (materialRef.current) {
       materialRef.current.uniforms.temperatureMap.value = dataTexture
-      materialRef.current.uniforms.weatherType.value = computeWeatherType(
-        temperature,
-        rainIntensity,
-      )
-      materialRef.current.uniforms.heatmapVisible.value = isHeatmapVisible
 
-      if (physics.initialized && wasmFrameCounter.current % 6 === 0) {
+      const weatherType = computeWeatherType(temperature, rainIntensity)
+      if (weatherType !== prevWeatherType.current) {
+        materialRef.current.uniforms.weatherType.value = weatherType
+        materialRef.current.uniforms.worldBoundsMin.value.set(bounds.minX, bounds.minZ)
+        materialRef.current.uniforms.worldBoundsMax.value.set(bounds.maxX, bounds.maxZ)
+        prevWeatherType.current = weatherType
+      }
+
+      if (isHeatmapVisible !== prevHeatmapVisible.current) {
+        materialRef.current.uniforms.heatmapVisible.value = isHeatmapVisible
+        prevHeatmapVisible.current = isHeatmapVisible
+      }
+
+      if (frameCounter.current % 6 === 0 && physics.initialized) {
         try {
           const ambient = physics.getAmbientConditions()
           if (ambient) {
@@ -129,12 +115,13 @@ export default function TrackTemperatureOverlay() {
     }
   })
 
-  // Calculate overlay size from world bounds
-  const overlayWidth = TRACK_TEMP_CONFIG.worldBounds.maxX - TRACK_TEMP_CONFIG.worldBounds.minX
-  const overlayHeight = TRACK_TEMP_CONFIG.worldBounds.maxZ - TRACK_TEMP_CONFIG.worldBounds.minZ
+  const overlayWidth = bounds.maxX - bounds.minX
+  const overlayHeight = bounds.maxZ - bounds.minZ
+  const centerX = (bounds.minX + bounds.maxX) / 2
+  const centerZ = (bounds.minZ + bounds.maxZ) / 2
 
   return (
-    <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={999}>
+    <mesh position={[centerX, 0.03, centerZ]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={999}>
       <planeGeometry args={[overlayWidth, overlayHeight]} />
       <shaderMaterial
         ref={materialRef}

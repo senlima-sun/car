@@ -1,43 +1,28 @@
-import { useCallback, useRef, useState, useEffect } from 'react'
+import { useCallback, useRef } from 'react'
 import * as THREE from 'three'
 import {
   ASPHALT_FRAGMENT_INJECT,
   ASPHALT_VERTEX_INJECT,
+  ASPHALT_VERTEX_NOISE_PREAMBLE,
+  ASPHALT_VERTEX_DISPLACEMENT,
   ASPHALT_VERTEX_WORLDPOS_INJECT,
   ASPHALT_COLOR_INJECT,
-  ASPHALT_PIT_COLOR_INJECT,
+  ASPHALT_ROUGHNESS_INJECT,
+  ASPHALT_METALNESS_INJECT,
   createAsphaltUniforms,
 } from '../../../shaders/asphaltSurface'
+import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { GHOST_OPACITY } from '../../../constants/trackObjects'
 
-const textureLoader = new THREE.TextureLoader()
-let cachedNormal: THREE.Texture | null = null
-let cachedRoughness: THREE.Texture | null = null
-let loadPromise: Promise<void> | null = null
-
-function ensureTextures(): Promise<void> {
-  if (cachedNormal && cachedRoughness) return Promise.resolve()
-  if (loadPromise) return loadPromise
-  loadPromise = Promise.all([
-    textureLoader.loadAsync('/textures/asphalt_normal.jpg'),
-    textureLoader.loadAsync('/textures/asphalt_roughness.jpg'),
-  ]).then(([normal, roughness]) => {
-    for (const tex of [normal, roughness]) {
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-      tex.repeat.set(4, 4)
-    }
-    cachedNormal = normal
-    cachedRoughness = roughness
-  })
-  return loadPromise
-}
-
-const NORMAL_SCALE = new THREE.Vector2(0.6, 0.6)
+const weatherState = { rainIntensity: 0, temperature: 25 }
+useEnvironmentStore.subscribe(state => {
+  weatherState.rainIntensity = state.rainIntensity
+  weatherState.temperature = state.temperature
+})
 
 interface RoadSurfaceMaterialProps {
   isGhost?: boolean
   variant?: 'road' | 'pitroad'
-  wetness?: number
   skidMarkTexture?: THREE.Texture | null
   skidMarkBounds?: THREE.Vector4
   transparent?: boolean
@@ -53,7 +38,6 @@ interface RoadSurfaceMaterialProps {
 export default function RoadSurfaceMaterial({
   isGhost = false,
   variant = 'road',
-  wetness = 0,
   skidMarkTexture = null,
   skidMarkBounds,
   transparent,
@@ -65,49 +49,54 @@ export default function RoadSurfaceMaterial({
   polygonOffsetUnits = -1,
   color,
 }: RoadSurfaceMaterialProps) {
-  const [texturesReady, setTexturesReady] = useState(cachedNormal !== null)
   const matRef = useRef<THREE.MeshStandardMaterial>(null)
-  const shaderRef = useRef<THREE.WebGLProgramParametersWithUniforms | null>(null)
-
-  useEffect(() => {
-    if (texturesReady) return
-    ensureTextures().then(() => setTexturesReady(true))
-  }, [texturesReady])
 
   const uniformsRef = useRef(createAsphaltUniforms())
 
-  const onBeforeCompile = useCallback(
-    (shader: THREE.WebGLProgramParametersWithUniforms) => {
-      shaderRef.current = shader
+  const onBeforeCompile = useCallback((shader: THREE.WebGLProgramParametersWithUniforms) => {
+    shader.uniforms.uRainIntensity = uniformsRef.current.uRainIntensity
+    shader.uniforms.uTemperature = uniformsRef.current.uTemperature
+    shader.uniforms.uPitDarken = uniformsRef.current.uPitDarken
+    shader.uniforms.uSkidMarkMap = uniformsRef.current.uSkidMarkMap
+    shader.uniforms.uSkidMarkBounds = uniformsRef.current.uSkidMarkBounds
 
-      shader.uniforms.uWetness = uniformsRef.current.uWetness
-      shader.uniforms.uSkidMarkMap = uniformsRef.current.uSkidMarkMap
-      shader.uniforms.uSkidMarkBounds = uniformsRef.current.uSkidMarkBounds
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <common>',
+      `#include <common>\n${ASPHALT_VERTEX_NOISE_PREAMBLE}\n${ASPHALT_VERTEX_INJECT}`,
+    )
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>\n${ASPHALT_VERTEX_DISPLACEMENT}`,
+    )
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <worldpos_vertex>',
+      `#include <worldpos_vertex>\n${ASPHALT_VERTEX_WORLDPOS_INJECT}`,
+    )
 
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <common>',
-        `#include <common>\n${ASPHALT_VERTEX_INJECT}`,
-      )
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>\n${ASPHALT_VERTEX_WORLDPOS_INJECT}`,
-      )
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <common>',
+      `#include <common>\n${ASPHALT_FRAGMENT_INJECT}`,
+    )
 
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <common>',
-        `#include <common>\n${ASPHALT_FRAGMENT_INJECT}`,
-      )
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>\n${ASPHALT_COLOR_INJECT}`,
+    )
 
-      const colorInject = variant === 'pitroad' ? ASPHALT_PIT_COLOR_INJECT : ASPHALT_COLOR_INJECT
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>\n${colorInject}`,
-      )
-    },
-    [variant],
-  )
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <roughnessmap_fragment>',
+      `#include <roughnessmap_fragment>\n${ASPHALT_ROUGHNESS_INJECT}`,
+    )
 
-  uniformsRef.current.uWetness.value = wetness
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <metalnessmap_fragment>',
+      `#include <metalnessmap_fragment>\n${ASPHALT_METALNESS_INJECT}`,
+    )
+  }, [])
+
+  uniformsRef.current.uRainIntensity.value = weatherState.rainIntensity
+  uniformsRef.current.uTemperature.value = weatherState.temperature
+  uniformsRef.current.uPitDarken.value = variant === 'pitroad' ? 0.8 : 1.0
   uniformsRef.current.uSkidMarkMap.value = skidMarkTexture
   if (skidMarkBounds) {
     uniformsRef.current.uSkidMarkBounds.value = skidMarkBounds
@@ -129,15 +118,14 @@ export default function RoadSurfaceMaterial({
 
   return (
     <meshStandardMaterial
-      color={color ?? (variant === 'pitroad' ? '#3a3a3a' : '#4a4a4a')}
+      key={`asphalt-${variant}`}
+      color={color ?? '#4a4a4a'}
       transparent={transparent ?? false}
       opacity={opacity ?? 1}
       depthWrite={depthWrite ?? true}
       side={side}
       roughness={0.85}
-      normalMap={texturesReady ? cachedNormal : undefined}
-      normalScale={NORMAL_SCALE}
-      roughnessMap={texturesReady ? cachedRoughness : undefined}
+      metalness={0.0}
       polygonOffset={polygonOffset}
       polygonOffsetFactor={polygonOffsetFactor}
       polygonOffsetUnits={polygonOffsetUnits}
@@ -145,7 +133,7 @@ export default function RoadSurfaceMaterial({
       ref={(mat: THREE.MeshStandardMaterial | null) => {
         if (mat) {
           matRef.current = mat
-          mat.customProgramCacheKey = () => `asphalt-${variant}`
+          mat.customProgramCacheKey = () => `asphalt-pbr-${variant}`
         }
       }}
     />

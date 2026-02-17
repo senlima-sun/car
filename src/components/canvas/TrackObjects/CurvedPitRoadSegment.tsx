@@ -4,8 +4,8 @@ import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { GHOST_OPACITY, PIT_ROAD_EDGE_COLOR, PIT_ROAD_WIDTH } from '../../../constants/trackObjects'
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
+import { smoothstep } from '../../../utils/roadGeometry'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
-import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
 import { useElevationStore } from '../../../stores/useElevationStore'
 import { usePhysicsOptional } from '../../../wasm'
 
@@ -52,7 +52,6 @@ export default function CurvedPitRoadSegment({
   const enterElevation = useElevationStore(s => s.enterRoad)
   const exitElevation = useElevationStore(s => s.exitRoad)
   const physics = usePhysicsOptional()
-  const setRoadRegionTS = useTrackTemperatureStore(s => s.setRoadRegion)
 
   const handleEnterRoad = useCallback(() => {
     enterSurface('pitroad')
@@ -90,7 +89,10 @@ export default function CurvedPitRoadSegment({
 
     const curve = new QuadraticBezierCurve3(start, control, end)
     const curveLen = curve.getLength()
-    const segmentCount = Math.max(MIN_CURVE_SEGMENTS, Math.min(MAX_CURVE_SEGMENTS, Math.ceil(curveLen / METERS_PER_SEGMENT)))
+    const segmentCount = Math.max(
+      MIN_CURVE_SEGMENTS,
+      Math.min(MAX_CURVE_SEGMENTS, Math.ceil(curveLen / METERS_PER_SEGMENT)),
+    )
     const points = curve.getPoints(segmentCount)
 
     const BLEND_SEGMENTS = 3
@@ -103,9 +105,9 @@ export default function CurvedPitRoadSegment({
 
       let tangent: Vector3
       if (i === 0) {
-        tangent = new Vector3().subVectors(points[1], points[0]).normalize()
+        tangent = new Vector3().subVectors(control, start).normalize()
       } else if (i === points.length - 1) {
-        tangent = new Vector3().subVectors(points[i], points[i - 1]).normalize()
+        tangent = new Vector3().subVectors(end, control).normalize()
       } else {
         tangent = new Vector3().subVectors(points[i + 1], points[i - 1]).normalize()
       }
@@ -127,13 +129,13 @@ export default function CurvedPitRoadSegment({
         leftPoint = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
         rightPoint = new Vector3(endRightEdge![0], 0, endRightEdge![2])
       } else if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
-        const blend = i / (BLEND_SEGMENTS + 1)
+        const blend = smoothstep(i / (BLEND_SEGMENTS + 1))
         const snapLeft = new Vector3(startLeftEdge![0], 0, startLeftEdge![2])
         const snapRight = new Vector3(startRightEdge![0], 0, startRightEdge![2])
         leftPoint = new Vector3().lerpVectors(snapLeft, naturalLeft, blend)
         rightPoint = new Vector3().lerpVectors(snapRight, naturalRight, blend)
       } else if (i < points.length - 1 && i >= points.length - 1 - BLEND_SEGMENTS && hasEndSnap) {
-        const blend = (points.length - 1 - i) / (BLEND_SEGMENTS + 1)
+        const blend = smoothstep((points.length - 1 - i) / (BLEND_SEGMENTS + 1))
         const snapLeft = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
         const snapRight = new Vector3(endRightEdge![0], 0, endRightEdge![2])
         leftPoint = new Vector3().lerpVectors(snapLeft, naturalLeft, blend)
@@ -166,7 +168,11 @@ export default function CurvedPitRoadSegment({
       const p = points[i]
       const t = i / (points.length - 1)
 
-      const { leftPoint, rightPoint, leftY, rightY, perpendicular, elevationY } = computeEdgePoints(i, p, t)
+      const { leftPoint, rightPoint, leftY, rightY, perpendicular, elevationY } = computeEdgePoints(
+        i,
+        p,
+        t,
+      )
 
       roadVertices.push(leftPoint.x, leftY, leftPoint.z)
       roadVertices.push(rightPoint.x, rightY, rightPoint.z)
@@ -269,9 +275,9 @@ export default function CurvedPitRoadSegment({
 
       let tangent: Vector3
       if (i === 0) {
-        tangent = new Vector3().subVectors(points[1], points[0]).normalize()
+        tangent = new Vector3().subVectors(control, start).normalize()
       } else if (i === points.length - 1) {
-        tangent = new Vector3().subVectors(points[i], points[i - 1]).normalize()
+        tangent = new Vector3().subVectors(end, control).normalize()
       } else {
         tangent = new Vector3().subVectors(points[i + 1], points[i - 1]).normalize()
       }
@@ -328,7 +334,12 @@ export default function CurvedPitRoadSegment({
       const p = points[idx]
       const t = idx / (points.length - 1)
 
-      const { leftPoint: lp, rightPoint: rp, leftY: topLeftY, rightY: topRightY } = computeEdgePoints(idx, p, t)
+      const {
+        leftPoint: lp,
+        rightPoint: rp,
+        leftY: topLeftY,
+        rightY: topRightY,
+      } = computeEdgePoints(idx, p, t)
 
       const botLeftY = topLeftY - 0.15
       const botRightY = topRightY - 0.15
@@ -357,7 +368,12 @@ export default function CurvedPitRoadSegment({
       const p = points[idx]
       const t = 1.0
 
-      const { leftPoint: lp, rightPoint: rp, leftY: topLeftY, rightY: topRightY } = computeEdgePoints(idx, p, t)
+      const {
+        leftPoint: lp,
+        rightPoint: rp,
+        leftY: topLeftY,
+        rightY: topRightY,
+      } = computeEdgePoints(idx, p, t)
 
       const botLeftY = topLeftY - 0.15
       const botRightY = topRightY - 0.15
@@ -424,24 +440,17 @@ export default function CurvedPitRoadSegment({
       physics.setRoadRegion(minX, minZ, maxX, maxZ, true)
     }
 
-    setRoadRegionTS(minX, minZ, maxX, maxZ, true)
-
     return () => {
       if (physics) {
         physics.setRoadRegion(minX, minZ, maxX, maxZ, false)
       }
-      setRoadRegionTS(minX, minZ, maxX, maxZ, false)
     }
-  }, [isGhost, physics, setRoadRegionTS, roadBounds])
+  }, [isGhost, physics, roadBounds])
 
   const roadVisuals = (
     <>
       <mesh geometry={roadGeometry} receiveShadow={!isGhost}>
-        <RoadSurfaceMaterial
-          isGhost={isGhost}
-          variant='pitroad'
-          side={2}
-        />
+        <RoadSurfaceMaterial isGhost={isGhost} variant='pitroad' side={2} />
       </mesh>
 
       <mesh geometry={leftEdgeGeometry}>

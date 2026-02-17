@@ -71,11 +71,7 @@ export default function FlowArrows({
         const t = (i + 0.5) / count
         const y = startElev + (endElev - startElev) * t + 0.08
         result.push({
-          position: [
-            startPoint[0] + dx * t,
-            y,
-            startPoint[2] + dz * t,
-          ],
+          position: [startPoint[0] + dx * t, y, startPoint[2] + dz * t],
           rotation: rot,
         })
       }
@@ -90,11 +86,7 @@ export default function FlowArrows({
   return (
     <>
       {arrows.map((arrow, i) => (
-        <group
-          key={i}
-          position={arrow.position}
-          rotation={[-Math.PI / 2, 0, arrow.rotation]}
-        >
+        <group key={i} position={arrow.position} rotation={[-Math.PI / 2, 0, arrow.rotation]}>
           {/* Arrow triangle */}
           <mesh>
             <coneGeometry args={[ARROW_SIZE * 0.5, ARROW_SIZE, 3]} />

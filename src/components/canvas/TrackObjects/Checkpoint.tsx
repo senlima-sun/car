@@ -1,14 +1,12 @@
 import { useMemo, useCallback, useEffect } from 'react'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { Vector3, Quaternion } from 'three'
-import { Text } from '@react-three/drei'
 import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { useCustomizationStore } from '@/stores/useCustomizationStore'
 import { useCarStore } from '../../../stores/useCarStore'
 import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
 import type { CheckpointType } from '../../../types/trackObjects'
-import TracksideBoard from './TracksideBoard'
 
 interface CheckpointProps {
   position: [number, number, number]
@@ -22,7 +20,8 @@ interface CheckpointProps {
 }
 
 const config = OBJECT_CONFIGS.checkpoint
-const CHECKPOINT_Y_OFFSET = 0.25
+const SURFACE_Y_OFFSET = 0.02
+const STRIPE_WIDTH = 1.2
 
 export default function Checkpoint({
   position,
@@ -34,18 +33,17 @@ export default function Checkpoint({
   checkpointType = 'start-finish',
   checkpointOrder = 0,
 }: CheckpointProps) {
-  const strokeWidth = 0.8
-  const strokeHeight = 0.15
   const isSector = checkpointType === 'sector'
 
   const crossStartFinish = useLapTimeStore(state => state.crossStartFinish)
   const crossSector = useLapTimeStore(state => state.crossSector)
   const setActive = useLapTimeStore(state => state.setActive)
 
-  const sectorCheckpointCount = useCustomizationStore(state =>
-    state.placedObjects.filter(
-      obj => obj.type === 'checkpoint' && obj.checkpointType === 'sector'
-    ).length
+  const sectorCheckpointCount = useCustomizationStore(
+    state =>
+      state.placedObjects.filter(
+        obj => obj.type === 'checkpoint' && obj.checkpointType === 'sector',
+      ).length,
   )
 
   useEffect(() => {
@@ -61,10 +59,10 @@ export default function Checkpoint({
       const direction = end.clone().sub(start)
       const len = direction.length()
       const rot = Math.atan2(direction.x, direction.z)
-      const startElev = (start.y + end.y) / 2
+      const elev = (start.y + end.y) / 2
       const mid: [number, number, number] = [
         (start.x + end.x) / 2,
-        CHECKPOINT_Y_OFFSET + startElev,
+        SURFACE_Y_OFFSET + elev,
         (start.z + end.z) / 2,
       ]
       return { length: len, calculatedRotation: rot, midpoint: mid }
@@ -72,7 +70,7 @@ export default function Checkpoint({
     return {
       length: config.defaultSize.width,
       calculatedRotation: rotation,
-      midpoint: [position[0], CHECKPOINT_Y_OFFSET, position[2]] as [number, number, number],
+      midpoint: [position[0], SURFACE_Y_OFFSET, position[2]] as [number, number, number],
     }
   }, [startPoint, endPoint, rotation, position])
 
@@ -109,94 +107,13 @@ export default function Checkpoint({
     }
   }, [isGhost, isSector, checkpointOrder, crossStartFinish, crossSector, detectWrongWay])
 
-  const numSegments = Math.max(4, Math.floor(length / 2))
-  const segmentWidth = length / numSegments
-
-  const edgeColor = isSector ? '#3b82f6' : config.color
-
   const mesh = (
     <group position={finalPosition} rotation={[0, finalRotation, 0]}>
-      <mesh position={[0, strokeHeight / 2, 0]} castShadow={!isGhost} receiveShadow={!isGhost}>
-        <boxGeometry args={[strokeWidth, strokeHeight, length]} />
-        <meshStandardMaterial
-          color={isSector ? '#1e3a5f' : '#222222'}
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-        />
-      </mesh>
-
-      {Array.from({ length: numSegments }).map((_, i) => {
-        const color1 = isSector ? '#3b82f6' : '#ffffff'
-        const color2 = isSector ? '#ffffff' : '#000000'
-        return (
-          <mesh
-            key={i}
-            position={[0, strokeHeight + 0.01, -length / 2 + segmentWidth * i + segmentWidth / 2]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            castShadow={!isGhost}
-          >
-            <planeGeometry args={[strokeWidth - 0.05, segmentWidth - 0.02]} />
-            <meshStandardMaterial
-              color={i % 2 === 0 ? color1 : color2}
-              emissive={i % 2 === 0 ? color1 : color2}
-              emissiveIntensity={isGhost ? 0.1 : 0.3}
-              transparent={isGhost}
-              opacity={isGhost ? GHOST_OPACITY : 1}
-              depthWrite={!isGhost}
-            />
-          </mesh>
-        )
-      })}
-
-      <mesh position={[0, strokeHeight / 2 + 0.2, -length / 2]} castShadow={!isGhost}>
-        <boxGeometry args={[strokeWidth + 0.1, 0.4, 0.1]} />
-        <meshStandardMaterial
-          color={edgeColor}
-          emissive={edgeColor}
-          emissiveIntensity={isGhost ? 0.2 : 0.5}
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-        />
-      </mesh>
-      <mesh position={[0, strokeHeight / 2 + 0.2, length / 2]} castShadow={!isGhost}>
-        <boxGeometry args={[strokeWidth + 0.1, 0.4, 0.1]} />
-        <meshStandardMaterial
-          color={edgeColor}
-          emissive={edgeColor}
-          emissiveIntensity={isGhost ? 0.2 : 0.5}
-          transparent={isGhost}
-          opacity={isGhost ? GHOST_OPACITY : 1}
-          depthWrite={!isGhost}
-        />
-      </mesh>
-
-      {isSector && !isGhost && (
-        <Text
-          position={[0, 1.2, 0]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.8}
-          color='#3b82f6'
-          anchorX='center'
-          anchorY='middle'
-          outlineWidth={0.05}
-          outlineColor='#000000'
-        >
-          {`S${checkpointOrder}`}
-        </Text>
+      {isSector ? (
+        <SectorLine length={length} isGhost={isGhost} />
+      ) : (
+        <CheckeredStripe length={length} isGhost={isGhost} />
       )}
-
-      <TracksideBoard
-        position={[0, 0, -length / 2 - 1.5]}
-        rotation={Math.PI / 2}
-        isGhost={isGhost}
-      />
-      <TracksideBoard
-        position={[0, 0, length / 2 + 1.5]}
-        rotation={-Math.PI / 2}
-        isGhost={isGhost}
-      />
     </group>
   )
 
@@ -216,5 +133,61 @@ export default function Checkpoint({
       </RigidBody>
       {mesh}
     </group>
+  )
+}
+
+function CheckeredStripe({ length, isGhost }: { length: number; isGhost: boolean }) {
+  const cellSize = STRIPE_WIDTH / 2
+  const cols = 2
+  const rows = Math.max(2, Math.round(length / cellSize))
+  const actualCellDepth = length / rows
+
+  return (
+    <group>
+      {Array.from({ length: rows }).map((_, row) =>
+        Array.from({ length: cols }).map((_, col) => {
+          const isWhite = (row + col) % 2 === 0
+          const x = -STRIPE_WIDTH / 2 + cellSize * col + cellSize / 2
+          const z = -length / 2 + actualCellDepth * row + actualCellDepth / 2
+          return (
+            <mesh
+              key={`${row}-${col}`}
+              position={[x, 0, z]}
+              rotation={[-Math.PI / 2, 0, 0]}
+            >
+              <planeGeometry args={[cellSize, actualCellDepth]} />
+              <meshStandardMaterial
+                color={isWhite ? '#ffffff' : '#111111'}
+                transparent={isGhost}
+                opacity={isGhost ? GHOST_OPACITY : 1}
+                depthWrite={!isGhost}
+                polygonOffset
+                polygonOffsetFactor={-1}
+                polygonOffsetUnits={-1}
+              />
+            </mesh>
+          )
+        }),
+      )}
+    </group>
+  )
+}
+
+function SectorLine({ length, isGhost }: { length: number; isGhost: boolean }) {
+  const lineWidth = 0.3
+
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[lineWidth, length]} />
+      <meshStandardMaterial
+        color='#ffffff'
+        transparent={isGhost}
+        opacity={isGhost ? GHOST_OPACITY : 1}
+        depthWrite={!isGhost}
+        polygonOffset
+        polygonOffsetFactor={-1}
+        polygonOffsetUnits={-1}
+      />
+    </mesh>
   )
 }

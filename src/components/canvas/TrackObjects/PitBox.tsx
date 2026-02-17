@@ -81,11 +81,7 @@ export default function PitBox({
 
   const visuals = (
     <group>
-      <mesh
-        position={[0, SURFACE_Y, 0]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        receiveShadow={!isGhost}
-      >
+      <mesh position={[0, SURFACE_Y, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={!isGhost}>
         <planeGeometry args={[boxWidth, boxLength]} />
         <meshStandardMaterial {...materialProps(SURFACE_COLOR)} />
       </mesh>
@@ -95,18 +91,12 @@ export default function PitBox({
         <meshStandardMaterial {...pitTextMaterialProps} />
       </mesh>
 
-      <mesh
-        position={[0, MARKING_Y, -boxLength / 2]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
+      <mesh position={[0, MARKING_Y, -boxLength / 2]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[boxWidth, BOUNDARY_THICKNESS]} />
         <meshStandardMaterial {...materialProps(MARKING_COLOR, true)} />
       </mesh>
 
-      <mesh
-        position={[0, MARKING_Y, boxLength / 2]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
+      <mesh position={[0, MARKING_Y, boxLength / 2]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[boxWidth, BOUNDARY_THICKNESS]} />
         <meshStandardMaterial {...materialProps(MARKING_COLOR, true)} />
       </mesh>

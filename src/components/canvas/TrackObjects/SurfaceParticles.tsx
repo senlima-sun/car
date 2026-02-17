@@ -53,8 +53,12 @@ export default function SurfaceParticles() {
       active: false,
       life: 0,
       maxLife: PARTICLE_LIFETIME,
-      x: 0, y: 0, z: 0,
-      vx: 0, vy: 0, vz: 0,
+      x: 0,
+      y: 0,
+      z: 0,
+      vx: 0,
+      vy: 0,
+      vz: 0,
       scale: 1,
       colorIndex: 0,
     }))
@@ -66,11 +70,16 @@ export default function SurfaceParticles() {
 
     const dt = Math.min(delta, 0.05)
     const perfTier = usePerformanceStore.getState().tier
-    const maxParticles = Math.floor(BASE_MAX_PARTICLES * (
-      perfTier === 'ultra' ? 1.2 :
-      perfTier === 'high' ? 1.0 :
-      perfTier === 'medium' ? 0.6 : 0.3
-    ))
+    const maxParticles = Math.floor(
+      BASE_MAX_PARTICLES *
+        (perfTier === 'ultra'
+          ? 1.2
+          : perfTier === 'high'
+            ? 1.0
+            : perfTier === 'medium'
+              ? 0.6
+              : 0.3),
+    )
     const surface = useSurfaceStore.getState().currentSurface
     const speed = useCarStore.getState().speed
     const position = useCarStore.getState().position
@@ -111,9 +120,7 @@ export default function SurfaceParticles() {
 
         const backDir = -Math.sin(yaw)
         const backDirZ = -Math.cos(yaw)
-        const ejectSpeed = isGravel
-          ? 1.5 + speedFactor * 4.0
-          : 0.8 + speedFactor * 2.0
+        const ejectSpeed = isGravel ? 1.5 + speedFactor * 4.0 : 0.8 + speedFactor * 2.0
 
         p.vx = backDir * ejectSpeed * (0.5 + Math.random()) + (Math.random() - 0.5) * 2
         p.vy = isGravel
@@ -121,9 +128,7 @@ export default function SurfaceParticles() {
           : 0.5 + Math.random() * 1.5 * speedFactor
         p.vz = backDirZ * ejectSpeed * (0.5 + Math.random()) + (Math.random() - 0.5) * 2
 
-        p.scale = isGravel
-          ? 0.5 + Math.random() * 1.5
-          : 0.3 + Math.random() * 0.8
+        p.scale = isGravel ? 0.5 + Math.random() * 1.5 : 0.3 + Math.random() * 0.8
 
         p.colorIndex = Math.floor(Math.random() * colors.length)
       }

@@ -154,7 +154,13 @@ export function generateCurbsForRoads(
       const { insideEdge, outsideEdge } = getEdges(turnDir)
 
       generatedCurbs.push(
-        createCurb(road.id, insideEdge, CURB_POSITIONS.apex.startT, CURB_POSITIONS.apex.endT, 'apex'),
+        createCurb(
+          road.id,
+          insideEdge,
+          CURB_POSITIONS.apex.startT,
+          CURB_POSITIONS.apex.endT,
+          'apex',
+        ),
       )
 
       generatedCurbs.push(
@@ -194,7 +200,13 @@ export function generateCurbsForRoads(
             : 1 - CURB_POSITIONS.entryOnStraight.startT
 
         generatedCurbs.push(
-          createCurb(beforeConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT, 'flat'),
+          createCurb(
+            beforeConnection.straightRoad.id,
+            outsideEdge,
+            straightStartT,
+            straightEndT,
+            'flat',
+          ),
         )
       }
 
@@ -215,7 +227,13 @@ export function generateCurbsForRoads(
             : 1 - CURB_POSITIONS.exitOnStraight.startT
 
         generatedCurbs.push(
-          createCurb(afterConnection.straightRoad.id, outsideEdge, straightStartT, straightEndT, 'flat'),
+          createCurb(
+            afterConnection.straightRoad.id,
+            outsideEdge,
+            straightStartT,
+            straightEndT,
+            'flat',
+          ),
         )
       }
     }
