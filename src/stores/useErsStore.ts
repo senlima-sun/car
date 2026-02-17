@@ -120,7 +120,7 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
   // Semi-Auto actions
   setSemiAutoPreset: (preset: SemiAutoPreset) => {
     const config = PRESET_CONFIGS[preset]
-    set((state) => ({
+    set(state => ({
       semiAutoConfig: {
         ...state.semiAutoConfig,
         preset,
@@ -139,18 +139,18 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
   },
 
   setLapMode: (enabled: boolean) => {
-    set((state) => ({
+    set(state => ({
       semiAutoConfig: { ...state.semiAutoConfig, lapMode: enabled },
     }))
   },
 
   setExpertMode: (enabled: boolean) => {
-    set((state) => ({
+    set(state => ({
       semiAutoConfig: { ...state.semiAutoConfig, expertMode: enabled },
     }))
   },
 
   toggleCoastIndicator: () => {
-    set((state) => ({ coastIndicatorVisible: !state.coastIndicatorVisible }))
+    set(state => ({ coastIndicatorVisible: !state.coastIndicatorVisible }))
   },
 }))

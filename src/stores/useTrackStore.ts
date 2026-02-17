@@ -2,10 +2,7 @@ import { create } from 'zustand'
 import type { TrackLibrary, SavedTrack } from '../types/track'
 import { useCustomizationStore, type PlacedObject } from './useCustomizationStore'
 import { useEditorStore } from './useEditorStore'
-import {
-  DEFAULT_TRACK_NAME,
-  DEFAULT_TRACK_OBJECTS,
-} from '../constants/defaultTrack'
+import { DEFAULT_TRACK_NAME, DEFAULT_TRACK_OBJECTS } from '../constants/defaultTrack'
 import { PRESET_TRACKS } from '../constants/tracks'
 
 const LEGACY_STORAGE_KEY = 'car-racing-track'
@@ -187,10 +184,20 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
     const roads = newTrack.objects.filter(o => o.type === 'road' && o.startPoint)
     if (roads.length > 0) {
-      let sumX = 0, sumZ = 0, count = 0
+      let sumX = 0,
+        sumZ = 0,
+        count = 0
       for (const r of roads) {
-        if (r.startPoint) { sumX += r.startPoint[0]; sumZ += r.startPoint[2]; count++ }
-        if (r.endPoint) { sumX += r.endPoint[0]; sumZ += r.endPoint[2]; count++ }
+        if (r.startPoint) {
+          sumX += r.startPoint[0]
+          sumZ += r.startPoint[2]
+          count++
+        }
+        if (r.endPoint) {
+          sumX += r.endPoint[0]
+          sumZ += r.endPoint[2]
+          count++
+        }
       }
       if (count > 0) {
         useEditorStore.getState().setCameraTarget([sumX / count, 0, sumZ / count])

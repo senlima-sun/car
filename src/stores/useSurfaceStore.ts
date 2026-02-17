@@ -39,16 +39,25 @@ export const useSurfaceStore = create<SurfaceState>((set, get) => ({
 
     if (type === 'road') {
       const newCount = state.roadContactCount + 1
-      set({ roadContactCount: newCount, currentSurface: resolveSurface({ ...state, roadContactCount: newCount }) })
+      set({
+        roadContactCount: newCount,
+        currentSurface: resolveSurface({ ...state, roadContactCount: newCount }),
+      })
     } else if (type === 'curb') {
       const newCount = state.curbContactCount + 1
       set({ curbContactCount: newCount, currentSurface: 'curb' })
     } else if (type === 'pitroad') {
       const newCount = state.pitroadContactCount + 1
-      set({ pitroadContactCount: newCount, currentSurface: resolveSurface({ ...state, pitroadContactCount: newCount }) })
+      set({
+        pitroadContactCount: newCount,
+        currentSurface: resolveSurface({ ...state, pitroadContactCount: newCount }),
+      })
     } else if (type === 'gravel') {
       const newCount = state.gravelContactCount + 1
-      set({ gravelContactCount: newCount, currentSurface: resolveSurface({ ...state, gravelContactCount: newCount }) })
+      set({
+        gravelContactCount: newCount,
+        currentSurface: resolveSurface({ ...state, gravelContactCount: newCount }),
+      })
     } else if (type === 'grass') {
       set({ currentSurface: resolveSurface(state) })
     }
@@ -59,16 +68,28 @@ export const useSurfaceStore = create<SurfaceState>((set, get) => ({
 
     if (type === 'road') {
       const newCount = Math.max(0, state.roadContactCount - 1)
-      set({ roadContactCount: newCount, currentSurface: resolveSurface({ ...state, roadContactCount: newCount }) })
+      set({
+        roadContactCount: newCount,
+        currentSurface: resolveSurface({ ...state, roadContactCount: newCount }),
+      })
     } else if (type === 'curb') {
       const newCount = Math.max(0, state.curbContactCount - 1)
-      set({ curbContactCount: newCount, currentSurface: resolveSurface({ ...state, curbContactCount: newCount }) })
+      set({
+        curbContactCount: newCount,
+        currentSurface: resolveSurface({ ...state, curbContactCount: newCount }),
+      })
     } else if (type === 'pitroad') {
       const newCount = Math.max(0, state.pitroadContactCount - 1)
-      set({ pitroadContactCount: newCount, currentSurface: resolveSurface({ ...state, pitroadContactCount: newCount }) })
+      set({
+        pitroadContactCount: newCount,
+        currentSurface: resolveSurface({ ...state, pitroadContactCount: newCount }),
+      })
     } else if (type === 'gravel') {
       const newCount = Math.max(0, state.gravelContactCount - 1)
-      set({ gravelContactCount: newCount, currentSurface: resolveSurface({ ...state, gravelContactCount: newCount }) })
+      set({
+        gravelContactCount: newCount,
+        currentSurface: resolveSurface({ ...state, gravelContactCount: newCount }),
+      })
     } else if (type === 'grass') {
       set({ currentSurface: resolveSurface(state) })
     }

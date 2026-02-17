@@ -1,7 +1,14 @@
 import { create } from 'zustand'
 import type { TrackGraph } from '../types/trackGraph'
 import type { SnapPointWithDirection, PlacedObject } from '../types/trackObjects'
-import { buildFromObjects, findBranchPoints, isCircuit, findConnectedRoads, propagateFlowDirection, type FlowPropagationResult } from '../utils/trackGraph'
+import {
+  buildFromObjects,
+  findBranchPoints,
+  isCircuit,
+  findConnectedRoads,
+  propagateFlowDirection,
+  type FlowPropagationResult,
+} from '../utils/trackGraph'
 import { getSnapPoints } from '../utils/roadGeometry'
 import { SpatialIndex } from '../utils/spatialIndex'
 import { useCustomizationStore } from './useCustomizationStore'
@@ -42,7 +49,7 @@ export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
     set({ graph, snapPoints, spatialIndex })
   },
 
-  findNearestSnap: (pos) => {
+  findNearestSnap: pos => {
     return get().spatialIndex.findNearest(pos)
   },
 
@@ -54,7 +61,7 @@ export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
     return isCircuit(get().graph, startNodeKey)
   },
 
-  getConnectedRoads: (roadId) => {
+  getConnectedRoads: roadId => {
     return findConnectedRoads(get().graph, roadId)
   },
 
@@ -101,11 +108,11 @@ export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
     })
   },
 
-  getFlowDirection: (roadId) => {
+  getFlowDirection: roadId => {
     return get().flowDirections.get(roadId) ?? null
   },
 
-  flipRoadDirection: (roadIds) => {
+  flipRoadDirection: roadIds => {
     const { placedObjects } = useCustomizationStore.getState()
     const flowDirections = new Map(get().flowDirections)
 
@@ -126,7 +133,7 @@ export const useTrackGraphStore = create<TrackGraphState>((set, get) => ({
 }))
 
 let prevObjectsRef: unknown = null
-useCustomizationStore.subscribe((state) => {
+useCustomizationStore.subscribe(state => {
   if (state.placedObjects !== prevObjectsRef) {
     prevObjectsRef = state.placedObjects
     useTrackGraphStore.getState().rebuildGraph()

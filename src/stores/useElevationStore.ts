@@ -12,7 +12,7 @@ interface ElevationState {
   exitRoad: () => void
 }
 
-export const useElevationStore = create<ElevationState>((set, get) => ({
+export const useElevationStore = create<ElevationState>(set => ({
   targetElevation: 0,
   onRoad: false,
   slopeAngle: 0,
@@ -23,7 +23,13 @@ export const useElevationStore = create<ElevationState>((set, get) => ({
   clearElevation: () =>
     set({ targetElevation: 0, onRoad: false, slopeAngle: 0, bankAngle: 0, roadCount: 0 }),
   enterRoad: (elevation, slope, bank) =>
-    set(s => ({ roadCount: s.roadCount + 1, targetElevation: elevation, slopeAngle: slope, bankAngle: bank, onRoad: true })),
+    set(s => ({
+      roadCount: s.roadCount + 1,
+      targetElevation: elevation,
+      slopeAngle: slope,
+      bankAngle: bank,
+      onRoad: true,
+    })),
   exitRoad: () =>
     set(s => {
       const count = Math.max(0, s.roadCount - 1)

@@ -24,7 +24,12 @@ interface TireState {
   syncFromWasm: (wear: PerWheelWear, effectiveGrip: number) => void
   syncGripBreakdown: (breakdown: GripBreakdown) => void
   syncTireMaterial: (material: TireMaterialOutput) => void
-  syncAllFromWasm: (wear: PerWheelWear, effectiveGrip: number, breakdown: GripBreakdown | null, material: TireMaterialOutput | null) => void
+  syncAllFromWasm: (
+    wear: PerWheelWear,
+    effectiveGrip: number,
+    breakdown: GripBreakdown | null,
+    material: TireMaterialOutput | null,
+  ) => void
   resetWear: () => void
   setWearDebug: (wearPercentage: number) => void
   disableDebugMode: () => void

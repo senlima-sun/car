@@ -1,9 +1,30 @@
 import { create } from 'zustand'
 import type { PlacedObject } from '../types/trackObjects'
 
-export type { ObjectType, TrackMode, CheckpointType, PlacedObject, CurbDragState, PartialDeleteState, SnapPointWithDirection, RoadEdgeResult, RoadEdgeHitResult, RoadSurfaceHitResult } from '../types/trackObjects'
+export type {
+  ObjectType,
+  TrackMode,
+  CheckpointType,
+  PlacedObject,
+  CurbDragState,
+  PartialDeleteState,
+  SnapPointWithDirection,
+  RoadEdgeResult,
+  RoadEdgeHitResult,
+  RoadSurfaceHitResult,
+} from '../types/trackObjects'
 export { isLinearObject } from '../types/trackObjects'
-export { getSnapPoints, findNearestSnapPoint, findRoadAtPosition, findRoadEdgeAtPosition, getRoadEdgePositionAt, findRoadSurfaceAtPosition, getRoadCenterPositionAt, splitRoadAtSegment, getElevationAtWorldPosition } from '../utils/roadGeometry'
+export {
+  getSnapPoints,
+  findNearestSnapPoint,
+  findRoadAtPosition,
+  findRoadEdgeAtPosition,
+  getRoadEdgePositionAt,
+  findRoadSurfaceAtPosition,
+  getRoadCenterPositionAt,
+  splitRoadAtSegment,
+  getElevationAtWorldPosition,
+} from '../utils/roadGeometry'
 export type { SnapSettings } from '../utils/roadSnapping'
 
 const STORAGE_KEY = 'car-racing-track'
@@ -23,6 +44,7 @@ interface CustomizationState {
   saveToStorage: () => void
   setPlacedObjects: (objects: PlacedObject[]) => void
   updateObject: (id: string, updates: Partial<PlacedObject>) => void
+  renumberSectorCheckpoints: () => void
   addGeneratedCurbs: (curbs: PlacedObject[]) => void
   performPartialDelete: (
     roadId: string,
@@ -46,7 +68,8 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
     set(state => ({
       placedObjects: [
         ...state.placedObjects.filter(
-          o => !(o.type === 'checkpoint' && (o.checkpointType ?? 'start-finish') === 'start-finish'),
+          o =>
+            !(o.type === 'checkpoint' && (o.checkpointType ?? 'start-finish') === 'start-finish'),
         ),
         obj,
       ],
@@ -105,10 +128,28 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
 
   updateObject: (id, updates) => {
     set(state => ({
-      placedObjects: state.placedObjects.map(obj =>
-        obj.id === id ? { ...obj, ...updates } : obj,
-      ),
+      placedObjects: state.placedObjects.map(obj => (obj.id === id ? { ...obj, ...updates } : obj)),
     }))
+    setTimeout(() => get().saveToStorage(), 0)
+  },
+
+  renumberSectorCheckpoints: () => {
+    set(state => {
+      const sectors = state.placedObjects
+        .filter(o => o.type === 'checkpoint' && o.checkpointType === 'sector')
+        .sort((a, b) => (a.checkpointOrder ?? 0) - (b.checkpointOrder ?? 0))
+
+      if (sectors.length === 0) return state
+
+      const reorderedIds = new Map<string, number>()
+      sectors.forEach((s, i) => reorderedIds.set(s.id, i + 1))
+
+      return {
+        placedObjects: state.placedObjects.map(obj =>
+          reorderedIds.has(obj.id) ? { ...obj, checkpointOrder: reorderedIds.get(obj.id)! } : obj,
+        ),
+      }
+    })
     setTimeout(() => get().saveToStorage(), 0)
   },
 

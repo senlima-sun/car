@@ -31,11 +31,9 @@ export const useEnvironmentStore = create<EnvironmentStore>((set, get) => ({
 
   isModalOpen: false,
 
-  setTemperature: temp =>
-    set({ temperature: Math.max(-10, Math.min(50, temp)) }),
+  setTemperature: temp => set({ temperature: Math.max(-10, Math.min(50, temp)) }),
 
-  setHumidity: humidity =>
-    set({ humidity: Math.max(0, Math.min(1, humidity)) }),
+  setHumidity: humidity => set({ humidity: Math.max(0, Math.min(1, humidity)) }),
 
   setPrecipitationRate: rate => {
     const clamped = Math.max(0, Math.min(50, rate))
@@ -46,11 +44,9 @@ export const useEnvironmentStore = create<EnvironmentStore>((set, get) => ({
     })
   },
 
-  setPressure: hPa =>
-    set({ pressure: Math.max(900, Math.min(1100, hPa)) }),
+  setPressure: hPa => set({ pressure: Math.max(900, Math.min(1100, hPa)) }),
 
-  setCloudCover: cover =>
-    set({ cloudCover: Math.max(0, Math.min(1, cover)) }),
+  setCloudCover: cover => set({ cloudCover: Math.max(0, Math.min(1, cover)) }),
 
   setRainIntensity: intensity => {
     const clamped = Math.max(0, Math.min(1, intensity))

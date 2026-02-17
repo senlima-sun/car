@@ -9,6 +9,8 @@ interface GameState {
   cameraMode: CameraMode
   previousCameraMode: CameraMode
   isTestingMode: boolean
+  isSettingsOpen: boolean
+  lookSensitivity: number
 
   startGame: () => void
   pauseGame: () => void
@@ -22,6 +24,9 @@ interface GameState {
   exitCustomizeMode: () => void
   toggleCustomizeMode: () => void
   toggleTestingMode: () => void
+  toggleSettings: () => void
+  closeSettings: () => void
+  setLookSensitivity: (sensitivity: number) => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -31,6 +36,8 @@ export const useGameStore = create<GameState>()(
       cameraMode: 'third-person',
       previousCameraMode: 'third-person',
       isTestingMode: false,
+      isSettingsOpen: false,
+      lookSensitivity: 0.002,
 
       startGame: () => set({ status: 'countdown' }),
       pauseGame: () => set({ status: 'paused' }),
@@ -56,6 +63,9 @@ export const useGameStore = create<GameState>()(
           status: state.status === 'customize' ? 'racing' : 'customize',
         })),
       toggleTestingMode: () => set(state => ({ isTestingMode: !state.isTestingMode })),
+      toggleSettings: () => set(state => ({ isSettingsOpen: !state.isSettingsOpen })),
+      closeSettings: () => set({ isSettingsOpen: false }),
+      setLookSensitivity: sensitivity => set({ lookSensitivity: sensitivity }),
     }),
     {
       name: 'game-settings',
@@ -63,6 +73,7 @@ export const useGameStore = create<GameState>()(
         cameraMode: state.cameraMode,
         previousCameraMode: state.previousCameraMode,
         isTestingMode: state.isTestingMode,
+        lookSensitivity: state.lookSensitivity,
       }),
     },
   ),

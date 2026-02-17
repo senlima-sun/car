@@ -86,9 +86,7 @@ export const usePerformanceStore = create<PerformanceState & PerformanceActions>
 
       const multiplier = TIER_MULTIPLIERS[tier]
       const trailPoints =
-        tier === 'ultra' ? 720 :
-        tier === 'high' ? 600 :
-        tier === 'medium' ? 400 : 200
+        tier === 'ultra' ? 720 : tier === 'high' ? 600 : tier === 'medium' ? 400 : 200
 
       set({
         tier,

@@ -36,9 +36,7 @@ export const useTrackLimitsStore = create<TrackLimitsState>((set, get) => ({
       })
     } else if (!isOff && state.isOffTrack) {
       // Returning to track: stop timing, accumulate time
-      const violationDuration = state.currentViolationStart
-        ? now - state.currentViolationStart
-        : 0
+      const violationDuration = state.currentViolationStart ? now - state.currentViolationStart : 0
 
       set({
         isOffTrack: false,

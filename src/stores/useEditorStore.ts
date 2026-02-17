@@ -692,6 +692,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         endSnapBanking: null,
         connectedTangent: null,
         snappedAngle: null,
+        deleteMode: false,
+        partialDeleteMode: false,
+        elevationEditMode: false,
+        autoCurbMode: false,
+        selectedRoadIds: [],
+        elevationDragState: null,
+        slopeAnchor: null,
+        smoothSelectedRoadIds: [],
       })
     }
   },
@@ -716,6 +724,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       deleteMode: enabled,
       selectedObjectId: enabled ? get().selectedObjectId : null,
+      ...(enabled
+        ? {
+            partialDeleteMode: false,
+            elevationEditMode: false,
+            autoCurbMode: false,
+            selectedObjectType: null,
+            selectedRoadIds: [],
+            placementState: 'idle' as PlacementState,
+            elevationDragState: null,
+            slopeAnchor: null,
+            smoothSelectedRoadIds: [],
+          }
+        : {}),
     }),
 
   setPreviewPosition: pos => set({ previewPosition: pos }),
@@ -1102,7 +1123,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ? {
             selectedObjectType: null,
             deleteMode: false,
+            elevationEditMode: false,
+            autoCurbMode: false,
+            selectedRoadIds: [],
             placementState: 'idle' as PlacementState,
+            elevationDragState: null,
+            slopeAnchor: null,
+            smoothSelectedRoadIds: [],
           }
         : {}),
     }),
@@ -1171,10 +1198,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       autoCurbMode: enabled,
       selectedRoadIds: enabled ? get().selectedRoadIds : [],
-      deleteMode: false,
-      partialDeleteMode: false,
-      selectedObjectType: null,
-      placementState: 'idle',
+      ...(enabled
+        ? {
+            deleteMode: false,
+            partialDeleteMode: false,
+            elevationEditMode: false,
+            selectedObjectType: null,
+            placementState: 'idle' as PlacementState,
+            elevationDragState: null,
+            slopeAnchor: null,
+            smoothSelectedRoadIds: [],
+          }
+        : {
+            deleteMode: false,
+            partialDeleteMode: false,
+            selectedObjectType: null,
+            placementState: 'idle' as PlacementState,
+          }),
     }),
 
   toggleRoadSelection: roadId =>
