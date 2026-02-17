@@ -1,6 +1,21 @@
 import { useMemo } from 'react'
-import { Cloud } from '@react-three/drei'
+import { Clouds, Cloud } from '@react-three/drei'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
+import { usePerformanceStore, type QualityTier } from '../../../stores/usePerformanceStore'
+
+const CLOUD_COUNT_MULT: Record<QualityTier, number> = {
+  ultra: 1.0,
+  high: 0.7,
+  medium: 0.4,
+  low: 0.2,
+}
+
+const CLOUD_SEGMENTS: Record<QualityTier, number> = {
+  ultra: 8,
+  high: 8,
+  medium: 4,
+  low: 2,
+}
 
 interface CloudPreset {
   color: string
@@ -30,10 +45,13 @@ export default function CloudLayer() {
   const cloudCover = useEnvironmentStore(s => s.cloudCover)
   const temperature = useEnvironmentStore(s => s.temperature)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
+  const tier = usePerformanceStore(s => s.tier)
 
-  const { preset, cloudCount, positions } = useMemo(() => {
+  const { preset, cloudCount, positions, segments } = useMemo(() => {
     const preset = getCloudPreset(temperature, rainIntensity)
-    const cloudCount = Math.floor(cloudCover * 12) + 2
+    const baseCount = Math.floor(cloudCover * 12) + 2
+    const cloudCount = Math.max(1, Math.floor(baseCount * CLOUD_COUNT_MULT[tier]))
+    const segments = CLOUD_SEGMENTS[tier]
     const radius = 200
     const positions: [number, number, number][] = []
 
@@ -46,13 +64,13 @@ export default function CloudLayer() {
       positions.push([x, y, z])
     }
 
-    return { preset, cloudCount, positions }
-  }, [cloudCover, temperature, rainIntensity])
+    return { preset, cloudCount, positions, segments }
+  }, [cloudCover, temperature, rainIntensity, tier])
 
   if (cloudCount <= 0) return null
 
   return (
-    <group>
+    <Clouds limit={positions.length * 8}>
       {positions.map((pos, i) => (
         <Cloud
           key={i}
@@ -60,10 +78,10 @@ export default function CloudLayer() {
           opacity={preset.opacity}
           speed={0.2}
           bounds={[30, 8, 8]}
-          segments={8}
+          segments={segments}
           color={preset.color}
         />
       ))}
-    </group>
+    </Clouds>
   )
 }

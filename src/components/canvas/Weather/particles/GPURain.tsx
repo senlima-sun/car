@@ -64,7 +64,7 @@ export function GPURain() {
     }
   }, [geometry, material])
 
-  useFrame((state) => {
+  useFrame(state => {
     if (!pointsRef.current) return
 
     const mult = usePerformanceStore.getState().particleMultiplier

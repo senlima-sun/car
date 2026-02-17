@@ -2,29 +2,38 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
-import {
-  useTrackTemperatureStore,
-  TRACK_TEMP_CONFIG,
-} from '../../../stores/useTrackTemperatureStore'
+import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
+import { usePhysicsOptional } from '../../../wasm'
 
 const MAX_PUDDLES = 150
 const MAX_ICE_PATCHES = 100
-const WATER_DEPTH_THRESHOLD = 0.2 // Minimum water depth to show puddle
-const ICE_THRESHOLD = 0.3 // Maximum temperature to show ice
+const WATER_DEPTH_THRESHOLD = 0.2
+const ICE_THRESHOLD = 0.3
 
-// Puddle patches - appear when rain intensity > 0 based on water depth
+let _surfaceCellCache: Float32Array | null = null
+let _surfaceCellFrame = -1
+
+function getCachedSurfaceCells(
+  physics: { getActiveSurfaceCells: () => Float32Array } | null,
+  frameCount: number,
+): Float32Array | null {
+  if (!physics) return null
+  if (frameCount === _surfaceCellFrame && _surfaceCellCache) return _surfaceCellCache
+  _surfaceCellCache = physics.getActiveSurfaceCells()
+  _surfaceCellFrame = frameCount
+  return _surfaceCellCache
+}
+
 function PuddlePatches() {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const colorRef = useRef<THREE.InstancedBufferAttribute | null>(null)
   const dummyRef = useRef(new THREE.Object3D())
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
-  const cellsVersion = useTrackTemperatureStore(s => s.cellsVersion)
+  const physics = usePhysicsOptional()
   const frameCounter = useRef(0)
 
-  // Only render when raining or shortly after (puddles persist)
   const isRaining = rainIntensity > 0.01
 
-  // Create color attribute for per-instance colors
   const colorArray = useMemo(() => new Float32Array(MAX_PUDDLES * 3), [])
 
   useFrame(() => {
@@ -33,9 +42,7 @@ function PuddlePatches() {
     frameCounter.current++
     if (frameCounter.current % 3 !== 0) return
 
-    const cells = useTrackTemperatureStore.getState().cells
     const dummy = dummyRef.current
-    const { gridSize } = TRACK_TEMP_CONFIG
     let instanceIndex = 0
 
     for (let i = 0; i < MAX_PUDDLES; i++) {
@@ -45,37 +52,42 @@ function PuddlePatches() {
       meshRef.current.setMatrixAt(i, dummy.matrix)
     }
 
-    cells.forEach((cell, key) => {
-      if (instanceIndex >= MAX_PUDDLES) return
+    if (physics?.initialized) {
+      const cellData = getCachedSurfaceCells(physics, frameCounter.current)
+      if (cellData) {
+        const stride = 5
 
-      const waterDepth = cell.waterDepth ?? cell.wetness
-      if (waterDepth < WATER_DEPTH_THRESHOLD) return
+        for (let c = 0; c < cellData.length && instanceIndex < MAX_PUDDLES; c += stride) {
+          const worldX = cellData[c]
+          const worldZ = cellData[c + 1]
+          const waterDepth = cellData[c + 2]
+          const wetness = cellData[c + 3]
 
-      const commaIdx = key.indexOf(',')
-      const cellX = +key.slice(0, commaIdx)
-      const cellZ = +key.slice(commaIdx + 1)
-      const worldX = cellX * gridSize + gridSize / 2
-      const worldZ = cellZ * gridSize + gridSize / 2
+          const effectiveWater = Math.max(waterDepth, wetness)
+          if (effectiveWater < WATER_DEPTH_THRESHOLD) continue
 
-      const yPos = 0.01 + waterDepth * 0.03
-      dummy.position.set(worldX, yPos, worldZ)
+          const yPos = 0.01 + effectiveWater * 0.03
+          dummy.position.set(worldX, yPos, worldZ)
 
-      const baseScale = gridSize * 0.5
-      const depthScale = 0.5 + waterDepth * 0.8
-      dummy.scale.setScalar(baseScale * depthScale)
+          const baseScale = 1.0
+          const depthScale = 0.5 + effectiveWater * 0.8
+          dummy.scale.setScalar(baseScale * depthScale)
 
-      dummy.rotation.set(-Math.PI / 2, 0, (cellX * 13 + cellZ * 29) % (Math.PI * 2))
-      dummy.updateMatrix()
+          const seedA = Math.floor(worldX * 7) + Math.floor(worldZ * 13)
+          dummy.rotation.set(-Math.PI / 2, 0, (seedA * 29) % (Math.PI * 2))
+          dummy.updateMatrix()
 
-      meshRef.current!.setMatrixAt(instanceIndex, dummy.matrix)
+          meshRef.current!.setMatrixAt(instanceIndex, dummy.matrix)
 
-      const depthFactor = waterDepth
-      colorArray[instanceIndex * 3] = 0.31 - depthFactor * 0.19
-      colorArray[instanceIndex * 3 + 1] = 0.5 - depthFactor * 0.28
-      colorArray[instanceIndex * 3 + 2] = 0.63 - depthFactor * 0.31
+          const depthFactor = effectiveWater
+          colorArray[instanceIndex * 3] = 0.31 - depthFactor * 0.19
+          colorArray[instanceIndex * 3 + 1] = 0.5 - depthFactor * 0.28
+          colorArray[instanceIndex * 3 + 2] = 0.63 - depthFactor * 0.31
 
-      instanceIndex++
-    })
+          instanceIndex++
+        }
+      }
+    }
 
     meshRef.current.instanceMatrix.needsUpdate = true
     meshRef.current.count = instanceIndex
@@ -85,9 +97,7 @@ function PuddlePatches() {
     }
   })
 
-  const hasWater = cellsVersion > 0 && rainIntensity > 0.01
-
-  if (!isRaining && !hasWater) return null
+  if (!isRaining) return null
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_PUDDLES]}>
@@ -107,11 +117,12 @@ function PuddlePatches() {
   )
 }
 
-// Ice patches - appear when temperature < 0°C
 function IcePatches() {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const dummyRef = useRef(new THREE.Object3D())
   const temperature = useEnvironmentStore(s => s.temperature)
+  const physics = usePhysicsOptional()
+  const worldBounds = useTrackTemperatureStore(s => s.worldBounds)
   const frameCounter = useRef(0)
 
   const isCold = temperature < 0
@@ -122,9 +133,7 @@ function IcePatches() {
     frameCounter.current++
     if (frameCounter.current % 3 !== 0) return
 
-    const cells = useTrackTemperatureStore.getState().cells
     const dummy = dummyRef.current
-    const { gridSize } = TRACK_TEMP_CONFIG
     let instanceIndex = 0
 
     for (let i = 0; i < MAX_ICE_PATCHES; i++) {
@@ -134,48 +143,46 @@ function IcePatches() {
       meshRef.current.setMatrixAt(i, dummy.matrix)
     }
 
-    cells.forEach((cell, key) => {
-      if (instanceIndex >= MAX_ICE_PATCHES) return
-      if (cell.temperature > ICE_THRESHOLD) return
+    if (physics?.initialized) {
+      const cellData = getCachedSurfaceCells(physics, frameCounter.current)
+      if (cellData) {
+        const stride = 5
 
-      const commaIdx = key.indexOf(',')
-      const cellX = +key.slice(0, commaIdx)
-      const cellZ = +key.slice(commaIdx + 1)
-      const worldX = cellX * gridSize + gridSize / 2
-      const worldZ = cellZ * gridSize + gridSize / 2
+        for (let c = 0; c < cellData.length && instanceIndex < MAX_ICE_PATCHES; c += stride) {
+          const worldX = cellData[c]
+          const worldZ = cellData[c + 1]
+          const ice = cellData[c + 4]
 
-      dummy.position.set(worldX, 0.012, worldZ)
-      // Ice is more visible where temperature is lower
-      const iceStrength = 1 - cell.temperature / ICE_THRESHOLD
-      const scale = gridSize * 0.5 * (0.6 + iceStrength * 0.4)
-      dummy.scale.setScalar(scale)
-      // Use cell position for stable rotation
-      dummy.rotation.set(-Math.PI / 2, 0, (cellX * 17 + cellZ * 31) % (Math.PI * 2))
-      dummy.updateMatrix()
+          if (ice < 0.1) continue
 
-      meshRef.current!.setMatrixAt(instanceIndex, dummy.matrix)
-      instanceIndex++
-    })
+          dummy.position.set(worldX, 0.012, worldZ)
+          const iceStrength = ice
+          const scale = 1.0 * (0.6 + iceStrength * 0.4)
+          dummy.scale.setScalar(scale)
+          const seedA = Math.floor(worldX * 7) + Math.floor(worldZ * 13)
+          dummy.rotation.set(-Math.PI / 2, 0, (seedA * 31) % (Math.PI * 2))
+          dummy.updateMatrix()
+
+          meshRef.current!.setMatrixAt(instanceIndex, dummy.matrix)
+          instanceIndex++
+        }
+      }
+    }
 
     meshRef.current.instanceMatrix.needsUpdate = true
     meshRef.current.count = instanceIndex
   })
 
-  // Also generate some static ice patches for ambient effect in cold weather
-  // Use seeded pseudo-random for stable positions
   const staticIcePositions = useMemo(() => {
     if (!isCold) return []
 
     const positions: { pos: [number, number, number]; scale: number; rotation: number }[] = []
-    const { worldBounds } = TRACK_TEMP_CONFIG
 
-    // Seeded random for stable positions
     const seededRandom = (seed: number) => {
       const x = Math.sin(seed * 12.9898) * 43758.5453
       return x - Math.floor(x)
     }
 
-    // Generate random ice patches across the world with stable positions
     for (let i = 0; i < 30; i++) {
       const x = worldBounds.minX + seededRandom(i * 3 + 1) * (worldBounds.maxX - worldBounds.minX)
       const z = worldBounds.minZ + seededRandom(i * 3 + 2) * (worldBounds.maxZ - worldBounds.minZ)
@@ -185,13 +192,12 @@ function IcePatches() {
     }
 
     return positions
-  }, [isCold])
+  }, [isCold, worldBounds])
 
   if (!isCold) return null
 
   return (
     <>
-      {/* Dynamic ice patches based on temperature grid */}
       <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_ICE_PATCHES]}>
         <circleGeometry args={[1, 8]} />
         <meshStandardMaterial
@@ -204,7 +210,6 @@ function IcePatches() {
         />
       </instancedMesh>
 
-      {/* Static ambient ice patches */}
       {staticIcePositions.map((item, i) => (
         <mesh key={i} position={item.pos} rotation={[-Math.PI / 2, 0, item.rotation]}>
           <circleGeometry args={[item.scale, 6]} />
@@ -222,33 +227,26 @@ function IcePatches() {
   )
 }
 
-// Snow accumulation overlay - white ground layer that builds up when temp < 0°C
 function SnowAccumulation() {
   const meshRef = useRef<THREE.Mesh>(null)
   const temperature = useEnvironmentStore(s => s.temperature)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
-  // Snow appears when temp < 0°C and increases as it gets colder
-  // No snow during rain (it turns to sleet/rain at those temps)
   const snowOpacity = useMemo(() => {
     if (temperature >= 0 || rainIntensity > 0.3) return 0
-    // Fade in snow from 0°C to -5°C (max at -5°C or below)
     const coldFactor = Math.min(1, Math.abs(temperature) / 5)
     return coldFactor * 0.35
   }, [temperature, rainIntensity])
 
-  // Create snow texture
   const snowTexture = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 256
     canvas.height = 256
     const ctx = canvas.getContext('2d')!
 
-    // White base with slight variation
     ctx.fillStyle = '#f8f8ff'
     ctx.fillRect(0, 0, 256, 256)
 
-    // Add sparkle/crystal patterns
     for (let i = 0; i < 1000; i++) {
       const x = Math.random() * 256
       const y = Math.random() * 256
@@ -257,7 +255,6 @@ function SnowAccumulation() {
       ctx.fillRect(x, y, 2, 2)
     }
 
-    // Add subtle shadows/depth
     for (let i = 0; i < 200; i++) {
       const x = Math.random() * 256
       const y = Math.random() * 256
@@ -295,39 +292,9 @@ function SnowAccumulation() {
   )
 }
 
-// Wet road overlay - large reflective plane during rain for water layer effect
-function WetRoadOverlay() {
-  const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
-
-  // Calculate opacity based on rain intensity
-  const waterOpacity = useMemo(() => {
-    if (rainIntensity <= 0.01) return 0
-    return rainIntensity * 0.25
-  }, [rainIntensity])
-
-  if (waterOpacity <= 0) return null
-
-  return (
-    <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[5000, 5000]} />
-      <meshStandardMaterial
-        color='#2a4050'
-        transparent
-        opacity={waterOpacity}
-        metalness={0.95}
-        roughness={0.05}
-        envMapIntensity={1.5}
-        depthWrite={false}
-      />
-    </mesh>
-  )
-}
-
-// Main surface effects component
 export default function SurfaceEffects() {
   return (
     <>
-      <WetRoadOverlay />
       <PuddlePatches />
       <IcePatches />
       <SnowAccumulation />

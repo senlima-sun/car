@@ -76,16 +76,12 @@ export function InstancedRainSplash() {
           particle.pos.set(
             camera.position.x + (Math.random() - 0.5) * areaSize,
             0.05,
-            camera.position.z + (Math.random() - 0.5) * areaSize
+            camera.position.z + (Math.random() - 0.5) * areaSize,
           )
 
           const angle = Math.random() * Math.PI * 2
           const speed = 1.5 + Math.random() * 2
-          particle.vel.set(
-            Math.cos(angle) * speed * 0.5,
-            speed,
-            Math.sin(angle) * speed * 0.5
-          )
+          particle.vel.set(Math.cos(angle) * speed * 0.5, speed, Math.sin(angle) * speed * 0.5)
 
           particle.lifetime = particle.maxLifetime
         } else {
@@ -108,7 +104,5 @@ export function InstancedRainSplash() {
     meshRef.current.instanceMatrix.needsUpdate = true
   })
 
-  return (
-    <instancedMesh ref={meshRef} args={[geometry, material, splashCount]} />
-  )
+  return <instancedMesh ref={meshRef} args={[geometry, material, splashCount]} />
 }

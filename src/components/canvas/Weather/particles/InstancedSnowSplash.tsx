@@ -78,7 +78,7 @@ export function InstancedSnowSplash() {
           particle.pos.set(
             camera.position.x + (Math.random() - 0.5) * areaSize,
             0.1,
-            camera.position.z + (Math.random() - 0.5) * areaSize
+            camera.position.z + (Math.random() - 0.5) * areaSize,
           )
 
           const angle = Math.random() * Math.PI * 2
@@ -86,7 +86,7 @@ export function InstancedSnowSplash() {
           particle.vel.set(
             Math.cos(angle) * speed,
             0.2 + Math.random() * 0.3,
-            Math.sin(angle) * speed
+            Math.sin(angle) * speed,
           )
 
           particle.lifetime = particle.maxLifetime
@@ -116,7 +116,5 @@ export function InstancedSnowSplash() {
     meshRef.current.instanceMatrix.needsUpdate = true
   })
 
-  return (
-    <instancedMesh ref={meshRef} args={[geometry, material, puffCount]} />
-  )
+  return <instancedMesh ref={meshRef} args={[geometry, material, puffCount]} />
 }
