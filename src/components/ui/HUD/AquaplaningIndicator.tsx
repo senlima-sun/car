@@ -80,8 +80,6 @@ const styles: Record<string, React.CSSProperties> = {
 
 export default function AquaplaningIndicator() {
   const isAquaplaning = useAquaplaningStore(s => s.isAquaplaning)
-  const intensity = useAquaplaningStore(s => s.intensity)
-  const affectedWheels = useAquaplaningStore(s => s.affectedWheels)
   const isThermalShock = useAquaplaningStore(s => s.isThermalShock)
   const thermalShockPenalty = useAquaplaningStore(s => s.thermalShockPenalty)
   const thermalShockRecoveryTime = useAquaplaningStore(s => s.thermalShockRecoveryTime)
@@ -109,8 +107,6 @@ export default function AquaplaningIndicator() {
   const pulseOpacity = 0.7 + Math.sin((pulse / 100) * Math.PI * 2) * 0.3
 
   // Wheel labels
-  const wheelLabels = ['FL', 'FR', 'RL', 'RR']
-
   return (
     <div style={{ ...styles.overlay, opacity: pulseOpacity }}>
       <div>

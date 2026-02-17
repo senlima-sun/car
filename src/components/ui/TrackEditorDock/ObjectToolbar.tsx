@@ -62,10 +62,11 @@ const objectColors: Record<ObjectType, string> = {
 interface ObjectButtonProps {
   type: ObjectType
   isSelected: boolean
+  isDisabled: boolean
   onClick: () => void
 }
 
-function ObjectButton({ type, isSelected, onClick }: ObjectButtonProps) {
+function ObjectButton({ type, isSelected, isDisabled, onClick }: ObjectButtonProps) {
   const config = OBJECT_CONFIGS[type]
 
   return (
@@ -73,16 +74,17 @@ function ObjectButton({ type, isSelected, onClick }: ObjectButtonProps) {
       style={{
         ...styles.button,
         ...(isSelected ? styles.buttonSelected : {}),
+        ...(isDisabled ? { opacity: 0.3, pointerEvents: 'none' as const } : {}),
       }}
       onClick={onClick}
       title={config.description}
       onMouseEnter={e => {
-        if (!isSelected) {
+        if (!isSelected && !isDisabled) {
           ;(e.target as HTMLButtonElement).style.background = 'rgba(255, 255, 255, 0.12)'
         }
       }}
       onMouseLeave={e => {
-        if (!isSelected) {
+        if (!isSelected && !isDisabled) {
           ;(e.target as HTMLButtonElement).style.background = 'rgba(255, 255, 255, 0.08)'
         }
       }}
@@ -142,18 +144,14 @@ export default function ObjectToolbar() {
   const selectObjectType = useEditorStore(s => s.selectObjectType)
   const deleteMode = useEditorStore(s => s.deleteMode)
   const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
-  const setDeleteMode = useEditorStore(s => s.setDeleteMode)
-  const setPartialDeleteMode = useEditorStore(s => s.setPartialDeleteMode)
+  const elevationEditMode = useEditorStore(s => s.elevationEditMode)
+  const autoCurbMode = useEditorStore(s => s.autoCurbMode)
+
+  const isDisabled = deleteMode || partialDeleteMode || elevationEditMode || autoCurbMode
 
   const handleSelectType = (type: ObjectType) => {
-    if (deleteMode) setDeleteMode(false)
-    if (partialDeleteMode) setPartialDeleteMode(false)
-
-    if (selectedObjectType === type) {
-      selectObjectType(null)
-    } else {
-      selectObjectType(type)
-    }
+    if (isDisabled) return
+    selectObjectType(selectedObjectType === type ? null : type)
   }
 
   return (
@@ -163,10 +161,11 @@ export default function ObjectToolbar() {
           key={type}
           type={type}
           isSelected={selectedObjectType === type}
+          isDisabled={isDisabled}
           onClick={() => handleSelectType(type)}
         />
       ))}
-      {selectedObjectType === 'checkpoint' && <CheckpointTypeSelector />}
+      {selectedObjectType === 'checkpoint' && !isDisabled && <CheckpointTypeSelector />}
     </div>
   )
 }

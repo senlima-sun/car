@@ -391,11 +391,7 @@ export default function DebugPanel() {
               }}
             >
               <span style={styles.compoundIcon}>
-                {preset === 'Aggressive'
-                  ? '↑'
-                  : preset === 'Conservative'
-                    ? '↓'
-                    : '⟷'}
+                {preset === 'Aggressive' ? '↑' : preset === 'Conservative' ? '↓' : '⟷'}
               </span>
               <span style={styles.compoundName}>{preset.slice(0, 3).toUpperCase()}</span>
             </button>

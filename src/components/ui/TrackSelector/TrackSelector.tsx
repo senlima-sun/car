@@ -331,7 +331,9 @@ export default function TrackSelector() {
                     >
                       <span style={styles.menuItemIcon}>🏁</span>
                       <span style={styles.menuItemName}>{preset.name}</span>
-                      <span style={styles.menuItemMeta}>{(preset.trackLength / 1000).toFixed(1)}km</span>
+                      <span style={styles.menuItemMeta}>
+                        {(preset.trackLength / 1000).toFixed(1)}km
+                      </span>
                     </div>
                   ))}
                 </div>

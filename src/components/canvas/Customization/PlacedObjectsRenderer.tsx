@@ -1,9 +1,18 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { ThreeEvent } from '@react-three/fiber'
+import * as THREE from 'three'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
+import { useVisibilityStore } from '../../../stores/useVisibilityStore'
 import { TrackObjectWrapper } from '../TrackObjects'
+import { useVisibilityUpdater } from '../../../hooks/useVisibilityUpdater'
+import type { PlacedObject } from '../../../types/trackObjects'
+
+function VisibilityManager() {
+  useVisibilityUpdater()
+  return null
+}
 
 interface PlacedObjectsRendererProps {
   enablePhysics?: boolean
@@ -22,72 +31,128 @@ export default function PlacedObjectsRenderer({
   const toggleRoadSelection = useEditorStore(s => s.toggleRoadSelection)
   const multiSelectedIds = useEditorStore(s => s.multiSelectedIds)
   const toggleMultiSelect = useEditorStore(s => s.toggleMultiSelect)
+  const visibleObjectIds = useVisibilityStore(s => s.visibleObjectIds)
 
-  // Load track library on mount (handles migration from legacy storage)
   useEffect(() => {
     loadLibrary()
   }, [loadLibrary])
 
-  const handleObjectClick = useCallback(
-    (objectId: string, objectType: string) => (e: ThreeEvent<MouseEvent>) => {
-      // Handle auto curb mode: only allow selecting roads
-      if (autoCurbMode && objectType === 'road') {
+  const objectMap = useMemo(() => {
+    const map = new Map<string, PlacedObject>()
+    for (const obj of placedObjects) {
+      map.set(obj.id, obj)
+    }
+    return map
+  }, [placedObjects])
+
+  const visibleObjects = useMemo(() => {
+    if (visibleObjectIds.size === 0 && placedObjects.length > 0) return placedObjects
+    const result: PlacedObject[] = []
+    for (const id of visibleObjectIds) {
+      const obj = objectMap.get(id)
+      if (obj) result.push(obj)
+    }
+    return result
+  }, [visibleObjectIds, objectMap, placedObjects])
+
+  const stateRef = useRef({ deleteMode, autoCurbMode, selectedObjectId })
+  stateRef.current = { deleteMode, autoCurbMode, selectedObjectId }
+
+  const handleGroupClick = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      let target = e.object as THREE.Object3D | null
+      let objectId: string | undefined
+      let objectType: string | undefined
+      while (target) {
+        if (target.userData.trackObjectId) {
+          objectId = target.userData.trackObjectId
+          objectType = target.userData.trackObjectType
+          break
+        }
+        target = target.parent
+      }
+      if (!objectId || !objectType) return
+
+      const { deleteMode: dm, autoCurbMode: acm, selectedObjectId: selId } = stateRef.current
+
+      if (acm && objectType === 'road') {
         e.stopPropagation()
         toggleRoadSelection(objectId)
         return
       }
 
-      if (deleteMode) {
+      if (!dm && !acm && objectType === 'checkpoint') {
+        e.stopPropagation()
+        selectObject(selId === objectId ? null : objectId)
+        return
+      }
+
+      if (dm) {
         e.stopPropagation()
         if (e.nativeEvent.shiftKey) {
           toggleMultiSelect(objectId)
-        } else if (selectedObjectId === objectId) {
+        } else if (selId === objectId) {
           selectObject(null)
         } else {
           selectObject(objectId)
         }
       }
     },
-    [deleteMode, autoCurbMode, selectedObjectId, selectObject, toggleRoadSelection, toggleMultiSelect],
+    [selectObject, toggleRoadSelection, toggleMultiSelect],
   )
 
-  // Check if pointer events should be active (for delete or auto curb mode)
-  const isInteractiveMode = deleteMode || autoCurbMode
+  const handlePointerOver = useCallback(
+    (e: ThreeEvent<PointerEvent>) => {
+      let target = e.object as THREE.Object3D | null
+      let objectType: string | undefined
+      while (target) {
+        if (target.userData.trackObjectId) {
+          objectType = target.userData.trackObjectType
+          break
+        }
+        target = target.parent
+      }
+      if (!objectType) return
+
+      const { deleteMode: dm, autoCurbMode: acm } = stateRef.current
+      if (dm || (acm && objectType === 'road') || objectType === 'checkpoint') {
+        e.stopPropagation()
+        document.body.style.cursor = 'pointer'
+      }
+    },
+    [],
+  )
+
+  const handlePointerOut = useCallback(() => {
+    document.body.style.cursor = 'auto'
+  }, [])
 
   return (
     <>
-      {placedObjects.map(object => {
-        // In auto curb mode, only roads are clickable
-        const isClickable = deleteMode || (autoCurbMode && object.type === 'road')
-        return (
-          <group
-            key={object.id}
-            onClick={handleObjectClick(object.id, object.type)}
-            onPointerOver={
-              isClickable
-                ? e => {
-                    e.stopPropagation()
-                    document.body.style.cursor = 'pointer'
-                  }
-                : undefined
-            }
-            onPointerOut={
-              isInteractiveMode
-                ? () => {
-                    document.body.style.cursor = 'auto'
-                  }
-                : undefined
-            }
-          >
-            <TrackObjectWrapper
-              object={object}
-              enablePhysics={enablePhysics}
-              isSelected={selectedObjectId === object.id || multiSelectedIds.includes(object.id)}
-              isSelectedForCurb={autoCurbMode && selectedRoadIds.includes(object.id)}
-            />
-          </group>
-        )
-      })}
+      <VisibilityManager />
+      <group
+        onClick={handleGroupClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
+        {visibleObjects.map(object => {
+          const parentRoad = object.parentRoadId ? objectMap.get(object.parentRoadId) : undefined
+          return (
+            <group
+              key={object.id}
+              userData={{ trackObjectId: object.id, trackObjectType: object.type }}
+            >
+              <TrackObjectWrapper
+                object={object}
+                parentRoad={parentRoad}
+                enablePhysics={enablePhysics}
+                isSelected={selectedObjectId === object.id || multiSelectedIds.includes(object.id)}
+                isSelectedForCurb={autoCurbMode && selectedRoadIds.includes(object.id)}
+              />
+            </group>
+          )
+        })}
+      </group>
     </>
   )
 }

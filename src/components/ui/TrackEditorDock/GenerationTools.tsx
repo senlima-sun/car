@@ -48,22 +48,10 @@ export default function GenerationTools() {
   const selectedRoadIds = useEditorStore(s => s.selectedRoadIds)
   const setAutoCurbMode = useEditorStore(s => s.setAutoCurbMode)
   const clearRoadSelection = useEditorStore(s => s.clearRoadSelection)
-  const deleteMode = useEditorStore(s => s.deleteMode)
-  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
-  const selectObjectType = useEditorStore(s => s.selectObjectType)
-  const setDeleteMode = useEditorStore(s => s.setDeleteMode)
-  const setPartialDeleteMode = useEditorStore(s => s.setPartialDeleteMode)
 
   const handleToggleAutoCurbMode = () => {
-    if (autoCurbMode) {
-      clearRoadSelection()
-      setAutoCurbMode(false)
-    } else {
-      if (deleteMode) setDeleteMode(false)
-      if (partialDeleteMode) setPartialDeleteMode(false)
-      selectObjectType(null)
-      setAutoCurbMode(true)
-    }
+    if (autoCurbMode) clearRoadSelection()
+    setAutoCurbMode(!autoCurbMode)
   }
 
   const handleGenerateCurbs = () => {

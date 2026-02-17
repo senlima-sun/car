@@ -86,14 +86,10 @@ export default function PitLaneSpeedIndicator() {
         }}
       >
         <div style={styles.limitIcon}>{PIT_LANE_SPEED_LIMIT_KMH}</div>
-        <div style={styles.limitText}>
-          PIT LANE — {Math.round(speed)} km/h
-        </div>
+        <div style={styles.limitText}>PIT LANE — {Math.round(speed)} km/h</div>
       </div>
 
-      {isRecording && penalty > 0 && (
-        <div style={styles.penaltyBadge}>+{penalty}s PENALTY</div>
-      )}
+      {isRecording && penalty > 0 && <div style={styles.penaltyBadge}>+{penalty}s PENALTY</div>}
     </div>
   )
 }

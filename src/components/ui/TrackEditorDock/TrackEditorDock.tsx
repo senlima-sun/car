@@ -9,7 +9,6 @@ import GenerationTools from './GenerationTools'
 import ElevationTools from './ElevationTools'
 import TrackManagement from './TrackManagement'
 import ContextHint from './ContextHint'
-import EditorHelpModal from './EditorHelpModal'
 
 const styles: Record<string, React.CSSProperties> = {
   dock: {
@@ -24,6 +23,21 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     padding: '0 12px',
     gap: 0,
+    pointerEvents: 'auto',
+    zIndex: 100,
+  },
+  secondaryBar: {
+    position: 'absolute',
+    bottom: 64,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: 'rgba(0, 0, 0, 0.85)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    padding: '6px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
     pointerEvents: 'auto',
     zIndex: 100,
   },
@@ -114,7 +128,12 @@ export default function TrackEditorDock() {
 
   return (
     <>
-      <ContextHint />
+      <ContextHint showSecondaryBar={!!showTrackSettings} />
+      {showTrackSettings && (
+        <div style={styles.secondaryBar}>
+          <TrackSettings />
+        </div>
+      )}
       <div style={styles.dock}>
         {/* Objects Section */}
         <ObjectToolbar />
@@ -123,14 +142,6 @@ export default function TrackEditorDock() {
 
         {/* Delete Tools */}
         <DeleteTools />
-
-        {/* Track Settings - only for linear objects */}
-        {showTrackSettings && (
-          <>
-            <div style={styles.divider} />
-            <TrackSettings />
-          </>
-        )}
 
         <div style={styles.divider} />
 
@@ -160,7 +171,14 @@ export default function TrackEditorDock() {
             onClick={canUndo ? undo : undefined}
             title={undoDescription ? `Undo: ${undoDescription}` : 'Nothing to undo'}
           >
-            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke={canUndo ? '#fff' : '#666'} strokeWidth='2'>
+            <svg
+              width='14'
+              height='14'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke={canUndo ? '#fff' : '#666'}
+              strokeWidth='2'
+            >
               <path d='M3 10h10a5 5 0 015 5v2' />
               <polyline points='7 14 3 10 7 6' />
             </svg>
@@ -173,13 +191,19 @@ export default function TrackEditorDock() {
             onClick={canRedo ? redo : undefined}
             title={redoDescription ? `Redo: ${redoDescription}` : 'Nothing to redo'}
           >
-            <svg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke={canRedo ? '#fff' : '#666'} strokeWidth='2'>
+            <svg
+              width='14'
+              height='14'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke={canRedo ? '#fff' : '#666'}
+              strokeWidth='2'
+            >
               <path d='M21 10H11a5 5 0 00-5 5v2' />
               <polyline points='17 14 21 10 17 6' />
             </svg>
           </button>
           <span style={styles.objectCount}>{placedObjects.length} objects</span>
-          <EditorHelpModal />
         </div>
       </div>
     </>

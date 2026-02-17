@@ -1,24 +1,23 @@
-import { isLinearObject } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
-import { isCurveMode } from '../../../types/trackObjects'
+import { isLinearObject, isCurveMode } from '../../../types/trackObjects'
+
+const baseContainer: React.CSSProperties = {
+  position: 'absolute',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  background: 'rgba(0, 0, 0, 0.8)',
+  color: '#fff',
+  padding: '8px 16px',
+  borderRadius: 6,
+  fontSize: 12,
+  fontWeight: 500,
+  pointerEvents: 'none',
+  whiteSpace: 'nowrap',
+  zIndex: 99,
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+}
 
 const styles: Record<string, React.CSSProperties> = {
-  container: {
-    position: 'absolute',
-    bottom: 68,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: 'rgba(0, 0, 0, 0.8)',
-    color: '#fff',
-    padding: '8px 16px',
-    borderRadius: 6,
-    fontSize: 12,
-    fontWeight: 500,
-    pointerEvents: 'none',
-    whiteSpace: 'nowrap',
-    zIndex: 99,
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-  },
   step: {
     color: '#00ff00',
     fontWeight: 'bold',
@@ -26,7 +25,11 @@ const styles: Record<string, React.CSSProperties> = {
   },
 }
 
-export default function ContextHint() {
+interface ContextHintProps {
+  showSecondaryBar?: boolean
+}
+
+export default function ContextHint({ showSecondaryBar }: ContextHintProps) {
   const selectedObjectType = useEditorStore(s => s.selectedObjectType)
   const trackMode = useEditorStore(s => s.trackMode)
   const placementState = useEditorStore(s => s.placementState)
@@ -47,7 +50,9 @@ export default function ContextHint() {
     // Elevation edit mode hints
     if (elevationEditMode) {
       if (elevationDragState) {
-        return { text: `Dragging — ${elevationDragState.currentHeight.toFixed(1)}m  |  Release to confirm, Esc to cancel` }
+        return {
+          text: `Dragging — ${elevationDragState.currentHeight.toFixed(1)}m  |  Release to confirm, Esc to cancel`,
+        }
       }
       switch (elevationTool) {
         case 'raise':
@@ -60,7 +65,9 @@ export default function ContextHint() {
             : { step: '1.', text: 'Click first endpoint to set anchor' }
         case 'smooth':
           return smoothSelectedRoadIds.length > 0
-            ? { text: `${smoothSelectedRoadIds.length} road(s) selected — click Apply or press Enter` }
+            ? {
+                text: `${smoothSelectedRoadIds.length} road(s) selected — click Apply or press Enter`,
+              }
             : { text: 'Click handles to select roads for smoothing' }
       }
     }
@@ -133,7 +140,7 @@ export default function ContextHint() {
   if (!hint) return null
 
   return (
-    <div style={styles.container}>
+    <div style={{ ...baseContainer, bottom: showSecondaryBar ? 112 : 68 }}>
       {hint.step && <span style={styles.step}>{hint.step}</span>}
       {hint.text}
     </div>

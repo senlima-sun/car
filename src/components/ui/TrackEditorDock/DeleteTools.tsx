@@ -52,31 +52,18 @@ export default function DeleteTools() {
   const deleteMode = useEditorStore(s => s.deleteMode)
   const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
   const selectedObjectId = useEditorStore(s => s.selectedObjectId)
-  const selectObjectType = useEditorStore(s => s.selectObjectType)
   const setDeleteMode = useEditorStore(s => s.setDeleteMode)
   const setPartialDeleteMode = useEditorStore(s => s.setPartialDeleteMode)
   const cancelPartialDelete = useEditorStore(s => s.cancelPartialDelete)
   const removeObject = useCustomizationStore(s => s.removeObject)
 
   const handleToggleDeleteMode = () => {
-    if (partialDeleteMode) setPartialDeleteMode(false)
-    if (deleteMode) {
-      setDeleteMode(false)
-    } else {
-      selectObjectType(null)
-      setDeleteMode(true)
-    }
+    setDeleteMode(!deleteMode)
   }
 
   const handleTogglePartialDeleteMode = () => {
-    if (deleteMode) setDeleteMode(false)
-    if (partialDeleteMode) {
-      cancelPartialDelete()
-      setPartialDeleteMode(false)
-    } else {
-      selectObjectType(null)
-      setPartialDeleteMode(true)
-    }
+    if (partialDeleteMode) cancelPartialDelete()
+    setPartialDeleteMode(!partialDeleteMode)
   }
 
   const handleDeleteSelected = () => {

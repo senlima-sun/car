@@ -71,10 +71,10 @@ function getPresetAbbrev(preset: string): string {
 }
 
 export default function CoastIndicator() {
-  const mode = useErsStore((state) => state.mode)
-  const semiAuto = useErsStore((state) => state.semiAuto)
-  const semiAutoConfig = useErsStore((state) => state.semiAutoConfig)
-  const coastIndicatorVisible = useErsStore((state) => state.coastIndicatorVisible)
+  const mode = useErsStore(state => state.mode)
+  const semiAuto = useErsStore(state => state.semiAuto)
+  const semiAutoConfig = useErsStore(state => state.semiAutoConfig)
+  const coastIndicatorVisible = useErsStore(state => state.coastIndicatorVisible)
 
   // Only show when in SemiAuto mode and visibility is enabled
   if (mode !== 'SemiAuto' || !coastIndicatorVisible) {
@@ -125,11 +125,7 @@ export default function CoastIndicator() {
       </div>
 
       {/* Critical battery warning overlay */}
-      {is_critical && (
-        <div style={styles.criticalOverlay}>
-          CRITICAL BATTERY - HARVESTING ONLY
-        </div>
-      )}
+      {is_critical && <div style={styles.criticalOverlay}>CRITICAL BATTERY - HARVESTING ONLY</div>}
 
       {/* CSS animations */}
       <style>{`

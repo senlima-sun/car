@@ -184,12 +184,8 @@ export default function TireIndicator() {
   )
   const isFlashing = maxWear >= TIRE_WEAR_CRITICAL
 
-  const maxGraining = tireMaterial
-    ? Math.max(...tireMaterial.per_wheel_graining)
-    : 0
-  const maxBlistering = tireMaterial
-    ? Math.max(...tireMaterial.per_wheel_blistering)
-    : 0
+  const maxGraining = tireMaterial ? Math.max(...tireMaterial.per_wheel_graining) : 0
+  const maxBlistering = tireMaterial ? Math.max(...tireMaterial.per_wheel_blistering) : 0
   const hasGrainingWarn = maxGraining > 0.3
   const hasBlisteringWarn = maxBlistering > 0.1
 

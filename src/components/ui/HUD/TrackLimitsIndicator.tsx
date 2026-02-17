@@ -89,7 +89,14 @@ export default function TrackLimitsIndicator() {
         clearTimeout(debounceRef.current)
       }
     }
-  }, [currentSurface, roadContactCount, curbContactCount, pitroadContactCount, gravelContactCount, setOffTrack])
+  }, [
+    currentSurface,
+    roadContactCount,
+    curbContactCount,
+    pitroadContactCount,
+    gravelContactCount,
+    setOffTrack,
+  ])
 
   if (!isLapTimingActive || !isOffTrack) {
     return null
@@ -120,9 +127,7 @@ export default function TrackLimitsIndicator() {
 
       <div style={styles.warningContainer}>
         <div style={styles.warningText}>TRACK LIMITS</div>
-        {violationCount > 1 && (
-          <div style={styles.violationCount}>×{violationCount}</div>
-        )}
+        {violationCount > 1 && <div style={styles.violationCount}>×{violationCount}</div>}
       </div>
     </div>
   )

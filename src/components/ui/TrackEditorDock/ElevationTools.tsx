@@ -117,25 +117,8 @@ export default function ElevationTools() {
   const clearSmoothSelection = useEditorStore(s => s.clearSmoothSelection)
   const propagateToNeighbors = useEditorStore(s => s.propagateToNeighbors)
   const setPropagateToNeighbors = useEditorStore(s => s.setPropagateToNeighbors)
-  const deleteMode = useEditorStore(s => s.deleteMode)
-  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
-  const setDeleteMode = useEditorStore(s => s.setDeleteMode)
-  const setPartialDeleteMode = useEditorStore(s => s.setPartialDeleteMode)
-  const selectObjectType = useEditorStore(s => s.selectObjectType)
-  const autoCurbMode = useEditorStore(s => s.autoCurbMode)
-  const setAutoCurbMode = useEditorStore(s => s.setAutoCurbMode)
-  const clearRoadSelection = useEditorStore(s => s.clearRoadSelection)
-
   const handleToggleElevationMode = () => {
-    if (elevationEditMode) {
-      setElevationEditMode(false)
-    } else {
-      if (deleteMode) setDeleteMode(false)
-      if (partialDeleteMode) setPartialDeleteMode(false)
-      if (autoCurbMode) { clearRoadSelection(); setAutoCurbMode(false) }
-      selectObjectType(null)
-      setElevationEditMode(true)
-    }
+    setElevationEditMode(!elevationEditMode)
   }
 
   const handleApplySmooth = () => {
@@ -193,9 +176,7 @@ export default function ElevationTools() {
             </div>
 
             {elevationTool === 'raise' && (
-              <div style={popoverStyles.hint}>
-                Drag handles up/down to change elevation.
-              </div>
+              <div style={popoverStyles.hint}>Drag handles up/down to change elevation.</div>
             )}
 
             {elevationTool === 'level' && (
@@ -203,12 +184,12 @@ export default function ElevationTools() {
                 <div style={styles.sliderRow}>
                   <span style={styles.sliderLabel}>Height</span>
                   <input
-                    type="range"
+                    type='range'
                     min={0}
                     max={20}
                     step={0.25}
                     value={targetLevelHeight}
-                    onChange={(e) => setTargetLevelHeight(Number(e.target.value))}
+                    onChange={e => setTargetLevelHeight(Number(e.target.value))}
                     style={{ flex: 1, accentColor: '#3b82f6' }}
                   />
                   <span style={styles.sliderValue}>{targetLevelHeight.toFixed(1)}m</span>
@@ -237,13 +218,23 @@ export default function ElevationTools() {
                 {smoothSelectedRoadIds.length > 0 && (
                   <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
                     <button
-                      style={{ ...styles.applyButton, background: '#3b82f6', color: '#fff', flex: 1 }}
+                      style={{
+                        ...styles.applyButton,
+                        background: '#3b82f6',
+                        color: '#fff',
+                        flex: 1,
+                      }}
                       onClick={handleApplySmooth}
                     >
                       Apply
                     </button>
                     <button
-                      style={{ ...styles.applyButton, background: 'rgba(255,255,255,0.1)', color: '#aaa', flex: 1 }}
+                      style={{
+                        ...styles.applyButton,
+                        background: 'rgba(255,255,255,0.1)',
+                        color: '#aaa',
+                        flex: 1,
+                      }}
                       onClick={clearSmoothSelection}
                     >
                       Clear
@@ -253,7 +244,9 @@ export default function ElevationTools() {
               </>
             )}
 
-            <div style={{ marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8 }}>
+            <div
+              style={{ marginTop: 10, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8 }}
+            >
               <div
                 style={{ ...popoverStyles.row, cursor: 'pointer' }}
                 onClick={() => setPropagateToNeighbors(!propagateToNeighbors)}

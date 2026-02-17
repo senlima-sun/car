@@ -367,10 +367,12 @@ export default function PitStopUI() {
             />
           </div>
           <button
-            style={{
-              ...styles.ersToggle,
-              ...(ersChargeSelected ? styles.ersToggleOn : styles.ersToggleOff),
-            } as React.CSSProperties}
+            style={
+              {
+                ...styles.ersToggle,
+                ...(ersChargeSelected ? styles.ersToggleOn : styles.ersToggleOff),
+              } as React.CSSProperties
+            }
             onClick={toggleErsCharge}
           >
             {ersChargeSelected ? 'ERS Charge to 100% - SELECTED' : 'Charge ERS to 100%'}

@@ -8,11 +8,15 @@ const CANVAS_WIDTH = 400
 const CANVAS_HEIGHT = 120
 const PADDING = { top: 15, right: 15, bottom: 25, left: 35 }
 
-function buildElevationProfile(placedObjects: PlacedObject[]): { distance: number; elevation: number; roadId: string }[] {
+function buildElevationProfile(
+  placedObjects: PlacedObject[],
+): { distance: number; elevation: number; roadId: string }[] {
   const roads = placedObjects.filter(o => o.type === 'road' && o.startPoint && o.endPoint)
   if (roads.length === 0) return []
 
-  const startFinish = placedObjects.find(o => o.type === 'checkpoint' && (o.checkpointType ?? 'start-finish') === 'start-finish')
+  const startFinish = placedObjects.find(
+    o => o.type === 'checkpoint' && (o.checkpointType ?? 'start-finish') === 'start-finish',
+  )
 
   const SNAP = 2
   const visited = new Set<string>()
@@ -40,24 +44,39 @@ function buildElevationProfile(placedObjects: PlacedObject[]): { distance: numbe
   while (currentRoad && !visited.has(currentRoad.id)) {
     visited.add(currentRoad.id)
 
-    const startElev = currentEndpoint === 'start'
-      ? (currentRoad.startElevation ?? 0)
-      : (currentRoad.endElevation ?? 0)
-    const endElev = currentEndpoint === 'start'
-      ? (currentRoad.endElevation ?? 0)
-      : (currentRoad.startElevation ?? 0)
+    const startElev =
+      currentEndpoint === 'start'
+        ? (currentRoad.startElevation ?? 0)
+        : (currentRoad.endElevation ?? 0)
+    const endElev =
+      currentEndpoint === 'start'
+        ? (currentRoad.endElevation ?? 0)
+        : (currentRoad.startElevation ?? 0)
 
     let length: number
-    if (isCurveMode(currentRoad.trackMode) && currentRoad.controlPoint && currentRoad.startPoint && currentRoad.endPoint) {
+    if (
+      isCurveMode(currentRoad.trackMode) &&
+      currentRoad.controlPoint &&
+      currentRoad.startPoint &&
+      currentRoad.endPoint
+    ) {
       let arcLen = 0
-      let px = currentRoad.startPoint[0], pz = currentRoad.startPoint[2]
+      let px = currentRoad.startPoint[0],
+        pz = currentRoad.startPoint[2]
       for (let i = 1; i <= 20; i++) {
         const t = i / 20
         const t1 = 1 - t
-        const x = t1 * t1 * currentRoad.startPoint[0] + 2 * t1 * t * currentRoad.controlPoint[0] + t * t * currentRoad.endPoint[0]
-        const z = t1 * t1 * currentRoad.startPoint[2] + 2 * t1 * t * currentRoad.controlPoint[2] + t * t * currentRoad.endPoint[2]
+        const x =
+          t1 * t1 * currentRoad.startPoint[0] +
+          2 * t1 * t * currentRoad.controlPoint[0] +
+          t * t * currentRoad.endPoint[0]
+        const z =
+          t1 * t1 * currentRoad.startPoint[2] +
+          2 * t1 * t * currentRoad.controlPoint[2] +
+          t * t * currentRoad.endPoint[2]
         arcLen += Math.sqrt((x - px) ** 2 + (z - pz) ** 2)
-        px = x; pz = z
+        px = x
+        pz = z
       }
       length = arcLen
     } else if (currentRoad.startPoint && currentRoad.endPoint) {
@@ -217,8 +236,10 @@ export default function ElevationProfile() {
         if (p.roadId === hoveredRoadId) {
           const x = toX(p.distance)
           const y = toY(p.elevation)
-          if (!started) { ctx.moveTo(x, y); started = true }
-          else ctx.lineTo(x, y)
+          if (!started) {
+            ctx.moveTo(x, y)
+            started = true
+          } else ctx.lineTo(x, y)
         }
       }
       ctx.stroke()
@@ -243,11 +264,14 @@ export default function ElevationProfile() {
     const maxDist = profile[profile.length - 1].distance || 1
     const dist = ((x - PADDING.left) / plotWidth) * maxDist
 
-    let closest: typeof profile[0] | null = null
+    let closest: (typeof profile)[0] | null = null
     let bestDelta = Infinity
     for (const p of profile) {
       const d = Math.abs(p.distance - dist)
-      if (d < bestDelta) { bestDelta = d; closest = p }
+      if (d < bestDelta) {
+        bestDelta = d
+        closest = p
+      }
     }
     setHoveredRoadId(closest?.roadId ?? null)
   }
@@ -255,13 +279,15 @@ export default function ElevationProfile() {
   if (!visible || !elevationEditMode || profile.length === 0) return null
 
   return (
-    <div style={{
-      position: 'absolute',
-      bottom: 20,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      pointerEvents: 'auto',
-    }}>
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        pointerEvents: 'auto',
+      }}
+    >
       <canvas
         ref={canvasRef}
         width={CANVAS_WIDTH}

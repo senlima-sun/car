@@ -58,6 +58,17 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 8,
     textAlign: 'center' as const,
   },
+  fixButton: {
+    padding: '2px 8px',
+    border: 'none',
+    borderRadius: 3,
+    cursor: 'pointer',
+    fontSize: 10,
+    fontWeight: 'bold',
+    background: '#ef4444',
+    color: '#fff',
+    flexShrink: 0,
+  },
 }
 
 const severityConfig = {
@@ -78,11 +89,28 @@ export default function TrackValidationPanel() {
     setReport(result)
   }, [])
 
-  const handleResultClick = useCallback((result: ValidationResult) => {
-    if (result.location) {
-      setCameraTarget(result.location)
-    }
-  }, [setCameraTarget])
+  const handleResultClick = useCallback(
+    (result: ValidationResult) => {
+      if (result.location) {
+        setCameraTarget(result.location)
+      }
+    },
+    [setCameraTarget],
+  )
+
+  const handleFix = useCallback(
+    (result: ValidationResult) => {
+      if (!result.relatedObjectIds) return
+      const store = useCustomizationStore.getState()
+      for (const id of result.relatedObjectIds) {
+        store.removeObject(id)
+      }
+      const objects = useCustomizationStore.getState().placedObjects
+      const graph = useTrackGraphStore.getState().graph
+      setReport(validateTrack(objects, graph))
+    },
+    [],
+  )
 
   return (
     <div style={styles.container}>
@@ -109,6 +137,19 @@ export default function TrackValidationPanel() {
                 >
                   <span style={{ ...styles.icon, color: config.color }}>[{config.icon}]</span>
                   <span style={{ ...styles.message, color: config.color }}>{result.message}</span>
+                  {result.id === 'barriers-on-road' &&
+                    result.severity === 'critical' &&
+                    result.relatedObjectIds && (
+                      <button
+                        style={styles.fixButton}
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleFix(result)
+                        }}
+                      >
+                        Fix
+                      </button>
+                    )}
                   {result.location && (
                     <span style={{ fontSize: 10, color: '#666', flexShrink: 0 }}>&#x2316;</span>
                   )}
@@ -120,9 +161,7 @@ export default function TrackValidationPanel() {
           <div
             style={{
               ...styles.summary,
-              background: report.canRace
-                ? 'rgba(34, 197, 94, 0.15)'
-                : 'rgba(239, 68, 68, 0.15)',
+              background: report.canRace ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
               color: report.canRace ? '#22c55e' : '#ef4444',
             }}
           >

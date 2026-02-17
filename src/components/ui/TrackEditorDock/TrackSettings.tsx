@@ -82,7 +82,9 @@ export default function TrackSettings() {
         <button
           style={{
             ...styles.segment,
-            ...(trackMode === 'pitroad' ? { ...styles.segmentActive, color: '#ff6600', background: 'rgba(255, 102, 0, 0.2)' } : {}),
+            ...(trackMode === 'pitroad'
+              ? { ...styles.segmentActive, color: '#ff6600', background: 'rgba(255, 102, 0, 0.2)' }
+              : {}),
           }}
           onClick={() => setTrackMode('pitroad')}
           title='Pit lane road (speed limited)'
@@ -92,7 +94,9 @@ export default function TrackSettings() {
         <button
           style={{
             ...styles.segment,
-            ...(trackMode === 'pitroad-curve' ? { ...styles.segmentActive, color: '#ff6600', background: 'rgba(255, 102, 0, 0.2)' } : {}),
+            ...(trackMode === 'pitroad-curve'
+              ? { ...styles.segmentActive, color: '#ff6600', background: 'rgba(255, 102, 0, 0.2)' }
+              : {}),
           }}
           onClick={() => setTrackMode('pitroad-curve')}
           title='Curved pit lane road'

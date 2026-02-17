@@ -69,12 +69,14 @@ export default function AeroIndicator() {
       <span style={styles.label}>Active Aero</span>
 
       {/* Auto/Manual badge */}
-      <span style={{
-        fontSize: 9,
-        fontWeight: 'bold',
-        color: autoMode ? '#00e5ff' : 'rgba(255, 255, 255, 0.6)',
-        letterSpacing: 1,
-      }}>
+      <span
+        style={{
+          fontSize: 9,
+          fontWeight: 'bold',
+          color: autoMode ? '#00e5ff' : 'rgba(255, 255, 255, 0.6)',
+          letterSpacing: 1,
+        }}
+      >
         {autoMode ? 'AUTO' : 'MANUAL'}
       </span>
 

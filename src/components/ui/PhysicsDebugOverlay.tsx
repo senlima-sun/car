@@ -26,16 +26,25 @@ export default function PhysicsDebugOverlay() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>PHYSICS DEBUG <span style={styles.hint}>(F9)</span></div>
+      <div style={styles.header}>
+        PHYSICS DEBUG <span style={styles.hint}>(F9)</span>
+      </div>
 
       <div style={styles.section}>
-        <Row label="pos.y" value={posY.toFixed(3)} />
-        <Row label="vel.y" value={velY.toFixed(3)} warn={Math.abs(velY) > 5} />
-        <Row label="force.y" value={totalForceY.toFixed(0)} suffix="N" />
-        <Row label="net accel" value={netAccel.toFixed(2)} suffix="m/s²"
-          warn={netAccel > 15 || netAccel < -15} />
-        <Row label="grounded" value={`${groundedCount}/4`}
-          color={groundedCount === 4 ? '#4ade80' : groundedCount > 0 ? '#facc15' : '#f87171'} />
+        <Row label='pos.y' value={posY.toFixed(3)} />
+        <Row label='vel.y' value={velY.toFixed(3)} warn={Math.abs(velY) > 5} />
+        <Row label='force.y' value={totalForceY.toFixed(0)} suffix='N' />
+        <Row
+          label='net accel'
+          value={netAccel.toFixed(2)}
+          suffix='m/s²'
+          warn={netAccel > 15 || netAccel < -15}
+        />
+        <Row
+          label='grounded'
+          value={`${groundedCount}/4`}
+          color={groundedCount === 4 ? '#4ade80' : groundedCount > 0 ? '#facc15' : '#f87171'}
+        />
       </div>
 
       <div style={styles.divider} />
@@ -57,7 +66,7 @@ export default function PhysicsDebugOverlay() {
       <div style={styles.divider} />
       <div style={styles.section}>
         <div style={styles.subheader}>SUSPENSION HEALTH</div>
-        <BarRow label="Spring eq." value={1 / 8} max={0.4} />
+        <BarRow label='Spring eq.' value={1 / 8} max={0.4} />
         {wheels.map((w, i) => (
           <BarRow key={i} label={LABEL_NAMES[i]} value={w.compression} max={0.4} />
         ))}
@@ -66,17 +75,30 @@ export default function PhysicsDebugOverlay() {
   )
 }
 
-function Row({ label, value, suffix, warn, color }: {
-  label: string; value: string; suffix?: string; warn?: boolean; color?: string
+function Row({
+  label,
+  value,
+  suffix,
+  warn,
+  color,
+}: {
+  label: string
+  value: string
+  suffix?: string
+  warn?: boolean
+  color?: string
 }) {
   return (
     <div style={styles.row}>
       <span style={styles.label}>{label}</span>
-      <span style={{
-        ...styles.value,
-        color: color ?? (warn ? '#f87171' : '#e5e7eb'),
-      }}>
-        {value}{suffix && <span style={styles.unit}>{suffix}</span>}
+      <span
+        style={{
+          ...styles.value,
+          color: color ?? (warn ? '#f87171' : '#e5e7eb'),
+        }}
+      >
+        {value}
+        {suffix && <span style={styles.unit}>{suffix}</span>}
       </span>
     </div>
   )

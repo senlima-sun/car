@@ -1,87 +1,21 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../stores/usePitStore'
-import { LAP_TIMER, UI } from '@/constants/colors'
+import { useGhostCarStore } from '../../../stores/useGhostCarStore'
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    position: 'absolute',
-    top: 20,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 10,
-    padding: '12px 20px',
-    display: 'flex',
-    gap: 25,
-    alignItems: 'center',
-    flexWrap: 'wrap' as const,
-  },
-  hint: {
-    position: 'absolute',
-    top: 20,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 8,
-    padding: '8px 16px',
-    color: UI.textMuted,
-    fontSize: 12,
-  },
-  timeBlock: {
-    textAlign: 'center' as const,
-  },
-  label: {
-    fontSize: 10,
-    color: LAP_TIMER.label,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  recordingIndicator: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 10,
-    color: LAP_TIMER.recording,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 1,
-  },
-  recordingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    background: LAP_TIMER.recording,
-    animation: 'pulse 1s infinite',
-  },
-  currentTime: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: LAP_TIMER.bestLap,
-    fontFamily: 'monospace',
-    textShadow: '0 0 10px rgba(0, 255, 136, 0.5)',
-  },
-  lastTime: {
-    fontSize: 16,
-    color: LAP_TIMER.currentLap,
-    fontFamily: 'monospace',
-  },
-  bestTime: {
-    fontSize: 16,
-    color: LAP_TIMER.ghost,
-    fontFamily: 'monospace',
-    textShadow: '0 0 8px rgba(255, 0, 255, 0.5)',
-  },
-  lapCount: {
-    fontSize: 14,
-    color: UI.textSecondary,
-    fontFamily: 'monospace',
-  },
-  waiting: {
-    fontSize: 12,
-    color: LAP_TIMER.muted,
-    fontStyle: 'italic' as const,
-  },
+const GHOST_POLL_INTERVAL = 100
+
+function getSectorBg(
+  sectorNum: number,
+  sectorTimes: Map<number, number>,
+  bestSectorTimes: Map<number, number>,
+): string {
+  const time = sectorTimes.get(sectorNum)
+  if (time === undefined) return 'transparent'
+  const best = bestSectorTimes.get(sectorNum)
+  if (best === time) return '#a855f7'
+  return '#eab308'
 }
 
 function formatTime(ms: number | null): string {
@@ -92,6 +26,8 @@ function formatTime(ms: number | null): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`
 }
 
+const LABEL = 'text-[10px] text-[#888] uppercase tracking-wide mb-0.5'
+
 export default function LapTimer() {
   const isActive = useLapTimeStore(state => state.isActive)
   const isRecording = useLapTimeStore(state => state.isRecording)
@@ -101,14 +37,19 @@ export default function LapTimer() {
   const bestLapTime = useLapTimeStore(state => state.bestLapTime)
   const lapCount = useLapTimeStore(state => state.lapCount)
   const updateCurrentTime = useLapTimeStore(state => state.updateCurrentTime)
-  const currentSector = useLapTimeStore(state => state.currentSector)
   const totalSectors = useLapTimeStore(state => state.totalSectors)
   const sectorTimes = useLapTimeStore(state => state.sectorTimes)
   const bestSectorTimes = useLapTimeStore(state => state.bestSectorTimes)
-  const currentLapInvalid = useLapTimeStore(state => state.currentLapInvalid)
   const pitPenalty = usePitStore(state => state.pitLaneSpeedingPenalty)
+  const [ghostTimeDelta, setGhostDelta] = useState<number | null>(null)
 
-  // Update current lap time every frame
+  useEffect(() => {
+    const id = setInterval(() => {
+      setGhostDelta(useGhostCarStore.getState().ghostTimeDelta)
+    }, GHOST_POLL_INTERVAL)
+    return () => clearInterval(id)
+  }, [])
+
   useEffect(() => {
     if (!isActive || !isRecording || currentLapStart === null) return
 
@@ -122,102 +63,90 @@ export default function LapTimer() {
     return () => cancelAnimationFrame(animationId)
   }, [isActive, isRecording, currentLapStart, updateCurrentTime])
 
-  // Don't render if no checkpoints exist
-  if (!isActive) return null
-
-  // Show hint when not recording
-  if (!isRecording) {
-    return (
-      <div style={styles.hint}>
-        Press <strong>L</strong> to start lap timing
-      </div>
-    )
-  }
+  if (!isActive || !isRecording) return null
 
   const hasStarted = currentLapStart !== null
 
   return (
-    <div style={styles.container}>
-      {/* Recording indicator */}
-      <div style={styles.recordingIndicator}>
-        <div style={styles.recordingDot} />
-        REC
-      </div>
+    <div className='absolute top-0 left-1/2 -translate-x-1/2 rounded-b bg-black/70 p-2'>
+      <div className='flex gap-6'>
+        <div className='text-center'>
+          <div className={LABEL}>Current</div>
+          {hasStarted ? (
+            <div className='font-bold font-mono text-[#00ff88] [text-shadow:0_0_10px_rgba(0,255,136,0.5)]'>
+              {formatTime(currentLapTime)}
+            </div>
+          ) : (
+            <div className='text-xs italic text-[#666]'>Cross checkpoint</div>
+          )}
+        </div>
 
-      {/* Current Lap */}
-      <div style={styles.timeBlock}>
-        <div style={styles.label}>Current</div>
-        {hasStarted ? (
-          <div style={styles.currentTime}>{formatTime(currentLapTime)}</div>
-        ) : (
-          <div style={styles.waiting}>Cross checkpoint</div>
+        <div className='text-center'>
+          <div className={LABEL}>Last</div>
+          <div className='text-base font-mono text-white'>{formatTime(lastLapTime)}</div>
+        </div>
+
+        <div className='text-center'>
+          <div className={LABEL}>Best</div>
+          <div className='text-base font-mono text-[#ff00ff] [text-shadow:0_0_8px_rgba(255,0,255,0.5)]'>
+            {formatTime(bestLapTime)}
+          </div>
+        </div>
+
+        <div className='text-center'>
+          <div className={LABEL}>Lap</div>
+          <div className='text-sm font-mono text-[#aaa]'>{lapCount}</div>
+        </div>
+
+        <div className='text-center'>
+          <div className={`${LABEL} text-red-500!`}>Penalty</div>
+          {pitPenalty > 0 && (
+            <div className='text-sm font-bold font-mono text-red-500'>+{pitPenalty}s</div>
+          )}
+        </div>
+
+        {ghostTimeDelta !== null && (
+          <div className='text-center'>
+            <div className={LABEL}>Gap</div>
+            <div
+              className='text-base font-bold font-mono'
+              style={{
+                color: ghostTimeDelta <= 0 ? '#00ff88' : '#ff4444',
+                textShadow: `0 0 8px ${ghostTimeDelta <= 0 ? 'rgba(0,255,136,0.5)' : 'rgba(255,68,68,0.5)'}`,
+              }}
+            >
+              {ghostTimeDelta <= 0 ? '-' : '+'}
+              {Math.abs(ghostTimeDelta / 1000).toFixed(3)}s
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Last Lap */}
-      <div style={styles.timeBlock}>
-        <div style={styles.label}>Last</div>
-        <div style={styles.lastTime}>{formatTime(lastLapTime)}</div>
-      </div>
-
-      {/* Best Lap */}
-      <div style={styles.timeBlock}>
-        <div style={styles.label}>Best</div>
-        <div style={styles.bestTime}>{formatTime(bestLapTime)}</div>
-      </div>
-
-      {/* Lap Count */}
-      <div style={styles.timeBlock}>
-        <div style={styles.label}>Lap</div>
-        <div style={styles.lapCount}>{lapCount}</div>
-      </div>
-
-      {/* Sector indicator */}
-      {totalSectors > 0 && hasStarted && (
-        <div style={styles.timeBlock}>
-          <div style={styles.label}>Sector</div>
-          <div style={{ fontSize: 14, color: currentLapInvalid ? '#ef4444' : '#fff', fontFamily: 'monospace' }}>
-            {currentLapInvalid ? 'INV' : `${currentSector}/${totalSectors}`}
-          </div>
-        </div>
-      )}
-
-      {/* Pit lane penalty */}
-      {pitPenalty > 0 && (
-        <div style={styles.timeBlock}>
-          <div style={{ ...styles.label, color: '#ef4444' }}>Penalty</div>
-          <div style={{ fontSize: 14, color: '#ef4444', fontWeight: 'bold', fontFamily: 'monospace' }}>
-            +{pitPenalty}s
-          </div>
-        </div>
-      )}
-
-      {hasStarted && totalSectors > 0 && sectorTimes.size > 0 && (
-        <>
-          {Array.from(sectorTimes.entries()).map(([sectorNum, time]) => {
-            const best = bestSectorTimes.get(sectorNum)
-            const delta = best && time !== best ? time - best : null
-            const isPersonalBest = best === time
+      {totalSectors > 0 && (
+        <div className='flex gap-1 mt-1'>
+          {Array.from({ length: totalSectors }, (_, i) => {
+            const sectorNum = i + 1
+            const bg = getSectorBg(sectorNum, sectorTimes, bestSectorTimes)
+            const time = sectorTimes.get(sectorNum)
+            const isEmpty = time === undefined
             return (
-              <div key={sectorNum} style={styles.timeBlock}>
-                <div style={styles.label}>S{sectorNum}</div>
-                <div style={{
-                  fontSize: 14,
-                  fontFamily: 'monospace',
-                  color: isPersonalBest ? '#22c55e' : delta !== null && delta > 0 ? '#ef4444' : '#fff',
-                }}>
-                  {formatTime(time)}
-                  {delta !== null && (
-                    <span style={{ fontSize: 10, marginLeft: 4 }}>
-                      {delta <= 0 ? '-' : '+'}
-                      {formatTime(Math.abs(delta))}
-                    </span>
-                  )}
-                </div>
+              <div
+                key={sectorNum}
+                className={`flex-1 py-1 text-center rounded-sm ${
+                  isEmpty ? 'border border-white/30' : ''
+                }`}
+                style={isEmpty ? undefined : { backgroundColor: bg }}
+              >
+                <div className='text-[9px] text-white/70 leading-none'>S{sectorNum}</div>
+                {time !== undefined && (
+                  <div className='text-[11px] font-mono text-white font-semibold leading-tight'>
+                    {formatTime(time)}
+                  </div>
+                )}
               </div>
             )
           })}
-        </>
+        </div>
       )}
     </div>
   )

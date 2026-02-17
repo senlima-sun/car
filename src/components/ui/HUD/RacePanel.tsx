@@ -228,7 +228,6 @@ function getAeroModeColor(mode: string): string {
   return mode === 'Corner' ? '#3b82f6' : '#22c55e'
 }
 
-
 function getErsPresetAbbrev(preset: string): string {
   switch (preset) {
     case 'Aggressive':
