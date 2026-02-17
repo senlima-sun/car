@@ -1,40 +1,44 @@
-import { StrictMode, useState, useEffect } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
-import { PostHogProvider } from 'posthog-js/react'
 import './styles.css'
-import App from './App'
-import PartEditor from './components/part-editor'
 
 if (import.meta.env.DEV) {
   import('./debug').then(({ initDevTools }) => initDevTools())
 }
 
-const options = {
-  api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
-  defaults: '2025-11-30',
-} as const
+if ('serviceWorker' in navigator && !import.meta.env.DEV) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+  })
+}
 
-function Router() {
-  const [route, setRoute] = useState(window.location.hash.slice(1) || '/')
+const App = lazy(() => import('./App'))
 
-  useEffect(() => {
-    const handleHashChange = () => {
-      setRoute(window.location.hash.slice(1) || '/')
-    }
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
-  }, [])
-
-  if (route === '/part-editor') {
-    return <PartEditor />
-  }
-  return <App />
+function AppLoading() {
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#1a1a2e',
+        color: '#eee',
+        fontFamily: 'system-ui, sans-serif',
+      }}
+    >
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '1.25rem', marginBottom: 8 }}>Loading...</div>
+      </div>
+    </div>
+  )
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <PostHogProvider apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY} options={options}>
-      <Router />
-    </PostHogProvider>
+    <Suspense fallback={<AppLoading />}>
+      <App />
+    </Suspense>
   </StrictMode>,
 )

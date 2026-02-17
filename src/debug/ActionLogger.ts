@@ -1,4 +1,9 @@
-import type { ActionEntry, ActionFilter, ActionCategory, ActionLoggerConfig } from './ActionLogger.types'
+import type {
+  ActionEntry,
+  ActionFilter,
+  ActionCategory,
+  ActionLoggerConfig,
+} from './ActionLogger.types'
 
 type WaitPredicate = (entry: ActionEntry) => boolean
 

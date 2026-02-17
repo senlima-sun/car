@@ -76,6 +76,10 @@ interface CircuitConfig {
   sectorSplits: [number, number]
   /** Start/finish line fraction [0-1] */
   startFinishFraction: number
+  /** Reverse the chained node order (fix wrong-way circuits) */
+  reverseDirection?: boolean
+  /** Number of turns on this circuit */
+  turns?: number
 }
 
 // ============================================================================
@@ -99,7 +103,13 @@ const CIRCUITS: Record<string, CircuitConfig> = {
     filterWays: (way: OSMWay) => {
       const name = way.tags?.name || ''
       // Exclude non-GP circuit ways
-      const excludePatterns = ['Stowe Circuit', 'Stowe CircuitPit', 'Stowe Circuit Pit', 'International pit lane', 'Ice Hill']
+      const excludePatterns = [
+        'Stowe Circuit',
+        'Stowe CircuitPit',
+        'Stowe Circuit Pit',
+        'International pit lane',
+        'Ice Hill',
+      ]
       if (excludePatterns.some(e => name.includes(e))) return false
       return true
     },
@@ -107,6 +117,8 @@ const CIRCUITS: Record<string, CircuitConfig> = {
     startWayName: 'National Pit Straight',
     sectorSplits: [0.33, 0.66],
     startFinishFraction: 0.0,
+    reverseDirection: true,
+    turns: 18,
   },
   suzuka: {
     name: 'suzuka',
@@ -123,9 +135,16 @@ const CIRCUITS: Record<string, CircuitConfig> = {
     filterWays: (way: OSMWay) => {
       const name = way.tags?.name || ''
       const excludePatterns = [
-        'Pit Lane', 'West Circuit Pit Lane', '鈴鹿サーキット国際南コース',
-        'プッチグランプリ', 'DREAM R', 'アクロエックス', 'ene-1',
-        'ロッキーコースター', 'チララのフラワーワゴン', 'アドベンチャードライブ',
+        'Pit Lane',
+        'West Circuit Pit Lane',
+        '鈴鹿サーキット国際南コース',
+        'プッチグランプリ',
+        'DREAM R',
+        'アクロエックス',
+        'ene-1',
+        'ロッキーコースター',
+        'チララのフラワーワゴン',
+        'アドベンチャードライブ',
         '日立オートモティブシステムズシケイン', // old naming, duplicates 日立Astemo
       ]
       if (excludePatterns.some(e => name.includes(e))) return false
@@ -140,6 +159,8 @@ const CIRCUITS: Record<string, CircuitConfig> = {
     ],
     sectorSplits: [0.33, 0.66],
     startFinishFraction: 0.0,
+    reverseDirection: true,
+    turns: 18,
   },
 }
 
@@ -159,7 +180,7 @@ const CURVATURE_THRESHOLD = 0.005 // threshold to use curve vs straight
 // ============================================================================
 
 function gpsToWorld(lat: number, lon: number, centerLat: number, centerLon: number): Point2D {
-  const x = (lon - centerLon) * Math.cos(centerLat * Math.PI / 180) * 111320
+  const x = (lon - centerLon) * Math.cos((centerLat * Math.PI) / 180) * 111320
   const z = -(lat - centerLat) * METERS_PER_DEG_LAT // negate so north = -z
   return { x, z }
 }
@@ -177,7 +198,10 @@ function perpendicularDistance(point: Point2D, lineStart: Point2D, lineEnd: Poin
     const ddz = point.z - lineStart.z
     return Math.sqrt(ddx * ddx + ddz * ddz)
   }
-  const t = Math.max(0, Math.min(1, ((point.x - lineStart.x) * dx + (point.z - lineStart.z) * dz) / lineLenSq))
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.x - lineStart.x) * dx + (point.z - lineStart.z) * dz) / lineLenSq),
+  )
   const projX = lineStart.x + t * dx
   const projZ = lineStart.z + t * dz
   const ddx = point.x - projX
@@ -273,59 +297,6 @@ function fitQuadraticBezier(points: Point2D[]): { control: Point2D; error: numbe
 }
 
 // ============================================================================
-// Edge Calculation (matches roadGeometry.ts)
-// ============================================================================
-
-function computeEdges(
-  startPoint: [number, number, number],
-  endPoint: [number, number, number],
-  controlPoint: [number, number, number] | undefined,
-  trackMode: 'straight' | 'curve',
-  halfWidth: number,
-): {
-  startLeftEdge: [number, number, number]
-  startRightEdge: [number, number, number]
-  endLeftEdge: [number, number, number]
-  endRightEdge: [number, number, number]
-} {
-  if (trackMode === 'curve' && controlPoint) {
-    // Curve: compute tangent at t=0 and t=1
-    const tangent0x = 2 * (controlPoint[0] - startPoint[0])
-    const tangent0z = 2 * (controlPoint[2] - startPoint[2])
-    const len0 = Math.sqrt(tangent0x ** 2 + tangent0z ** 2) || 1
-    const perp0x = -tangent0z / len0
-    const perp0z = tangent0x / len0
-
-    const tangent1x = 2 * (endPoint[0] - controlPoint[0])
-    const tangent1z = 2 * (endPoint[2] - controlPoint[2])
-    const len1 = Math.sqrt(tangent1x ** 2 + tangent1z ** 2) || 1
-    const perp1x = -tangent1z / len1
-    const perp1z = tangent1x / len1
-
-    return {
-      startLeftEdge: [startPoint[0] + perp0x * halfWidth, 0, startPoint[2] + perp0z * halfWidth],
-      startRightEdge: [startPoint[0] - perp0x * halfWidth, 0, startPoint[2] - perp0z * halfWidth],
-      endLeftEdge: [endPoint[0] + perp1x * halfWidth, 0, endPoint[2] + perp1z * halfWidth],
-      endRightEdge: [endPoint[0] - perp1x * halfWidth, 0, endPoint[2] - perp1z * halfWidth],
-    }
-  }
-
-  // Straight
-  const dx = endPoint[0] - startPoint[0]
-  const dz = endPoint[2] - startPoint[2]
-  const len = Math.sqrt(dx * dx + dz * dz) || 1
-  const perpX = -dz / len
-  const perpZ = dx / len
-
-  return {
-    startLeftEdge: [startPoint[0] + perpX * halfWidth, 0, startPoint[2] + perpZ * halfWidth],
-    startRightEdge: [startPoint[0] - perpX * halfWidth, 0, startPoint[2] - perpZ * halfWidth],
-    endLeftEdge: [endPoint[0] + perpX * halfWidth, 0, endPoint[2] + perpZ * halfWidth],
-    endRightEdge: [endPoint[0] - perpX * halfWidth, 0, endPoint[2] - perpZ * halfWidth],
-  }
-}
-
-// ============================================================================
 // OSM Data Processing
 // ============================================================================
 
@@ -370,7 +341,7 @@ function orderWaysIntoCircuit(
   function geoDistance(a: [number, number] | null, b: [number, number] | null): number {
     if (!a || !b) return Infinity
     const dlat = (a[0] - b[0]) * METERS_PER_DEG_LAT
-    const dlon = (a[1] - b[1]) * Math.cos(a[0] * Math.PI / 180) * 111320
+    const dlon = (a[1] - b[1]) * Math.cos((a[0] * Math.PI) / 180) * 111320
     return Math.sqrt(dlat * dlat + dlon * dlon)
   }
 
@@ -396,8 +367,16 @@ function orderWaysIntoCircuit(
       const dStart = geoDistance(lastCoord, getCoord(w.nodes[0]))
       const dEnd = geoDistance(lastCoord, getCoord(w.nodes[w.nodes.length - 1]))
 
-      if (dStart < bestDist) { bestDist = dStart; bestIdx = i; bestReverse = false }
-      if (dEnd < bestDist) { bestDist = dEnd; bestIdx = i; bestReverse = true }
+      if (dStart < bestDist) {
+        bestDist = dStart
+        bestIdx = i
+        bestReverse = false
+      }
+      if (dEnd < bestDist) {
+        bestDist = dEnd
+        bestIdx = i
+        bestReverse = true
+      }
     }
 
     if (bestIdx === -1 || bestDist > maxGap) break
@@ -417,78 +396,168 @@ function orderWaysIntoCircuit(
 // Road Segment Generation
 // ============================================================================
 
-function generateRoadSegments(
+function dist2D(a: Point2D, b: Point2D): number {
+  const dx = b.x - a.x
+  const dz = b.z - a.z
+  return Math.sqrt(dx * dx + dz * dz)
+}
+
+interface JunctionEdge {
+  left: [number, number, number]
+  right: [number, number, number]
+  heading: number
+}
+
+function computeJunctionEdges(
   points: Point2D[],
-  config: CircuitConfig,
-): PlacedObject[] {
+  halfWidth: number,
+  getElevation: (fraction: number) => number,
+  isClosed: boolean,
+): JunctionEdge[] {
+  const n = points.length
+  const edges: JunctionEdge[] = []
+
+  for (let i = 0; i < n; i++) {
+    const fraction = i / (n - 1)
+    const elev = getElevation(fraction)
+
+    let inX: number, inZ: number, outX: number, outZ: number
+
+    if (i === 0) {
+      if (isClosed) {
+        inX = points[0].x - points[n - 2].x
+        inZ = points[0].z - points[n - 2].z
+      } else {
+        inX = points[1].x - points[0].x
+        inZ = points[1].z - points[0].z
+      }
+      outX = points[1].x - points[0].x
+      outZ = points[1].z - points[0].z
+    } else if (i === n - 1) {
+      inX = points[n - 1].x - points[n - 2].x
+      inZ = points[n - 1].z - points[n - 2].z
+      if (isClosed) {
+        outX = points[1].x - points[0].x
+        outZ = points[1].z - points[0].z
+      } else {
+        outX = inX
+        outZ = inZ
+      }
+    } else {
+      inX = points[i].x - points[i - 1].x
+      inZ = points[i].z - points[i - 1].z
+      outX = points[i + 1].x - points[i].x
+      outZ = points[i + 1].z - points[i].z
+    }
+
+    const inLen = Math.sqrt(inX * inX + inZ * inZ) || 1
+    const outLen = Math.sqrt(outX * outX + outZ * outZ) || 1
+    const nInX = inX / inLen
+    const nInZ = inZ / inLen
+    const nOutX = outX / outLen
+    const nOutZ = outZ / outLen
+
+    let tx = nInX + nOutX
+    let tz = nInZ + nOutZ
+    const tLen = Math.sqrt(tx * tx + tz * tz)
+    if (tLen < 0.001) {
+      tx = nOutX
+      tz = nOutZ
+    } else {
+      tx /= tLen
+      tz /= tLen
+    }
+
+    const perpX = -tz
+    const perpZ = tx
+    const heading = Math.atan2(tx, tz)
+
+    const p = points[i]
+    edges.push({
+      left: [p.x + perpX * halfWidth, elev, p.z + perpZ * halfWidth],
+      right: [p.x - perpX * halfWidth, elev, p.z - perpZ * halfWidth],
+      heading,
+    })
+  }
+
+  return edges
+}
+
+function generateRoadSegments(points: Point2D[], config: CircuitConfig): PlacedObject[] {
   const objects: PlacedObject[] = []
   let segId = 0
 
-  // Split points into segments of manageable length
-  const segments: Point2D[][] = []
-  let currentSegment: Point2D[] = [points[0]]
+  const segments: { startIdx: number; endIdx: number; subPoints: Point2D[] }[] = []
+  let currentStart = 0
+  let currentSubPoints: Point2D[] = [points[0]]
 
   for (let i = 1; i < points.length; i++) {
-    currentSegment.push(points[i])
+    let currentLen = 0
+    for (let j = 1; j < currentSubPoints.length; j++) {
+      currentLen += dist2D(currentSubPoints[j - 1], currentSubPoints[j])
+    }
+    const candidateLen = dist2D(currentSubPoints[currentSubPoints.length - 1], points[i])
+    const wouldBeLen = currentLen + candidateLen
 
-    // Check accumulated length
-    let segLen = 0
-    for (let j = 1; j < currentSegment.length; j++) {
-      const dx = currentSegment[j].x - currentSegment[j - 1].x
-      const dz = currentSegment[j].z - currentSegment[j - 1].z
-      segLen += Math.sqrt(dx * dx + dz * dz)
+    if (currentSubPoints.length > 1 && wouldBeLen >= MAX_SEGMENT_LENGTH) {
+      segments.push({ startIdx: currentStart, endIdx: i - 1, subPoints: [...currentSubPoints] })
+      currentStart = i - 1
+      currentSubPoints = [points[i - 1], points[i]]
+    } else {
+      currentSubPoints.push(points[i])
     }
 
-    if (segLen >= MAX_SEGMENT_LENGTH || i === points.length - 1) {
-      segments.push(currentSegment)
-      currentSegment = [points[i]]
+    if (i === points.length - 1 && currentSubPoints.length > 1) {
+      segments.push({ startIdx: currentStart, endIdx: i, subPoints: currentSubPoints })
     }
   }
 
-  // Get elevation at a fractional position along total track
   function getElevation(fraction: number): number {
     if (!config.elevationZones) return 0
     for (const zone of config.elevationZones) {
       if (fraction >= zone.startFraction && fraction <= zone.endFraction) {
-        // Smooth bell curve within zone
         const zoneMid = (zone.startFraction + zone.endFraction) / 2
         const zoneHalf = (zone.endFraction - zone.startFraction) / 2
-        const t = (fraction - zoneMid) / zoneHalf // -1 to 1
-        const smooth = Math.cos(t * Math.PI) * 0.5 + 0.5 // 0 at edges, 1 at center
+        const t = (fraction - zoneMid) / zoneHalf
+        const smooth = Math.cos(t * Math.PI) * 0.5 + 0.5
         return zone.elevation * smooth
       }
     }
     return 0
   }
 
-  // Convert each segment to a PlacedObject
-  let cumulativePoints = 0
+  const first = points[0]
+  const last = points[points.length - 1]
+  const closureGap = dist2D(first, last)
+  const isClosed = closureGap < 5.0
+
+  const junctions = computeJunctionEdges(points, HALF_WIDTH, getElevation, isClosed)
   const totalPoints = points.length
 
   for (const seg of segments) {
-    const startFraction = cumulativePoints / totalPoints
-    const endFraction = (cumulativePoints + seg.length - 1) / totalPoints
-
+    const startFraction = seg.startIdx / (totalPoints - 1)
+    const endFraction = seg.endIdx / (totalPoints - 1)
     const startElev = getElevation(startFraction)
     const endElev = getElevation(endFraction)
 
-    const start = seg[0]
-    const end = seg[seg.length - 1]
+    const start = points[seg.startIdx]
+    const end = points[seg.endIdx]
     const startPt: [number, number, number] = [start.x, startElev, start.z]
     const endPt: [number, number, number] = [end.x, endElev, end.z]
 
-    // Determine if this should be a curve or straight
+    const startEdge = junctions[seg.startIdx]
+    const endEdge = junctions[seg.endIdx]
+
     let isCurve = false
     let controlPt: [number, number, number] | undefined
 
-    if (seg.length >= 3) {
-      // Check curvature
-      const midIdx = Math.floor(seg.length / 2)
-      const curvature = computeCurvature(seg[0], seg[midIdx], seg[seg.length - 1])
+    if (seg.subPoints.length >= 3) {
+      const midIdx = Math.floor(seg.subPoints.length / 2)
+      const curvature = computeCurvature(seg.subPoints[0], seg.subPoints[midIdx], seg.subPoints[seg.subPoints.length - 1])
 
       if (curvature > CURVATURE_THRESHOLD) {
         isCurve = true
-        const fit = fitQuadraticBezier(seg)
+        const fit = fitQuadraticBezier(seg.subPoints)
         const ctrlElev = (startElev + endElev) / 2
         controlPt = [fit.control.x, ctrlElev, fit.control.z]
       }
@@ -499,8 +568,6 @@ function generateRoadSegments(
     const midZ = (start.z + end.z) / 2
     const midElev = (startElev + endElev) / 2
 
-    const edges = computeEdges(startPt, endPt, controlPt, trackMode, HALF_WIDTH)
-
     const roadObj: PlacedObject = {
       id: `road_${segId++}`,
       type: 'road',
@@ -509,7 +576,10 @@ function generateRoadSegments(
       startPoint: startPt,
       endPoint: endPt,
       trackMode,
-      ...edges,
+      startLeftEdge: startEdge.left,
+      startRightEdge: startEdge.right,
+      endLeftEdge: endEdge.left,
+      endRightEdge: endEdge.right,
     }
 
     if (isCurve && controlPt) {
@@ -522,7 +592,6 @@ function generateRoadSegments(
     }
 
     objects.push(roadObj)
-    cumulativePoints += seg.length - 1
   }
 
   return objects
@@ -565,49 +634,56 @@ function generateCurbs(roads: PlacedObject[]): PlacedObject[] {
 // Checkpoint Generation
 // ============================================================================
 
-function generateCheckpoints(
-  roads: PlacedObject[],
-  config: CircuitConfig,
-): PlacedObject[] {
+function generateCheckpoints(roads: PlacedObject[], config: CircuitConfig): PlacedObject[] {
   const checkpoints: PlacedObject[] = []
   const totalRoads = roads.length
 
-  // Start/finish line
-  const sfIdx = Math.floor(config.startFinishFraction * totalRoads)
-  const sfRoad = roads[sfIdx]
-  if (sfRoad?.startPoint) {
-    checkpoints.push({
-      id: 'checkpoint_sf',
+  function makeCheckpoint(
+    id: string,
+    road: PlacedObject,
+    type: 'start-finish' | 'sector',
+    order: number,
+  ): PlacedObject {
+    const sp = road.startPoint!
+    const ep = road.endPoint!
+    const rotation = Math.atan2(ep[0] - sp[0], ep[2] - sp[2])
+    const perpAngle = rotation + Math.PI / 2
+    const hw = TRACK_WIDTH / 2
+    const cpStartPoint: [number, number, number] = [
+      sp[0] + Math.sin(perpAngle) * hw,
+      sp[1],
+      sp[2] + Math.cos(perpAngle) * hw,
+    ]
+    const cpEndPoint: [number, number, number] = [
+      sp[0] - Math.sin(perpAngle) * hw,
+      sp[1],
+      sp[2] - Math.cos(perpAngle) * hw,
+    ]
+    return {
+      id,
       type: 'checkpoint',
-      position: [...sfRoad.startPoint] as [number, number, number],
-      rotation: Math.atan2(
-        (sfRoad.endPoint?.[0] ?? 0) - sfRoad.startPoint[0],
-        (sfRoad.endPoint?.[2] ?? 0) - sfRoad.startPoint[2],
-      ),
-      checkpointType: 'start-finish',
-      checkpointOrder: 0,
+      position: [...sp] as [number, number, number],
+      rotation,
+      startPoint: cpStartPoint,
+      endPoint: cpEndPoint,
+      checkpointType: type,
+      checkpointOrder: order,
       width: TRACK_WIDTH,
-    })
+    }
   }
 
-  // Sector checkpoints
+  const sfIdx = Math.floor(config.startFinishFraction * totalRoads)
+  const sfRoad = roads[sfIdx]
+  if (sfRoad?.startPoint && sfRoad?.endPoint) {
+    checkpoints.push(makeCheckpoint('checkpoint_sf', sfRoad, 'start-finish', 0))
+  }
+
   for (let i = 0; i < config.sectorSplits.length; i++) {
     const fraction = config.sectorSplits[i]
     const idx = Math.floor(fraction * totalRoads)
     const road = roads[idx]
-    if (road?.startPoint) {
-      checkpoints.push({
-        id: `checkpoint_s${i + 1}`,
-        type: 'checkpoint',
-        position: [...road.startPoint] as [number, number, number],
-        rotation: Math.atan2(
-          (road.endPoint?.[0] ?? 0) - road.startPoint[0],
-          (road.endPoint?.[2] ?? 0) - road.startPoint[2],
-        ),
-        checkpointType: 'sector',
-        checkpointOrder: i + 1,
-        width: TRACK_WIDTH,
-      })
+    if (road?.startPoint && road?.endPoint) {
+      checkpoints.push(makeCheckpoint(`checkpoint_s${i + 1}`, road, 'sector', i + 1))
     }
   }
 
@@ -618,13 +694,13 @@ function generateCheckpoints(
 // Barrier Generation (at track edges on straights)
 // ============================================================================
 
-function generateBarriers(roads: PlacedObject[]): PlacedObject[] {
+function generateBarriers(roads: PlacedObject[], checkpointRoadIndices: Set<number>): PlacedObject[] {
   const barriers: PlacedObject[] = []
   let barrierId = 0
 
-  // Add barriers every N road segments on both sides
   const interval = 5
   for (let i = 0; i < roads.length; i += interval) {
+    if (checkpointRoadIndices.has(i)) continue
     const road = roads[i]
     if (!road.startPoint || !road.endPoint) continue
     if (!road.startLeftEdge || !road.startRightEdge) continue
@@ -637,9 +713,9 @@ function generateBarriers(roads: PlacedObject[]): PlacedObject[] {
       road.startLeftEdge[2] + (road.startLeftEdge[2] - road.startPoint[2]) * 0.3,
     ]
     const lEnd: [number, number, number] = [
-      road.endLeftEdge[0] + (road.endLeftEdge[0] - (road.endPoint[0])) * 0.3,
+      road.endLeftEdge[0] + (road.endLeftEdge[0] - road.endPoint[0]) * 0.3,
       0,
-      road.endLeftEdge[2] + (road.endLeftEdge[2] - (road.endPoint[2])) * 0.3,
+      road.endLeftEdge[2] + (road.endLeftEdge[2] - road.endPoint[2]) * 0.3,
     ]
 
     barriers.push({
@@ -659,9 +735,9 @@ function generateBarriers(roads: PlacedObject[]): PlacedObject[] {
       road.startRightEdge[2] + (road.startRightEdge[2] - road.startPoint[2]) * 0.3,
     ]
     const rEnd: [number, number, number] = [
-      road.endRightEdge[0] + (road.endRightEdge[0] - (road.endPoint[0])) * 0.3,
+      road.endRightEdge[0] + (road.endRightEdge[0] - road.endPoint[0]) * 0.3,
       0,
-      road.endRightEdge[2] + (road.endRightEdge[2] - (road.endPoint[2])) * 0.3,
+      road.endRightEdge[2] + (road.endRightEdge[2] - road.endPoint[2]) * 0.3,
     ]
 
     barriers.push({
@@ -707,8 +783,18 @@ async function convertCircuit(circuitName: string): Promise<void> {
   console.log(`  🏁 GP circuit: ${gpWays.length} ways`)
 
   // 3. Order ways into continuous circuit
-  const orderedNodeIds = orderWaysIntoCircuit(gpWays, nodes, config.startWayName, config.maxChainGap ?? 100)
+  const orderedNodeIds = orderWaysIntoCircuit(
+    gpWays,
+    nodes,
+    config.startWayName,
+    config.maxChainGap ?? 100,
+  )
   console.log(`  🔗 Ordered circuit: ${orderedNodeIds.length} nodes`)
+
+  if (config.reverseDirection) {
+    orderedNodeIds.reverse()
+    console.log('  🔄 Reversed circuit direction')
+  }
 
   // 4. Convert GPS to game world coordinates
   const worldPoints: Point2D[] = []
@@ -735,8 +821,20 @@ async function convertCircuit(circuitName: string): Promise<void> {
   const checkpoints = generateCheckpoints(roads, config)
   console.log(`  🏁 Generated ${checkpoints.length} checkpoints`)
 
-  // 9. Generate barriers
-  const barriers = generateBarriers(roads)
+  // 9. Generate barriers (skip near checkpoint road indices)
+  const totalRoads = roads.length
+  const cpRoadIndices = new Set<number>()
+  const cpCoreIndices = [
+    Math.floor(config.startFinishFraction * totalRoads),
+    ...config.sectorSplits.map(s => Math.floor(s * totalRoads)),
+  ]
+  for (const idx of cpCoreIndices) {
+    for (let offset = -1; offset <= 1; offset++) {
+      const j = idx + offset
+      if (j >= 0 && j < totalRoads) cpRoadIndices.add(j)
+    }
+  }
+  const barriers = generateBarriers(roads, cpRoadIndices)
   console.log(`  🧱 Generated ${barriers.length} barriers`)
 
   // 10. Combine all objects
@@ -758,7 +856,7 @@ async function convertCircuit(circuitName: string): Promise<void> {
     name: config.displayName,
     id: `f1_${config.name}`,
     trackLength: Math.round(totalLength),
-    turns: config.sectorSplits.length + 1, // placeholder
+    turns: config.turns ?? config.sectorSplits.length + 1,
     objects: allObjects,
   }
 
@@ -768,7 +866,10 @@ async function convertCircuit(circuitName: string): Promise<void> {
   console.log(`  📏 Track length: ~${Math.round(totalLength)}m`)
 
   // Bounding box
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
+  let minX = Infinity,
+    maxX = -Infinity,
+    minZ = Infinity,
+    maxZ = -Infinity
   for (const p of worldPoints) {
     minX = Math.min(minX, p.x)
     maxX = Math.max(maxX, p.x)
@@ -776,7 +877,9 @@ async function convertCircuit(circuitName: string): Promise<void> {
     maxZ = Math.max(maxZ, p.z)
   }
   console.log(`  📐 Bounding box: ${Math.round(maxX - minX)}m × ${Math.round(maxZ - minZ)}m`)
-  console.log(`  📐 Center offset: x=${Math.round((minX + maxX) / 2)}, z=${Math.round((minZ + maxZ) / 2)}`)
+  console.log(
+    `  📐 Center offset: x=${Math.round((minX + maxX) / 2)}, z=${Math.round((minZ + maxZ) / 2)}`,
+  )
 }
 
 // ============================================================================

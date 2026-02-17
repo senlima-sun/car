@@ -20,11 +20,12 @@ const server = Bun.serve<WsData>({
     return new Response('Signaling server running', { status: 200 })
   },
   websocket: {
-    open(ws) {
-    },
+    open(ws) {},
     message(ws, message) {
       try {
-        const data = JSON.parse(typeof message === 'string' ? message : new TextDecoder().decode(message))
+        const data = JSON.parse(
+          typeof message === 'string' ? message : new TextDecoder().decode(message),
+        )
 
         if (data.type === 'join' && data.roomId) {
           ws.data.roomId = data.roomId
@@ -51,8 +52,7 @@ const server = Bun.serve<WsData>({
             peer.send(msgStr)
           }
         }
-      } catch {
-      }
+      } catch {}
     },
     close(ws) {
       const roomId = ws.data.roomId

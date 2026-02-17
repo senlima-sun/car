@@ -4,131 +4,149 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A 3D car racing game built with React, Three.js, and Rapier physics. Features realistic car physics, dynamic weather effects, tire management, lap timing, and a track customization system.
+A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM. All physics calculations run in a custom Rust engine compiled to WASM; Rapier handles collision detection only; the car floats on raycast suspension (no contact colliders with ground/track).
+
+## Prerequisites
+
+- **Bun** - Runtime, bundler, package manager
+- **Rust + wasm-pack** - For compiling `physics-engine/` to WASM
+- **cargo** - Rust package manager (comes with Rust)
 
 ## Commands
 
-- **Development**: `bun run dev` - Start dev server with auto-rebuild (port 3000)
-- **Build**: `bun run build` - Build WASM + Bun production bundle
-- **Build WASM**: `bun run build:wasm` - Compile Rust physics engine to WASM
-- **Test WASM**: `bun run test:wasm` - Run Rust unit tests
-- **Preview**: `bun run preview` - Preview production build (port 4173)
+- `bun run dev` - Start dev server (port 3000) with WASM hot-reload. Builds WASM first, then runs Vite + WASM file watcher concurrently.
+- `bun run build` - Build WASM + production bundle
+- `bun run build:wasm` - Compile Rust physics to WASM (debug)
+- `bun run build:wasm:release` - Optimized WASM with LTO
+- `bun run test:wasm` - Run Rust unit tests (`cargo test` in physics-engine/)
+- `bun test` - Run TypeScript tests (single file: `bun test src/utils/foo.test.ts`)
+- `bun run dev:wasm` - Watch Rust files and rebuild WASM on change (without Vite)
+- `bun run format` - Format with Prettier
+- `bun run compress:glb` - Optimize GLTF model (WebP textures + Draco compression)
 
 ## Architecture
 
 ### Tech Stack
 
-- **React 19** with TypeScript
-- **Three.js** via `@react-three/fiber` (React renderer for Three.js)
-- **@react-three/drei** - Three.js helpers and abstractions
-- **@react-three/rapier** - Rapier physics engine (collision detection, rigid body dynamics)
-- **Rust/WASM** - Custom physics engine for car dynamics, weather, tires, track temperature
-- **Zustand** - State management
-- **Bun** - Runtime, bundler, and package manager
+- **React 19** + TypeScript, **Three.js** via `@react-three/fiber`
+- **@react-three/rapier** - Rapier for collision detection (NOT vehicle physics)
+- **Rust/WASM** - Custom physics engine (`physics-engine/`) for all vehicle dynamics
+- **Zustand** - State management (~30 stores in `src/stores/`)
+- **Tailwind CSS v4** - UI styling
+- **Vite 7** - Build tooling
 
-### Project Structure
+### Physics Data Flow (Critical Path)
+
+The game loop runs at 120Hz fixed timestep (`FIXED_TIME_STEP = 1/120`):
 
 ```
-car/
-├── physics-engine/        # Rust/WASM physics engine crate
-│   ├── Cargo.toml
-│   └── src/
-│       ├── lib.rs         # WASM bindings
-│       ├── engine.rs      # Main physics state machine
-│       ├── weather.rs     # Weather system & modifiers
-│       ├── tires.rs       # Tire compounds, wear, grip
-│       ├── track_temperature.rs  # Temperature grid
-│       ├── curb.rs        # Curb physics modifiers
-│       └── car_physics/   # Vehicle dynamics modules
-│           ├── aerodynamics.rs
-│           ├── tire_model.rs
-│           ├── weight_transfer.rs
-│           ├── steering.rs
-│           └── drift.rs
-├── src/
-│   ├── App.tsx            # Root - PhysicsProvider, KeyboardControls, Canvas
-│   ├── main.tsx           # React entry point
-│   ├── wasm/              # WASM bridge layer
-│   │   ├── index.ts       # Public exports
-│   │   ├── PhysicsBridge.ts    # TypeScript bindings to WASM
-│   │   ├── PhysicsProvider.tsx # React context for WASM engine
-│   │   └── pkg/           # Generated WASM package (gitignored)
-│   ├── components/
-│   │   ├── canvas/        # 3D scene components
-│   │   │   ├── Car/       # Vehicle (uses WASM physics via usePhysics hook)
-│   │   │   ├── Camera/    # Third-person, first-person, isometric cameras
-│   │   │   ├── Track/     # Race track and temperature overlay
-│   │   │   ├── TrackObjects/  # Placeable objects
-│   │   │   ├── Weather/   # Dynamic sky, clouds, lighting, rain/spray effects
-│   │   │   └── Customization/ # Track editor
-│   │   └── ui/            # HTML overlay components
-│   │       ├── HUD/       # Speedometer, gear, tire wear, status bar, lap timer
-│   │       ├── CustomizationPanel/
-│   │       └── TrackSelector/
-│   ├── stores/            # Zustand state stores (UI state, sync to WASM)
-│   ├── constants/         # UI configs (physics constants now in Rust)
-│   ├── shaders/           # GLSL shaders (track surface)
-│   ├── types/             # TypeScript type definitions
-│   └── utils/             # Helper functions
+useFrame (variable dt)
+  → usePhysicsAccumulator (fixed-step accumulator, capped at 0.25s)
+    → for each accumulated step:
+        1. Read Rapier rigid body state (position, rotation, linvel, angvel)
+        2. Raycast suspension (4 rays, ground clamp, spring/damper forces)
+        3. Call WASM: physics.stepAndSync(dt, input, pos, rot, linvel, angvel, surfaceNormal)
+        4. Apply returned linear/angular velocity back to Rapier
+    → After all steps: sync stores, update telemetry, update rubber deposits
 ```
 
-### Key Systems
+Key: `stepAndSync` is preferred over `stepPhysics` — it combines the physics step with wind/aero/brake state sync in a single FFI call.
 
-**WASM Physics Engine** (`physics-engine/`):
+### WASM Bridge Layer (`src/wasm/`)
 
-All core physics calculations run in Rust/WASM for performance:
+- `PhysicsBridge.ts` - Type-safe wrappers around raw WASM bindings. All values sanitized (NaN/Infinity → 0).
+- `PhysicsProvider.tsx` - React context. `usePhysics()` hook provides access. `usePhysicsOptional()` for components that may render before WASM loads.
+- `pkg/` - Generated by wasm-pack (gitignored). Don't edit.
 
-- Vehicle dynamics: aerodynamics (drag, downforce), Pacejka tire model, weight transfer, Ackerman steering, drift state machine
-- Weather system: 4 conditions with 10 physics modifiers, smoothstep transitions
-- Tire system: 5 compounds (soft/medium/hard/wet/intermediate), wear degradation, weather compatibility
-- Track temperature: sparse grid with heat gain/decay, wetness tracking
-- Curb physics: grip/stability modifiers based on turn direction
+### Collision System
 
-**Car Component** (`src/components/canvas/Car/Car.tsx`):
+Car does NOT contact-collide with track or ground. Vertical support is entirely from raycast suspension.
 
-- Uses `usePhysics()` hook to access WASM engine
-- Rapier handles collision detection and rigid body integration
-- Each frame: reads Rapier state -> calls `physics.stepPhysics()` -> applies returned velocities to Rapier
-- Syncs weather/tire compound changes to WASM via useEffect
+```
+GROUP_CAR    (0x0001) → interacts with GROUP_OBJECT only
+GROUP_TRACK  (0x0002) → interacts with GROUP_RAY only
+GROUP_GROUND (0x0004) → interacts with GROUP_OBJECT | GROUP_RAY
+GROUP_RAY    (0x0010) → interacts with GROUP_TRACK | GROUP_GROUND
+```
 
-**Weather System** (`src/stores/useWeatherStore.ts`):
+Defined in `src/constants/dimensions.ts`. Car uses 4 `BallCollider` at wheel positions (for object collisions). `SUSPENSION_RAY_GROUPS` is used for the raycast queries.
 
-- Four conditions: dry, hot, rain, cold
-- UI state for weather transitions and display
-- Physics modifiers computed in WASM, store provides UI metadata (icon, description)
+### Car Component Decomposition (`src/components/canvas/Car/`)
 
-**Track Customization** (`src/stores/useCustomizationStore.ts`):
+- `Car.tsx` - RigidBody setup, colliders, visual effects (spray, trails, smoke)
+- `hooks/useCarFrame.ts` - Orchestrates the frame loop, delegates to sub-hooks:
+  - `useRaycastSuspension` - 4 raycasts, spring/damper forces, ground clamp
+  - `useCarInputControl` - Aero mode, ERS preset, brake bias from keyboard
+  - `useCarPhysicsStep` - WASM `stepAndSync` call, velocity application
+  - `useCarStateSync` - Syncs physics output → Zustand stores
+  - `useCarRubberAndTrails` - Rubber deposits, skid marks, tire trails
+  - `useCarLifecycle` - Tab resume, game mode transitions, spawn protection
 
-- Object types: cone, ramp, checkpoint, barrier, road (straight/curved), curb
-- Roads use drag-to-draw with bezier curves for turns
-- Curbs attach to road edges with parametric positioning
-- Auto-saves to localStorage
+### Rust Physics Engine (`physics-engine/src/`)
 
-**Two Game Modes**:
+- `engine.rs` - Main `PhysicsEngine` struct, holds all subsystem state
+- `lib.rs` - `#[wasm_bindgen]` exports (WASM API surface)
+- `car_physics/` - Vehicle dynamics: `aerodynamics.rs`, `tire_model.rs` (Pacejka), `weight_transfer.rs`, `steering.rs` (Ackerman), `drift.rs`, `powertrain.rs`
+- `weather.rs` - Continuous environment model (temperature, humidity, precipitation, pressure)
+- `tires.rs` - 5 compounds (soft/medium/hard/wet/intermediate), per-wheel wear, thermal model
+- `ers.rs` - Energy Recovery System (2026 F1 regs), semi-auto battery management
+- `active_aero.rs` - DRS-style active aerodynamics (Corner/Straight modes)
+- `brakes.rs` - Brake bias, engine braking levels
+- `wind.rs` - Wind system with gusts, headwind/crosswind modifiers
+- `track_temperature.rs` - Sparse grid: heat, wetness, water depth, drainage, rubber deposits
+- `engine_temp.rs` - Engine temperature, overheating, power reduction
+- `pit_lane.rs` - Speed limiter with blend factor
+- `surface.rs` - Surface types (road/grass/curb) with grip/speed/wear modifiers
+- `curb.rs` - FIA-standard curb physics (3 types: rumble, sausage, apex) with speed-dependent forces
 
-- **Racing mode**: Drive car with physics, HUD shows telemetry
-- **Customize mode** (press T): Isometric view, place track objects
+### Zustand Stores (`src/stores/`)
 
-### Controls
+~30 stores, each focused on a single domain. Pattern: WASM physics output is synced to stores each frame via `useCarStateSync`. UI components subscribe to stores (never call WASM directly).
 
-| Key           | Action                               |
-| ------------- | ------------------------------------ |
-| W/Arrow Up    | Accelerate                           |
-| S/Arrow Down  | Brake/Reverse                        |
-| A/D or Arrows | Steer                                |
-| Space         | Handbrake                            |
-| E             | Toggle Aero Mode (Corner/Straight)   |
-| G             | Cycle ERS Preset (BAL/AGR/CON)       |
-| ]             | Brake Bias + (testing mode)          |
-| [             | Brake Bias - (testing mode)          |
-| O             | Activate Overtake (testing mode)     |
-| C             | Toggle camera (third/first person)   |
-| T             | Toggle customize mode                |
-| Q             | Cycle weather                        |
-| R             | Toggle lap recording                 |
-| P             | Pit stop menu (when in pit box)      |
-| H             | Toggle surface condition heatmap     |
+Major stores: `useGameStore` (game status, camera mode), `useCarStore` (speed, gear, RPM), `useEditorStore` (track editor state), `useCustomizationStore` (placed objects), `useErsStore`, `useActiveAeroStore`, `useBrakeStore`, `useTireStore`, `useWindStore`, `useEnvironmentStore`, `useLapTimeStore`, `useGhostCarStore`, `useVisibilityStore`.
+
+### Ghost Car Replay (`src/components/canvas/GhostCar/`)
+
+Records and replays ghost laps. Uses IndexedDB persistence (`src/utils/ghostReplayDB.ts`), interpolation (`src/utils/ghostInterpolation.ts`), and time-delta display (`src/utils/ghostTimeDelta.ts`). State in `useGhostCarStore`.
+
+### Visibility System
+
+`useVisibilityStore` + `useVisibilityUpdater` hook — performance optimization that culls/LODs objects based on camera distance. Prevents unnecessary renders of off-screen or distant components.
+
+### Scene Graph (`src/components/canvas/Scene.tsx`)
+
+Root 3D scene: Ground (grass with vertex displacement shader) → PlacedObjectsRenderer → StartGrid → Weather effects (DynamicSky, CloudLayer, DynamicLighting, rain, lightning) → TrackTemperatureOverlay → SkidMarkRenderer → Car + CameraController. Customize mode conditionally renders ObjectPlacer, GhostPreview, ElevationHandles.
+
+### Key Patterns
+
+- **1 world unit = 1 meter**. Car dimensions in `src/constants/dimensions.ts` match real 2026 F1 spec (5.5m long, 1.9m wide).
+- **Shaders**: Custom GLSL in `src/shaders/` — asphalt surface, grass surface with vertex displacement, curb surface, HDRI sky, tire smoke. Injected via `onBeforeCompile` or `ShaderMaterial`.
+- **Track data**: JSON files in `src/constants/tracks/` (silverstone, suzuka, monza). Loaded by `useTrackStore`.
+- **Debug system**: `src/debug/ActionLogger` — dev-only logging for physics actions, store changes.
+
+### Adding Physics Features
+
+1. Define Rust types/functions in `physics-engine/src/`
+2. Export via `#[wasm_bindgen]` in `lib.rs`
+3. Add typed wrapper in `src/wasm/PhysicsBridge.ts`
+4. Re-export from `src/wasm/index.ts`
+5. Add to `PhysicsContextValue` in `PhysicsProvider.tsx`
+6. Access in React via `usePhysics()` hook
+
+### 3D Asset Pipeline
+
+- Car model: `public/models/f1_2026.glb` (Draco-compressed GLTF)
+- Wheels: `GltfWheelAnimator.tsx` (rotation + suspension linkage animation)
+- Livery: UV-mapped textures, `/api/save-livery` endpoint (Vite plugin in `vite.config.ts`)
+- Textures: `public/textures/`, load via `useTexture` from drei
 
 ### Path Aliases
 
-TypeScript configured with `@/*` mapping to `src/*`.
+`@/*` → `src/*` (configured in `tsconfig.json` and `vite.config.ts`)
+
+### Quality Standards
+
+- **No `@ts-ignore`**: use `@ts-expect-error` with issue link
+- **No comments**: unless license headers, TODOs with context, or bug workarounds
+- **Test coverage**: 80%+ API, 90%+ logic (run `bun test` before commits)
+- **Pre-commit review**: `git diff --cached` before every commit

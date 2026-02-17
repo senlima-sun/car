@@ -38,6 +38,8 @@ interface CsvCircuitConfig {
   sectorSplits: [number, number]
   startFinishFraction: number
   elevationZones?: { startFraction: number; endFraction: number; elevation: number }[]
+  reverseDirection?: boolean
+  turns?: number
 }
 
 const TRACK_WIDTH = 12
@@ -65,9 +67,7 @@ const CSV_CIRCUITS: Record<string, CsvCircuitConfig> = {
     displayName: 'Suzuka International Racing Course',
     sectorSplits: [0.33, 0.66],
     startFinishFraction: 0.0,
-    elevationZones: [
-      { startFraction: 0.55, endFraction: 0.62, elevation: 6.0 },
-    ],
+    elevationZones: [{ startFraction: 0.55, endFraction: 0.62, elevation: 6.0 }],
   },
   monza: {
     csvPath: '/tmp/monza_raw.csv',
@@ -75,10 +75,15 @@ const CSV_CIRCUITS: Record<string, CsvCircuitConfig> = {
     displayName: 'Autodromo Nazionale Monza',
     sectorSplits: [0.33, 0.66],
     startFinishFraction: 0.0,
+    reverseDirection: true,
+    turns: 11,
   },
 }
 
-function parseCsv(content: string): { points: Point2D[]; widths: { right: number; left: number }[] } {
+function parseCsv(content: string): {
+  points: Point2D[]
+  widths: { right: number; left: number }[]
+} {
   const lines = content.trim().split('\n')
   const points: Point2D[] = []
   const widths: { right: number; left: number }[] = []
@@ -100,8 +105,12 @@ function parseCsv(content: string): { points: Point2D[]; widths: { right: number
 }
 
 function centerPoints(points: Point2D[]): Point2D[] {
-  let cx = 0, cz = 0
-  for (const p of points) { cx += p.x; cz += p.z }
+  let cx = 0,
+    cz = 0
+  for (const p of points) {
+    cx += p.x
+    cz += p.z
+  }
   cx /= points.length
   cz /= points.length
   return points.map(p => ({ x: p.x - cx, z: p.z - cz }))
@@ -116,7 +125,10 @@ function perpendicularDistance(point: Point2D, lineStart: Point2D, lineEnd: Poin
     const ddz = point.z - lineStart.z
     return Math.sqrt(ddx * ddx + ddz * ddz)
   }
-  const t = Math.max(0, Math.min(1, ((point.x - lineStart.x) * dx + (point.z - lineStart.z) * dz) / lineLenSq))
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.x - lineStart.x) * dx + (point.z - lineStart.z) * dz) / lineLenSq),
+  )
   const projX = lineStart.x + t * dx
   const projZ = lineStart.z + t * dz
   const ddx = point.x - projX
@@ -131,7 +143,10 @@ function douglasPeucker(points: Point2D[], tolerance: number): Point2D[] {
   const end = points.length - 1
   for (let i = 1; i < end; i++) {
     const d = perpendicularDistance(points[i], points[0], points[end])
-    if (d > maxDist) { maxDist = d; maxIdx = i }
+    if (d > maxDist) {
+      maxDist = d
+      maxIdx = i
+    }
   }
   if (maxDist > tolerance) {
     const left = douglasPeucker(points.slice(0, maxIdx + 1), tolerance)
@@ -327,7 +342,10 @@ function generateRoadSegments(points: Point2D[], config: CsvCircuitConfig): Plac
     const wouldBeLen = currentLen + candidateLen
     const wouldBeChord = dist2D(currentSubPoints[0], points[i])
 
-    if (currentSubPoints.length > 1 && (wouldBeLen >= MAX_SEGMENT_LENGTH || wouldBeChord >= MAX_SEGMENT_LENGTH)) {
+    if (
+      currentSubPoints.length > 1 &&
+      (wouldBeLen >= MAX_SEGMENT_LENGTH || wouldBeChord >= MAX_SEGMENT_LENGTH)
+    ) {
       segments.push({ startIdx: currentStart, endIdx: i - 1, subPoints: [...currentSubPoints] })
       currentStart = i - 1
       currentSubPoints = [points[i - 1], points[i]]
@@ -359,9 +377,14 @@ function generateRoadSegments(points: Point2D[], config: CsvCircuitConfig): Plac
   const closureGap = dist2D(first, last)
   const isClosed = closureGap < 5.0
 
-  const junctions = computeJunctionEdges(points, HALF_WIDTH, (fraction) => {
-    return getElevation(fraction)
-  }, isClosed)
+  const junctions = computeJunctionEdges(
+    points,
+    HALF_WIDTH,
+    fraction => {
+      return getElevation(fraction)
+    },
+    isClosed,
+  )
 
   const totalPoints = points.length
 
@@ -384,7 +407,11 @@ function generateRoadSegments(points: Point2D[], config: CsvCircuitConfig): Plac
 
     if (seg.subPoints.length >= 3) {
       const midIdx = Math.floor(seg.subPoints.length / 2)
-      const curvature = computeCurvature(seg.subPoints[0], seg.subPoints[midIdx], seg.subPoints[seg.subPoints.length - 1])
+      const curvature = computeCurvature(
+        seg.subPoints[0],
+        seg.subPoints[midIdx],
+        seg.subPoints[seg.subPoints.length - 1],
+      )
       if (curvature > CURVATURE_THRESHOLD) {
         isCurve = true
         const fit = fitQuadraticBezier(seg.subPoints)
@@ -639,7 +666,10 @@ function generateCheckpoints(roads: PlacedObject[], config: CsvCircuitConfig): P
   return checkpoints
 }
 
-function resamplePolyline(points: { x: number; z: number }[], spacing: number): { x: number; z: number }[] {
+function resamplePolyline(
+  points: { x: number; z: number }[],
+  spacing: number,
+): { x: number; z: number }[] {
   if (points.length < 2) return [...points]
 
   let totalLen = 0
@@ -761,7 +791,11 @@ function generateBarriers(roads: PlacedObject[]): PlacedObject[] {
             const tLen = Math.sqrt(dtx * dtx + dtz * dtz) || 1
             const perpX = -dtz / tLen
             const perpZ = dtx / tLen
-            offsetPts.push([px + sign * perpX * BARRIER_OFFSET, 0, pz + sign * perpZ * BARRIER_OFFSET])
+            offsetPts.push([
+              px + sign * perpX * BARRIER_OFFSET,
+              0,
+              pz + sign * perpZ * BARRIER_OFFSET,
+            ])
           }
 
           const bStart = offsetPts[0]
@@ -807,18 +841,27 @@ function generateBarriers(roads: PlacedObject[]): PlacedObject[] {
         const midX = (road.startPoint[0] + road.endPoint[0]) / 2
         const midZ = (road.startPoint[2] + road.endPoint[2]) / 2
 
-        for (const { sign, side } of [{ sign: 1, side: 'l' }, { sign: -1, side: 'r' }]) {
+        for (const { sign, side } of [
+          { sign: 1, side: 'l' },
+          { sign: -1, side: 'r' },
+        ]) {
           barriers.push({
             id: `barrier_${side}_${barrierId}`,
             type: 'barrier',
-            position: [midX + sign * perpX * BARRIER_OFFSET, 0, midZ + sign * perpZ * BARRIER_OFFSET],
+            position: [
+              midX + sign * perpX * BARRIER_OFFSET,
+              0,
+              midZ + sign * perpZ * BARRIER_OFFSET,
+            ],
             rotation: 0,
             startPoint: [
-              road.startPoint[0] + sign * perpX * BARRIER_OFFSET, 0,
+              road.startPoint[0] + sign * perpX * BARRIER_OFFSET,
+              0,
               road.startPoint[2] + sign * perpZ * BARRIER_OFFSET,
             ],
             endPoint: [
-              road.endPoint[0] + sign * perpX * BARRIER_OFFSET, 0,
+              road.endPoint[0] + sign * perpX * BARRIER_OFFSET,
+              0,
               road.endPoint[2] + sign * perpZ * BARRIER_OFFSET,
             ],
             trackMode: 'straight',
@@ -868,7 +911,14 @@ function verifyEdgeGaps(roads: PlacedObject[]): { maxEdgeGap: number; gapCount: 
   return { maxEdgeGap, gapCount }
 }
 
-function pointToSegmentDist(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+function pointToSegmentDist(
+  px: number,
+  pz: number,
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+): number {
   const dx = bx - ax
   const dz = bz - az
   const lenSq = dx * dx + dz * dz
@@ -879,13 +929,18 @@ function pointToSegmentDist(px: number, pz: number, ax: number, az: number, bx: 
   return Math.sqrt((px - projX) ** 2 + (pz - projZ) ** 2)
 }
 
-function verifyBarrierPositions(barriers: PlacedObject[], roads: PlacedObject[]): { allOutside: boolean; badCount: number } {
+function verifyBarrierPositions(
+  barriers: PlacedObject[],
+  roads: PlacedObject[],
+): { allOutside: boolean; badCount: number } {
   const segments: { ax: number; az: number; bx: number; bz: number }[] = []
   for (const road of roads) {
     if (road.startPoint && road.endPoint) {
       segments.push({
-        ax: road.startPoint[0], az: road.startPoint[2],
-        bx: road.endPoint[0], bz: road.endPoint[2],
+        ax: road.startPoint[0],
+        az: road.startPoint[2],
+        bx: road.endPoint[0],
+        bz: road.endPoint[2],
       })
     }
   }
@@ -924,6 +979,10 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
   console.log(`  Parsed ${rawPoints.length} CSV points`)
 
   const centered = centerPoints(rawPoints)
+  if (config.reverseDirection) {
+    centered.reverse()
+    console.log('  🔄 Reversed circuit direction')
+  }
   const closed = ensureCircuitClosure(centered)
   console.log(`  Centered + closed: ${closed.length} points`)
 
@@ -952,7 +1011,9 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
     const road = roads.find(r => r.id === c.parentRoadId)
     return road?.trackMode === 'straight'
   })
-  console.log(`  Generated ${curbs.length} curbs (${insideCurbs.length} inside, ${curbs.length - insideCurbs.length - onStraights.length} outside, ${onStraights.length} transition)`)
+  console.log(
+    `  Generated ${curbs.length} curbs (${insideCurbs.length} inside, ${curbs.length - insideCurbs.length - onStraights.length} outside, ${onStraights.length} transition)`,
+  )
 
   const checkpoints = generateCheckpoints(roads, config)
   console.log(`  Generated ${checkpoints.length} checkpoints`)
@@ -982,7 +1043,7 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
     name: config.displayName,
     id: `f1_${config.name}`,
     trackLength: Math.round(totalLength),
-    turns: config.sectorSplits.length + 1,
+    turns: config.turns ?? config.sectorSplits.length + 1,
     objects: allObjects,
   }
 
@@ -992,10 +1053,15 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
   console.log(`  Track length: ~${Math.round(totalLength)}m`)
   console.log(`  Max segment length: ${maxSegLen.toFixed(1)}m`)
 
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
+  let minX = Infinity,
+    maxX = -Infinity,
+    minZ = Infinity,
+    maxZ = -Infinity
   for (const p of centered) {
-    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x)
-    minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z)
+    minX = Math.min(minX, p.x)
+    maxX = Math.max(maxX, p.x)
+    minZ = Math.min(minZ, p.z)
+    maxZ = Math.max(maxZ, p.z)
   }
   console.log(`  Bounding box: ${Math.round(maxX - minX)}m x ${Math.round(maxZ - minZ)}m`)
 
@@ -1003,7 +1069,9 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
     if (!cp.startPoint || !cp.endPoint) {
       console.error(`  ERROR: Checkpoint ${cp.id} missing startPoint/endPoint!`)
     } else {
-      console.log(`  Checkpoint ${cp.id}: startPoint=[${cp.startPoint.map(v => Math.round(v)).join(',')}] endPoint=[${cp.endPoint.map(v => Math.round(v)).join(',')}]`)
+      console.log(
+        `  Checkpoint ${cp.id}: startPoint=[${cp.startPoint.map(v => Math.round(v)).join(',')}] endPoint=[${cp.endPoint.map(v => Math.round(v)).join(',')}]`,
+      )
     }
   }
 
@@ -1032,7 +1100,8 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
   console.log(`  Closure gap: ${closureGap.toFixed(2)}m`)
 
   if (maxEdgeGap > 0.1) console.warn(`  WARNING: Edge gaps detected (${maxEdgeGap.toFixed(2)}m)`)
-  if (maxSegLen > 50) console.warn(`  WARNING: Max segment length ${maxSegLen.toFixed(1)}m exceeds 50m`)
+  if (maxSegLen > 50)
+    console.warn(`  WARNING: Max segment length ${maxSegLen.toFixed(1)}m exceeds 50m`)
 }
 
 const args = process.argv.slice(2)

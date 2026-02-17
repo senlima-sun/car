@@ -5,7 +5,12 @@ import type { StoreApi } from 'zustand'
 
 export { getLogger, createLogger } from './ActionLogger'
 export { watchStore, unwatchAll } from './storeLogger'
-export type { ActionEntry, ActionFilter, ActionCategory, ActionLoggerConfig } from './ActionLogger.types'
+export type {
+  ActionEntry,
+  ActionFilter,
+  ActionCategory,
+  ActionLoggerConfig,
+} from './ActionLogger.types'
 
 type AnyStore = StoreApi<Record<string, unknown>>
 

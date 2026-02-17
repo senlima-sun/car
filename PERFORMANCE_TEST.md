@@ -3,6 +3,7 @@
 ## Test Environment
 
 ### Hardware Requirements
+
 - Display: 120Hz or higher refresh rate monitor
 - GPU: Dedicated graphics card recommended
 - CPU: Modern multi-core processor
@@ -11,6 +12,7 @@
 ### Test Scenarios
 
 #### 1. Static Scene Test
+
 **Goal**: Verify baseline 120fps in stationary conditions
 
 1. Start the game
@@ -19,6 +21,7 @@
 4. **Expected**: Stable 120fps ±2
 
 #### 2. High-Speed Driving Test
+
 **Goal**: Maintain 120fps during normal racing
 
 1. Drive at 200+ km/h on straight track sections
@@ -26,6 +29,7 @@
 3. **Expected**: 115-120fps (avg), 1% low > 100fps
 
 #### 3. Weather Effects Test
+
 **Goal**: Verify particle systems don't bottleneck
 
 1. Enable rain weather (press Q to cycle)
@@ -34,6 +38,7 @@
 4. **Expected**: 110-120fps (avg), 1% low > 95fps
 
 #### 4. Tire Trail Stress Test
+
 **Goal**: Ensure tire trails adapt to high framerate
 
 1. Enable aggressive driving (drifting, burnouts)
@@ -42,6 +47,7 @@
 4. **Expected**: 105-120fps (avg), 1% low > 90fps
 
 #### 5. Surface Particle Test
+
 **Goal**: Verify off-road particle limits work
 
 1. Drive on grass/gravel at high speed
@@ -51,6 +57,7 @@
 ## Performance Metrics
 
 ### Frame Rate Targets
+
 - **Target FPS**: 120
 - **Minimum Average**: 115
 - **1% Low**: 100
@@ -59,15 +66,16 @@
 ### Performance Tiers
 
 | Tier   | FPS Range | Particle Multiplier | Trail Points/Wheel | Surface Particles |
-|--------|-----------|---------------------|-------------------|-------------------|
-| Ultra  | 100+      | 1.2x                | 720               | 96                |
-| High   | 60-99     | 1.0x                | 600               | 80                |
-| Medium | 40-59     | 0.6x                | 420               | 48                |
-| Low    | <40       | 0.3x                | 240               | 24                |
+| ------ | --------- | ------------------- | ------------------ | ----------------- |
+| Ultra  | 100+      | 1.2x                | 720                | 96                |
+| High   | 60-99     | 1.0x                | 600                | 80                |
+| Medium | 40-59     | 0.6x                | 420                | 48                |
+| Low    | <40       | 0.3x                | 240                | 24                |
 
 ### System Monitoring
 
 Use the enhanced FPS Counter to track:
+
 - **Current FPS**: Real-time frame rate
 - **Average FPS**: Rolling average (last 60 frames)
 - **Frame Time**: Milliseconds per frame
@@ -100,6 +108,7 @@ Use the enhanced FPS Counter to track:
 ### Physics Instability
 
 If physics behaves oddly at high framerates:
+
 1. Verify FIXED_TIME_STEP = 1/120 in constants/physics.ts
 2. Check accumulator is being used in useCarFrame
 3. Ensure Rapier timeStep matches (should be 1/120)
@@ -119,6 +128,7 @@ If physics behaves oddly at high framerates:
 ## Reporting Issues
 
 When reporting performance issues, include:
+
 - Browser and version
 - GPU model
 - Display refresh rate
