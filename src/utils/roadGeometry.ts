@@ -1,18 +1,31 @@
-import type { PlacedObject, SnapPointWithDirection, RoadEdgeResult, RoadEdgeHitResult, RoadSurfaceHitResult } from '../types/trackObjects'
-import { isLinearObject, isCurveMode } from '../types/trackObjects'
+import type {
+  PlacedObject,
+  SnapPointWithDirection,
+  RoadEdgeResult,
+  RoadEdgeHitResult,
+  RoadSurfaceHitResult,
+} from '../types/trackObjects'
+import { type ObjectType, isLinearObject, isCurveMode, isWallType } from '../types/trackObjects'
 import { getOutwardTangent } from './roadSnapping'
 
 const SNAP_THRESHOLD = 5
-import { TRACK_WIDTH } from '../constants/dimensions'
+import { TRACK_WIDTH, WALL_WIDTH } from '../constants/dimensions'
+import { OBJECT_CONFIGS } from '../constants/trackObjects'
 
 const ROAD_WIDTH = TRACK_WIDTH
 
+const getHalfWidthForType = (type: ObjectType): number => {
+  if (type === 'barrier') return OBJECT_CONFIGS.barrier.defaultSize.width / 2
+  if (isWallType(type)) return WALL_WIDTH / 2
+  return ROAD_WIDTH / 2
+}
+
 export const getSnapPoints = (placedObjects: PlacedObject[]): SnapPointWithDirection[] => {
   const points: SnapPointWithDirection[] = []
-  const halfWidth = ROAD_WIDTH / 2
 
   for (const obj of placedObjects) {
     if (isLinearObject(obj.type) && obj.startPoint && obj.endPoint) {
+      const halfWidth = getHalfWidthForType(obj.type)
       const dx = obj.endPoint[0] - obj.startPoint[0]
       const dz = obj.endPoint[2] - obj.startPoint[2]
       const len = Math.sqrt(dx * dx + dz * dz)
@@ -44,6 +57,10 @@ export const getSnapPoints = (placedObjects: PlacedObject[]): SnapPointWithDirec
         leftEdge: startLeft,
         rightEdge: startRight,
         tangent: startTangent,
+        elevation: obj.startElevation ?? 0,
+        banking: obj.banking ?? 0,
+        roadId: obj.id,
+        endpoint: 'start',
       })
 
       const endLeft: [number, number, number] = [
@@ -62,6 +79,10 @@ export const getSnapPoints = (placedObjects: PlacedObject[]): SnapPointWithDirec
         leftEdge: endLeft,
         rightEdge: endRight,
         tangent: endTangent,
+        elevation: obj.endElevation ?? 0,
+        banking: obj.banking ?? 0,
+        roadId: obj.id,
+        endpoint: 'end',
       })
     }
   }
@@ -682,8 +703,10 @@ export const getElevationAtWorldPosition = (
       for (let i = 0; i <= SAMPLES; i++) {
         const t = i / SAMPLES
         const t1 = 1 - t
-        const cx = t1 * t1 * obj.startPoint[0] + 2 * t1 * t * obj.controlPoint[0] + t * t * obj.endPoint[0]
-        const cz = t1 * t1 * obj.startPoint[2] + 2 * t1 * t * obj.controlPoint[2] + t * t * obj.endPoint[2]
+        const cx =
+          t1 * t1 * obj.startPoint[0] + 2 * t1 * t * obj.controlPoint[0] + t * t * obj.endPoint[0]
+        const cz =
+          t1 * t1 * obj.startPoint[2] + 2 * t1 * t * obj.controlPoint[2] + t * t * obj.endPoint[2]
         const dist = Math.sqrt((x - cx) ** 2 + (z - cz) ** 2)
         if (dist < bestDist) {
           bestDist = dist

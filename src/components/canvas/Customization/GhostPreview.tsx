@@ -15,7 +15,12 @@ import {
   SnapPointWithDirection,
 } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
-import { isCurveMode as isCurveModeCheck, isPitRoad, isPolygonObject } from '../../../types/trackObjects'
+import {
+  isCurveMode as isCurveModeCheck,
+  isPitRoad,
+  isPolygonObject,
+  isWallType,
+} from '../../../types/trackObjects'
 import { OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import {
   Cone,
@@ -30,6 +35,8 @@ import {
   CurbPreview,
   CurvedCurbPreview,
   PitBox,
+  Wall,
+  WallFence,
 } from '../TrackObjects'
 import { PIT_ROAD_WIDTH, PIT_BOX_WIDTH } from '../../../constants/trackObjects'
 import { getSnapAngles } from '../../../utils/roadSnapping'
@@ -169,9 +176,12 @@ function computeCurvatureRadius(
   control: [number, number, number],
   end: [number, number, number],
 ): { radius: number; center: [number, number, number] } {
-  const p0x = start[0], p0z = start[2]
-  const p1x = control[0], p1z = control[2]
-  const p2x = end[0], p2z = end[2]
+  const p0x = start[0],
+    p0z = start[2]
+  const p1x = control[0],
+    p1z = control[2]
+  const p2x = end[0],
+    p2z = end[2]
 
   const t = 0.5
   const dtx = 2 * (1 - t) * (p1x - p0x) + 2 * t * (p2x - p1x)
@@ -230,33 +240,22 @@ function CurvatureIndicator({
     <group>
       <mesh position={[center[0], baseElev + 0.05, center[2]]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[displayRadius - 0.15, displayRadius + 0.15, ringSegments]} />
-        <meshBasicMaterial
-          color="#ff8800"
-          transparent
-          opacity={0.2}
-          depthWrite={false}
-          side={2}
-        />
+        <meshBasicMaterial color='#ff8800' transparent opacity={0.2} depthWrite={false} side={2} />
       </mesh>
 
       <mesh position={[center[0], baseElev + 0.06, center[2]]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.3, 0.6, 12]} />
-        <meshBasicMaterial
-          color="#ff8800"
-          transparent
-          opacity={0.5}
-          side={2}
-        />
+        <meshBasicMaterial color='#ff8800' transparent opacity={0.5} side={2} />
       </mesh>
 
       <Text
         position={[mx, baseElev + midY + 1.5, mz]}
         fontSize={1.2}
-        color="#ff8800"
-        anchorX="center"
-        anchorY="middle"
+        color='#ff8800'
+        anchorX='center'
+        anchorY='middle'
         outlineWidth={0.08}
-        outlineColor="#000000"
+        outlineColor='#000000'
         rotation={[-Math.PI / 2, 0, 0]}
       >
         {`R ${radius.toFixed(1)}m`}
@@ -285,13 +284,46 @@ function ControlPointGuideLine({
   return (
     <mesh position={[midX, midY + 0.04, midZ]} rotation={[-Math.PI / 2, 0, -angle]}>
       <planeGeometry args={[0.1, length]} />
-      <meshBasicMaterial
-        color="#ffff00"
-        transparent
-        opacity={0.4}
-        depthWrite={false}
-      />
+      <meshBasicMaterial color='#ffff00' transparent opacity={0.4} depthWrite={false} />
     </mesh>
+  )
+}
+
+function BarrierBlockedIndicator({
+  startPoint,
+  endPoint,
+}: {
+  startPoint: [number, number, number]
+  endPoint: [number, number, number]
+}) {
+  const midX = (startPoint[0] + endPoint[0]) / 2
+  const midZ = (startPoint[2] + endPoint[2]) / 2
+
+  return (
+    <group>
+      <mesh position={[midX, 2.0, midZ]}>
+        <sphereGeometry args={[1.0, 16, 16]} />
+        <meshStandardMaterial
+          color='#ff0000'
+          transparent
+          opacity={0.6}
+          emissive='#ff0000'
+          emissiveIntensity={0.5}
+        />
+      </mesh>
+      <Text
+        position={[midX, 3.5, midZ]}
+        fontSize={1.5}
+        color='#ff0000'
+        anchorX='center'
+        anchorY='middle'
+        outlineWidth={0.1}
+        outlineColor='#000000'
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        BLOCKED
+      </Text>
+    </group>
   )
 }
 
@@ -334,18 +366,18 @@ function PolygonDrawingPreview({
   return (
     <group>
       {linePoints.length >= 2 && (
-        <Line
-          points={linePoints}
-          color={color}
-          lineWidth={2}
-          opacity={0.8}
-          transparent
-        />
+        <Line points={linePoints} color={color} lineWidth={2} opacity={0.8} transparent />
       )}
 
       {filledShape && (
         <mesh geometry={filledShape} rotation={[Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-          <meshBasicMaterial color={color} transparent opacity={0.25} side={THREE.DoubleSide} depthWrite={false} />
+          <meshBasicMaterial
+            color={color}
+            transparent
+            opacity={0.25}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
         </mesh>
       )}
 
@@ -369,12 +401,14 @@ interface GhostPreviewProps {
   checkpointRoadEdge?: RoadEdgeResult | null
   curbEdgeHover?: RoadEdgeHitResult | null
   partialDeleteHover?: RoadSurfaceHitResult | null
+  barrierBlocked?: boolean
 }
 
 export default function GhostPreview({
   checkpointRoadEdge,
   curbEdgeHover,
   partialDeleteHover,
+  barrierBlocked = false,
 }: GhostPreviewProps) {
   const selectedObjectType = useEditorStore(s => s.selectedObjectType)
   const previewPosition = useEditorStore(s => s.previewPosition)
@@ -394,9 +428,14 @@ export default function GhostPreview({
   const connectedTangent = useEditorStore(s => s.connectedTangent)
   const snappedAngle = useEditorStore(s => s.snappedAngle)
   const symmetricCurve = useEditorStore(s => s.symmetricCurve)
+  const overlapResult = useEditorStore(s => s.overlapResult)
   const polygonPoints = useEditorStore(s => s.polygonPoints)
 
-  if (placementState === 'polygonDrawing' && selectedObjectType && isPolygonObject(selectedObjectType)) {
+  if (
+    placementState === 'polygonDrawing' &&
+    selectedObjectType &&
+    isPolygonObject(selectedObjectType)
+  ) {
     return (
       <PolygonDrawingPreview
         points={polygonPoints}
@@ -475,7 +514,11 @@ export default function GhostPreview({
 
           {/* Red overlay plane on the deletion zone */}
           <mesh
-            position={[(startPos[0] + endPos[0]) / 2, (startPos[1] + endPos[1]) / 2 + 0.08, (startPos[2] + endPos[2]) / 2]}
+            position={[
+              (startPos[0] + endPos[0]) / 2,
+              (startPos[1] + endPos[1]) / 2 + 0.08,
+              (startPos[2] + endPos[2]) / 2,
+            ]}
             rotation={[
               -Math.PI / 2,
               0,
@@ -581,6 +624,48 @@ export default function GhostPreview({
     )
   }
 
+  const renderOverlapWarning = () => {
+    if (!overlapResult || !overlapResult.hasOverlap) return null
+    return (
+      <>
+        {overlapResult.regions.map((region, idx) => (
+          <mesh
+            key={`overlap-${idx}`}
+            position={[region.position[0], region.position[1] + 0.3, region.position[2]]}
+          >
+            <sphereGeometry args={[0.6, 8, 8]} />
+            <meshStandardMaterial
+              color='#ff0000'
+              transparent
+              opacity={0.7}
+              emissive='#ff0000'
+              emissiveIntensity={0.3}
+            />
+          </mesh>
+        ))}
+        {overlapResult.overlapPercentage > 0.5 && dragStartPoint && previewPosition && (
+          <mesh
+            position={[
+              (dragStartPoint[0] + previewPosition[0]) / 2,
+              1.5,
+              (dragStartPoint[2] + previewPosition[2]) / 2,
+            ]}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            <planeGeometry args={[8, 2]} />
+            <meshBasicMaterial
+              color='#ff0000'
+              transparent
+              opacity={0.4}
+              depthWrite={false}
+              side={2}
+            />
+          </mesh>
+        )}
+      </>
+    )
+  }
+
   // For linear objects in 'selecting' state (before first click), show a short preview
   if (isLinear && placementState === 'selecting') {
     const defaultLength = 4
@@ -608,6 +693,22 @@ export default function GhostPreview({
             endPoint={end}
             isGhost
           />
+        ) : selectedObjectType === 'wall' ? (
+          <Wall
+            position={previewPosition}
+            rotation={previewRotation}
+            startPoint={start}
+            endPoint={end}
+            isGhost
+          />
+        ) : selectedObjectType === 'wall_fence' ? (
+          <WallFence
+            position={previewPosition}
+            rotation={previewRotation}
+            startPoint={start}
+            endPoint={end}
+            isGhost
+          />
         ) : isPit ? (
           <PitRoadSegment
             position={previewPosition}
@@ -629,20 +730,23 @@ export default function GhostPreview({
     )
   }
 
-  // Curve mode previews
-  if (isLinear && isCurveMode) {
+  const isWall = selectedObjectType ? isWallType(selectedObjectType) : false
+
+  // Curve mode previews (walls always straight — skip curve mode for walls)
+  if (isLinear && isCurveMode && !isWall) {
     if (placementState === 'dragging' && dragStartPoint) {
       const dx = previewPosition[0] - dragStartPoint[0]
       const dz = previewPosition[2] - dragStartPoint[2]
       const dist = Math.sqrt(dx * dx + dz * dz)
 
-      const previewControlPoint: [number, number, number] = dist > 1
-        ? [
-            (dragStartPoint[0] + previewPosition[0]) / 2 + dz * 0.3,
-            0,
-            (dragStartPoint[2] + previewPosition[2]) / 2 - dx * 0.3,
-          ]
-        : previewPosition
+      const previewControlPoint: [number, number, number] =
+        dist > 1
+          ? [
+              (dragStartPoint[0] + previewPosition[0]) / 2 + dz * 0.3,
+              0,
+              (dragStartPoint[2] + previewPosition[2]) / 2 - dx * 0.3,
+            ]
+          : previewPosition
 
       const previewEndPoint: [number, number, number] = previewPosition
 
@@ -652,6 +756,7 @@ export default function GhostPreview({
         <>
           {renderSnapIndicators()}
           {renderSnapGuides()}
+          {renderOverlapWarning()}
           <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
             <sphereGeometry args={[0.5, 16, 16]} />
             <meshStandardMaterial color='#00ff00' transparent opacity={0.8} />
@@ -661,8 +766,8 @@ export default function GhostPreview({
             <sphereGeometry args={[0.4, 16, 16]} />
             <meshStandardMaterial color='#ffff00' transparent opacity={0.6} />
           </mesh>
-          {showArcPreview && (
-            selectedObjectType === 'barrier' ? (
+          {showArcPreview &&
+            (selectedObjectType === 'barrier' ? (
               <CurvedBarrier
                 position={previewPosition}
                 startPoint={dragStartPoint}
@@ -686,10 +791,9 @@ export default function GhostPreview({
                 endPoint={previewEndPoint}
                 isGhost
               />
-            )
-          )}
-          {!showArcPreview && (
-            selectedObjectType === 'barrier' ? (
+            ))}
+          {!showArcPreview &&
+            (selectedObjectType === 'barrier' ? (
               <Barrier
                 position={previewPosition}
                 startPoint={dragStartPoint}
@@ -710,7 +814,9 @@ export default function GhostPreview({
                 endPoint={previewPosition}
                 isGhost
               />
-            )
+            ))}
+          {selectedObjectType === 'barrier' && barrierBlocked && (
+            <BarrierBlockedIndicator startPoint={dragStartPoint} endPoint={previewPosition} />
           )}
         </>
       )
@@ -738,6 +844,7 @@ export default function GhostPreview({
         <>
           {renderSnapIndicators()}
           {renderSnapGuides()}
+          {renderOverlapWarning()}
           <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
             <sphereGeometry args={[0.5, 16, 16]} />
             <meshStandardMaterial color='#00ff00' transparent opacity={0.8} />
@@ -778,29 +885,60 @@ export default function GhostPreview({
             control={effectiveControlPoint}
             end={previewPosition}
           />
+          {selectedObjectType === 'barrier' && barrierBlocked && (
+            <BarrierBlockedIndicator startPoint={dragStartPoint} endPoint={previewPosition} />
+          )}
         </>
       )
     }
   }
 
-  // Straight mode: linear objects while dragging
-  if (isLinear && !isCurveMode && placementState === 'dragging' && dragStartPoint) {
+  if (isLinear && (!isCurveMode || isWall) && placementState === 'dragging' && dragStartPoint) {
     return (
       <>
         {renderSnapIndicators()}
         {renderSnapGuides()}
-        {/* Start point marker */}
+        {renderOverlapWarning()}
         <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
           <sphereGeometry args={[0.5, 16, 16]} />
           <meshStandardMaterial color='#00ff00' transparent opacity={0.8} />
         </mesh>
         {selectedObjectType === 'barrier' ? (
-          <Barrier
-            position={previewPosition}
-            startPoint={dragStartPoint}
-            endPoint={previewPosition}
-            isGhost
-          />
+          <>
+            <Barrier
+              position={previewPosition}
+              startPoint={dragStartPoint}
+              endPoint={previewPosition}
+              isGhost
+            />
+            {barrierBlocked && (
+              <BarrierBlockedIndicator startPoint={dragStartPoint} endPoint={previewPosition} />
+            )}
+          </>
+        ) : selectedObjectType === 'wall' ? (
+          <>
+            <Wall
+              position={previewPosition}
+              startPoint={dragStartPoint}
+              endPoint={previewPosition}
+              isGhost
+            />
+            {barrierBlocked && (
+              <BarrierBlockedIndicator startPoint={dragStartPoint} endPoint={previewPosition} />
+            )}
+          </>
+        ) : selectedObjectType === 'wall_fence' ? (
+          <>
+            <WallFence
+              position={previewPosition}
+              startPoint={dragStartPoint}
+              endPoint={previewPosition}
+              isGhost
+            />
+            {barrierBlocked && (
+              <BarrierBlockedIndicator startPoint={dragStartPoint} endPoint={previewPosition} />
+            )}
+          </>
         ) : isPit ? (
           <PitRoadSegment
             position={previewPosition}
@@ -832,8 +970,7 @@ export default function GhostPreview({
       return <Cone {...commonProps} />
     case 'ramp':
       return <Ramp {...commonProps} />
-    case 'checkpoint':
-      // Show checkpoint spanning road edges if on a road
+    case 'checkpoint': {
       if (checkpointRoadEdge) {
         return (
           <Checkpoint
@@ -844,8 +981,13 @@ export default function GhostPreview({
           />
         )
       }
-      // Show nothing if not on a road (checkpoint requires road)
-      return null
+      return (
+        <mesh position={[previewPosition[0], 0.2, previewPosition[2]]}>
+          <sphereGeometry args={[0.4, 16, 16]} />
+          <meshStandardMaterial color='#ffaa00' transparent opacity={0.7} />
+        </mesh>
+      )
+    }
     case 'curb':
       // Curb dragging preview
       if (
@@ -889,12 +1031,24 @@ export default function GhostPreview({
         return (
           <>
             {/* Edge position highlight */}
-            <mesh position={[curbEdgeHover.worldPosition[0], curbEdgeHover.worldPosition[1] + 0.1, curbEdgeHover.worldPosition[2]]}>
+            <mesh
+              position={[
+                curbEdgeHover.worldPosition[0],
+                curbEdgeHover.worldPosition[1] + 0.1,
+                curbEdgeHover.worldPosition[2],
+              ]}
+            >
               <sphereGeometry args={[0.5, 16, 16]} />
               <meshStandardMaterial color='#ff6600' transparent opacity={0.8} />
             </mesh>
             {/* Edge indicator line along road edge */}
-            <mesh position={[curbEdgeHover.worldPosition[0], curbEdgeHover.worldPosition[1] + 0.05, curbEdgeHover.worldPosition[2]]}>
+            <mesh
+              position={[
+                curbEdgeHover.worldPosition[0],
+                curbEdgeHover.worldPosition[1] + 0.05,
+                curbEdgeHover.worldPosition[2],
+              ]}
+            >
               <ringGeometry args={[0.8, 1.0, 16]} />
               <meshBasicMaterial color='#ff6600' transparent opacity={0.6} side={2} />
             </mesh>
@@ -941,23 +1095,29 @@ export default function GhostPreview({
 
         const roadRotation = Math.atan2(dx, dz)
 
-        return (
-          <PitBox
-            position={pitBoxPos}
-            rotation={roadRotation}
-            isGhost
-          />
-        )
+        return <PitBox position={pitBoxPos} rotation={roadRotation} isGhost />
       }
 
       if (placementState === 'selecting' && curbEdgeHover) {
         return (
           <>
-            <mesh position={[curbEdgeHover.worldPosition[0], curbEdgeHover.worldPosition[1] + 0.1, curbEdgeHover.worldPosition[2]]}>
+            <mesh
+              position={[
+                curbEdgeHover.worldPosition[0],
+                curbEdgeHover.worldPosition[1] + 0.1,
+                curbEdgeHover.worldPosition[2],
+              ]}
+            >
               <sphereGeometry args={[0.5, 16, 16]} />
               <meshStandardMaterial color='#ff6600' transparent opacity={0.8} />
             </mesh>
-            <mesh position={[curbEdgeHover.worldPosition[0], curbEdgeHover.worldPosition[1] + 0.05, curbEdgeHover.worldPosition[2]]}>
+            <mesh
+              position={[
+                curbEdgeHover.worldPosition[0],
+                curbEdgeHover.worldPosition[1] + 0.05,
+                curbEdgeHover.worldPosition[2],
+              ]}
+            >
               <ringGeometry args={[0.8, 1.0, 16]} />
               <meshBasicMaterial color='#ff6600' transparent opacity={0.6} side={2} />
             </mesh>

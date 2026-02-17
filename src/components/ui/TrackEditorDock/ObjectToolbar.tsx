@@ -1,6 +1,7 @@
 import type { ObjectType } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
 import { OBJECT_TYPES, OBJECT_CONFIGS } from '../../../constants/trackObjects'
+import type { CheckpointType } from '../../../types/trackObjects'
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -49,9 +50,13 @@ const objectColors: Record<ObjectType, string> = {
   ramp: '#666666',
   checkpoint: '#00ff00',
   barrier: '#888888',
+  wall: '#8a8a8a',
+  wall_fence: '#8a8a6a',
   road: '#333333',
   curb: '#ff0000',
   pitbox: '#ff6600',
+  grass_patch: '#4a8c2a',
+  gravel_patch: '#8a7d6b',
 }
 
 interface ObjectButtonProps {
@@ -93,6 +98,45 @@ function ObjectButton({ type, isSelected, onClick }: ObjectButtonProps) {
   )
 }
 
+const checkpointTypeButton: React.CSSProperties = {
+  height: 28,
+  padding: '0 10px',
+  border: '2px solid transparent',
+  borderRadius: 5,
+  cursor: 'pointer',
+  fontSize: 10,
+  fontWeight: 'bold',
+  transition: 'all 0.15s ease',
+  whiteSpace: 'nowrap',
+}
+
+function CheckpointTypeSelector() {
+  const checkpointPlacementType = useEditorStore(s => s.checkpointPlacementType)
+  const setCheckpointPlacementType = useEditorStore(s => s.setCheckpointPlacementType)
+
+  return (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginLeft: 4 }}>
+      {([
+        { type: 'start-finish' as CheckpointType, label: 'Start/Finish', activeColor: '#00ff00', activeBg: 'rgba(0, 255, 0, 0.15)' },
+        { type: 'sector' as CheckpointType, label: 'Sector', activeColor: '#3b82f6', activeBg: 'rgba(59, 130, 246, 0.15)' },
+      ]).map(({ type, label, activeColor, activeBg }) => (
+        <button
+          key={type}
+          style={{
+            ...checkpointTypeButton,
+            ...(checkpointPlacementType === type
+              ? { borderColor: activeColor, background: activeBg, color: activeColor }
+              : { background: 'rgba(255, 255, 255, 0.08)', color: 'rgba(255, 255, 255, 0.5)' }),
+          }}
+          onClick={() => setCheckpointPlacementType(type)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function ObjectToolbar() {
   const selectedObjectType = useEditorStore(s => s.selectedObjectType)
   const selectObjectType = useEditorStore(s => s.selectObjectType)
@@ -102,7 +146,6 @@ export default function ObjectToolbar() {
   const setPartialDeleteMode = useEditorStore(s => s.setPartialDeleteMode)
 
   const handleSelectType = (type: ObjectType) => {
-    // Turn off delete modes when selecting an object type
     if (deleteMode) setDeleteMode(false)
     if (partialDeleteMode) setPartialDeleteMode(false)
 
@@ -123,6 +166,7 @@ export default function ObjectToolbar() {
           onClick={() => handleSelectType(type)}
         />
       ))}
+      {selectedObjectType === 'checkpoint' && <CheckpointTypeSelector />}
     </div>
   )
 }

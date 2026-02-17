@@ -107,9 +107,41 @@ export const OBJECT_CONFIGS: Record<ObjectType, ObjectConfig> = {
     friction: 0.65,
     restitution: 0,
   },
+  wall: {
+    type: 'wall',
+    label: 'Wall',
+    description: 'Low concrete wall',
+    isLinear: true,
+    defaultSize: { width: 0.5, height: 0.8, depth: 1 },
+    color: '#8a8a8a',
+    friction: 0.6,
+    restitution: 0.2,
+  },
+  wall_fence: {
+    type: 'wall_fence',
+    label: 'Wall+Fence',
+    description: 'Wall with metal fence on top',
+    isLinear: true,
+    defaultSize: { width: 0.5, height: 2.0, depth: 1 },
+    color: '#8a8a6a',
+    friction: 0.6,
+    restitution: 0.2,
+  },
 }
 
-export const OBJECT_TYPES: ObjectType[] = ['cone', 'ramp', 'checkpoint', 'barrier', 'road', 'curb', 'pitbox', 'grass_patch', 'gravel_patch']
+export const OBJECT_TYPES: ObjectType[] = [
+  'cone',
+  'ramp',
+  'checkpoint',
+  'barrier',
+  'wall',
+  'wall_fence',
+  'road',
+  'curb',
+  'pitbox',
+  'grass_patch',
+  'gravel_patch',
+]
 
 // Pit road constants
 export const PIT_ROAD_WIDTH = 8

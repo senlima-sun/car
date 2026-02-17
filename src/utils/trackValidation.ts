@@ -1,6 +1,9 @@
 import type { PlacedObject } from '../types/trackObjects'
+import { isWallType } from '../types/trackObjects'
 import type { TrackGraph } from '../types/trackGraph'
 import { isCircuit, findConnectedRoads, validateFlowDirections } from './trackGraph'
+import { checkOverlap, sampleCenterline, pointOnRoad } from './trackConnection'
+import { TRACK_WIDTH } from '../constants/dimensions'
 
 export type ValidationSeverity = 'critical' | 'warning' | 'pass'
 
@@ -52,6 +55,58 @@ const findConnectedComponents = (
   const orphans = components.slice(1).flat()
 
   return { mainComponentRoadIds: mainComponent, orphanRoadIds: orphans }
+}
+
+export interface BarrierOnRoadResult {
+  barrierId: string
+  position: [number, number, number]
+  overlapPercentage: number
+}
+
+export function findBarriersOnRoad(
+  barriers: PlacedObject[],
+  roads: PlacedObject[],
+): BarrierOnRoadResult[] {
+  const candidateRoads = roads.filter(
+    r => r.type === 'road' && r.startPoint && r.endPoint,
+  )
+  if (candidateRoads.length === 0) return []
+
+  const halfWidth = TRACK_WIDTH / 2
+  const results: BarrierOnRoadResult[] = []
+
+  for (const barrier of barriers) {
+    if (barrier.type !== 'barrier' && !isWallType(barrier.type)) continue
+    if (!barrier.startPoint || !barrier.endPoint) continue
+
+    const samples = sampleCenterline(
+      barrier.startPoint,
+      barrier.endPoint,
+      barrier.controlPoint,
+      12,
+    )
+
+    let onRoadCount = 0
+    for (const sample of samples) {
+      for (const road of candidateRoads) {
+        if (pointOnRoad(sample.x, sample.z, road, halfWidth)) {
+          onRoadCount++
+          break
+        }
+      }
+    }
+
+    const overlapPercentage = onRoadCount / samples.length
+    if (overlapPercentage > 0.3) {
+      results.push({
+        barrierId: barrier.id,
+        position: barrier.position,
+        overlapPercentage,
+      })
+    }
+  }
+
+  return results
 }
 
 export const validateTrack = (
@@ -168,6 +223,62 @@ export const validateTrack = (
           relatedObjectIds: isolated.map(d => d.roadId),
         })
       }
+    }
+
+    const overlappingPairs: string[] = []
+    for (let i = 0; i < roads.length; i++) {
+      const road = roads[i]
+      if (!road.startPoint || !road.endPoint) continue
+      const others = roads.filter((_, j) => j !== i)
+      const result = checkOverlap(
+        {
+          startPoint: road.startPoint,
+          endPoint: road.endPoint,
+          controlPoint: road.controlPoint,
+        },
+        others,
+      )
+      if (result.hasOverlap && result.overlapPercentage > 0.1) {
+        const pairKey = [road.id, ...result.affectedRoadIds].sort().join(',')
+        if (!overlappingPairs.includes(pairKey)) {
+          overlappingPairs.push(pairKey)
+        }
+      }
+    }
+
+    if (overlappingPairs.length > 0) {
+      results.push({
+        id: 'no-overlap',
+        rule: 'Road Overlap',
+        severity: 'warning',
+        message: `${overlappingPairs.length} overlapping road pair(s) detected`,
+      })
+    } else {
+      results.push({
+        id: 'no-overlap',
+        rule: 'Road Overlap',
+        severity: 'pass',
+        message: 'No road overlaps',
+      })
+    }
+
+    const barriersOnRoad = findBarriersOnRoad(objects, roads)
+    if (barriersOnRoad.length > 0) {
+      results.push({
+        id: 'barriers-on-road',
+        rule: 'Barrier Placement',
+        severity: 'critical',
+        message: `${barriersOnRoad.length} barrier(s) placed on road surface`,
+        location: barriersOnRoad[0].position,
+        relatedObjectIds: barriersOnRoad.map(b => b.barrierId),
+      })
+    } else {
+      results.push({
+        id: 'barriers-on-road',
+        rule: 'Barrier Placement',
+        severity: 'pass',
+        message: 'No barriers on road',
+      })
     }
   }
 

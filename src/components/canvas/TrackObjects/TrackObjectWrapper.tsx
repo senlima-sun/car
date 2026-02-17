@@ -1,5 +1,5 @@
+import { memo } from 'react'
 import type { PlacedObject } from '../../../stores/useCustomizationStore'
-import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useGameStore } from '../../../stores/useGameStore'
 import { isPitRoad, isCurveMode } from '../../../types/trackObjects'
 import Cone from './Cone'
@@ -15,25 +15,28 @@ import PitBox from './PitBox'
 import CurbSegment from './CurbSegment'
 import CurvedCurbSegment from './CurvedCurbSegment'
 import SurfacePatch from './SurfacePatch'
+import Wall from './Wall'
+import WallFence from './WallFence'
 import SelectionHighlight from './SelectionHighlight'
 import FlowArrows from './FlowArrows'
 
 interface TrackObjectWrapperProps {
   object: PlacedObject
+  parentRoad?: PlacedObject
   enablePhysics?: boolean
   isGhost?: boolean
   isSelected?: boolean
   isSelectedForCurb?: boolean
 }
 
-export default function TrackObjectWrapper({
+function TrackObjectWrapper({
   object,
+  parentRoad,
   enablePhysics = true,
   isGhost = false,
   isSelected = false,
   isSelectedForCurb = false,
 }: TrackObjectWrapperProps) {
-  const placedObjects = useCustomizationStore(s => s.placedObjects)
   const isCustomizeMode = useGameStore(s => s.status) === 'customize'
 
   const commonProps = {
@@ -42,14 +45,12 @@ export default function TrackObjectWrapper({
     isGhost: isGhost || !enablePhysics,
   }
 
-  // For linear objects, pass start/end points
   const linearProps = {
     ...commonProps,
     startPoint: object.startPoint,
     endPoint: object.endPoint,
   }
 
-  // For curved objects, also pass control point and snap edge positions
   const curvedProps = {
     ...linearProps,
     controlPoint: object.controlPoint,
@@ -79,7 +80,6 @@ export default function TrackObjectWrapper({
       )
       break
     case 'barrier':
-      // Check if it's a curved barrier
       if (isCurveMode(object.trackMode) && object.controlPoint) {
         component = <CurvedBarrier {...(curvedProps as any)} />
       } else {
@@ -127,33 +127,32 @@ export default function TrackObjectWrapper({
             isSelectedForCurb={isSelectedForCurb}
             startElevation={object.startElevation}
             endElevation={object.endElevation}
+            startLeftEdge={object.startLeftEdge}
+            startRightEdge={object.startRightEdge}
+            endLeftEdge={object.endLeftEdge}
+            endRightEdge={object.endRightEdge}
           />
         )
       }
       break
     case 'curb':
-      // Find the parent road for this curb
-      if (object.parentRoadId) {
-        const parentRoad = placedObjects.find(obj => obj.id === object.parentRoadId)
-        if (parentRoad) {
-          // Use curved or straight curb component based on parent road type
-          if (isCurveMode(parentRoad.trackMode) && parentRoad.controlPoint) {
-            component = (
-              <CurvedCurbSegment
-                curb={object}
-                parentRoad={parentRoad}
-                isGhost={isGhost || !enablePhysics}
-              />
-            )
-          } else {
-            component = (
-              <CurbSegment
-                curb={object}
-                parentRoad={parentRoad}
-                isGhost={isGhost || !enablePhysics}
-              />
-            )
-          }
+      if (object.parentRoadId && parentRoad) {
+        if (isCurveMode(parentRoad.trackMode) && parentRoad.controlPoint) {
+          component = (
+            <CurvedCurbSegment
+              curb={object}
+              parentRoad={parentRoad}
+              isGhost={isGhost || !enablePhysics}
+            />
+          )
+        } else {
+          component = (
+            <CurbSegment
+              curb={object}
+              parentRoad={parentRoad}
+              isGhost={isGhost || !enablePhysics}
+            />
+          )
         }
       }
       break
@@ -168,6 +167,12 @@ export default function TrackObjectWrapper({
           width={object.width}
         />
       )
+      break
+    case 'wall':
+      component = <Wall {...linearProps} adImageUrl={object.adImageUrl} />
+      break
+    case 'wall_fence':
+      component = <WallFence {...linearProps} adImageUrl={object.adImageUrl} />
       break
     case 'grass_patch':
     case 'gravel_patch':
@@ -211,3 +216,14 @@ export default function TrackObjectWrapper({
     </group>
   )
 }
+
+export default memo(TrackObjectWrapper, (prev, next) => {
+  return (
+    prev.object.id === next.object.id &&
+    prev.parentRoad?.id === next.parentRoad?.id &&
+    prev.enablePhysics === next.enablePhysics &&
+    prev.isGhost === next.isGhost &&
+    prev.isSelected === next.isSelected &&
+    prev.isSelectedForCurb === next.isSelectedForCurb
+  )
+})

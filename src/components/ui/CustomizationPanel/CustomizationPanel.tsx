@@ -4,7 +4,8 @@ import {
   type ObjectType,
   isLinearObject,
 } from '../../../stores/useCustomizationStore'
-import { isCurveMode, isPolygonObject } from '../../../types/trackObjects'
+import { isCurveMode, isPolygonObject, isWallType } from '../../../types/trackObjects'
+import WallPropertiesPanel from './WallPropertiesPanel'
 import { useEditorStore } from '../../../stores/useEditorStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
@@ -244,6 +245,9 @@ export default function CustomizationPanel() {
   const clearSmoothSelection = useEditorStore(s => s.clearSmoothSelection)
   const propagateToNeighbors = useEditorStore(s => s.propagateToNeighbors)
   const setPropagateToNeighbors = useEditorStore(s => s.setPropagateToNeighbors)
+  const reorderSectorCheckpoint = useEditorStore(s => s.reorderSectorCheckpoint)
+  const deleteSectorCheckpoint = useEditorStore(s => s.deleteSectorCheckpoint)
+  const selectObject = useEditorStore(s => s.selectObject)
 
   // Track store
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
@@ -280,16 +284,21 @@ export default function CustomizationPanel() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedObjectId) {
-        // Prevent backspace from navigating back
         if (e.key === 'Backspace' && (e.target as HTMLElement)?.tagName !== 'INPUT') {
           e.preventDefault()
         }
-        removeObject(selectedObjectId)
+        const obj = placedObjects.find(o => o.id === selectedObjectId)
+        if (obj?.type === 'checkpoint' && obj.checkpointType === 'sector') {
+          deleteSectorCheckpoint(selectedObjectId)
+        } else {
+          removeObject(selectedObjectId)
+          selectObject(null)
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedObjectId, removeObject])
+  }, [selectedObjectId, removeObject, deleteSectorCheckpoint, placedObjects, selectObject])
 
   const handleSelectType = (type: ObjectType) => {
     // Turn off delete modes when selecting an object type
@@ -328,8 +337,13 @@ export default function CustomizationPanel() {
   }
 
   const handleDeleteSelected = () => {
-    if (selectedObjectId) {
+    if (!selectedObjectId) return
+    const obj = placedObjects.find(o => o.id === selectedObjectId)
+    if (obj?.type === 'checkpoint' && obj.checkpointType === 'sector') {
+      deleteSectorCheckpoint(selectedObjectId)
+    } else {
       removeObject(selectedObjectId)
+      selectObject(null)
     }
   }
 
@@ -357,10 +371,20 @@ export default function CustomizationPanel() {
     }
   }
 
-  // Get selected object info
   const selectedObject = selectedObjectId
     ? placedObjects.find(obj => obj.id === selectedObjectId)
     : null
+
+  const isSectorCheckpoint =
+    selectedObject?.type === 'checkpoint' && selectedObject.checkpointType === 'sector'
+
+  const sectorCheckpoints = placedObjects
+    .filter(o => o.type === 'checkpoint' && o.checkpointType === 'sector')
+    .sort((a, b) => (a.checkpointOrder ?? 0) - (b.checkpointOrder ?? 0))
+
+  const sectorIndex = isSectorCheckpoint
+    ? sectorCheckpoints.findIndex(s => s.id === selectedObject.id)
+    : -1
 
   // Check if current selected object is a linear type (road/barrier)
   const showTrackModeToggle = selectedObjectType && isLinearObject(selectedObjectType)
@@ -478,8 +502,7 @@ export default function CustomizationPanel() {
           </div>
         )}
 
-        {/* Show selected object and delete button */}
-        {selectedObject && (
+        {selectedObject && !isSectorCheckpoint && (
           <div style={styles.selectedInfo}>
             Selected: {selectedObject.type}
             <button
@@ -493,6 +516,70 @@ export default function CustomizationPanel() {
             >
               Delete Selected
             </button>
+          </div>
+        )}
+
+        {selectedObject && isWallType(selectedObject.type) && !deleteMode && (
+          <WallPropertiesPanel />
+        )}
+
+        {isSectorCheckpoint && selectedObject && (
+          <div
+            style={{
+              padding: '10px',
+              background: 'rgba(59, 130, 246, 0.15)',
+              borderRadius: 6,
+              marginTop: 6,
+            }}
+          >
+            <div style={{ color: '#60a5fa', fontSize: 13, fontWeight: 'bold', marginBottom: 8 }}>
+              Sector S{selectedObject.checkpointOrder ?? '?'}
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <button
+                style={{
+                  ...styles.actionButton,
+                  background: sectorIndex <= 0 ? '#333' : '#3b82f6',
+                  color: sectorIndex <= 0 ? '#666' : '#fff',
+                  flex: 1,
+                  cursor: sectorIndex <= 0 ? 'not-allowed' : 'pointer',
+                  opacity: sectorIndex <= 0 ? 0.5 : 1,
+                }}
+                disabled={sectorIndex <= 0}
+                onClick={() => reorderSectorCheckpoint(selectedObject.id, 'up')}
+              >
+                Move Up
+              </button>
+              <button
+                style={{
+                  ...styles.actionButton,
+                  background:
+                    sectorIndex >= sectorCheckpoints.length - 1 ? '#333' : '#3b82f6',
+                  color: sectorIndex >= sectorCheckpoints.length - 1 ? '#666' : '#fff',
+                  flex: 1,
+                  cursor:
+                    sectorIndex >= sectorCheckpoints.length - 1 ? 'not-allowed' : 'pointer',
+                  opacity: sectorIndex >= sectorCheckpoints.length - 1 ? 0.5 : 1,
+                }}
+                disabled={sectorIndex >= sectorCheckpoints.length - 1}
+                onClick={() => reorderSectorCheckpoint(selectedObject.id, 'down')}
+              >
+                Move Down
+              </button>
+            </div>
+            <button
+              style={{
+                ...styles.actionButton,
+                ...styles.clearButton,
+                width: '100%',
+              }}
+              onClick={() => deleteSectorCheckpoint(selectedObject.id)}
+            >
+              Delete Sector
+            </button>
+            <div style={{ color: '#888', fontSize: 10, marginTop: 6 }}>
+              Drag handles to reposition. Esc to cancel drag.
+            </div>
           </div>
         )}
 
@@ -546,7 +633,11 @@ export default function CustomizationPanel() {
               style={{
                 ...styles.modeButton,
                 ...(checkpointPlacementType === 'sector'
-                  ? { background: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', color: '#3b82f6' }
+                  ? {
+                      background: 'rgba(59, 130, 246, 0.2)',
+                      borderColor: '#3b82f6',
+                      color: '#3b82f6',
+                    }
                   : styles.modeButtonInactive),
               }}
               onClick={() => setCheckpointPlacementType('sector')}
@@ -558,6 +649,9 @@ export default function CustomizationPanel() {
             {checkpointPlacementType === 'start-finish'
               ? 'Only one start/finish line allowed. Replaces existing.'
               : `Sector ${placedObjects.filter(o => o.type === 'checkpoint' && o.checkpointType === 'sector').length + 1} — placed in order along track.`}
+          </div>
+          <div style={styles.placementHint}>
+            Click on a road to place checkpoint across it
           </div>
         </div>
       )}
@@ -587,10 +681,7 @@ export default function CustomizationPanel() {
             </button>
           </div>
           {isCurveMode(trackMode) && (
-            <div
-              style={styles.snapToggle}
-              onClick={() => setSymmetricCurve(!symmetricCurve)}
-            >
+            <div style={styles.snapToggle} onClick={() => setSymmetricCurve(!symmetricCurve)}>
               <span style={styles.snapToggleLabel}>Symmetric Curve</span>
               <div
                 style={{
@@ -725,7 +816,10 @@ export default function CustomizationPanel() {
             } else {
               if (deleteMode) setDeleteMode(false)
               if (partialDeleteMode) setPartialDeleteMode(false)
-              if (autoCurbMode) { clearRoadSelection(); setAutoCurbMode(false) }
+              if (autoCurbMode) {
+                clearRoadSelection()
+                setAutoCurbMode(false)
+              }
               setElevationEditMode(true)
             }
           }}
@@ -735,19 +829,30 @@ export default function CustomizationPanel() {
 
         {elevationEditMode && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, marginBottom: 8 }}>
-              {([
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 4,
+                marginBottom: 8,
+              }}
+            >
+              {[
                 { tool: 'raise' as const, label: 'Raise' },
                 { tool: 'level' as const, label: 'Level' },
                 { tool: 'slope' as const, label: 'Slope' },
                 { tool: 'smooth' as const, label: 'Smooth' },
-              ]).map(({ tool, label }) => (
+              ].map(({ tool, label }) => (
                 <button
                   key={tool}
                   style={{
                     ...styles.modeButton,
                     ...(elevationTool === tool
-                      ? { background: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', color: '#3b82f6' }
+                      ? {
+                          background: 'rgba(59, 130, 246, 0.2)',
+                          borderColor: '#3b82f6',
+                          color: '#3b82f6',
+                        }
                       : styles.modeButtonInactive),
                   }}
                   onClick={() => setElevationTool(tool)}
@@ -788,15 +893,17 @@ export default function CustomizationPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <span style={{ color: '#aaa', fontSize: 11, minWidth: 50 }}>Height</span>
                   <input
-                    type="range"
+                    type='range'
                     min={0}
                     max={20}
                     step={0.25}
                     value={targetLevelHeight}
-                    onChange={(e) => setTargetLevelHeight(Number(e.target.value))}
+                    onChange={e => setTargetLevelHeight(Number(e.target.value))}
                     style={{ flex: 1, accentColor: '#3b82f6' }}
                   />
-                  <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 36 }}>
+                  <span
+                    style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 36 }}
+                  >
                     {targetLevelHeight.toFixed(1)}m
                   </span>
                 </div>
@@ -832,9 +939,16 @@ export default function CustomizationPanel() {
                       }}
                       onClick={() => {
                         const customStore = useCustomizationStore.getState()
-                        const result = smoothElevations(smoothSelectedRoadIds, customStore.placedObjects, 1)
-                        const before = new Map<string, { startElevation: number; endElevation: number }>()
-                        for (const [id, vals] of result) {
+                        const result = smoothElevations(
+                          smoothSelectedRoadIds,
+                          customStore.placedObjects,
+                          1,
+                        )
+                        const before = new Map<
+                          string,
+                          { startElevation: number; endElevation: number }
+                        >()
+                        for (const [id] of result) {
                           const obj = customStore.placedObjects.find(o => o.id === id)
                           if (obj) {
                             before.set(id, {
@@ -903,9 +1017,14 @@ export default function CustomizationPanel() {
               Direction set{flowWarnings.length > 0 ? ` (${flowWarnings.length} unconnected)` : ''}
             </div>
             {(() => {
-              const selectedRoads = multiSelectedIds.length > 0
-                ? multiSelectedIds.filter(id => placedObjects.find(o => o.id === id)?.type === 'road')
-                : selectedObject?.type === 'road' ? [selectedObject.id] : []
+              const selectedRoads =
+                multiSelectedIds.length > 0
+                  ? multiSelectedIds.filter(
+                      id => placedObjects.find(o => o.id === id)?.type === 'road',
+                    )
+                  : selectedObject?.type === 'road'
+                    ? [selectedObject.id]
+                    : []
               const hasSelectedRoads = selectedRoads.length > 0
               return hasSelectedRoads ? (
                 <button
@@ -964,12 +1083,12 @@ export default function CustomizationPanel() {
           <div style={styles.sectionTitle}>Road Width</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
-              type="range"
+              type='range'
               min={8}
               max={24}
               step={2}
               value={selectedObject.width ?? 12}
-              onChange={(e) => updateObject(selectedObject.id, { width: Number(e.target.value) })}
+              onChange={e => updateObject(selectedObject.id, { width: Number(e.target.value) })}
               style={{ flex: 1, accentColor: '#3b82f6' }}
             />
             <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 28 }}>
@@ -986,12 +1105,14 @@ export default function CustomizationPanel() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ color: '#aaa', fontSize: 11, minWidth: 80 }}>Start Height</span>
             <input
-              type="range"
+              type='range'
               min={0}
               max={20}
               step={0.5}
               value={selectedObject.startElevation ?? 0}
-              onChange={(e) => updateObject(selectedObject.id, { startElevation: Number(e.target.value) })}
+              onChange={e =>
+                updateObject(selectedObject.id, { startElevation: Number(e.target.value) })
+              }
               style={{ flex: 1, accentColor: '#3b82f6' }}
             />
             <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 36 }}>
@@ -1001,12 +1122,14 @@ export default function CustomizationPanel() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ color: '#aaa', fontSize: 11, minWidth: 80 }}>End Height</span>
             <input
-              type="range"
+              type='range'
               min={0}
               max={20}
               step={0.5}
               value={selectedObject.endElevation ?? 0}
-              onChange={(e) => updateObject(selectedObject.id, { endElevation: Number(e.target.value) })}
+              onChange={e =>
+                updateObject(selectedObject.id, { endElevation: Number(e.target.value) })
+              }
               style={{ flex: 1, accentColor: '#3b82f6' }}
             />
             <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 36 }}>
@@ -1017,12 +1140,12 @@ export default function CustomizationPanel() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: '#aaa', fontSize: 11, minWidth: 80 }}>Banking</span>
               <input
-                type="range"
+                type='range'
                 min={-30}
                 max={30}
                 step={5}
                 value={selectedObject.banking ?? 0}
-                onChange={(e) => updateObject(selectedObject.id, { banking: Number(e.target.value) })}
+                onChange={e => updateObject(selectedObject.id, { banking: Number(e.target.value) })}
                 style={{ flex: 1, accentColor: '#3b82f6' }}
               />
               <span style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace', minWidth: 36 }}>
@@ -1118,10 +1241,12 @@ export default function CustomizationPanel() {
         </div>
       </div>
 
-      <div style={{
-        ...styles.stats,
-        color: placedObjects.length > 200 ? '#f59e0b' : '#666',
-      }}>
+      <div
+        style={{
+          ...styles.stats,
+          color: placedObjects.length > 200 ? '#f59e0b' : '#666',
+        }}
+      >
         Objects: {placedObjects.length}
         {placedObjects.length > 200 && ' (performance may be affected)'}
       </div>

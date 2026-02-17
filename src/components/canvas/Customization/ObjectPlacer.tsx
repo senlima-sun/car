@@ -13,10 +13,13 @@ import {
   RoadEdgeHitResult,
   RoadSurfaceHitResult,
 } from '../../../stores/useCustomizationStore'
-import { isCurveMode, isPolygonObject } from '../../../types/trackObjects'
+import { isCurveMode, isPolygonObject, isWallType } from '../../../types/trackObjects'
 import { useEditorStore } from '../../../stores/useEditorStore'
 import { MIN_SEGMENT_LENGTH, PIT_ROAD_WIDTH } from '../../../constants/trackObjects'
 import { calculateSnappedPosition } from '../../../utils/roadSnapping'
+import { checkOverlap } from '../../../utils/trackConnection'
+import { findBarriersOnRoad } from '../../../utils/trackValidation'
+import { TRACK_WIDTH } from '../../../constants/dimensions'
 import GhostPreview from './GhostPreview'
 
 export default function ObjectPlacer() {
@@ -67,6 +70,11 @@ export default function ObjectPlacer() {
   const previewPositionForPaste = useEditorStore(s => s.previewPosition)
   const elevationEditMode = useEditorStore(s => s.elevationEditMode)
   const setElevationEditMode = useEditorStore(s => s.setElevationEditMode)
+  const setStartSnapElevation = useEditorStore(s => s.setStartSnapElevation)
+  const setEndSnapElevation = useEditorStore(s => s.setEndSnapElevation)
+  const setStartSnapBanking = useEditorStore(s => s.setStartSnapBanking)
+  const setEndSnapBanking = useEditorStore(s => s.setEndSnapBanking)
+  const setOverlapResult = useEditorStore(s => s.setOverlapResult)
   const addPolygonPoint = useEditorStore(s => s.addPolygonPoint)
   const cancelPolygon = useEditorStore(s => s.cancelPolygon)
   const undoLastPolygonPoint = useEditorStore(s => s.undoLastPolygonPoint)
@@ -75,10 +83,13 @@ export default function ObjectPlacer() {
   // Get snap points from existing road/barrier segments
   const snapPoints = getSnapPoints(placedObjects)
 
-  // Raycaster for ground intersection
+  const [barrierBlocked, setBarrierBlocked] = useState(false)
+
   const raycaster = useRef(new Raycaster())
   const pointer = useRef(new Vector2())
   const groundPlane = useRef(new Plane(new Vector3(0, 1, 0), 0))
+  const overlapFrameCounter = useRef(0)
+  const barrierCheckCounter = useRef(0)
 
   // Track pointer position
   const handlePointerMove = useCallback(
@@ -122,61 +133,79 @@ export default function ObjectPlacer() {
         | undefined = undefined
 
       // Apply snapping for linear objects (roads, barriers)
+      let snappedSnapPoint: (typeof snapPoints)[number] | null = null
       if (isLinearObject(selectedObjectType)) {
-        const snappedPoint = findNearestSnapPoint(clickPos, snapPoints)
-        if (snappedPoint) {
-          clickPos = snappedPoint.position
-          snapEdges = { left: snappedPoint.leftEdge, right: snappedPoint.rightEdge }
-          // Store connected tangent for G1 continuity
-          setConnectedTangent(snappedPoint.tangent)
+        snappedSnapPoint = findNearestSnapPoint(clickPos, snapPoints)
+        if (snappedSnapPoint) {
+          clickPos = snappedSnapPoint.position
+          snapEdges = { left: snappedSnapPoint.leftEdge, right: snappedSnapPoint.rightEdge }
+          setConnectedTangent(snappedSnapPoint.tangent)
         } else {
-          // No snap point - clear connected tangent
           setConnectedTangent(null)
         }
       }
 
       if (isLinearObject(selectedObjectType)) {
         if (isCurveMode(trackMode)) {
-          // Curve mode: 3-click workflow
-          // 1. First click: set start point
-          // 2. Second click: set control point
-          // 3. Third click: set end point and confirm
           if (placementState === 'selecting') {
-            // First click - set start point (snapped, with edge positions)
+            if (snappedSnapPoint) {
+              setStartSnapElevation(snappedSnapPoint.elevation)
+              setStartSnapBanking(snappedSnapPoint.banking)
+            } else {
+              setStartSnapElevation(null)
+              setStartSnapBanking(null)
+            }
             startDrag(clickPos, snapEdges)
           } else if (placementState === 'dragging') {
             // Second click - set control point (no snapping for control point)
             setControlPoint([intersectPoint.x, 0, intersectPoint.z])
           } else if (placementState === 'placingControlPoint') {
-            // Third click - set end point and confirm (snapped)
             if (dragStartPoint) {
               const dx = clickPos[0] - dragStartPoint[0]
               const dz = clickPos[2] - dragStartPoint[2]
               const length = Math.sqrt(dx * dx + dz * dz)
               if (length >= MIN_SEGMENT_LENGTH) {
-                // Store end snap edges before confirming
                 if (snapEdges) {
                   setEndSnapEdges(snapEdges)
                 }
-                // Update preview position to snapped position before confirming
+                if (snappedSnapPoint) {
+                  setEndSnapElevation(snappedSnapPoint.elevation)
+                  setEndSnapBanking(snappedSnapPoint.banking)
+                } else {
+                  setEndSnapElevation(null)
+                  setEndSnapBanking(null)
+                }
                 setPreviewPosition(clickPos)
                 setTimeout(() => confirmPlacement(), 0)
               }
             }
           }
         } else {
-          // Straight mode: 2-click workflow
           if (placementState === 'selecting') {
-            // First click - start dragging (snapped, with edges for consistency)
+            if (snappedSnapPoint) {
+              setStartSnapElevation(snappedSnapPoint.elevation)
+              setStartSnapBanking(snappedSnapPoint.banking)
+            } else {
+              setStartSnapElevation(null)
+              setStartSnapBanking(null)
+            }
             startDrag(clickPos, snapEdges)
           } else if (placementState === 'dragging') {
-            // Second click - confirm if long enough (snapped)
             if (dragStartPoint) {
               const dx = clickPos[0] - dragStartPoint[0]
               const dz = clickPos[2] - dragStartPoint[2]
               const length = Math.sqrt(dx * dx + dz * dz)
               if (length >= MIN_SEGMENT_LENGTH) {
-                // Update preview position to snapped position before confirming
+                if (snapEdges) {
+                  setEndSnapEdges(snapEdges)
+                }
+                if (snappedSnapPoint) {
+                  setEndSnapElevation(snappedSnapPoint.elevation)
+                  setEndSnapBanking(snappedSnapPoint.banking)
+                } else {
+                  setEndSnapElevation(null)
+                  setEndSnapBanking(null)
+                }
                 setPreviewPosition(clickPos)
                 setTimeout(() => confirmPlacement(), 0)
               }
@@ -184,14 +213,11 @@ export default function ObjectPlacer() {
           }
         }
       } else if (selectedObjectType === 'checkpoint') {
-        // Checkpoint - place on road only
         if (placementState === 'selecting') {
           const roadEdge = findRoadAtPosition(clickPos, placedObjects)
           if (roadEdge) {
-            // Place checkpoint spanning road edges
             confirmCheckpointPlacement(roadEdge.leftEdge, roadEdge.rightEdge)
           }
-          // If not on road, don't place anything
         }
       } else {
         // Other point objects - place immediately
@@ -213,6 +239,11 @@ export default function ObjectPlacer() {
       startDrag,
       setControlPoint,
       setPreviewPosition,
+      setEndSnapEdges,
+      setStartSnapElevation,
+      setEndSnapElevation,
+      setStartSnapBanking,
+      setEndSnapBanking,
       confirmPlacement,
       confirmCheckpointPlacement,
     ],
@@ -239,12 +270,24 @@ export default function ObjectPlacer() {
         )
         const edgeHit = findRoadEdgeAtPosition(clickPos, straightPitroads, PIT_ROAD_WIDTH)
         if (edgeHit) {
-          startCurbDrag(edgeHit.roadId, edgeHit.road, edgeHit.edge, edgeHit.t, edgeHit.worldPosition)
+          startCurbDrag(
+            edgeHit.roadId,
+            edgeHit.road,
+            edgeHit.edge,
+            edgeHit.t,
+            edgeHit.worldPosition,
+          )
         }
       } else {
         const edgeHit = findRoadEdgeAtPosition(clickPos, placedObjects)
         if (edgeHit) {
-          startCurbDrag(edgeHit.roadId, edgeHit.road, edgeHit.edge, edgeHit.t, edgeHit.worldPosition)
+          startCurbDrag(
+            edgeHit.roadId,
+            edgeHit.road,
+            edgeHit.edge,
+            edgeHit.t,
+            edgeHit.worldPosition,
+          )
         }
       }
     },
@@ -332,9 +375,39 @@ export default function ObjectPlacer() {
       }
 
       switch (event.code) {
-        case 'KeyR':
+        case 'KeyR': {
+          const editorState = useEditorStore.getState()
+          const customStore = useCustomizationStore.getState()
+          if (editorState.selectedObjectId) {
+            const obj = customStore.placedObjects.find(o => o.id === editorState.selectedObjectId)
+            if (obj?.type === 'checkpoint' && obj.startPoint && obj.endPoint) {
+              const cx = (obj.startPoint[0] + obj.endPoint[0]) / 2
+              const cz = (obj.startPoint[2] + obj.endPoint[2]) / 2
+              const rotateAroundCenter = (
+                p: [number, number, number],
+              ): [number, number, number] => {
+                const dx = p[0] - cx
+                const dz = p[2] - cz
+                return [cx - dz, p[1], cz + dx]
+              }
+              const newStart = rotateAroundCenter(obj.startPoint)
+              const newEnd = rotateAroundCenter(obj.endPoint)
+              const newRotation = Math.atan2(
+                newEnd[0] - newStart[0],
+                newEnd[2] - newStart[2],
+              )
+              customStore.updateObject(obj.id, {
+                startPoint: newStart,
+                endPoint: newEnd,
+                position: [cx, 0, cz],
+                rotation: newRotation,
+              })
+              break
+            }
+          }
           rotatePreviewCW()
           break
+        }
         case 'KeyY':
           setElevationEditMode(!useEditorStore.getState().elevationEditMode)
           break
@@ -483,7 +556,6 @@ export default function ObjectPlacer() {
         }
       }
 
-      // For checkpoints, detect road and update edge preview
       if (selectedObjectType === 'checkpoint' && placementState === 'selecting') {
         const roadEdge = findRoadAtPosition(previewPos, placedObjects)
         setCurrentRoadEdge(roadEdge)
@@ -525,6 +597,59 @@ export default function ObjectPlacer() {
       }
 
       setPreviewPosition(previewPos)
+
+      if (
+        isLinearObject(selectedObjectType) &&
+        selectedObjectType === 'road' &&
+        (placementState === 'dragging' || placementState === 'placingControlPoint') &&
+        dragStartPoint
+      ) {
+        overlapFrameCounter.current++
+        if (overlapFrameCounter.current % 3 === 0) {
+          const result = checkOverlap(
+            {
+              startPoint: dragStartPoint,
+              endPoint: previewPos,
+              controlPoint: controlPoint ?? undefined,
+            },
+            placedObjects,
+            TRACK_WIDTH / 2,
+          )
+          setOverlapResult(result.hasOverlap ? result : null)
+        }
+      } else {
+        if (overlapFrameCounter.current > 0) {
+          overlapFrameCounter.current = 0
+          setOverlapResult(null)
+        }
+      }
+
+      if (
+        (selectedObjectType === 'barrier' || isWallType(selectedObjectType)) &&
+        (placementState === 'dragging' || placementState === 'placingControlPoint') &&
+        dragStartPoint
+      ) {
+        barrierCheckCounter.current++
+        if (barrierCheckCounter.current % 3 === 0) {
+          const candidateBarrier = {
+            id: '_preview',
+            type: 'barrier' as const,
+            position: previewPos,
+            rotation: 0,
+            startPoint: dragStartPoint,
+            endPoint: previewPos,
+            controlPoint: controlPoint ?? undefined,
+          }
+          const roads = placedObjects.filter(o => o.type === 'road')
+          const onRoad = findBarriersOnRoad([candidateBarrier], roads)
+          setBarrierBlocked(onRoad.length > 0)
+        }
+      } else {
+        if (barrierCheckCounter.current > 0) {
+          barrierCheckCounter.current = 0
+          setBarrierBlocked(false)
+        }
+      }
     }
   })
 
@@ -541,6 +666,7 @@ export default function ObjectPlacer() {
         checkpointRoadEdge={currentRoadEdge}
         curbEdgeHover={currentCurbEdge}
         partialDeleteHover={currentPartialDeleteHover}
+        barrierBlocked={barrierBlocked}
       />
     </>
   )

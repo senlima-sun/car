@@ -184,6 +184,10 @@ export const TRACK_OBJECT = {
   pitAsphalt: '#2a2a2a', // Pit lane surface
   pitAsphaltDark: '#1a1a1a', // Darker pit lane surface
 
+  wall: '#8a8a8a', // Gray concrete wall
+  wallTop: '#707070', // Darker wall cap
+  wallFence: '#444444', // Metal fence
+
   // Ghost preview colors
   ghostValid: '#00ff00', // Green - valid placement
   ghostInvalid: '#ff0000', // Red - invalid placement

@@ -44,6 +44,8 @@ const objectIcons: Record<ObjectType, string> = {
   ramp: '#666666',
   checkpoint: '#00ff00',
   barrier: '#888888',
+  wall: '#8a8a8a',
+  wall_fence: '#8a8a6a',
   road: '#333333',
   curb: '#ff0000',
   pitbox: '#ff6600',

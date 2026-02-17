@@ -1,4 +1,15 @@
-export type ObjectType = 'cone' | 'ramp' | 'checkpoint' | 'barrier' | 'road' | 'curb' | 'pitbox' | 'grass_patch' | 'gravel_patch'
+export type ObjectType =
+  | 'cone'
+  | 'ramp'
+  | 'checkpoint'
+  | 'barrier'
+  | 'road'
+  | 'curb'
+  | 'pitbox'
+  | 'grass_patch'
+  | 'gravel_patch'
+  | 'wall'
+  | 'wall_fence'
 export type TrackMode = 'straight' | 'curve' | 'pitroad' | 'pitroad-curve'
 export type CheckpointType = 'start-finish' | 'sector'
 export type CurbType = 'apex' | 'exit' | 'flat'
@@ -30,6 +41,7 @@ export interface PlacedObject {
   polygonPoints?: Array<[number, number, number]>
   curbType?: CurbType
   rippleHeight?: number
+  adImageUrl?: string
 }
 
 export type PlacementState =
@@ -116,7 +128,11 @@ export interface SlopeAnchor {
 }
 
 export const isLinearObject = (type: ObjectType): boolean => {
-  return type === 'barrier' || type === 'road'
+  return type === 'barrier' || type === 'road' || type === 'wall' || type === 'wall_fence'
+}
+
+export const isWallType = (type: ObjectType): boolean => {
+  return type === 'wall' || type === 'wall_fence'
 }
 
 export const isPolygonObject = (type: ObjectType): boolean => {
