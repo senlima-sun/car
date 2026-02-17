@@ -5,6 +5,7 @@ import { useErsStore } from '../../../../stores/useErsStore'
 import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { useBrakeStore } from '../../../../stores/useBrakeStore'
 import { useWindStore } from '../../../../stores/useWindStore'
+import { getErsState } from '../../../../wasm/PhysicsBridge'
 
 export function useCarStateSync() {
   const syncAllTire = useTireStore(state => state.syncAllFromWasm)
@@ -52,9 +53,10 @@ export function useCarStateSync() {
       )
     }
 
-    if (output.ers) {
-      syncErsState(output.ers)
-    }
+    const ersData = output.ers && typeof output.ers.battery_charge === 'number'
+      ? output.ers
+      : getErsState()
+    syncErsState(ersData)
   }
 
   return { syncAll }

@@ -5,6 +5,9 @@ import { RigidBody, RapierRigidBody, BallCollider } from '@react-three/rapier'
 import { WHEEL_POSITIONS, WHEEL_RADIUS, CAR_COLLISION_GROUPS } from '../../../constants/dimensions'
 import CarBody from './parts/CarBody'
 import CarSprayEffect from './parts/CarSprayEffect'
+import TireTrails from './parts/TireTrails'
+import TireSmoke from './parts/TireSmoke'
+import WetTrails from './parts/WetTrails'
 import { useCarFrame } from './hooks/useCarFrame'
 import { usePhysicsSync } from './hooks/usePhysicsSync'
 import { useStartPosition } from './hooks/useStartPosition'
@@ -48,16 +51,47 @@ const Car = forwardRef<Group>((_, ref) => {
         enabledRotations={[true, true, true]}
         ccd={true}
       >
-        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.FL[0], WHEEL_POSITIONS.FL[1], WHEEL_POSITIONS.FL[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={192.0} restitution={0} friction={1.5} />
-        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.FR[0], WHEEL_POSITIONS.FR[1], WHEEL_POSITIONS.FR[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={192.0} restitution={0} friction={1.5} />
-        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.RL[0], WHEEL_POSITIONS.RL[1], WHEEL_POSITIONS.RL[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={192.0} restitution={0} friction={1.5} />
-        <BallCollider args={[WHEEL_RADIUS]} position={[WHEEL_POSITIONS.RR[0], WHEEL_POSITIONS.RR[1], WHEEL_POSITIONS.RR[2]]} collisionGroups={CAR_COLLISION_GROUPS} mass={192.0} restitution={0} friction={1.5} />
+        <BallCollider
+          args={[WHEEL_RADIUS]}
+          position={[WHEEL_POSITIONS.FL[0], WHEEL_POSITIONS.FL[1], WHEEL_POSITIONS.FL[2]]}
+          collisionGroups={CAR_COLLISION_GROUPS}
+          mass={192.0}
+          restitution={0}
+          friction={1.5}
+        />
+        <BallCollider
+          args={[WHEEL_RADIUS]}
+          position={[WHEEL_POSITIONS.FR[0], WHEEL_POSITIONS.FR[1], WHEEL_POSITIONS.FR[2]]}
+          collisionGroups={CAR_COLLISION_GROUPS}
+          mass={192.0}
+          restitution={0}
+          friction={1.5}
+        />
+        <BallCollider
+          args={[WHEEL_RADIUS]}
+          position={[WHEEL_POSITIONS.RL[0], WHEEL_POSITIONS.RL[1], WHEEL_POSITIONS.RL[2]]}
+          collisionGroups={CAR_COLLISION_GROUPS}
+          mass={192.0}
+          restitution={0}
+          friction={1.5}
+        />
+        <BallCollider
+          args={[WHEEL_RADIUS]}
+          position={[WHEEL_POSITIONS.RR[0], WHEEL_POSITIONS.RR[1], WHEEL_POSITIONS.RR[2]]}
+          collisionGroups={CAR_COLLISION_GROUPS}
+          mass={192.0}
+          restitution={0}
+          friction={1.5}
+        />
         <group ref={groupRef}>
           <CarBody suspensionRef={suspensionOutputRef} />
         </group>
       </RigidBody>
 
       <CarSprayEffect carStateRef={carStateRef} />
+      <TireTrails />
+      <TireSmoke carStateRef={carStateRef} />
+      <WetTrails />
     </>
   )
 })

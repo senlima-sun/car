@@ -28,17 +28,23 @@ export function useCarTelemetryLogging() {
       const gripDelta = Math.abs(output.effective_grip - prevGripRef.current)
 
       if (speedDelta > 2 || gearChanged || driftChanged || gripDelta > 0.05) {
-        logger.log('physics', 'physics.step.change', 'useCarTelemetryLogging', {
-          input: {},
-          speed_before: prevSpeedRef.current,
-        }, {
-          speed: output.speed_kmh,
-          gear: output.gear,
-          drift: output.is_drifting,
-          grip: output.effective_grip,
-          slip_angle: output.slip_angle,
-          lateral_g: output.lateral_g,
-        })
+        logger.log(
+          'physics',
+          'physics.step.change',
+          'useCarTelemetryLogging',
+          {
+            input: {},
+            speed_before: prevSpeedRef.current,
+          },
+          {
+            speed: output.speed_kmh,
+            gear: output.gear,
+            drift: output.is_drifting,
+            grip: output.effective_grip,
+            slip_angle: output.slip_angle,
+            lateral_g: output.lateral_g,
+          },
+        )
       }
 
       prevSpeedRef.current = output.speed_kmh
@@ -48,7 +54,8 @@ export function useCarTelemetryLogging() {
     }
 
     const wheelRadius = DIM_WHEEL_RADIUS
-    const wheelRotSpeed = output.speed_kmh / 3.6 / wheelRadius
+    const forwardSpeedMs = output.forward_speed_ms ?? output.speed_kmh / 3.6
+    const wheelRotSpeed = forwardSpeedMs / wheelRadius
     wheelRotationsRef.current = wheelRotationsRef.current.map(r => r + wheelRotSpeed * dt) as [
       number,
       number,
@@ -86,8 +93,13 @@ export function useCarTelemetryLogging() {
 
     recordPosition(pos.x, pos.y, pos.z, output.speed_kmh)
     recordGhostFrame(
-      pos.x, pos.y, pos.z,
-      rot.x, rot.y, rot.z, rot.w,
+      pos.x,
+      pos.y,
+      pos.z,
+      rot.x,
+      rot.y,
+      rot.z,
+      rot.w,
       steerVal,
       wheelRotationsRef.current,
     )

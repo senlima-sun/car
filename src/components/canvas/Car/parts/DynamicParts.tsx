@@ -1,8 +1,41 @@
 import { useMemo } from 'react'
 import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
-import type { EditorPart, CarPartConfig } from '@/components/part-editor/types'
-import { PART_EDITOR_STORAGE_KEY } from '@/components/part-editor/constants'
+
+type GeometryType =
+  | 'box'
+  | 'cylinder'
+  | 'sphere'
+  | 'torus'
+  | 'cone'
+  | 'capsule'
+  | 'roundedbox'
+  | 'extrude'
+
+interface EditorPart {
+  id: string
+  name: string
+  geometryType: GeometryType
+  args: number[]
+  position: [number, number, number]
+  rotation: [number, number, number]
+  scale: [number, number, number]
+  color: string
+  metalness: number
+  roughness: number
+  points?: [number, number][]
+  holes?: [number, number][][]
+}
+
+interface CarPartConfig {
+  version: number
+  name: string
+  createdAt: number
+  updatedAt: number
+  parts: EditorPart[]
+}
+
+const PART_EDITOR_STORAGE_KEY = 'car-part-editor-wip'
 
 // Create a path from points with optional rounded corners
 function createPathFromPoints(

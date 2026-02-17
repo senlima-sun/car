@@ -13,10 +13,10 @@ import {
   getPresetColor,
 } from '@/utils/steeringDisplayHelpers'
 
-import { useRef, useMemo } from 'react'
+import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
-import { renderNode, Row, Col, Text, type UINode } from './canvasUI'
+import { useSwDisplayStore } from '@/stores/useSwDisplayStore'
+import { useGhostCarStore } from '@/stores/useGhostCarStore'
 
 const CW = 1280
 const CH = 640
@@ -26,10 +26,10 @@ const FLASH_DUR = 0.8
 const FM = 'Consolas, "Courier New", monospace'
 const FS = 'Arial, Helvetica, sans-serif'
 
-const CELL = 'rgba(255,255,255,0.03)'
-const BORDER = 'rgba(255,255,255,0.06)'
-const DIM = 'rgba(255,255,255,0.15)'
-const LABEL = 'rgba(255,255,255,0.45)'
+const BORDER = 'rgba(255,255,255,0.45)'
+const LW = 2
+const DIM = 'rgba(255,255,255,0.18)'
+const LABEL_COL = 'rgba(255,255,255,0.5)'
 const WHITE = '#ffffff'
 const GREEN = '#22c55e'
 const RED = '#ef4444'
@@ -39,25 +39,46 @@ const PURPLE = '#a855f7'
 const ORANGE = '#f97316'
 const SPEED_GREEN = '#00ff88'
 const CYAN = '#06b6d4'
+const TIRE_BG = 'rgba(100,210,230,0.15)'
 
-const PAD = 13
-const RPM_H = 40
+const PAD = 8
+const COLS = 6
 const BAT_H = 30
-const ZONE_GAP = 8
+const GRID_X = PAD
+const GRID_Y = PAD
+const GRID_W = CW - PAD * 2
+const GRID_H = CH - PAD * 2 - BAT_H - 2
 
-function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  const cr = Math.min(r, w / 2, h / 2)
-  ctx.beginPath()
-  ctx.moveTo(x + cr, y)
-  ctx.lineTo(x + w - cr, y)
-  ctx.quadraticCurveTo(x + w, y, x + w, y + cr)
-  ctx.lineTo(x + w, y + h - cr)
-  ctx.quadraticCurveTo(x + w, y + h, x + w - cr, y + h)
-  ctx.lineTo(x + cr, y + h)
-  ctx.quadraticCurveTo(x, y + h, x, y + h - cr)
-  ctx.lineTo(x, y + cr)
-  ctx.quadraticCurveTo(x, y, x + cr, y)
-  ctx.closePath()
+const ROW_WEIGHTS = [1, 1, 1, 1, 1]
+const TOTAL_RW = ROW_WEIGHTS.reduce((a, b) => a + b, 0)
+
+function colX(c: number): number {
+  return GRID_X + (c / COLS) * GRID_W
+}
+function colW(span: number): number {
+  return (span / COLS) * GRID_W
+}
+
+function rowY(r: number): number {
+  let sum = 0
+  for (let i = 0; i < r; i++) sum += ROW_WEIGHTS[i]
+  return GRID_Y + (sum / TOTAL_RW) * GRID_H
+}
+function rowH(r: number, span: number): number {
+  let sum = 0
+  for (let i = r; i < r + span; i++) sum += ROW_WEIGHTS[i]
+  return (sum / TOTAL_RW) * GRID_H
+}
+
+interface CellBounds {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+function cellBounds(col: number, row: number, cSpan = 1, rSpan = 1): CellBounds {
+  return { x: colX(col), y: rowY(row), w: colW(cSpan), h: rowH(row, rSpan) }
 }
 
 function tempToC(n: number): number {
@@ -76,105 +97,99 @@ function wearCol(w: number): string {
   return w >= 90 ? RED : w >= 70 ? YELLOW : GREEN
 }
 
-const RPM_COLORS = [
-  GREEN, GREEN, GREEN, GREEN, GREEN,
-  YELLOW, YELLOW, YELLOW, YELLOW,
-  RED, RED, RED,
-  BLUE, BLUE, BLUE,
-]
-const RPM_SEGMENTS = RPM_COLORS.length
-
-function drawRpmBar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rpmRatio: number) {
-  ctx.fillStyle = 'rgba(0,0,0,0.4)'
-  rr(ctx, x, y, w, h, 4)
-  ctx.fill()
-
-  const segGap = 4
-  const totalGaps = segGap * (RPM_SEGMENTS - 1)
-  const segW = (w - totalGaps) / RPM_SEGMENTS
-  const lit = Math.round(rpmRatio * RPM_SEGMENTS)
-
-  for (let i = 0; i < RPM_SEGMENTS; i++) {
-    const sx = x + i * (segW + segGap)
-    rr(ctx, sx, y + 4, segW, h - 8, 3)
-    if (i < lit) {
-      ctx.fillStyle = RPM_COLORS[i]
-      ctx.fill()
-    } else {
-      ctx.fillStyle = 'rgba(255,255,255,0.06)'
-      ctx.fill()
-    }
+function strokeCell(ctx: CanvasRenderingContext2D, b: CellBounds, bg?: string) {
+  if (bg) {
+    ctx.fillStyle = bg
+    ctx.fillRect(b.x, b.y, b.w, b.h)
   }
+  ctx.strokeStyle = BORDER
+  ctx.lineWidth = LW
+  ctx.strokeRect(b.x, b.y, b.w, b.h)
 }
 
-function drawBatteryBar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, charge: number) {
-  ctx.fillStyle = 'rgba(0,0,0,0.4)'
-  rr(ctx, x, y, w, h, 4)
-  ctx.fill()
+function drawLabel(ctx: CanvasRenderingContext2D, b: CellBounds, label: string, color = LABEL_COL) {
+  const fs = Math.round(Math.min(b.h * 0.22, 22))
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.fillStyle = color
+  ctx.font = `bold ${fs}px ${FS}`
+  ctx.fillText(label, b.x + 6, b.y + 4)
+}
+
+function drawValue(
+  ctx: CanvasRenderingContext2D,
+  b: CellBounds,
+  value: string,
+  color: string,
+  sizeFactor = 0.5,
+) {
+  const fs = Math.round(Math.min(b.h * sizeFactor, 72))
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = color
+  ctx.font = `bold ${fs}px ${FM}`
+  ctx.fillText(value, b.x + b.w / 2, b.y + b.h * 0.58)
+}
+
+function drawSub(ctx: CanvasRenderingContext2D, b: CellBounds, sub: string, color = LABEL_COL) {
+  const fs = Math.round(Math.min(b.h * 0.17, 16))
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'bottom'
+  ctx.fillStyle = color
+  ctx.font = `${fs}px ${FS}`
+  ctx.fillText(sub, b.x + b.w / 2, b.y + b.h - 3)
+}
+
+function drawCell(
+  ctx: CanvasRenderingContext2D,
+  b: CellBounds,
+  label: string,
+  value: string,
+  color: string,
+  opts?: {
+    bg?: string
+    sub?: string
+    subColor?: string
+    labelColor?: string
+    sizeFactor?: number
+  },
+) {
+  strokeCell(ctx, b, opts?.bg)
+  drawLabel(ctx, b, label, opts?.labelColor)
+  drawValue(ctx, b, value, color, opts?.sizeFactor)
+  if (opts?.sub) drawSub(ctx, b, opts.sub, opts.subColor)
+}
+
+function drawBatteryBar(ctx: CanvasRenderingContext2D, charge: number) {
+  const x = PAD
+  const y = CH - PAD - BAT_H
+  const w = CW - PAD * 2
+  const h = BAT_H
 
   ctx.strokeStyle = BORDER
-  ctx.lineWidth = 1
-  rr(ctx, x, y, w, h, 4)
-  ctx.stroke()
+  ctx.lineWidth = LW
+  ctx.strokeRect(x, y, w, h)
 
-  const labelW = 60
-  const pctW = 60
-  const barX = x + labelW
-  const barW = w - labelW - pctW
-  const barPad = 5
-  const fillW = Math.max(0, (barW - barPad * 2) * (charge / 100))
+  const segments = 24
+  const sp = 3
+  const segW = (w - sp * 2) / segments
+  const segH = h - sp * 2
+  const filled = Math.round((charge / 100) * segments)
 
-  const barCol = charge < 20 ? RED : charge < 50 ? ORANGE : GREEN
-
-  if (fillW > 0) {
-    rr(ctx, barX + barPad, y + barPad, fillW, h - barPad * 2, 2)
-    ctx.fillStyle = barCol
-    ctx.globalAlpha = 0.8
-    ctx.fill()
-    ctx.globalAlpha = 1
+  for (let i = 0; i < filled; i++) {
+    const ratio = i / segments
+    ctx.fillStyle = ratio < 0.25 ? RED : ratio < 0.45 ? ORANGE : GREEN
+    ctx.fillRect(x + sp + i * segW + 1, y + sp, segW - 2, segH)
   }
 
+  ctx.textAlign = 'right'
   ctx.textBaseline = 'middle'
-  ctx.font = `bold ${h * 0.45}px ${FS}`
-  ctx.fillStyle = LABEL
-  ctx.textAlign = 'center'
-  ctx.fillText('SOC', x + labelW / 2, y + h / 2)
-
-  ctx.font = `bold ${h * 0.5}px ${FM}`
-  ctx.fillStyle = barCol
-  ctx.textAlign = 'center'
-  ctx.fillText(`${Math.round(charge)}%`, x + w - pctW / 2, y + h / 2)
+  ctx.fillStyle = LABEL_COL
+  ctx.font = `bold ${Math.round(h * 0.5)}px ${FS}`
+  ctx.fillText('SOC', x + w - 8, y + h / 2)
 }
 
-function gridCell(label: string, value: string, color: string, sub?: string): UINode {
-  if (sub) {
-    return Col({ flex: 1, style: { background: CELL, borderRadius: 4, padding: 2 }, children: [
-      Text(label, { flex: 1, fontSize: 0.45, color: LABEL, font: FS, bold: true }),
-      Text(value, { flex: 2, fontSize: 0.7, color, font: FM, bold: true }),
-      Text(sub, { flex: 0.8, fontSize: 0.4, color: LABEL, font: FS }),
-    ]})
-  }
-  return Col({ flex: 1, style: { background: CELL, borderRadius: 4, padding: 2 }, children: [
-    Text(label, { flex: 1, fontSize: 0.5, color: LABEL, font: FS, bold: true }),
-    Text(value, { flex: 2, fontSize: 0.7, color, font: FM, bold: true }),
-  ]})
-}
-
-function tireLifeCell(label: string, life: number, wear: number): UINode {
-  return Col({ flex: 1, style: { background: `rgba(6,182,212,0.06)`, borderRadius: 4, padding: 2 }, children: [
-    Text(label, { flex: 1, fontSize: 0.5, color: CYAN, font: FS, bold: true }),
-    Text(`${Math.round(life)}`, { flex: 2, fontSize: 0.7, color: wearCol(wear), font: FM, bold: true }),
-  ]})
-}
-
-function tireTempCell(label: string, tempNorm: number): UINode {
-  return Col({ flex: 1, style: { background: `rgba(255,255,255,0.02)`, borderRadius: 4, padding: 2 }, children: [
-    Text(label, { flex: 1, fontSize: 0.5, color: LABEL, font: FS, bold: true }),
-    Text(`${tempToC(tempNorm)}`, { flex: 2, fontSize: 0.7, color: tireTempCol(tempNorm), font: FM, bold: true }),
-  ]})
-}
-
-export function SteeringWheelDisplay() {
+export function useSteeringWheelDisplay() {
   const speed = useCarStore(s => s.speed)
   const gear = useCarStore(s => s.gear)
   const rpm = useCarStore(s => s.rpm)
@@ -191,32 +206,24 @@ export function SteeringWheelDisplay() {
   const lastLapTime = useLapTimeStore(s => s.lastLapTime)
   const lapCount = useLapTimeStore(s => s.lapCount)
   const lastSectorSplit = useLapTimeStore(s => s.lastSectorSplit)
-  const currentLapTime = useLapTimeStore(s => s.currentLapTime)
-  const isRecording = useLapTimeStore(s => s.isRecording)
-  const currentLapStart = useLapTimeStore(s => s.currentLapStart)
-
   const perWheelWear = useTireStore(s => s.perWheelWear)
 
   const frontBias = useBrakeStore(s => s.frontBias)
   const engineBraking = useBrakeStore(s => s.engineBraking)
 
   const tires = useTemperatureStore(s => s.tires)
+  const ghostTimeDelta = useGhostCarStore(s => s.ghostTimeDelta)
 
-  const canvasRef = useRef(document.createElement('canvas'))
-  const textureRef = useRef<THREE.CanvasTexture>(null!)
   const prevPresetRef = useRef(ersPreset)
   const flashRef = useRef<number | null>(null)
 
-  const screenCtx = useMemo(() => {
-    const c = canvasRef.current
-    c.width = CW
-    c.height = CH
-    return c.getContext('2d')
-  }, [])
+  const { canvas, texture } = useSwDisplayStore()
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
+  if (!ctxRef.current) ctxRef.current = canvas.getContext('2d')
 
   useFrame(state => {
-    if (!screenCtx) return
-    const ctx = screenCtx
+    const ctx = ctxRef.current
+    if (!ctx) return
     const t = state.clock.elapsedTime
 
     if (ersPreset !== prevPresetRef.current) {
@@ -230,16 +237,8 @@ export function SteeringWheelDisplay() {
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, CW, CH)
 
-    const rpmRatio = Math.min(1, rpm / MAX_RPM)
-    drawRpmBar(ctx, PAD, PAD, CW - PAD * 2, RPM_H, rpmRatio)
-
-    const gridY = PAD + RPM_H + ZONE_GAP
-    const gridH = CH - PAD * 2 - RPM_H - BAT_H - ZONE_GAP * 2
-    const tree = buildUI(ovt)
-    renderNode(ctx, tree, { x: PAD, y: gridY, w: CW - PAD * 2, h: gridH })
-
-    const batY = CH - PAD - BAT_H
-    drawBatteryBar(ctx, PAD, batY, CW - PAD * 2, BAT_H, batteryCharge)
+    drawGrid(ctx, ovt)
+    drawBatteryBar(ctx, batteryCharge)
 
     if (flashing) {
       const a = 1 - (t - flashRef.current!) / FLASH_DUR
@@ -248,12 +247,11 @@ export function SteeringWheelDisplay() {
       ctx.globalAlpha = a
       ctx.strokeStyle = pc
       ctx.lineWidth = 16 * a
-      rr(ctx, 6, 6, CW - 12, CH - 12, 12)
-      ctx.stroke()
+      ctx.strokeRect(4, 4, CW - 8, CH - 8)
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillStyle = pc
-      ctx.font = `bold ${CH * 0.18}px ${FS}`
+      ctx.font = `bold ${CH * 0.22}px ${FS}`
       ctx.fillText(`${getPresetAbbreviation(ersPreset)} ERS`, CW / 2, CH / 2)
       ctx.restore()
     }
@@ -264,18 +262,20 @@ export function SteeringWheelDisplay() {
       ctx.globalAlpha = pa
       ctx.strokeStyle = PURPLE
       ctx.lineWidth = 8
-      rr(ctx, 3, 3, CW - 6, CH - 6, 12)
-      ctx.stroke()
+      ctx.strokeRect(2, 2, CW - 4, CH - 4)
       ctx.restore()
     }
 
-    if (textureRef.current) textureRef.current.needsUpdate = true
+    texture.needsUpdate = true
   })
 
-  function buildUI(ovt: boolean): UINode {
+  function drawGrid(ctx: CanvasRenderingContext2D, ovt: boolean) {
     let deltaStr = '-.--'
     let deltaCol = DIM
-    if (lastSectorSplit?.delta !== null && lastSectorSplit?.delta !== undefined) {
+    if (ghostTimeDelta !== null) {
+      deltaStr = `${ghostTimeDelta <= 0 ? '-' : '+'}${Math.abs(ghostTimeDelta / 1000).toFixed(2)}`
+      deltaCol = ghostTimeDelta <= 0 ? GREEN : RED
+    } else if (lastSectorSplit?.delta !== null && lastSectorSplit?.delta !== undefined) {
       const d = lastSectorSplit.delta
       deltaStr = `${d <= 0 ? '-' : '+'}${Math.abs(d / 1000).toFixed(2)}`
       deltaCol = d <= 0 ? GREEN : RED
@@ -285,107 +285,172 @@ export function SteeringWheelDisplay() {
       deltaCol = d <= 0 ? GREEN : RED
     }
 
-    const socVal = ({ Aggressive: '3', Balanced: '5', Conservative: '8' } as Record<string, string>)[ersPreset] ?? '5'
-    const ebVal = ({ Low: '2', Medium: '5', High: '8' } as Record<string, string>)[engineBraking] ?? '5'
+    const socVal =
+      ({ Aggressive: '3', Balanced: '5', Conservative: '8' } as Record<string, string>)[
+        ersPreset
+      ] ?? '5'
+    const ebVal =
+      ({ Low: '2', Medium: '5', High: '8' } as Record<string, string>)[engineBraking] ?? '5'
     const aeroVal = aeroMode === 'Corner' ? 'CRN' : 'STR'
     const aeroCol = aeroMode === 'Corner' ? BLUE : GREEN
     const otVal = ovt ? 'ON' : overtakeAvailable ? 'RDY' : 'OFF'
     const otCol = ovt ? PURPLE : overtakeAvailable ? YELLOW : DIM
+    const batCol = batteryCharge < 20 ? RED : batteryCharge < 50 ? ORANGE : GREEN
 
     const flT = (tires.front_left_inner + tires.front_left_outer) / 2
     const frT = (tires.front_right_inner + tires.front_right_outer) / 2
     const rlT = (tires.rear_left_inner + tires.rear_left_outer) / 2
     const rrT = (tires.rear_right_inner + tires.rear_right_outer) / 2
 
-    const flLife = Math.max(0, 100 - perWheelWear.frontLeft)
-    const frLife = Math.max(0, 100 - perWheelWear.frontRight)
-    const rlLife = Math.max(0, 100 - perWheelWear.rearLeft)
-    const rrLife = Math.max(0, 100 - perWheelWear.rearRight)
+    const flW = perWheelWear.frontLeft
+    const frW = perWheelWear.frontRight
+    const rlW = perWheelWear.rearLeft
+    const rrW = perWheelWear.rearRight
+    const flLife = Math.max(0, 100 - flW)
+    const frLife = Math.max(0, 100 - frW)
+    const rlLife = Math.max(0, 100 - rlW)
+    const rrLife = Math.max(0, 100 - rrW)
 
     const bestStr = bestLapTime !== null ? formatLapTime(bestLapTime) : '-:--.---'
 
-    return Col({ style: { gap: 4 }, children: [
-      // Row 1: BEST | SPEED (2-wide) | DELTA
-      Row({ flex: 0.8, style: { gap: 4 }, children: [
-        gridCell('BEST', bestStr, GREEN),
-        Col({ flex: 2, style: { background: CELL, borderRadius: 4 }, children: [
-          Text('SPEED', { flex: 1, fontSize: 0.5, color: LABEL, font: FS, bold: true }),
-          Text(Math.round(Math.abs(speed)).toString(), { flex: 2.5, fontSize: 0.75, color: SPEED_GREEN, font: FM, bold: true }),
-        ]}),
-        gridCell('DELTA', deltaStr, deltaCol),
-      ]}),
-      // Row 2-3: side cells + GEAR center
-      Row({ flex: 2, style: { gap: 4 }, children: [
-        // Left 2 cols
-        Col({ flex: 1, style: { gap: 4 }, children: [
-          Row({ flex: 1, style: { gap: 4 }, children: [
-            gridCell('SOC', socVal, GREEN, getPresetAbbreviation(ersPreset)),
-            gridCell('EB', ebVal, ORANGE, engineBraking),
-          ]}),
-          Row({ flex: 1, style: { gap: 4 }, children: [
-            gridCell('AERO', aeroVal, aeroCol, aeroMode),
-            gridCell('OT', otVal, otCol),
-          ]}),
-        ]}),
-        // Center GEAR (2-wide)
-        Col({ flex: 1, style: {
-          background: ovt ? 'rgba(168,85,247,0.15)' : CELL,
-          borderRadius: 4,
-        }, children: [
-          ...(ovt ? [
-            Text('OVERTAKE', { flex: 0.15, fontSize: 0.55, color: PURPLE, font: FS, bold: true }),
-          ] : []),
-          Text(getGearDisplay(gear), {
-            flex: 1, fontSize: 0.8, color: getGearColor(gear, rpm, MAX_RPM), font: FM, bold: true,
-          }),
-        ]}),
-        // Right 2 cols
-        Col({ flex: 1, style: { gap: 4 }, children: [
-          Row({ flex: 1, style: { gap: 4 }, children: [
-            gridCell('BB', frontBias.toFixed(1), ORANGE, `F${Math.round(frontBias)}`),
-            gridCell('POS', '--', DIM),
-          ]}),
-          Row({ flex: 1, style: { gap: 4 }, children: [
-            gridCell(
-              lastSectorSplit ? `S${lastSectorSplit.sectorNumber}` : 'SEC',
-              lastSectorSplit ? formatLapTime(lastSectorSplit.time) : '--',
-              lastSectorSplit?.delta !== null && lastSectorSplit?.delta !== undefined
-                ? (lastSectorSplit.delta <= 0 ? GREEN : RED)
-                : DIM,
-            ),
-            gridCell('LAP', lapCount.toString(), WHITE),
-          ]}),
-        ]}),
-      ]}),
-      // Row 4: FL% | FR% | FLAG (2-wide) | FL° | FR°
-      Row({ flex: 0.8, style: { gap: 4 }, children: [
-        tireLifeCell('FL%', flLife, perWheelWear.frontLeft),
-        tireLifeCell('FR%', frLife, perWheelWear.frontRight),
-        Col({ flex: 2, style: { background: CELL, borderRadius: 4, padding: 2 }, children: [
-          Text('FLAG', { flex: 1, fontSize: 0.5, color: LABEL, font: FS, bold: true }),
-          Text('--', { flex: 2, fontSize: 0.7, color: DIM, font: FM, bold: true }),
-        ]}),
-        tireTempCell('FL°', flT),
-        tireTempCell('FR°', frT),
-      ]}),
-      // Row 5: RL% | RR% | BAT | FUEL | RL° | RR°
-      Row({ flex: 0.8, style: { gap: 4 }, children: [
-        tireLifeCell('RL%', rlLife, perWheelWear.rearLeft),
-        tireLifeCell('RR%', rrLife, perWheelWear.rearRight),
-        gridCell('BAT', `${Math.round(batteryCharge)}`, batteryCharge < 20 ? RED : batteryCharge < 50 ? ORANGE : GREEN),
-        gridCell('FUEL', '--', DIM),
-        tireTempCell('RL°', rlT),
-        tireTempCell('RR°', rrT),
-      ]}),
-    ]})
-  }
+    // ── Row 0: BEST(0-1) | SPEED(2-3) | DELTA(4-5) ──
+    drawCell(ctx, cellBounds(0, 0, 2, 1), 'BEST', bestStr, GREEN, { sizeFactor: 0.45 })
+    drawCell(ctx, cellBounds(2, 0, 2, 1), '', Math.round(Math.abs(speed)).toString(), SPEED_GREEN, {
+      sizeFactor: 0.6,
+    })
+    drawCell(ctx, cellBounds(4, 0, 2, 1), 'DELTA', deltaStr, deltaCol, { sizeFactor: 0.5 })
 
-  return (
-    <mesh position={[0, 0, 0.006]}>
-      <planeGeometry args={[0.26, 0.135]} />
-      <meshBasicMaterial>
-        <canvasTexture ref={textureRef} attach='map' image={canvasRef.current} premultiplyAlpha />
-      </meshBasicMaterial>
-    </mesh>
-  )
+    // ── Row 1: SOC(0) | EB(1) | GEAR(2-3, spans r1-r2) | BB(4) | LAP(5) ──
+    drawCell(ctx, cellBounds(0, 1), 'SOC', socVal, GREEN)
+    drawCell(ctx, cellBounds(1, 1), 'EB', ebVal, ORANGE)
+
+    const gearBounds = cellBounds(2, 1, 2, 2)
+    strokeCell(ctx, gearBounds, ovt ? 'rgba(168,85,247,0.12)' : undefined)
+    {
+      const gd = getGearDisplay(gear)
+      const gc = getGearColor(gear, rpm, MAX_RPM)
+      const fs = Math.round(Math.min(gearBounds.h * 0.65, 120))
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = gc
+      ctx.font = `bold ${fs}px ${FM}`
+      ctx.fillText(gd, gearBounds.x + gearBounds.w / 2, gearBounds.y + gearBounds.h / 2)
+      if (ovt) {
+        const ofs = Math.round(fs * 0.18)
+        ctx.fillStyle = PURPLE
+        ctx.font = `bold ${ofs}px ${FS}`
+        ctx.textBaseline = 'top'
+        ctx.fillText('OVERTAKE', gearBounds.x + gearBounds.w / 2, gearBounds.y + 4)
+      }
+    }
+
+    drawCell(ctx, cellBounds(4, 1), 'BB', frontBias.toFixed(1), ORANGE)
+    drawCell(ctx, cellBounds(5, 1), 'LAP', lapCount.toString(), WHITE)
+
+    // ── Row 2: AERO(0) | OT(1) | GEAR(cont 2-3) | SECTOR(4-5) ──
+    drawCell(ctx, cellBounds(0, 2), 'AERO', aeroVal, aeroCol)
+    drawCell(ctx, cellBounds(1, 2), 'OT', otVal, otCol, {
+      sub: ovt ? 'ACTIVE' : '',
+      subColor: otCol,
+    })
+
+    const secStr = lastSectorSplit ? `S${lastSectorSplit.sectorNumber}` : 'SEC'
+    const secVal = lastSectorSplit ? formatLapTime(lastSectorSplit.time) : '--'
+    const secCol =
+      lastSectorSplit?.delta !== null && lastSectorSplit?.delta !== undefined
+        ? lastSectorSplit.delta <= 0
+          ? GREEN
+          : RED
+        : DIM
+    drawCell(ctx, cellBounds(4, 2, 2, 1), secStr, secVal, secCol, { sizeFactor: 0.4 })
+
+    // ── Row 3: FL(0) | FR(1) | status(2-3) | FL°(4) | FR°(5) ──
+    drawCell(ctx, cellBounds(0, 3), '', `${Math.round(flLife)}`, wearCol(flW), {
+      bg: TIRE_BG,
+      labelColor: CYAN,
+      sizeFactor: 0.55,
+    })
+    drawLabel(ctx, cellBounds(0, 3), 'FL', CYAN)
+    drawCell(ctx, cellBounds(1, 3), '', `${Math.round(frLife)}`, wearCol(frW), {
+      bg: TIRE_BG,
+      sizeFactor: 0.55,
+    })
+    drawLabel(ctx, cellBounds(1, 3), 'FR', CYAN)
+
+    const statusBounds = cellBounds(2, 3, 2, 1)
+    strokeCell(ctx, statusBounds)
+    {
+      const fs = Math.round(Math.min(statusBounds.h * 0.35, 28))
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = DIM
+      ctx.font = `bold ${fs}px ${FS}`
+      ctx.fillText(
+        getPresetAbbreviation(ersPreset),
+        statusBounds.x + statusBounds.w / 2,
+        statusBounds.y + statusBounds.h / 2,
+      )
+    }
+
+    {
+      const b = cellBounds(4, 3)
+      strokeCell(ctx, b)
+      const fs = Math.round(Math.min(b.h * 0.45, 36))
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = tireTempCol(flT)
+      ctx.font = `bold ${fs}px ${FM}`
+      ctx.fillText(`${tempToC(flT)}°`, b.x + b.w / 2, b.y + b.h * 0.45)
+      drawSub(ctx, b, `${Math.round(flLife)}%`, GREEN)
+    }
+    {
+      const b = cellBounds(5, 3)
+      strokeCell(ctx, b)
+      const fs = Math.round(Math.min(b.h * 0.45, 36))
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = tireTempCol(frT)
+      ctx.font = `bold ${fs}px ${FM}`
+      ctx.fillText(`${tempToC(frT)}°`, b.x + b.w / 2, b.y + b.h * 0.45)
+      drawSub(ctx, b, `${Math.round(frLife)}%`, GREEN)
+    }
+
+    // ── Row 4: RL(0) | RR(1) | BAT(2) | FUEL(3) | RL°(4) | RR°(5) ──
+    drawCell(ctx, cellBounds(0, 4), '', `${Math.round(rlLife)}`, wearCol(rlW), {
+      bg: TIRE_BG,
+      sizeFactor: 0.55,
+    })
+    drawLabel(ctx, cellBounds(0, 4), 'RL', CYAN)
+    drawCell(ctx, cellBounds(1, 4), '', `${Math.round(rrLife)}`, wearCol(rrW), {
+      bg: TIRE_BG,
+      sizeFactor: 0.55,
+    })
+    drawLabel(ctx, cellBounds(1, 4), 'RR', CYAN)
+
+    drawCell(ctx, cellBounds(2, 4), 'BAT', `${Math.round(batteryCharge)}`, batCol)
+    strokeCell(ctx, cellBounds(3, 4))
+
+    {
+      const b = cellBounds(4, 4)
+      strokeCell(ctx, b)
+      const fs = Math.round(Math.min(b.h * 0.45, 36))
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = tireTempCol(rlT)
+      ctx.font = `bold ${fs}px ${FM}`
+      ctx.fillText(`${tempToC(rlT)}°`, b.x + b.w / 2, b.y + b.h * 0.45)
+      drawSub(ctx, b, `${Math.round(rlLife)}%`, GREEN)
+    }
+    {
+      const b = cellBounds(5, 4)
+      strokeCell(ctx, b)
+      const fs = Math.round(Math.min(b.h * 0.45, 36))
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = tireTempCol(rrT)
+      ctx.font = `bold ${fs}px ${FM}`
+      ctx.fillText(`${tempToC(rrT)}°`, b.x + b.w / 2, b.y + b.h * 0.45)
+      drawSub(ctx, b, `${Math.round(rrLife)}%`, GREEN)
+    }
+  }
 }

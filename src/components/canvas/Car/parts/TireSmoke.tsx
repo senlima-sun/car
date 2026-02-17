@@ -24,9 +24,18 @@ interface ParticlePool {
   lifetimes: Float32Array
   maxLifetimes: Float32Array
   active: Uint8Array
+  activeCount: number
 }
 
-function createPool(count: number, sizeMin: number, sizeMax: number, opacityMin: number, opacityMax: number, lifeMin: number, lifeMax: number): ParticlePool {
+function createPool(
+  count: number,
+  sizeMin: number,
+  sizeMax: number,
+  opacityMin: number,
+  opacityMax: number,
+  lifeMin: number,
+  lifeMax: number,
+): ParticlePool {
   const positions = new Float32Array(count * 3)
   const velocities = new Float32Array(count * 3)
   const sizes = new Float32Array(count)
@@ -42,7 +51,7 @@ function createPool(count: number, sizeMin: number, sizeMax: number, opacityMin:
     maxLifetimes[i] = lifeMin + Math.random() * (lifeMax - lifeMin)
   }
 
-  return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active }
+  return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active, activeCount: 0 }
 }
 
 interface TireSmokeProps {
@@ -114,7 +123,8 @@ export default function TireSmoke({ carStateRef }: TireSmokeProps) {
   useFrame((_, delta) => {
     if (rainIntensity > 0.3) return
 
-    const { position, rotation, skidIntensity, isDrifting, isBraking, speedKmh } = carStateRef.current
+    const { position, rotation, skidIntensity, isDrifting, isBraking, speedKmh } =
+      carStateRef.current
     const skid = skidIntensity
     const braking = isBraking
     const speed = speedKmh / 3.6
@@ -170,6 +180,7 @@ export default function TireSmoke({ carStateRef }: TireSmokeProps) {
 
       pool.lifetimes[index] = pool.maxLifetimes[index]
       pool.active[index] = 1
+      pool.activeCount++
     }
 
     const updatePool = (
@@ -194,6 +205,7 @@ export default function TireSmoke({ carStateRef }: TireSmokeProps) {
           life[i] -= delta
           if (life[i] <= 0 || pos[i * 3 + 1] < 0) {
             pool.active[i] = 0
+            pool.activeCount--
             pos[i * 3 + 1] = -100
           } else {
             pos[i * 3] += vel[i * 3] * delta
@@ -216,9 +228,21 @@ export default function TireSmoke({ carStateRef }: TireSmokeProps) {
         } else if (toSpawn > 0 && shouldEmit) {
           toSpawn--
           const wheelIdx = isDrifting
-            ? Math.random() < 0.8 ? (Math.random() < 0.5 ? 2 : 3) : (Math.random() < 0.5 ? 0 : 1)
+            ? Math.random() < 0.8
+              ? Math.random() < 0.5
+                ? 2
+                : 3
+              : Math.random() < 0.5
+                ? 0
+                : 1
             : braking
-              ? Math.random() < 0.7 ? (Math.random() < 0.5 ? 0 : 1) : (Math.random() < 0.5 ? 2 : 3)
+              ? Math.random() < 0.7
+                ? Math.random() < 0.5
+                  ? 0
+                  : 1
+                : Math.random() < 0.5
+                  ? 2
+                  : 3
               : Math.floor(Math.random() * 4)
           spawnParticle(pool, i, wheelIdx, type)
         }
@@ -231,7 +255,7 @@ export default function TireSmoke({ carStateRef }: TireSmokeProps) {
     updatePool(smokePool, smokeGeometry, SMOKE_COUNT, 'smoke', 2, 0.97)
     updatePool(debrisPool, debrisGeometry, DEBRIS_COUNT, 'debris', 12, 0.98)
 
-    hasActiveRef.current = smokePool.active.some(v => v === 1) || debrisPool.active.some(v => v === 1)
+    hasActiveRef.current = smokePool.activeCount > 0 || debrisPool.activeCount > 0
   })
 
   return (

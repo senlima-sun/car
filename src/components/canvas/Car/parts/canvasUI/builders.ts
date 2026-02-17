@@ -1,4 +1,4 @@
-import type { BoxNode, BoxStyle, TextNode, SeparatorNode, CircleNode, UINode } from './types'
+import type { BoxNode, TextNode, SeparatorNode, CircleNode } from './types'
 
 export function Box(opts: Partial<Omit<BoxNode, 'kind'>> = {}): BoxNode {
   return { kind: 'box', direction: opts.direction ?? 'column', ...opts }

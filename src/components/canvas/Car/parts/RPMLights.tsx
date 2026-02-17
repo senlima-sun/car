@@ -30,11 +30,12 @@ export function RPMLights() {
     return geometries
   }, [])
 
-  useFrame((state) => {
+  useFrame(state => {
     const rpmRatio = rpm / MAX_RPM
     const litCount = Math.floor(rpmRatio * LED_COUNT)
     const isShiftZone = rpmRatio >= SHIFT_THRESHOLD
-    const shiftBlink = isShiftZone && Math.sin(state.clock.elapsedTime * Math.PI * 2 * SHIFT_BLINK_FREQ) > 0
+    const shiftBlink =
+      isShiftZone && Math.sin(state.clock.elapsedTime * Math.PI * 2 * SHIFT_BLINK_FREQ) > 0
 
     for (let i = 0; i < LED_COUNT; i++) {
       const led = ledRefs.current[i]

@@ -41,7 +41,7 @@ export function useCarFrame({
     physics,
     windEnabled,
     startPosition,
-    suspensionStep: suspension.step
+    suspensionStep: suspension.step,
   })
   const stateSync = useCarStateSync()
   const telemetry = useCarTelemetryLogging()
@@ -60,7 +60,10 @@ export function useCarFrame({
   useFrame((state, delta) => {
     if (!chassisRef.current) return
 
-    if (lifecycle.handleTabResume()) return
+    if (lifecycle.handleTabResume()) {
+      accumulator.reset()
+      return
+    }
 
     lifecycle.handleGameModeTransition()
 
@@ -128,7 +131,7 @@ export function useCarFrame({
       keys.brake,
       keys.handbrake,
       dt,
-      suspensionOutput
+      suspensionOutput,
     )
 
     const yaw = Math.atan2(
@@ -145,5 +148,9 @@ export function useCarFrame({
     carStateRef.current.speedKmh = output.speed_kmh
   })
 
-  return { carStateRef, wheelRotations: telemetry.wheelRotations, suspensionOutputRef: physicsStep.suspensionOutputRef }
+  return {
+    carStateRef,
+    wheelRotations: telemetry.wheelRotations,
+    suspensionOutputRef: physicsStep.suspensionOutputRef,
+  }
 }

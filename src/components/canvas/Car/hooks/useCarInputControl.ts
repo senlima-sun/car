@@ -77,7 +77,13 @@ export function useCarInputControl({ physics }: CarInputOptions) {
     if (keys.camera && elapsedTime - lastCameraToggle.current > 0.3) {
       toggleCameraMode()
       lastCameraToggle.current = elapsedTime
-      logger?.log('input', 'input.key.camera', 'useCarInputControl', { key: 'C' }, { action: 'toggleCameraMode' })
+      logger?.log(
+        'input',
+        'input.key.camera',
+        'useCarInputControl',
+        { key: 'C' },
+        { action: 'toggleCameraMode' },
+      )
     }
 
     if (isTestingMode && keys.heatmap && elapsedTime - lastHeatmapToggle.current > 0.3) {
@@ -85,13 +91,25 @@ export function useCarInputControl({ physics }: CarInputOptions) {
       toggleThermalView()
       toggleWindView()
       lastHeatmapToggle.current = elapsedTime
-      logger?.log('input', 'input.key.heatmap', 'useCarInputControl', { key: 'H' }, { action: 'toggleHeatmap' })
+      logger?.log(
+        'input',
+        'input.key.heatmap',
+        'useCarInputControl',
+        { key: 'H' },
+        { action: 'toggleHeatmap' },
+      )
     }
 
     if (isTestingMode && keys.freeCamera && elapsedTime - lastFreeCamToggle.current > 0.3) {
       toggleFreeCamera()
       lastFreeCamToggle.current = elapsedTime
-      logger?.log('input', 'input.key.freeCamera', 'useCarInputControl', { key: 'F' }, { action: 'toggleFreeCamera' })
+      logger?.log(
+        'input',
+        'input.key.freeCamera',
+        'useCarInputControl',
+        { key: 'F' },
+        { action: 'toggleFreeCamera' },
+      )
     }
 
     if (keys.ersPreset && elapsedTime - lastErsPresetToggle.current > 0.3) {
@@ -99,56 +117,110 @@ export function useCarInputControl({ physics }: CarInputOptions) {
       const freshPreset = useErsStore.getState().semiAutoConfig.preset
       physics.setErsSemiAutoPreset(freshPreset)
       lastErsPresetToggle.current = elapsedTime
-      logger?.log('input', 'input.key.ersPreset', 'useCarInputControl', { key: 'G' }, { preset: freshPreset })
+      logger?.log(
+        'input',
+        'input.key.ersPreset',
+        'useCarInputControl',
+        { key: 'G' },
+        { preset: freshPreset },
+      )
     }
 
     if (isTestingMode && keys.overtake && elapsedTime - lastOvertakeToggle.current > 0.3) {
       activateOvertake()
       lastOvertakeToggle.current = elapsedTime
-      logger?.log('input', 'input.key.overtake', 'useCarInputControl', { key: 'O' }, { action: 'activateOvertake' })
+      logger?.log(
+        'input',
+        'input.key.overtake',
+        'useCarInputControl',
+        { key: 'O' },
+        { action: 'activateOvertake' },
+      )
     }
 
     if (keys.aero && elapsedTime - lastAeroModeToggle.current > 0.3) {
       toggleAeroMode()
       lastAeroModeToggle.current = elapsedTime
-      logger?.log('input', 'input.key.aero', 'useCarInputControl', { key: 'K' }, { action: 'toggleAeroMode' })
+      logger?.log(
+        'input',
+        'input.key.aero',
+        'useCarInputControl',
+        { key: 'K' },
+        { action: 'toggleAeroMode' },
+      )
     }
 
     if (keys.aeroAuto && elapsedTime - lastAeroAutoToggle.current > 0.3) {
       physics.toggleAeroAuto()
       lastAeroAutoToggle.current = elapsedTime
-      logger?.log('input', 'input.key.aeroAuto', 'useCarInputControl', { key: 'E' }, { action: 'toggleAeroAuto' })
+      logger?.log(
+        'input',
+        'input.key.aeroAuto',
+        'useCarInputControl',
+        { key: 'E' },
+        { action: 'toggleAeroAuto' },
+      )
     }
 
     if (isTestingMode && keys.brakeIncr && elapsedTime - lastBrakeIncrToggle.current > 0.3) {
       physics.increaseBrakeBias()
       lastBrakeIncrToggle.current = elapsedTime
-      logger?.log('input', 'input.key.brakeIncr', 'useCarInputControl', { key: ']' }, { action: 'increaseBrakeBias' })
+      logger?.log(
+        'input',
+        'input.key.brakeIncr',
+        'useCarInputControl',
+        { key: ']' },
+        { action: 'increaseBrakeBias' },
+      )
     }
 
     if (isTestingMode && keys.brakeDecr && elapsedTime - lastBrakeDecrToggle.current > 0.3) {
       physics.decreaseBrakeBias()
       lastBrakeDecrToggle.current = elapsedTime
-      logger?.log('input', 'input.key.brakeDecr', 'useCarInputControl', { key: '[' }, { action: 'decreaseBrakeBias' })
+      logger?.log(
+        'input',
+        'input.key.brakeDecr',
+        'useCarInputControl',
+        { key: '[' },
+        { action: 'decreaseBrakeBias' },
+      )
     }
 
     if (keys.engineBrake && elapsedTime - lastEngineBrakeToggle.current > 0.3) {
       physics.cycleEngineBrakingLevel()
       lastEngineBrakeToggle.current = elapsedTime
-      logger?.log('input', 'input.key.engineBrake', 'useCarInputControl', { key: 'N' }, { action: 'cycleEngineBrakingLevel' })
+      logger?.log(
+        'input',
+        'input.key.engineBrake',
+        'useCarInputControl',
+        { key: 'N' },
+        { action: 'cycleEngineBrakingLevel' },
+      )
     }
 
     if (keys.lapTimer && elapsedTime - lastLapTimerToggle.current > 0.3) {
       toggleLapRecording()
       toggleRacingLine()
       lastLapTimerToggle.current = elapsedTime
-      logger?.log('input', 'input.key.lapTimer', 'useCarInputControl', { key: 'L' }, { action: 'toggleLapRecording' })
+      logger?.log(
+        'input',
+        'input.key.lapTimer',
+        'useCarInputControl',
+        { key: 'L' },
+        { action: 'toggleLapRecording' },
+      )
     }
 
     if (keys.pitStop && elapsedTime - lastPitStopToggle.current > 0.3) {
       startPitStop()
       lastPitStopToggle.current = elapsedTime
-      logger?.log('input', 'input.key.pitStop', 'useCarInputControl', { key: 'P' }, { action: 'startPitStop' })
+      logger?.log(
+        'input',
+        'input.key.pitStop',
+        'useCarInputControl',
+        { key: 'P' },
+        { action: 'startPitStop' },
+      )
     }
   }
 

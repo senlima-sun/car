@@ -2,8 +2,8 @@ import { useRef, useMemo, useEffect, type MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
-import { useTrackTemperatureStore } from '../../../../stores/useTrackTemperatureStore'
 import { usePerformanceStore } from '../../../../stores/usePerformanceStore'
+import { usePhysicsOptional } from '../../../../wasm'
 import type { CarState } from '../hooks/types'
 
 const MIN_SPEED_FOR_SPRAY = 8 // m/s (~29 km/h)
@@ -77,14 +77,13 @@ interface ParticleData {
   lifetimes: Float32Array
   maxLifetimes: Float32Array
   active: Uint8Array
+  activeCount: number
 }
 
-export default function CarSprayEffect({
-  carStateRef,
-}: CarSprayEffectProps) {
+export default function CarSprayEffect({ carStateRef }: CarSprayEffectProps) {
   const temperature = useEnvironmentStore(s => s.temperature)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
-  const getCell = useTrackTemperatureStore(s => s.getCell)
+  const physics = usePhysicsOptional()
 
   // Main spray particles (medium water droplets)
   const sprayRef = useRef<THREE.Points>(null)
@@ -115,7 +114,7 @@ export default function CarSprayEffect({
       maxLifetimes[i] = 0.4 + Math.random() * 0.4
     }
 
-    return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active }
+    return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active, activeCount: 0 }
   }, [])
 
   const mistData = useMemo((): ParticleData => {
@@ -134,7 +133,7 @@ export default function CarSprayEffect({
       maxLifetimes[i] = 0.8 + Math.random() * 0.8 // Lives longer
     }
 
-    return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active }
+    return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active, activeCount: 0 }
   }, [])
 
   const dropletData = useMemo((): ParticleData => {
@@ -153,7 +152,7 @@ export default function CarSprayEffect({
       maxLifetimes[i] = 0.3 + Math.random() * 0.3 // Short lived
     }
 
-    return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active }
+    return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active, activeCount: 0 }
   }, [])
 
   // Create geometries
@@ -206,15 +205,15 @@ export default function CarSprayEffect({
 
   const getSurfaceCondition = () => {
     const { position: carPosition } = carStateRef.current
-    const cell = getCell(carPosition.x, carPosition.z)
-    // Wet conditions when raining
     if (rainIntensity > 0.01) {
-      if (!cell) return 'wet'
-      return cell.wetness > 0.2 ? 'wet' : null
+      if (!physics?.initialized) return 'wet'
+      const wetness = physics.getTrackWetness(carPosition.x, carPosition.z)
+      return wetness > 0.2 ? 'wet' : null
     }
-    // Icy conditions when cold (temp < 0°C)
     if (temperature < 0) {
-      return cell && cell.temperature < 0.5 ? 'icy' : null
+      if (!physics?.initialized) return null
+      const waterDepth = physics.getWaterDepth(carPosition.x, carPosition.z)
+      return waterDepth > 0.1 ? 'icy' : null
     }
     return null
   }
@@ -223,7 +222,11 @@ export default function CarSprayEffect({
   const hasActiveRef = useRef(false)
 
   useFrame((_, delta) => {
-    const { position: carPosition, velocity: carVelocity, rotation: carRotation } = carStateRef.current
+    const {
+      position: carPosition,
+      velocity: carVelocity,
+      rotation: carRotation,
+    } = carStateRef.current
     const surfaceCondition = getSurfaceCondition()
     const shouldEmit = surfaceCondition && carVelocity > MIN_SPEED_FOR_SPRAY
 
@@ -304,6 +307,7 @@ export default function CarSprayEffect({
 
       data.lifetimes[index] = data.maxLifetimes[index]
       data.active[index] = 1
+      data.activeCount++
     }
 
     // Update and spawn particles for each type
@@ -331,6 +335,7 @@ export default function CarSprayEffect({
 
           if (life[i] <= 0 || pos[i * 3 + 1] < 0) {
             data.active[i] = 0
+            data.activeCount--
             pos[i * 3 + 1] = -100
           } else {
             // Update position
@@ -380,9 +385,8 @@ export default function CarSprayEffect({
     updateParticles(mistData, mistGeometry, MIST_COUNT, 'mist', 3, 0.96)
     updateParticles(dropletData, dropletGeometry, DROPLET_COUNT, 'droplet', 20, 0.99)
 
-    hasActiveRef.current = sprayData.active.some(v => v === 1)
-      || mistData.active.some(v => v === 1)
-      || dropletData.active.some(v => v === 1)
+    hasActiveRef.current =
+      sprayData.activeCount > 0 || mistData.activeCount > 0 || dropletData.activeCount > 0
   })
 
   // Only render when raining or cold

@@ -20,7 +20,7 @@ export default function TireTrails() {
   const temperature = useEnvironmentStore(s => s.temperature)
 
   const { geometry, colorAttr } = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(0.30, SEGMENT_LENGTH)
+    const geo = new THREE.PlaneGeometry(0.3, SEGMENT_LENGTH)
     geo.rotateX(-Math.PI / 2)
 
     const colors = new Float32Array(TOTAL_INSTANCES * 3)
@@ -44,16 +44,29 @@ export default function TireTrails() {
   }, [])
 
   const prevCountRef = useRef(0)
+  const tickFrameCounter = useRef(0)
 
   useFrame((_, delta) => {
     const mesh = meshRef.current
     if (!mesh) return
 
     const store = useTireTrailStore.getState()
-    store.tick(delta, rainIntensity, temperature)
 
-    const { xs, zs, ys, dirXs, dirZs, intensities, widths, wet, counts } = store
+    const { counts } = store
     const totalCount = counts[0] + counts[1] + counts[2] + counts[3]
+
+    if (totalCount === 0 && store.totalActive === 0) {
+      mesh.count = 0
+      prevCountRef.current = 0
+      return
+    }
+
+    tickFrameCounter.current++
+    if (tickFrameCounter.current % 4 === 0) {
+      store.tick(delta * 4, rainIntensity, temperature)
+    }
+
+    const { xs, zs, ys, dirXs, dirZs, intensities, widths, wet } = store
 
     if (totalCount === 0 && prevCountRef.current === 0) {
       mesh.count = 0
@@ -85,7 +98,7 @@ export default function TireTrails() {
         const w2 = widths[idx]
 
         _rot.makeRotationY(angle)
-        _matrix.makeScale(w2 / 0.30, 1, 1)
+        _matrix.makeScale(w2 / 0.3, 1, 1)
         _matrix.premultiply(_rot)
         _matrix.setPosition(xs[idx], ys[idx] + Y_OFFSET, zs[idx])
 
@@ -102,12 +115,8 @@ export default function TireTrails() {
   })
 
   return (
-    <instancedMesh
-      ref={meshRef}
-      args={[geometry, material, TOTAL_INSTANCES]}
-      frustumCulled={false}
-    >
-      <primitive object={colorAttr} attach="geometry-attributes-instanceColorAttr" />
+    <instancedMesh ref={meshRef} args={[geometry, material, TOTAL_INSTANCES]} frustumCulled={false}>
+      <primitive object={colorAttr} attach='geometry-attributes-instanceColorAttr' />
     </instancedMesh>
   )
 }

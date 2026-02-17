@@ -18,13 +18,12 @@ interface PhysicsStepOptions {
   suspensionStep: (dt: number) => SuspensionOutput | null
 }
 
-
 export function useCarPhysicsStep({
   chassisRef,
   physics,
   windEnabled,
   startPosition,
-  suspensionStep
+  suspensionStep,
 }: PhysicsStepOptions) {
   const isOnCurb = useCurbStore(state => state.isOnCurb)
   const curbSide = useCurbStore(state => state.curbSide)
@@ -47,11 +46,14 @@ export function useCarPhysicsStep({
     validationCounter.current++
     const shouldValidate = validationCounter.current % 30 === 0
 
-    const velocityIsInvalid = shouldValidate &&
+    const velocityIsInvalid =
+      shouldValidate &&
       (!Number.isFinite(linvel.x) || !Number.isFinite(linvel.y) || !Number.isFinite(linvel.z))
-    const angVelIsInvalid = shouldValidate &&
+    const angVelIsInvalid =
+      shouldValidate &&
       (!Number.isFinite(angvel.x) || !Number.isFinite(angvel.y) || !Number.isFinite(angvel.z))
-    const posIsInvalid = shouldValidate &&
+    const posIsInvalid =
+      shouldValidate &&
       (!Number.isFinite(pos.x) || !Number.isFinite(pos.y) || !Number.isFinite(pos.z))
 
     if (velocityIsInvalid || angVelIsInvalid || posIsInvalid) {
@@ -109,17 +111,42 @@ export function useCarPhysicsStep({
       true,
     )
 
-    suspensionOutputRef.current = suspensionStep(dt)
-
-    const currentAngvel = chassis.angvel()
     chassis.setAngvel(
       {
-        x: currentAngvel.x,
+        x: output.angular_velocity[0],
         y: output.angular_velocity[1],
-        z: currentAngvel.z,
+        z: output.angular_velocity[2],
       },
       true,
     )
+
+    if (output.downforce_newtons > 1) {
+      const qx = rot.x, qy = rot.y, qz = rot.z, qw = rot.w
+      const upX = 2 * (qx * qy - qw * qz)
+      const upY = 1 - 2 * (qx * qx + qz * qz)
+      const upZ = 2 * (qy * qz + qw * qx)
+      const perWheel = -output.downforce_newtons * dt * 0.25
+      const impulse = { x: upX * perWheel, y: upY * perWheel, z: upZ * perWheel }
+
+      const r00 = 1 - 2 * (qy * qy + qz * qz)
+      const r01 = 2 * (qx * qy - qw * qz)
+      const r02 = 2 * (qx * qz + qw * qy)
+      const r10 = 2 * (qx * qy + qw * qz)
+      const r11 = 1 - 2 * (qx * qx + qz * qz)
+      const r12 = 2 * (qy * qz - qw * qx)
+      const r20 = 2 * (qx * qz - qw * qy)
+      const r21 = 2 * (qy * qz + qw * qx)
+      const r22 = 1 - 2 * (qx * qx + qy * qy)
+
+      for (const wp of [DIM_WHEEL_POS.FL, DIM_WHEEL_POS.FR, DIM_WHEEL_POS.RL, DIM_WHEEL_POS.RR]) {
+        const wx = pos.x + r00 * wp[0] + r01 * wp[1] + r02 * wp[2]
+        const wy = pos.y + r10 * wp[0] + r11 * wp[1] + r12 * wp[2]
+        const wz = pos.z + r20 * wp[0] + r21 * wp[1] + r22 * wp[2]
+        chassis.applyImpulseAtPoint(impulse, { x: wx, y: wy, z: wz }, true)
+      }
+    }
+
+    suspensionOutputRef.current = suspensionStep(dt)
 
     if (suspensionOutputRef.current) {
       const w = suspensionOutputRef.current.wheels

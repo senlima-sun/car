@@ -25,7 +25,13 @@ export function usePhysicsSync() {
   const envPrecipitationRate = useEnvironmentStore(state => state.precipitationRate)
   const envPressure = useEnvironmentStore(state => state.pressure)
   const envCloudCover = useEnvironmentStore(state => state.cloudCover)
-  const lastEnvRef = useRef({ temperature: -999, humidity: -1, precipitationRate: -1, pressure: -1, cloudCover: -1 })
+  const lastEnvRef = useRef({
+    temperature: -999,
+    humidity: -1,
+    precipitationRate: -1,
+    pressure: -1,
+    cloudCover: -1,
+  })
 
   useEffect(() => {
     if (currentCompound !== lastCompoundRef.current) {
@@ -68,7 +74,13 @@ export function usePhysicsSync() {
       envCloudCover !== lastEnvRef.current.cloudCover
 
     if (envChanged) {
-      physics.setEnvironment(envTemperature, envHumidity, envPrecipitationRate, envPressure, envCloudCover)
+      physics.setEnvironment(
+        envTemperature,
+        envHumidity,
+        envPrecipitationRate,
+        envPressure,
+        envCloudCover,
+      )
       lastEnvRef.current = {
         temperature: envTemperature,
         humidity: envHumidity,

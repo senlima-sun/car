@@ -1,95 +1,84 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { RoundedBox } from '@react-three/drei'
+import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
-import { createCarbonFiberTexture } from '@/utils/createCarbonFiberTexture'
-import { SteeringWheelDisplay } from './SteeringWheelDisplay'
+import { useSteeringWheelDisplay } from './SteeringWheelDisplay'
+import { useCarStore } from '@/stores/useCarStore'
+import { useSwDisplayStore } from '@/stores/useSwDisplayStore'
+
+const MODEL_PATH = '/models/steering-wheel.glb'
+const MAX_RPM = 12500
+
+const RPM_COLORS = [
+  '#22c55e',
+  '#22c55e',
+  '#22c55e',
+  '#22c55e',
+  '#22c55e',
+  '#eab308',
+  '#eab308',
+  '#eab308',
+  '#eab308',
+  '#ef4444',
+  '#ef4444',
+  '#ef4444',
+  '#3b82f6',
+  '#3b82f6',
+  '#3b82f6',
+]
+const RPM_LED_COUNT = RPM_COLORS.length
 
 interface SteeringWheelProps {
   steerAngle: number
   showDisplay: boolean
 }
 
-const carbonMap = createCarbonFiberTexture()
-const carbonMaterial = new THREE.MeshStandardMaterial({
-  map: carbonMap,
-  roughness: 0.4,
-  metalness: 0.1,
-  color: 0xcccccc,
-})
-const suedeMaterial = new THREE.MeshStandardMaterial({
-  color: 0x111111,
-  roughness: 1.0,
-  metalness: 0.0,
-})
-const housingMaterial = new THREE.MeshStandardMaterial({
-  color: 0x080808,
-  roughness: 0.2,
-  metalness: 0.8,
-})
-const screenBezelMaterial = new THREE.MeshStandardMaterial({
-  color: 0x050505,
-  roughness: 0.1,
-  metalness: 0.9,
-})
-const paddleMaterial = new THREE.MeshStandardMaterial({
-  color: 0x888888,
-  roughness: 0.3,
-  metalness: 0.6,
-})
-const buttonRedMaterial = new THREE.MeshStandardMaterial({
-  color: 0xcc2222,
-  roughness: 0.5,
-  metalness: 0.3,
-  emissive: new THREE.Color(0x440000),
-  emissiveIntensity: 0.3,
-})
-const buttonBlueMaterial = new THREE.MeshStandardMaterial({
-  color: 0x2244cc,
-  roughness: 0.5,
-  metalness: 0.3,
-  emissive: new THREE.Color(0x000044),
-  emissiveIntensity: 0.3,
-})
-const buttonYellowMaterial = new THREE.MeshStandardMaterial({
-  color: 0xccaa22,
-  roughness: 0.5,
-  metalness: 0.3,
-  emissive: new THREE.Color(0x222200),
-  emissiveIntensity: 0.3,
-})
-const rotaryMaterial = new THREE.MeshStandardMaterial({
-  color: 0x333333,
-  roughness: 0.4,
-  metalness: 0.5,
-})
-
-const wheelShape = new THREE.Shape()
-const w = 0.16
-const h = 0.09
-wheelShape.moveTo(0, -h + 0.025)
-wheelShape.lineTo(w - 0.075, -h + 0.025)
-wheelShape.quadraticCurveTo(w, -h, w, -h + 0.075)
-wheelShape.lineTo(w, h - 0.05)
-wheelShape.quadraticCurveTo(w, h, w - 0.075, h)
-wheelShape.lineTo(-w + 0.075, h)
-wheelShape.quadraticCurveTo(-w, h, -w, h - 0.05)
-wheelShape.lineTo(-w, -h + 0.075)
-wheelShape.quadraticCurveTo(-w, -h, -w + 0.075, -h + 0.025)
-wheelShape.lineTo(0, -h + 0.025)
-
-const extrudeSettings = {
-  depth: 0.02,
-  bevelEnabled: true,
-  bevelSegments: 2,
-  steps: 2,
-  bevelSize: 0.005,
-  bevelThickness: 0.005,
-}
-
-export function SteeringWheel({ steerAngle, showDisplay }: SteeringWheelProps) {
+export function SteeringWheel({ steerAngle }: SteeringWheelProps) {
+  const { scene } = useGLTF(MODEL_PATH, true)
   const steeringWheelRef = useRef<THREE.Group>(null)
   const smoothSteeringWheel = useRef(0)
+  useSteeringWheelDisplay()
+
+  const { clonedScene, ledMaterials, displayMesh } = useMemo(() => {
+    const cloned = scene.clone(true)
+    const { texture } = useSwDisplayStore.getState()
+
+    cloned.traverse(child => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true
+        child.receiveShadow = true
+      }
+    })
+
+    let display: THREE.Mesh | null = null
+    const swDisplay = cloned.getObjectByName('SW_Display')
+    if (swDisplay instanceof THREE.Mesh) {
+      swDisplay.material = new THREE.MeshBasicMaterial({
+        map: texture,
+        toneMapped: false,
+      })
+      display = swDisplay
+    }
+
+    const mats: THREE.MeshBasicMaterial[] = []
+    for (let i = 0; i < RPM_LED_COUNT; i++) {
+      const name = `RPM_LED_${String(i).padStart(2, '0')}`
+      const ledObj = cloned.getObjectByName(name)
+      const mat = new THREE.MeshBasicMaterial({
+        color: RPM_COLORS[i],
+        toneMapped: false,
+        transparent: true,
+        opacity: 0.08,
+      })
+      if (ledObj instanceof THREE.Mesh) {
+        ledObj.material = mat
+        ledObj.renderOrder = 1
+      }
+      mats.push(mat)
+    }
+
+    return { clonedScene: cloned, ledMaterials: mats, displayMesh: display }
+  }, [scene])
 
   useFrame((_, delta) => {
     const lerpSpeed = 8
@@ -100,113 +89,31 @@ export function SteeringWheel({ steerAngle, showDisplay }: SteeringWheelProps) {
     )
 
     if (steeringWheelRef.current) {
-      steeringWheelRef.current.rotation.y = -smoothSteeringWheel.current * 1.5
-      steeringWheelRef.current.rotation.z = -smoothSteeringWheel.current * 0.1
+      steeringWheelRef.current.rotation.y = smoothSteeringWheel.current * 1.5
+      steeringWheelRef.current.rotation.z = smoothSteeringWheel.current * 0.1
+    }
+
+    const rpm = useCarStore.getState().rpm
+    const rpmRatio = Math.min(1, rpm / MAX_RPM)
+    const lit = Math.round(rpmRatio * RPM_LED_COUNT)
+
+    for (let i = 0; i < RPM_LED_COUNT; i++) {
+      ledMaterials[i].opacity = i < lit ? 1.0 : 0.08
+    }
+
+    if (displayMesh) {
+      displayMesh.position.set(0, 0.042, -0.028)
+      displayMesh.scale.set(0.85, 1, 0.9)
     }
   })
 
-  const chassisGeo = useMemo(() => {
-    const geo = new THREE.ExtrudeGeometry(wheelShape, extrudeSettings)
-    geo.center()
-    return geo
-  }, [])
-
   return (
-    <group position={[0, 0.32, 0.78]} rotation={[0.85, 0, 0]}>
-      <group rotation={[Math.PI / 2, 0, 0]}>
-        <group ref={steeringWheelRef}>
-          <group rotation={[0.9, 0, Math.PI]}>
-            {/* --- Chassis --- */}
-            <mesh castShadow geometry={chassisGeo} material={carbonMaterial} />
-
-            {/* --- Grips --- */}
-            <mesh
-              castShadow
-              position={[-0.155, -0.01, 0]}
-              rotation-z={0.1}
-              material={suedeMaterial}
-            >
-              <capsuleGeometry args={[0.0325, 0.17, 4, 16]} />
-            </mesh>
-            <mesh
-              castShadow
-              position={[0.155, -0.01, 0]}
-              rotation-z={-0.1}
-              material={suedeMaterial}
-            >
-              <capsuleGeometry args={[0.0325, 0.17, 4, 16]} />
-            </mesh>
-
-            {/* --- Decorative Buttons (Left) --- */}
-            <mesh castShadow position={[-0.09, 0.055, 0.012]} material={buttonRedMaterial}>
-              <cylinderGeometry args={[0.008, 0.008, 0.006, 12]} />
-            </mesh>
-            <mesh castShadow position={[-0.065, 0.06, 0.012]} material={buttonBlueMaterial}>
-              <cylinderGeometry args={[0.007, 0.007, 0.006, 12]} />
-            </mesh>
-            <mesh castShadow position={[-0.115, 0.045, 0.012]} material={buttonYellowMaterial}>
-              <cylinderGeometry args={[0.007, 0.007, 0.006, 12]} />
-            </mesh>
-
-            {/* --- Decorative Buttons (Right) --- */}
-            <mesh castShadow position={[0.09, 0.055, 0.012]} material={buttonYellowMaterial}>
-              <cylinderGeometry args={[0.008, 0.008, 0.006, 12]} />
-            </mesh>
-            <mesh castShadow position={[0.065, 0.06, 0.012]} material={buttonRedMaterial}>
-              <cylinderGeometry args={[0.007, 0.007, 0.006, 12]} />
-            </mesh>
-            <mesh castShadow position={[0.115, 0.045, 0.012]} material={buttonBlueMaterial}>
-              <cylinderGeometry args={[0.007, 0.007, 0.006, 12]} />
-            </mesh>
-
-            {/* --- Rotary Encoders --- */}
-            <mesh castShadow position={[-0.13, 0.02, 0.012]} rotation-x={Math.PI / 2} material={rotaryMaterial}>
-              <cylinderGeometry args={[0.01, 0.012, 0.008, 16]} />
-            </mesh>
-            <mesh castShadow position={[0.13, 0.02, 0.012]} rotation-x={Math.PI / 2} material={rotaryMaterial}>
-              <cylinderGeometry args={[0.01, 0.012, 0.008, 16]} />
-            </mesh>
-
-            {/* --- Shift Paddles (Behind wheel) --- */}
-            <mesh castShadow position={[-0.11, -0.01, -0.025]} rotation-z={0.15} material={paddleMaterial}>
-              <boxGeometry args={[0.05, 0.025, 0.003]} />
-            </mesh>
-            <mesh castShadow position={[0.11, -0.01, -0.025]} rotation-z={-0.15} material={paddleMaterial}>
-              <boxGeometry args={[0.05, 0.025, 0.003]} />
-            </mesh>
-
-            {/* --- Monitor Housing & Screen --- */}
-            <group position={[0, 0.015, 0.0125]}>
-              {/* Outer housing (carbon fiber) */}
-              <RoundedBox
-                args={[0.28, 0.165, 0.012]}
-                radius={0.006}
-                material={carbonMaterial}
-                castShadow
-              />
-              {/* Inner bezel (glossy black) */}
-              <RoundedBox
-                args={[0.275, 0.16, 0.011]}
-                radius={0.005}
-                material={screenBezelMaterial}
-                castShadow
-                position={[0, 0, 0.001]}
-              />
-              {/* Screen area */}
-              <RoundedBox
-                args={[0.27, 0.155, 0.01]}
-                radius={0.005}
-                material={housingMaterial}
-                castShadow
-                position={[0, 0, 0.002]}
-              >
-                {showDisplay && <SteeringWheelDisplay />}
-              </RoundedBox>
-
-            </group>
-          </group>
-        </group>
+    <group position={[0, 1.03, 3.25]} rotation={[1.4484, -0.0016, 3.1384]} scale={1.65}>
+      <group ref={steeringWheelRef}>
+        <primitive object={clonedScene} />
       </group>
     </group>
   )
 }
+
+useGLTF.preload(MODEL_PATH, true)

@@ -17,7 +17,7 @@ export default function WetTrails() {
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
   const { geometry, colorAttr } = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(0.30, 0.12)
+    const geo = new THREE.PlaneGeometry(0.3, 0.12)
     geo.rotateX(-Math.PI / 2)
 
     const colors = new Float32Array(WET_INSTANCES * 3)
@@ -75,7 +75,7 @@ export default function WetTrails() {
         const w2 = widths[idx] * WET_WIDTH_MULT
 
         _rot.makeRotationY(angle)
-        _matrix.makeScale(w2 / 0.30, 1, 1)
+        _matrix.makeScale(w2 / 0.3, 1, 1)
         _matrix.premultiply(_rot)
         _matrix.setPosition(xs[idx], ys[idx] + Y_OFFSET, zs[idx])
 
@@ -92,12 +92,8 @@ export default function WetTrails() {
   })
 
   return (
-    <instancedMesh
-      ref={meshRef}
-      args={[geometry, material, WET_INSTANCES]}
-      frustumCulled={false}
-    >
-      <primitive object={colorAttr} attach="geometry-attributes-instanceColorAttr" />
+    <instancedMesh ref={meshRef} args={[geometry, material, WET_INSTANCES]} frustumCulled={false}>
+      <primitive object={colorAttr} attach='geometry-attributes-instanceColorAttr' />
     </instancedMesh>
   )
 }

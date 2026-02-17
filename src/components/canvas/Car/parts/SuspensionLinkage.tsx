@@ -10,10 +10,7 @@ import type { LinkageTransform } from '@/types/suspension'
 
 const S = SUSPENSION
 
-function applyTransform(
-  mesh: THREE.Object3D | null,
-  t: LinkageTransform,
-) {
+function applyTransform(mesh: THREE.Object3D | null, t: LinkageTransform) {
   if (!mesh) return
   mesh.position.set(t.position[0], t.position[1], t.position[2])
   mesh.rotation.set(t.rotation[0], t.rotation[1], t.rotation[2])
@@ -44,17 +41,31 @@ function Wishbone({
   )
 }
 
-function Upright({ meshRef, isRaining }: { meshRef: React.RefObject<THREE.Mesh | null>; isRaining: boolean }) {
+function Upright({
+  meshRef,
+  isRaining,
+}: {
+  meshRef: React.RefObject<THREE.Mesh | null>
+  isRaining: boolean
+}) {
   const metalMat = getMetalMaterial(isRaining)
   return (
     <mesh ref={meshRef} castShadow>
-      <boxGeometry args={[S.UPRIGHT_WIDTH, S.UPPER_UPRIGHT_Y - S.LOWER_UPRIGHT_Y, S.UPRIGHT_DEPTH]} />
+      <boxGeometry
+        args={[S.UPRIGHT_WIDTH, S.UPPER_UPRIGHT_Y - S.LOWER_UPRIGHT_Y, S.UPRIGHT_DEPTH]}
+      />
       <meshStandardMaterial color={CAR_COLORS.metal} {...metalMat} />
     </mesh>
   )
 }
 
-function Pushrod({ meshRef, isRaining }: { meshRef: React.RefObject<THREE.Mesh | null>; isRaining: boolean }) {
+function Pushrod({
+  meshRef,
+  isRaining,
+}: {
+  meshRef: React.RefObject<THREE.Mesh | null>
+  isRaining: boolean
+}) {
   const metalMat = getMetalMaterial(isRaining)
   return (
     <mesh ref={meshRef} castShadow>
@@ -64,7 +75,13 @@ function Pushrod({ meshRef, isRaining }: { meshRef: React.RefObject<THREE.Mesh |
   )
 }
 
-function Rocker({ meshRef, isRaining }: { meshRef: React.RefObject<THREE.Mesh | null>; isRaining: boolean }) {
+function Rocker({
+  meshRef,
+  isRaining,
+}: {
+  meshRef: React.RefObject<THREE.Mesh | null>
+  isRaining: boolean
+}) {
   const metalMat = getMetalMaterial(isRaining)
   return (
     <mesh ref={meshRef} castShadow>
@@ -96,20 +113,16 @@ function SpringDamperUnit({
     for (let i = 0; i <= segments; i++) {
       const t = i / segments
       const angle = t * coils * Math.PI * 2
-      points.push(new THREE.Vector3(
-        Math.cos(angle) * radius * mirror,
-        t * height - height / 2,
-        Math.sin(angle) * radius,
-      ))
+      points.push(
+        new THREE.Vector3(
+          Math.cos(angle) * radius * mirror,
+          t * height - height / 2,
+          Math.sin(angle) * radius,
+        ),
+      )
     }
 
-    return new THREE.TubeGeometry(
-      new THREE.CatmullRomCurve3(points),
-      segments * 2,
-      0.004,
-      6,
-      false,
-    )
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), segments * 2, 0.004, 6, false)
   }, [isLeft])
 
   return (
@@ -122,7 +135,9 @@ function SpringDamperUnit({
         <meshStandardMaterial color='#333333' {...metalMat} />
       </mesh>
       <mesh castShadow position={[0, (S.DAMPER_BODY_LENGTH + S.DAMPER_SHAFT_LENGTH) / 2, 0]}>
-        <cylinderGeometry args={[S.DAMPER_RADIUS * 0.5, S.DAMPER_RADIUS * 0.5, S.DAMPER_SHAFT_LENGTH, 6]} />
+        <cylinderGeometry
+          args={[S.DAMPER_RADIUS * 0.5, S.DAMPER_RADIUS * 0.5, S.DAMPER_SHAFT_LENGTH, 6]}
+        />
         <meshStandardMaterial color='#aaaaaa' {...metalMat} />
       </mesh>
     </group>
@@ -137,7 +152,13 @@ interface SuspensionCornerProps {
   suspensionRef?: MutableRefObject<SuspensionOutput | null>
 }
 
-function SuspensionCorner({ isLeft, isFront, isRaining, wheelIndex, suspensionRef }: SuspensionCornerProps) {
+function SuspensionCorner({
+  isLeft,
+  isFront,
+  isRaining,
+  wheelIndex,
+  suspensionRef,
+}: SuspensionCornerProps) {
   const upperArmARef = useRef<THREE.Mesh>(null)
   const upperArmBRef = useRef<THREE.Mesh>(null)
   const lowerArmARef = useRef<THREE.Mesh>(null)
@@ -151,12 +172,7 @@ function SuspensionCorner({ isLeft, isFront, isRaining, wheelIndex, suspensionRe
     const deflection = suspensionRef?.current?.wheels[wheelIndex]?.deflection ?? 0
     const steerAngle = isFront ? useCarStore.getState().steerAngle : 0
 
-    const geo = computeSuspensionLinkage(
-      deflection,
-      steerAngle,
-      isLeft,
-      isFront,
-    )
+    const geo = computeSuspensionLinkage(deflection, steerAngle, isLeft, isFront)
 
     applyTransform(upperArmARef.current, geo.upperWishbone.armA)
     applyTransform(upperArmBRef.current, geo.upperWishbone.armB)
@@ -211,10 +227,34 @@ interface SuspensionLinkageGroupProps {
 export function SuspensionLinkageGroup({ isRaining, suspensionRef }: SuspensionLinkageGroupProps) {
   return (
     <>
-      <SuspensionCorner isLeft isFront isRaining={isRaining} wheelIndex={0} suspensionRef={suspensionRef} />
-      <SuspensionCorner isLeft={false} isFront isRaining={isRaining} wheelIndex={1} suspensionRef={suspensionRef} />
-      <SuspensionCorner isLeft isFront={false} isRaining={isRaining} wheelIndex={2} suspensionRef={suspensionRef} />
-      <SuspensionCorner isLeft={false} isFront={false} isRaining={isRaining} wheelIndex={3} suspensionRef={suspensionRef} />
+      <SuspensionCorner
+        isLeft
+        isFront
+        isRaining={isRaining}
+        wheelIndex={0}
+        suspensionRef={suspensionRef}
+      />
+      <SuspensionCorner
+        isLeft={false}
+        isFront
+        isRaining={isRaining}
+        wheelIndex={1}
+        suspensionRef={suspensionRef}
+      />
+      <SuspensionCorner
+        isLeft
+        isFront={false}
+        isRaining={isRaining}
+        wheelIndex={2}
+        suspensionRef={suspensionRef}
+      />
+      <SuspensionCorner
+        isLeft={false}
+        isFront={false}
+        isRaining={isRaining}
+        wheelIndex={3}
+        suspensionRef={suspensionRef}
+      />
     </>
   )
 }
