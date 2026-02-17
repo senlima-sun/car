@@ -1,53 +1,28 @@
-import { useRef, RefObject } from 'react'
-import {
-  Vector3,
-  Quaternion,
-  Euler,
-  PerspectiveCamera as ThreePerspectiveCamera,
-  Group,
-} from 'three'
+import { useRef } from 'react'
+import { Vector3, Quaternion, Euler, PerspectiveCamera as ThreePerspectiveCamera } from 'three'
 import { useFrame } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useCarStore } from '../../../stores/useCarStore'
+import {
+  CAMERA_NEAR,
+  CAMERA_FAR,
+  FLIP_ROTATION,
+  SURFACE_SHAKE_INTENSITY,
+  SURFACE_SHAKE_ROTATION,
+  SURFACE_SHAKE_FREQ,
+} from './constants'
+import { extractYawQuaternion, slerpOrSnap } from './utils'
+import type { CameraTargetProps } from './types'
 
-const SURFACE_SHAKE_INTENSITY: Record<string, number> = {
-  road: 0,
-  curb: 0.008,
-  pitroad: 0,
-  gravel: 0.035,
-  grass: 0.022,
-}
+const ROTATION_LERP = 0.25
+const CHASE_OFFSET = new Vector3(0, 1.85, 2)
 
-const SURFACE_SHAKE_ROTATION: Record<string, number> = {
-  road: 0,
-  curb: 0.002,
-  pitroad: 0,
-  gravel: 0.012,
-  grass: 0.008,
-}
-
-const SURFACE_SHAKE_FREQ: Record<string, number> = {
-  road: 0,
-  curb: 1.0,
-  pitroad: 0,
-  gravel: 1.4,
-  grass: 1.0,
-}
-
-interface ThirdPersonCameraProps {
-  target: RefObject<Group | null>
-}
-
-export default function ThirdPersonCamera({ target }: ThirdPersonCameraProps) {
+export default function ThirdPersonCamera({ target }: CameraTargetProps) {
   const cameraRef = useRef<ThreePerspectiveCamera>(null)
-
-  const topOffset = useRef(new Vector3(0, 1, -0.5))
-  const flipRotation = useRef(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI))
 
   const _quat = useRef(new Quaternion())
   const _yawQuat = useRef(new Quaternion())
-  const _euler = useRef(new Euler())
   const _pos = useRef(new Vector3())
   const _worldPos = useRef(new Vector3())
   const _targetQuat = useRef(new Quaternion())
@@ -56,19 +31,15 @@ export default function ThirdPersonCamera({ target }: ThirdPersonCameraProps) {
   const _shakeEuler = useRef(new Euler())
   const _shakeQuat = useRef(new Quaternion())
 
-  const ROTATION_LERP = 0.25
-
   useFrame((_state, delta) => {
     if (!target.current || !cameraRef.current) return
 
     target.current.getWorldQuaternion(_quat.current)
     target.current.getWorldPosition(_worldPos.current)
 
-    // Extract yaw only, ignore pitch/roll to prevent vibration
-    _euler.current.setFromQuaternion(_quat.current, 'YXZ')
-    _yawQuat.current.setFromEuler(_euler.current.set(0, _euler.current.y, 0))
+    extractYawQuaternion(_quat.current, _yawQuat.current)
 
-    _pos.current.copy(topOffset.current)
+    _pos.current.copy(CHASE_OFFSET)
     _pos.current.applyQuaternion(_yawQuat.current)
     _pos.current.add(_worldPos.current)
 
@@ -104,16 +75,13 @@ export default function ThirdPersonCamera({ target }: ThirdPersonCameraProps) {
       _shakeQuat.current.identity()
     }
 
-    _targetQuat.current.copy(_yawQuat.current).multiply(flipRotation.current).multiply(_shakeQuat.current)
+    _targetQuat.current.copy(_yawQuat.current).multiply(FLIP_ROTATION).multiply(_shakeQuat.current)
 
-    if (!initialized.current) {
-      cameraRef.current.quaternion.copy(_targetQuat.current)
-      initialized.current = true
-    } else {
-      cameraRef.current.quaternion.slerp(_targetQuat.current, ROTATION_LERP)
-    }
+    slerpOrSnap(cameraRef.current, _targetQuat.current, ROTATION_LERP, initialized)
     cameraRef.current.position.copy(_pos.current)
   })
 
-  return <PerspectiveCamera ref={cameraRef} makeDefault fov={85} near={0.1} far={1000} />
+  return (
+    <PerspectiveCamera ref={cameraRef} makeDefault fov={85} near={CAMERA_NEAR} far={CAMERA_FAR} />
+  )
 }

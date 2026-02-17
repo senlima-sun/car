@@ -1,22 +1,15 @@
-import { RefObject } from 'react'
-import { Group } from 'three'
-
 import { useGameStore } from '../../../stores/useGameStore'
 import ThirdPersonCamera from './ThirdPersonCamera'
 import FirstPersonCamera from './FirstPersonCamera'
 import FreeCamera from './FreeCamera'
 import EditorCamera from './EditorCamera'
+import type { CameraTargetProps } from './types'
 
-interface CameraControllerProps {
-  target: RefObject<Group | null>
-}
-
-export default function CameraController({ target }: CameraControllerProps) {
+export default function CameraController({ target }: CameraTargetProps) {
   const cameraMode = useGameStore(state => state.cameraMode)
   const status = useGameStore(state => state.status)
   const isCustomizeMode = status === 'customize'
 
-  // In customize mode, always use top-down camera
   if (isCustomizeMode) {
     return <EditorCamera />
   }

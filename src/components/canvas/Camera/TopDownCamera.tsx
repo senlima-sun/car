@@ -15,7 +15,6 @@ export default function TopDownCamera() {
   const cameraRef = useRef<THREE.OrthographicCamera>(null)
   const { gl } = useThree()
   const setObliqueView = useEditorStore(s => s.setObliqueView)
-  const isObliqueView = useEditorStore(s => s.isObliqueView)
 
   const elevationEditMode = useEditorStore(s => s.elevationEditMode)
   const isOblique = useRef(false)
