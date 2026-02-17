@@ -13,12 +13,10 @@
     "build:wasm:release": "cd physics-engine && wasm-pack build --target web --out-dir ../src/wasm/pkg --release",
     "test:wasm": "cd physics-engine && cargo test",
     "test": "bun test",
-    "validate:audio": "bun scripts/validate-audio.ts",
     "compress:glb": "bunx --bun @gltf-transform/cli webp public/models/f1_2026.glb /tmp/f1_webp.glb && bunx --bun @gltf-transform/cli draco /tmp/f1_webp.glb public/models/f1_2026.glb && rm /tmp/f1_webp.glb"
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",
-    "@elevenlabs/elevenlabs-js": "^2.35.0",
     "@gltf-transform/core": "^4.3.0",
     "@gltf-transform/extensions": "^4.3.0",
     "@napi-rs/canvas": "^0.1.91",
@@ -26,7 +24,6 @@
     "@react-three/fiber": "^9.4.2",
     "@react-three/rapier": "^2.2.0",
     "draco3dgltf": "^1.5.7",
-    "howler": "^2.2.4",
     "posthog-js": "^1.306.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -37,7 +34,6 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "@types/bun": "latest",
-    "@types/howler": "^2.2.12",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.182.0",

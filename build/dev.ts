@@ -35,10 +35,10 @@ async function buildWasmInitial(): Promise<boolean> {
 }
 
 function startDevServer(): Subprocess {
-  console.log('[Dev] Starting dev server...')
+  console.log('[Dev] Starting Vite dev server...')
 
   const proc = spawn({
-    cmd: ['bun', 'run', 'build/dev-server.ts'],
+    cmd: ['bunx', 'vite', '--host'],
     cwd: ROOT_DIR,
     stdout: 'inherit',
     stderr: 'inherit',

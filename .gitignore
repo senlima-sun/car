@@ -16,3 +16,6 @@ physics-engine/target/
 
 # WASM pkg is generated but should be committed for easier setup
 # src/wasm/pkg/
+
+# Source texture assets
+temp/
