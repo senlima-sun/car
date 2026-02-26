@@ -77,9 +77,24 @@ export default function Checkpoint({
   const finalRotation = startPoint && endPoint ? calculatedRotation : rotation
   const finalPosition = midpoint
 
+  const travelDirection = useMemo(() => {
+    const objects = useCustomizationStore.getState().placedObjects
+    const sf = objects.find(o => o.type === 'checkpoint' && o.checkpointType !== 'sector')
+    const sectors = objects
+      .filter(o => o.type === 'checkpoint' && o.checkpointType === 'sector')
+      .sort((a, b) => (a.checkpointOrder ?? Infinity) - (b.checkpointOrder ?? Infinity))
+
+    if (sf && sectors.length > 0) {
+      const dx = sectors[0].position[0] - sf.position[0]
+      const dz = sectors[0].position[2] - sf.position[2]
+      const len = Math.sqrt(dx * dx + dz * dz)
+      if (len > 0) return { x: dx / len, z: dz / len }
+    }
+    return null
+  }, [])
+
   const detectWrongWay = useCallback((): boolean => {
-    const hasFlow = useTrackGraphStore.getState().hasFlow
-    if (!hasFlow) return false
+    if (!travelDirection && !useTrackGraphStore.getState().hasFlow) return false
 
     const carRotation = useCarStore.getState().rotation
     const carSpeed = useCarStore.getState().speed
@@ -88,12 +103,14 @@ export default function Checkpoint({
     const quat = new Quaternion(carRotation[0], carRotation[1], carRotation[2], carRotation[3])
     const carForward = new Vector3(0, 0, 1).applyQuaternion(quat)
 
+    if (travelDirection) {
+      return carForward.x * travelDirection.x + carForward.z * travelDirection.z < 0
+    }
+
     const normalX = Math.sin(finalRotation)
     const normalZ = Math.cos(finalRotation)
-    const dot = carForward.x * normalX + carForward.z * normalZ
-
-    return dot < 0
-  }, [finalRotation])
+    return carForward.x * normalX + carForward.z * normalZ < 0
+  }, [travelDirection, finalRotation])
 
   const handleCrossing = useCallback(() => {
     if (isGhost) return
@@ -174,20 +191,39 @@ function CheckeredStripe({ length, isGhost }: { length: number; isGhost: boolean
 }
 
 function SectorLine({ length, isGhost }: { length: number; isGhost: boolean }) {
-  const lineWidth = 0.3
+  const lineWidth = 0.6
+  const cellSize = lineWidth / 2
+  const cols = 2
+  const rows = Math.max(2, Math.round(length / cellSize))
+  const actualCellDepth = length / rows
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[lineWidth, length]} />
-      <meshStandardMaterial
-        color='#ffffff'
-        transparent={isGhost}
-        opacity={isGhost ? GHOST_OPACITY : 1}
-        depthWrite={!isGhost}
-        polygonOffset
-        polygonOffsetFactor={-1}
-        polygonOffsetUnits={-1}
-      />
-    </mesh>
+    <group>
+      {Array.from({ length: rows }).map((_, row) =>
+        Array.from({ length: cols }).map((_, col) => {
+          const isWhite = (row + col) % 2 === 0
+          const x = -lineWidth / 2 + cellSize * col + cellSize / 2
+          const z = -length / 2 + actualCellDepth * row + actualCellDepth / 2
+          return (
+            <mesh
+              key={`${row}-${col}`}
+              position={[x, 0, z]}
+              rotation={[-Math.PI / 2, 0, 0]}
+            >
+              <planeGeometry args={[cellSize, actualCellDepth]} />
+              <meshStandardMaterial
+                color={isWhite ? '#ffffff' : '#111111'}
+                transparent={isGhost}
+                opacity={isGhost ? GHOST_OPACITY : 1}
+                depthWrite={!isGhost}
+                polygonOffset
+                polygonOffsetFactor={-1}
+                polygonOffsetUnits={-1}
+              />
+            </mesh>
+          )
+        }),
+      )}
+    </group>
   )
 }
