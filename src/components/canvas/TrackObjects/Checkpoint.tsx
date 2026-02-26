@@ -84,13 +84,22 @@ export default function Checkpoint({
       .filter(o => o.type === 'checkpoint' && o.checkpointType === 'sector')
       .sort((a, b) => (a.checkpointOrder ?? Infinity) - (b.checkpointOrder ?? Infinity))
 
-    if (sf && sectors.length > 0) {
-      const dx = sectors[0].position[0] - sf.position[0]
-      const dz = sectors[0].position[2] - sf.position[2]
-      const len = Math.sqrt(dx * dx + dz * dz)
-      if (len > 0) return { x: dx / len, z: dz / len }
-    }
-    return null
+    if (!sf?.startPoint || !sf?.endPoint || sectors.length === 0) return null
+
+    const dx = sf.endPoint[0] - sf.startPoint[0]
+    const dz = sf.endPoint[2] - sf.startPoint[2]
+    const perpX = -dz
+    const perpZ = dx
+    const len = Math.sqrt(perpX * perpX + perpZ * perpZ)
+    if (len === 0) return null
+
+    const normX = perpX / len
+    const normZ = perpZ / len
+    const toSectorX = sectors[0].position[0] - sf.position[0]
+    const toSectorZ = sectors[0].position[2] - sf.position[2]
+    const dot = normX * toSectorX + normZ * toSectorZ
+    const sign = dot >= 0 ? 1 : -1
+    return { x: normX * sign, z: normZ * sign }
   }, [])
 
   const detectWrongWay = useCallback((): boolean => {

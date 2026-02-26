@@ -49,18 +49,16 @@ export function useStartPosition(): StartTransform {
 
     if (startFinish?.startPoint && startFinish?.endPoint) {
       const elev = ((startFinish.startPoint[1] ?? 0) + (startFinish.endPoint[1] ?? 0)) / 2
+      const perp = perpendicularDirection(startFinish as { startPoint: [number, number, number]; endPoint: [number, number, number] })
 
-      if (sectors.length > 0) {
-        const target = sectors[0]
-        const dx = target.position[0] - startFinish.position[0]
-        const dz = target.position[2] - startFinish.position[2]
-        const len = Math.sqrt(dx * dx + dz * dz)
-        if (len > 0) {
-          return spawnBehind(startFinish.position, dx / len, dz / len, elev)
-        }
+      if (perp && sectors.length > 0) {
+        const toSector0X = sectors[0].position[0] - startFinish.position[0]
+        const toSector0Z = sectors[0].position[2] - startFinish.position[2]
+        const dot = perp[0] * toSector0X + perp[1] * toSector0Z
+        const sign = dot >= 0 ? 1 : -1
+        return spawnBehind(startFinish.position, perp[0] * sign, perp[1] * sign, elev)
       }
 
-      const perp = perpendicularDirection(startFinish as { startPoint: [number, number, number]; endPoint: [number, number, number] })
       if (perp) {
         return spawnBehind(startFinish.position, perp[0], perp[1], elev)
       }
