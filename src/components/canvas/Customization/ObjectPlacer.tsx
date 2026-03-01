@@ -96,11 +96,12 @@ export default function ObjectPlacer() {
   // Track pointer position
   const handlePointerMove = useCallback(
     (event: PointerEvent) => {
+      if (terrainEditMode) return
       const rect = gl.domElement.getBoundingClientRect()
       pointer.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
       pointer.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
     },
-    [gl],
+    [gl, terrainEditMode],
   )
 
   // Handle click for placement (not used for curbs which use pointer down/up)
@@ -316,6 +317,7 @@ export default function ObjectPlacer() {
   // Handle click for partial delete mode
   const handlePartialDeleteClick = useCallback(
     (event: MouseEvent) => {
+      if (terrainEditMode) return
       if (!partialDeleteMode) return
       if (event.button !== 0) return // Left click only
 
@@ -345,6 +347,7 @@ export default function ObjectPlacer() {
       }
     },
     [
+      terrainEditMode,
       partialDeleteMode,
       partialDeleteState,
       camera,
@@ -465,12 +468,13 @@ export default function ObjectPlacer() {
 
   const handleDblClick = useCallback(
     (event: MouseEvent) => {
+      if (terrainEditMode) return
       if (placementState === 'polygonDrawing') {
         event.preventDefault()
         closePolygon()
       }
     },
-    [placementState, closePolygon],
+    [terrainEditMode, placementState, closePolygon],
   )
 
   // Setup event listeners
@@ -665,19 +669,21 @@ export default function ObjectPlacer() {
 
   return (
     <>
-      {/* Invisible ground plane for raycasting (backup) */}
-      <mesh ref={groundRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} visible={false}>
-        <planeGeometry args={[2000, 2000]} />
-        <meshBasicMaterial />
-      </mesh>
+      {!terrainEditMode && (
+        <mesh ref={groundRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} visible={false}>
+          <planeGeometry args={[2000, 2000]} />
+          <meshBasicMaterial />
+        </mesh>
+      )}
 
-      {/* Ghost preview of object being placed */}
-      <GhostPreview
-        checkpointRoadEdge={currentRoadEdge}
-        curbEdgeHover={currentCurbEdge}
-        partialDeleteHover={currentPartialDeleteHover}
-        barrierBlocked={barrierBlocked}
-      />
+      {!terrainEditMode && (
+        <GhostPreview
+          checkpointRoadEdge={currentRoadEdge}
+          curbEdgeHover={currentCurbEdge}
+          partialDeleteHover={currentPartialDeleteHover}
+          barrierBlocked={barrierBlocked}
+        />
+      )}
     </>
   )
 }
