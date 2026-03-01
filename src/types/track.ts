@@ -11,6 +11,7 @@ export interface TrackMetadata {
 export interface SavedTrack extends TrackMetadata {
   objects: PlacedObject[]
   pitLaneData?: unknown
+  heightmap?: number[]
 }
 
 export interface TrackLibrary {

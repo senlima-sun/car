@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { TrackLibrary, SavedTrack } from '../types/track'
 import { useCustomizationStore, type PlacedObject } from './useCustomizationStore'
 import { useEditorStore } from './useEditorStore'
+import { useTerrainStore } from './useTerrainStore'
 import { DEFAULT_TRACK_NAME, DEFAULT_TRACK_OBJECTS } from '../constants/defaultTrack'
 import { PRESET_TRACKS } from '../constants/tracks'
 
@@ -142,6 +143,12 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
     useCustomizationStore.getState().setPlacedObjects(track.objects)
 
+    if (track.heightmap && track.heightmap.length > 0) {
+      useTerrainStore.getState().loadHeightmap(track.heightmap)
+    } else {
+      useTerrainStore.getState().resetHeightmap()
+    }
+
     set(state => ({
       trackLibrary: {
         ...state.trackLibrary,
@@ -217,6 +224,9 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     }
 
     const objects = useCustomizationStore.getState().placedObjects
+    const terrainState = useTerrainStore.getState()
+    const hasTerrainData = terrainState.heightmap.some(h => h !== 0)
+    const heightmap = hasTerrainData ? terrainState.getHeightsArray() : undefined
 
     set(state => ({
       trackLibrary: {
@@ -228,6 +238,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
                 objects: [...objects],
                 objectCount: objects.length,
                 updatedAt: Date.now(),
+                heightmap,
               }
             : t,
         ),
@@ -241,17 +252,23 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   exportCurrentTrack: () => {
     const { placedObjects } = useCustomizationStore.getState()
     const activeTrack = get().getActiveTrack()
+    const terrainState = useTerrainStore.getState()
+    const hasTerrainData = terrainState.heightmap.some(h => h !== 0)
 
-    const trackData = {
-      name: activeTrack?.name || 'Exported Track',
+    const trackName = activeTrack?.name || 'Exported Track'
+    const trackData: Record<string, unknown> = {
+      name: trackName,
       objects: placedObjects,
+    }
+    if (hasTerrainData) {
+      trackData.heightmap = terrainState.getHeightsArray()
     }
 
     const blob = new Blob([JSON.stringify(trackData, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${trackData.name.replace(/\s+/g, '_')}.json`
+    a.download = `${trackName.replace(/\s+/g, '_')}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -301,6 +318,11 @@ export const useTrackStore = create<TrackState>((set, get) => ({
           const activeTrack = library.tracks.find(t => t.id === library.activeTrackId)
           if (activeTrack) {
             useCustomizationStore.getState().setPlacedObjects(activeTrack.objects)
+            if (activeTrack.heightmap && activeTrack.heightmap.length > 0) {
+              useTerrainStore.getState().loadHeightmap(activeTrack.heightmap)
+            } else {
+              useTerrainStore.getState().resetHeightmap()
+            }
           }
         }
 

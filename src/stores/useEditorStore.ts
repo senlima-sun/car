@@ -86,6 +86,16 @@ interface EditorState {
   slopeAnchor: SlopeAnchor | null
   smoothSelectedRoadIds: string[]
   propagateToNeighbors: boolean
+  terrainEditMode: boolean
+  terrainBrushType: import('../utils/terrainBrush').TerrainBrushType
+  terrainBrushRadius: number
+  terrainBrushStrength: number
+  terrainFlattenTarget: number
+  setTerrainEditMode: (enabled: boolean) => void
+  setTerrainBrushType: (type: import('../utils/terrainBrush').TerrainBrushType) => void
+  setTerrainBrushRadius: (radius: number) => void
+  setTerrainBrushStrength: (strength: number) => void
+  setTerrainFlattenTarget: (target: number) => void
   overlapResult: OverlapResult | null
   polygonPoints: Array<[number, number, number]>
   checkpointDragState: CheckpointDragState | null
@@ -233,6 +243,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   slopeAnchor: null,
   smoothSelectedRoadIds: [],
   propagateToNeighbors: false,
+  terrainEditMode: false,
+  terrainBrushType: 'raise' as import('../utils/terrainBrush').TerrainBrushType,
+  terrainBrushRadius: 15,
+  terrainBrushStrength: 1.0,
+  terrainFlattenTarget: 0,
+  setTerrainEditMode: (enabled: boolean) =>
+    set({
+      terrainEditMode: enabled,
+      ...(enabled ? { elevationEditMode: false } : {}),
+    }),
+  setTerrainBrushType: (type: import('../utils/terrainBrush').TerrainBrushType) =>
+    set({ terrainBrushType: type }),
+  setTerrainBrushRadius: (radius: number) => set({ terrainBrushRadius: radius }),
+  setTerrainBrushStrength: (strength: number) => set({ terrainBrushStrength: strength }),
+  setTerrainFlattenTarget: (target: number) => set({ terrainFlattenTarget: target }),
   overlapResult: null,
   polygonPoints: [],
   checkpointDragState: null,
@@ -524,6 +549,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (enabled) {
       set({
         elevationEditMode: true,
+        terrainEditMode: false,
         deleteMode: false,
         partialDeleteMode: false,
         autoCurbMode: false,
@@ -695,6 +721,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         deleteMode: false,
         partialDeleteMode: false,
         elevationEditMode: false,
+        terrainEditMode: false,
         autoCurbMode: false,
         selectedRoadIds: [],
         elevationDragState: null,

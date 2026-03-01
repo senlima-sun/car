@@ -7,8 +7,10 @@ import DeleteTools from './DeleteTools'
 import TrackSettings from './TrackSettings'
 import GenerationTools from './GenerationTools'
 import ElevationTools from './ElevationTools'
+import TerrainTools from './TerrainTools'
 import TrackManagement from './TrackManagement'
 import ContextHint from './ContextHint'
+import { useTerrainStore } from '../../../stores/useTerrainStore'
 
 const styles: Record<string, React.CSSProperties> = {
   dock: {
@@ -94,23 +96,21 @@ export default function TrackEditorDock() {
   const markDirty = useTrackStore(s => s.markDirty)
   const isDirty = useTrackStore(s => s.isDirty)
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
+  const terrainVersion = useTerrainStore(s => s.physicsVersion)
 
-  // Show track settings only for linear objects
   const showTrackSettings = selectedObjectType && isLinearObject(selectedObjectType)
 
-  // Mark track as dirty when objects change
   useEffect(() => {
     markDirty()
-  }, [placedObjects, markDirty])
+  }, [placedObjects, terrainVersion, markDirty])
 
-  // Auto-save with debounce
   useEffect(() => {
     if (!isDirty) return
     const timer = setTimeout(() => {
       saveCurrentTrack()
     }, 2000)
     return () => clearTimeout(timer)
-  }, [placedObjects, isDirty, saveCurrentTrack])
+  }, [placedObjects, terrainVersion, isDirty, saveCurrentTrack])
 
   // Handle Delete/Backspace key to delete selected object
   useEffect(() => {
@@ -147,6 +147,11 @@ export default function TrackEditorDock() {
 
         {/* Elevation Tools */}
         <ElevationTools />
+
+        <div style={styles.divider} />
+
+        {/* Terrain Tools */}
+        <TerrainTools />
 
         <div style={styles.divider} />
 

@@ -20,6 +20,7 @@ import { calculateSnappedPosition } from '../../../utils/roadSnapping'
 import { checkOverlap } from '../../../utils/trackConnection'
 import { findBarriersOnRoad } from '../../../utils/trackValidation'
 import { TRACK_WIDTH } from '../../../constants/dimensions'
+import { useTerrainStore } from '../../../stores/useTerrainStore'
 import GhostPreview from './GhostPreview'
 
 export default function ObjectPlacer() {
@@ -522,9 +523,11 @@ export default function ObjectPlacer() {
     if (!selectedObjectType) return
 
     if (intersectPoint) {
-      let previewPos: [number, number, number] = [intersectPoint.x, 0, intersectPoint.z]
+      const terrainY = !isLinearObject(selectedObjectType)
+        ? useTerrainStore.getState().getHeightAt(intersectPoint.x, intersectPoint.z)
+        : 0
+      let previewPos: [number, number, number] = [intersectPoint.x, terrainY, intersectPoint.z]
 
-      // Apply snapping for linear objects
       if (isLinearObject(selectedObjectType)) {
         if (placementState === 'selecting') {
           // Selecting start point - only endpoint snapping
