@@ -48,7 +48,7 @@ export default function Scene() {
         <fog attach='fog' args={['#e8e8e8', 5000, 10000]} />
       )}
 
-      <TerrainGround simplified={isCustomizeMode} />
+      <TerrainGround simplified={isCustomizeMode && !terrainEditMode} />
       <PlacedObjectsRenderer />
       <StartGrid />
 
