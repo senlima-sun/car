@@ -6,7 +6,6 @@ import ObjectToolbar from './ObjectToolbar'
 import DeleteTools from './DeleteTools'
 import TrackSettings from './TrackSettings'
 import GenerationTools from './GenerationTools'
-import ElevationTools from './ElevationTools'
 import TerrainTools from './TerrainTools'
 import TrackManagement from './TrackManagement'
 import ContextHint from './ContextHint'
@@ -142,11 +141,6 @@ export default function TrackEditorDock() {
 
         {/* Delete Tools */}
         <DeleteTools />
-
-        <div style={styles.divider} />
-
-        {/* Elevation Tools */}
-        <ElevationTools />
 
         <div style={styles.divider} />
 

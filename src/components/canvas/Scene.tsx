@@ -13,11 +13,7 @@ import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
 import DynamicSky from './Weather/DynamicSky'
 import DynamicLighting from './Weather/DynamicLighting'
-import {
-  PlacedObjectsRenderer,
-  ElevationGrid,
-  ElevationHandles,
-} from './Customization'
+import { PlacedObjectsRenderer } from './Customization'
 import { TerrainGround, TerrainBrushInteraction, TerrainBrushIndicator } from './Terrain'
 import StartGrid from './TrackObjects/StartGrid'
 import SurfaceParticles from './TrackObjects/SurfaceParticles'
@@ -30,7 +26,6 @@ export default function Scene() {
   const status = useGameStore(state => state.status)
   const isCustomizeMode = status === 'customize'
   const isPreviewMode = status === 'preview'
-  const elevationEditMode = useEditorStore(s => s.elevationEditMode)
   const terrainEditMode = useEditorStore(s => s.terrainEditMode)
 
   if (isPreviewMode) return <PreviewScene />
@@ -52,16 +47,10 @@ export default function Scene() {
       <PlacedObjectsRenderer />
       <StartGrid />
 
-      {isCustomizeMode && (
+      {isCustomizeMode && terrainEditMode && (
         <>
-          <ElevationGrid visible={elevationEditMode} />
-          {elevationEditMode && <ElevationHandles />}
-          {terrainEditMode && (
-            <>
-              <TerrainBrushInteraction />
-              <TerrainBrushIndicator />
-            </>
-          )}
+          <TerrainBrushInteraction />
+          <TerrainBrushIndicator />
         </>
       )}
 
