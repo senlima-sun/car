@@ -69,6 +69,7 @@ export default function ObjectPlacer() {
   const copySelected = useEditorStore(s => s.copySelected)
   const pasteAtPosition = useEditorStore(s => s.pasteAtPosition)
   const previewPositionForPaste = useEditorStore(s => s.previewPosition)
+  const terrainEditMode = useEditorStore(s => s.terrainEditMode)
   const elevationEditMode = useEditorStore(s => s.elevationEditMode)
   const setElevationEditMode = useEditorStore(s => s.setElevationEditMode)
   const setStartSnapElevation = useEditorStore(s => s.setStartSnapElevation)
@@ -105,6 +106,7 @@ export default function ObjectPlacer() {
   // Handle click for placement (not used for curbs which use pointer down/up)
   const handleClick = useCallback(
     (event: MouseEvent) => {
+      if (terrainEditMode) return
       if (elevationEditMode) return
       if (!selectedObjectType) return
       if (event.button !== 0) return // Left click only
@@ -228,6 +230,7 @@ export default function ObjectPlacer() {
       }
     },
     [
+      terrainEditMode,
       elevationEditMode,
       selectedObjectType,
       placementState,
@@ -253,6 +256,7 @@ export default function ObjectPlacer() {
   // Handle pointer down for curb drag start
   const handlePointerDown = useCallback(
     (event: PointerEvent) => {
+      if (terrainEditMode) return
       if (selectedObjectType !== 'curb' && selectedObjectType !== 'pitbox') return
       if (event.button !== 0) return
       if (placementState !== 'selecting') return
@@ -292,12 +296,13 @@ export default function ObjectPlacer() {
         }
       }
     },
-    [selectedObjectType, placementState, camera, placedObjects, startCurbDrag],
+    [terrainEditMode, selectedObjectType, placementState, camera, placedObjects, startCurbDrag],
   )
 
   // Handle pointer up for curb drag end
   const handlePointerUp = useCallback(
     (event: PointerEvent) => {
+      if (terrainEditMode) return
       if (selectedObjectType !== 'curb' && selectedObjectType !== 'pitbox') return
       if (event.button !== 0) return
 
@@ -305,7 +310,7 @@ export default function ObjectPlacer() {
         confirmCurbPlacement()
       }
     },
-    [selectedObjectType, placementState, confirmCurbPlacement],
+    [terrainEditMode, selectedObjectType, placementState, confirmCurbPlacement],
   )
 
   // Handle click for partial delete mode
@@ -501,6 +506,8 @@ export default function ObjectPlacer() {
 
   // Update preview position each frame
   useFrame(() => {
+    if (terrainEditMode) return
+
     raycaster.current.setFromCamera(pointer.current, camera)
     const intersectPoint = new Vector3()
     raycaster.current.ray.intersectPlane(groundPlane.current, intersectPoint)

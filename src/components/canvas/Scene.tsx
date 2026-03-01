@@ -13,7 +13,7 @@ import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
 import DynamicSky from './Weather/DynamicSky'
 import DynamicLighting from './Weather/DynamicLighting'
-import { PlacedObjectsRenderer } from './Customization'
+import { PlacedObjectsRenderer, ObjectPlacer, CheckpointHandles, WallHandles } from './Customization'
 import { TerrainGround, TerrainBrushInteraction, TerrainBrushIndicator } from './Terrain'
 import StartGrid from './TrackObjects/StartGrid'
 import SurfaceParticles from './TrackObjects/SurfaceParticles'
@@ -46,6 +46,14 @@ export default function Scene() {
       <TerrainGround simplified={isCustomizeMode && !terrainEditMode} />
       <PlacedObjectsRenderer />
       <StartGrid />
+
+      {isCustomizeMode && (
+        <>
+          <ObjectPlacer />
+          <CheckpointHandles />
+          <WallHandles />
+        </>
+      )}
 
       {isCustomizeMode && terrainEditMode && (
         <>
