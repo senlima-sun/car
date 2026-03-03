@@ -528,6 +528,11 @@ pub struct StepAndSyncOutput {
     pub wind_state: WindState,
     pub aero_state: ActiveAeroState,
     pub brake_state: BrakeState,
+    pub brake_disc_temps_celsius: [f32; 4],
+    pub brake_fade: f32,
+    pub input_throttle: f32,
+    pub input_brake: f32,
+    pub input_steer: f32,
 }
 
 // ============================================================================

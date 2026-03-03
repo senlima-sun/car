@@ -861,6 +861,11 @@ impl PhysicsEngine {
             wind_state,
             aero_state,
             brake_state,
+            brake_disc_temps_celsius: self.brakes.get_brake_temperatures(),
+            brake_fade: self.brakes.get_fade_multiplier(),
+            input_throttle: input.throttle,
+            input_brake: input.brake_analog,
+            input_steer: input.steer,
         }
     }
 

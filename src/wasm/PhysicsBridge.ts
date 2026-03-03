@@ -306,6 +306,11 @@ export interface StepAndSyncOutput {
   wind_state: WindState
   aero_state: ActiveAeroState
   brake_state: BrakeState
+  brake_disc_temps_celsius: [number, number, number, number]
+  brake_fade: number
+  input_throttle: number
+  input_brake: number
+  input_steer: number
 }
 
 // ============================================================================

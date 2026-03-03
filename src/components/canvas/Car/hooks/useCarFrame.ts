@@ -12,6 +12,7 @@ import { useCarPhysicsStep } from './useCarPhysicsStep'
 import { useCarStateSync } from './useCarStateSync'
 import { useCarTelemetryLogging } from './useCarTelemetryLogging'
 import { useCarRubberAndTrails } from './useCarRubberAndTrails'
+import { useTelemetryRecorder } from '../../../../telemetry/useTelemetryRecorder'
 import { type CarState } from './types'
 
 type PhysicsContext = ReturnType<typeof import('../../../../wasm').usePhysics>
@@ -45,6 +46,7 @@ export function useCarFrame({
   })
   const stateSync = useCarStateSync()
   const telemetry = useCarTelemetryLogging()
+  const telemetryRecorder = useTelemetryRecorder()
   const rubberTrails = useCarRubberAndTrails({ physics })
 
   const carStateRef = useRef<CarState>({
@@ -121,6 +123,8 @@ export function useCarFrame({
     const pos = chassis.translation()
     const rot = chassis.rotation()
 
+    telemetryRecorder.record(output, syncResult, pos, accumulator.fixedTimeStep)
+
     telemetry.update(output, pos, rot, keys.steer, dt)
 
     rubberTrails.update(
@@ -152,5 +156,6 @@ export function useCarFrame({
     carStateRef,
     wheelRotations: telemetry.wheelRotations,
     suspensionOutputRef: physicsStep.suspensionOutputRef,
+    telemetryBufferRef: telemetryRecorder.bufferRef,
   }
 }

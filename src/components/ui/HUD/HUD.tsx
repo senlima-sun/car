@@ -17,7 +17,11 @@ import { TrackSelector } from '../TrackSelector'
 import { MobileControls, MobileSpeedGear } from '../MobileControls'
 import TrackMinimap from '../CustomizationPanel/TrackMinimap'
 import ElevationProfile from '../ElevationProfile/ElevationProfile'
+import { AnimationPreviewPanel } from '../AnimationPreview'
+import { SVGEditor } from '../SVGEditor'
 import { useMobileDetection } from '@/utils/isMobile'
+import { TelemetryOverlay } from '../TelemetryOverlay'
+import { TelemetryAnalysis } from '../TelemetryAnalysis'
 
 export default function HUD() {
   const isMobile = useMobileDetection()
@@ -26,6 +30,7 @@ export default function HUD() {
   const isTestingMode = useGameStore(s => s.isTestingMode)
   const isInPitBox = usePitStore(s => s.isInPitBox)
   const isCustomizeMode = status === 'customize'
+  const isPreviewMode = status === 'preview'
 
   const [modeNotification, setModeNotification] = useState<string | null>(null)
   const prevTestingMode = useRef(isTestingMode)
@@ -41,7 +46,7 @@ export default function HUD() {
 
   return (
     <div className='absolute inset-0 pointer-events-none font-sans'>
-      <TrackMinimap />
+      {!isCustomizeMode && <TrackMinimap />}
 
       {modeNotification && (
         <div
@@ -56,13 +61,20 @@ export default function HUD() {
       <WeatherControlModal />
       <SettingsDialog />
 
-      {isCustomizeMode ? (
+      {isPreviewMode ? (
+        <AnimationPreviewPanel />
+      ) : isCustomizeMode ? (
         <>
-          <div className='absolute top-5 left-1/2 -translate-x-1/2 pointer-events-auto'>
+          <SVGEditor />
+          <div className='absolute top-5 left-1/2 -translate-x-1/2 pointer-events-auto z-20'>
             <TrackSelector />
           </div>
-          <TrackEditorDock />
-          <ElevationProfile />
+          <div className='z-20'>
+            <TrackEditorDock />
+          </div>
+          <div className='z-20'>
+            <ElevationProfile />
+          </div>
         </>
       ) : (
         <>
@@ -96,6 +108,8 @@ export default function HUD() {
           <WrongWayIndicator />
           <PitLaneSpeedIndicator />
           {isTestingMode && <PhysicsDebugOverlay />}
+          <TelemetryOverlay />
+          <TelemetryAnalysis />
         </>
       )}
     </div>
