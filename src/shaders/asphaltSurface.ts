@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { SIMPLEX_NOISE_GLSL } from './noiseLib'
+import { SIMPLEX_NOISE_GLSL, VORONOI_NOISE_GLSL } from './noiseLib'
 
 export const ASPHALT_VERTEX_NOISE_PREAMBLE = /* glsl */ `
 ${SIMPLEX_NOISE_GLSL}
@@ -36,6 +36,7 @@ uniform float uPitDarken;
 uniform sampler2D uSkidMarkMap;
 uniform vec4 uSkidMarkBounds;
 ${SIMPLEX_NOISE_GLSL}
+${VORONOI_NOISE_GLSL}
 
 float _asphaltValNoise(vec2 p) {
   vec2 i = floor(p);
@@ -46,6 +47,41 @@ float _asphaltValNoise(vec2 p) {
   float c = fract(sin(dot(i + vec2(0.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);
   float d = fract(sin(dot(i + vec2(1.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+struct AggregateResult {
+  float grainMix;
+  float crevice;
+  float cellId;
+  float grainRoughness;
+};
+
+AggregateResult _aggCache;
+bool _aggCacheValid = false;
+
+AggregateResult _asphaltAggregate(vec2 worldXZ, float lodFade) {
+  AggregateResult r;
+  if (lodFade >= 1.0) {
+    r.grainMix = 0.0;
+    r.crevice = 0.0;
+    r.cellId = 0.5;
+    r.grainRoughness = 0.85;
+    return r;
+  }
+
+  float scale = 100.0;
+  vec2 sc = worldXZ * scale;
+  vec3 vor = _voronoi3x3(sc);
+  float F1 = vor.x;
+  float F2 = vor.y;
+  r.cellId = vor.z;
+
+  r.crevice = 1.0 - smoothstep(0.02, 0.12, F2 - F1);
+  r.grainMix = 1.0 - lodFade;
+
+  r.grainRoughness = 0.75 + r.cellId * 0.20;
+
+  return r;
 }
 `
 
@@ -72,6 +108,14 @@ export const ASPHALT_COLOR_INJECT = /* glsl */ `
 
   float ao = _asphaltValNoise(wXZ * 4.0 + vec2(200.0, 150.0));
   col *= mix(0.85, 1.0, ao);
+
+  float _aggLodFade = smoothstep(8.0, 12.0, distance(vAsphaltWorldPos, cameraPosition));
+  _aggCache = _asphaltAggregate(wXZ, _aggLodFade);
+  _aggCacheValid = true;
+
+  float grainTint = (_aggCache.cellId - 0.5) * 0.05;
+  col += vec3(grainTint) * _aggCache.grainMix;
+  col = mix(col, col * 0.55, _aggCache.crevice * _aggCache.grainMix);
 
   #ifdef HAS_ROAD_UV
     float roadU = vRoadUV.x;
@@ -110,7 +154,14 @@ export const ASPHALT_ROUGHNESS_INJECT = /* glsl */ `
   float frost = clamp(smoothstep(5.0, -5.0, uTemperature), 0.0, 1.0);
   vec2 wXZ = vAsphaltWorldPos.xz;
   float rn = _asphaltValNoise(wXZ * 6.0 + vec2(500.0, 600.0));
-  roughnessFactor = 0.78 + rn * 0.14;
+  float baseRough = 0.78 + rn * 0.14;
+  if (_aggCacheValid) {
+    float grainRough = _aggCache.grainRoughness;
+    float creviceRough = mix(grainRough, 0.98, _aggCache.crevice);
+    roughnessFactor = mix(baseRough, creviceRough, _aggCache.grainMix);
+  } else {
+    roughnessFactor = baseRough;
+  }
   roughnessFactor *= mix(1.0, 0.3, wet);
   roughnessFactor *= mix(1.0, 1.15, frost);
 }
@@ -122,6 +173,11 @@ export const ASPHALT_METALNESS_INJECT = /* glsl */ `
   float frost = clamp(smoothstep(5.0, -5.0, uTemperature), 0.0, 1.0);
   metalnessFactor = mix(metalnessFactor, 0.6, wet * wet);
   metalnessFactor = mix(metalnessFactor, 0.4, frost * 0.5);
+}
+`
+
+export const ASPHALT_NORMAL_INJECT = /* glsl */ `
+{
 }
 `
 

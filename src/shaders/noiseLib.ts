@@ -49,3 +49,36 @@ float _valNoise(vec2 p) {
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 `
+
+export const VORONOI_NOISE_GLSL = /* glsl */ `
+vec2 _voronoiHash(vec2 p) {
+  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+  return fract(sin(p) * 43758.5453);
+}
+
+vec3 _voronoi3x3(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  float F1 = 8.0;
+  float F2 = 8.0;
+  float cellId = 0.0;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 neighbor = vec2(float(x), float(y));
+      vec2 offset = _voronoiHash(i + neighbor);
+      vec2 diff = neighbor + offset - f;
+      float d = dot(diff, diff);
+      if (d < F1) {
+        F2 = F1;
+        F1 = d;
+        cellId = fract(dot(i + neighbor, vec2(7.13, 157.97)) * 0.00317);
+      } else if (d < F2) {
+        F2 = d;
+      }
+    }
+  }
+  F1 = sqrt(F1);
+  F2 = sqrt(F2);
+  return vec3(F1, F2, cellId);
+}
+`

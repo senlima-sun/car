@@ -9,6 +9,7 @@ import {
   ASPHALT_COLOR_INJECT,
   ASPHALT_ROUGHNESS_INJECT,
   ASPHALT_METALNESS_INJECT,
+  ASPHALT_NORMAL_INJECT,
   createAsphaltUniforms,
 } from '../../../shaders/asphaltSurface'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
@@ -86,6 +87,11 @@ export default function RoadSurfaceMaterial({
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <roughnessmap_fragment>',
       `#include <roughnessmap_fragment>\n${ASPHALT_ROUGHNESS_INJECT}`,
+    )
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      `#include <normal_fragment_maps>\n${ASPHALT_NORMAL_INJECT}`,
     )
 
     shader.fragmentShader = shader.fragmentShader.replace(

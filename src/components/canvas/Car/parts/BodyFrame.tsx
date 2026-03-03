@@ -36,7 +36,13 @@ export interface FrontWingFlapRefs {
   top: THREE.Object3D | null
 }
 
+export interface RearWingFlapRefs {
+  middle: THREE.Object3D | null
+  last: THREE.Object3D | null
+}
+
 const FW_FLAP_NAMES = { middle: 'Car_Livery_FW-M', top: 'Car_Livery_FW-T' } as const
+const BW_FLAP_NAMES = { middle: 'Car_Livery_BW-M', last: 'Car_Livery_BW-L' } as const
 
 interface BodyFrameProps {
   isRaining: boolean
@@ -45,9 +51,16 @@ interface BodyFrameProps {
   suspensionRef?: MutableRefObject<SuspensionOutput | null>
   onWheelRefs?: (refs: GltfWheelRefs) => void
   onFrontWingRefs?: (refs: FrontWingFlapRefs) => void
+  onRearWingRefs?: (refs: RearWingFlapRefs) => void
 }
 
-export function BodyFrame({ isRaining, suspensionRef, onWheelRefs, onFrontWingRefs }: BodyFrameProps) {
+export function BodyFrame({
+  isRaining,
+  suspensionRef,
+  onWheelRefs,
+  onFrontWingRefs,
+  onRearWingRefs,
+}: BodyFrameProps) {
   const { scene } = useGLTF(MODEL_PATH, true)
   const bodyRef = useRef<THREE.Group>(null)
   const currentCompound = useTireStore(s => s.currentCompound)
@@ -98,7 +111,13 @@ export function BodyFrame({ isRaining, suspensionRef, onWheelRefs, onFrontWingRe
         top: f1Car.getObjectByName(FW_FLAP_NAMES.top) ?? null,
       })
     }
-  }, [bodyScene, onWheelRefs, onFrontWingRefs])
+    if (onRearWingRefs) {
+      onRearWingRefs({
+        middle: f1Car.getObjectByName(BW_FLAP_NAMES.middle) ?? null,
+        last: f1Car.getObjectByName(BW_FLAP_NAMES.last) ?? null,
+      })
+    }
+  }, [bodyScene, onWheelRefs, onFrontWingRefs, onRearWingRefs])
 
   useEffect(() => {
     const f1Car = bodyScene.getObjectByName('F1_Car')
