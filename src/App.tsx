@@ -5,11 +5,13 @@ import { KeyboardControls } from '@react-three/drei'
 
 import * as THREE from 'three'
 import Scene from './components/canvas/Scene'
+import FPSMonitor from './components/canvas/FPSMonitor'
 import HUD from './components/ui/HUD/HUD'
 import LoadingFallback from './components/ui/LoadingFallback'
 import { PhysicsProvider } from './wasm'
 import { keyboardMap } from './constants/controls'
 import { usePhysicsDebugStore } from './stores/usePhysicsDebugStore'
+import { useGameStore } from './stores/useGameStore'
 import { FIXED_TIME_STEP } from './constants/physics'
 import { useGlobalKeys } from './hooks/useGlobalKeys'
 
@@ -38,6 +40,7 @@ function usePhysicsPause() {
 
 export default function App() {
   const physicsDebug = usePhysicsDebugStore(s => s.enabled)
+  const showFPS = useGameStore(s => s.showFPS)
   const physicsPaused = usePhysicsPause()
   useGlobalKeys()
 
@@ -52,6 +55,7 @@ export default function App() {
             dpr={[1, 1.5]}
             gl={{ logarithmicDepthBuffer: true, toneMapping: THREE.ACESFilmicToneMapping }}
           >
+            {showFPS && <FPSMonitor />}
             <Suspense fallback={null}>
               <Physics
                 gravity={[0, -9.81, 0]}

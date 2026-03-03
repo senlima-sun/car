@@ -182,6 +182,8 @@ function SettingsTab() {
   const toggleTestingMode = useGameStore(s => s.toggleTestingMode)
   const lookSensitivity = useGameStore(s => s.lookSensitivity)
   const setLookSensitivity = useGameStore(s => s.setLookSensitivity)
+  const showFPS = useGameStore(s => s.showFPS)
+  const toggleShowFPS = useGameStore(s => s.toggleShowFPS)
 
   return (
     <div>
@@ -206,6 +208,27 @@ function SettingsTab() {
             {lookSensitivity.toFixed(4)}
           </span>
         </div>
+      </div>
+
+      <div className='flex justify-between items-center py-2 mb-4 border-b border-white/5 pb-4'>
+        <div>
+          <div className='text-white text-[13px] font-medium'>FPS Counter</div>
+          <div className='text-white/40 text-[11px] mt-0.5'>
+            Display frames per second in the top-left corner
+          </div>
+        </div>
+        <button
+          onClick={toggleShowFPS}
+          className={`w-11 h-6 rounded-full relative cursor-pointer transition-colors ${
+            showFPS ? 'bg-white/40' : 'bg-white/20'
+          }`}
+        >
+          <div
+            className={`w-[18px] h-[18px] bg-white rounded-full absolute top-[3px] transition-[left] ${
+              showFPS ? 'left-[23px]' : 'left-[3px]'
+            }`}
+          />
+        </button>
       </div>
 
       <div className='flex justify-between items-center py-2'>
@@ -255,7 +278,6 @@ export default function SettingsDialog() {
       onOpenChange={open => {
         if (!open) closeSettings()
       }}
-      dismissible
     >
       <Dialog.Portal>
         <Dialog.Backdrop className='fixed inset-0 bg-black/60 z-[1000] backdrop-blur-sm' />

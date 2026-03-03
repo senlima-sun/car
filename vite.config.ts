@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'path'
@@ -29,24 +29,27 @@ function saveLiveryPlugin(): Plugin {
   }
 }
 
-export default defineConfig({
-  plugins: [react(), tailwindcss(), saveLiveryPlugin()],
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src'),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  return {
+    plugins: [react(), tailwindcss(), saveLiveryPlugin()],
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src'),
+      },
     },
-  },
-  server: {
-    port: 3000,
-    fs: {
-      allow: ['..'],
+    server: {
+      port: parseInt(env.PORT || '3000', 10),
+      fs: {
+        allow: ['..'],
+      },
     },
-  },
-  preview: {
-    port: 4173,
-  },
-  assetsInclude: ['**/*.wasm'],
-  optimizeDeps: {
-    exclude: ['src/wasm/pkg'],
-  },
+    preview: {
+      port: 4173,
+    },
+    assetsInclude: ['**/*.wasm'],
+    optimizeDeps: {
+      exclude: ['src/wasm/pkg'],
+    },
+  }
 })

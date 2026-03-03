@@ -22,6 +22,7 @@ import { SVGEditor } from '../SVGEditor'
 import { useMobileDetection } from '@/utils/isMobile'
 import { TelemetryOverlay } from '../TelemetryOverlay'
 import { TelemetryAnalysis } from '../TelemetryAnalysis'
+import FPSCounter from './FPSCounter'
 
 export default function HUD() {
   const isMobile = useMobileDetection()
@@ -46,7 +47,8 @@ export default function HUD() {
 
   return (
     <div className='absolute inset-0 pointer-events-none font-sans'>
-      {!isCustomizeMode && <TrackMinimap />}
+      <FPSCounter />
+      {!isCustomizeMode && !isPreviewMode && <TrackMinimap />}
 
       {modeNotification && (
         <div
