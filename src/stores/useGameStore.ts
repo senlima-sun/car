@@ -17,6 +17,10 @@ interface GameState {
   lookSensitivity: number
   showFPS: boolean
 
+  enterMenu: () => void
+  startRaceSession: () => void
+  startTestSession: () => void
+  openShowroom: () => void
   startGame: () => void
   pauseGame: () => void
   resumeGame: () => void
@@ -32,7 +36,9 @@ interface GameState {
   exitPreviewMode: () => void
   togglePreviewMode: () => void
   toggleTestingMode: () => void
+  setTestingMode: (enabled: boolean) => void
   toggleSettings: () => void
+  openSettings: () => void
   closeSettings: () => void
   setLookSensitivity: (sensitivity: number) => void
   toggleShowFPS: () => void
@@ -41,7 +47,7 @@ interface GameState {
 export const useGameStore = create<GameState>()(
   persist(
     set => ({
-      status: 'racing',
+      status: 'menu',
       previewReturnStatus: 'racing',
       cameraMode: 'third-person',
       previousCameraMode: 'third-person',
@@ -50,6 +56,18 @@ export const useGameStore = create<GameState>()(
       lookSensitivity: 0.002,
       showFPS: true,
 
+      enterMenu: () => set({ status: 'menu', isTestingMode: false, isSettingsOpen: false }),
+      startRaceSession: () =>
+        set({ status: 'countdown', isTestingMode: false, isSettingsOpen: false }),
+      startTestSession: () =>
+        set({ status: 'customize', isTestingMode: true, isSettingsOpen: false }),
+      openShowroom: () =>
+        set({
+          status: 'preview',
+          previewReturnStatus: 'menu',
+          isTestingMode: false,
+          isSettingsOpen: false,
+        }),
       startGame: () => set({ status: 'countdown' }),
       pauseGame: () => set({ status: 'paused' }),
       resumeGame: () => set({ status: 'racing' }),
@@ -102,7 +120,9 @@ export const useGameStore = create<GameState>()(
           }
         }),
       toggleTestingMode: () => set(state => ({ isTestingMode: !state.isTestingMode })),
+      setTestingMode: enabled => set({ isTestingMode: enabled }),
       toggleSettings: () => set(state => ({ isSettingsOpen: !state.isSettingsOpen })),
+      openSettings: () => set({ isSettingsOpen: true }),
       closeSettings: () => set({ isSettingsOpen: false }),
       setLookSensitivity: sensitivity => set({ lookSensitivity: sensitivity }),
       toggleShowFPS: () => set(state => ({ showFPS: !state.showFPS })),
@@ -112,7 +132,6 @@ export const useGameStore = create<GameState>()(
       partialize: state => ({
         cameraMode: state.cameraMode,
         previousCameraMode: state.previousCameraMode,
-        isTestingMode: state.isTestingMode,
         lookSensitivity: state.lookSensitivity,
         showFPS: state.showFPS,
       }),

@@ -9,34 +9,28 @@ export function useGlobalKeys() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-
-      if (e.key === 'F1') {
-        e.preventDefault()
-        useGameStore.getState().toggleCustomizeMode()
-        return
-      }
+      const game = useGameStore.getState()
+      const canToggleTelemetry =
+        game.status !== 'menu' && game.status !== 'preview' && game.status !== 'customize'
 
       if (e.key === 'F2') {
+        if (game.status === 'menu') return
         e.preventDefault()
-        useGameStore.getState().togglePreviewMode()
+        game.togglePreviewMode()
         return
       }
 
       if (e.key === 'F3') {
+        if (!canToggleTelemetry) return
         e.preventDefault()
         useTelemetryStore.getState().toggleOverlay()
         return
       }
 
       if (e.key === 'F4') {
+        if (!canToggleTelemetry) return
         e.preventDefault()
         useTelemetryStore.getState().toggleAnalysis()
-        return
-      }
-
-      if (e.shiftKey && e.code === 'Backslash') {
-        e.preventDefault()
-        useGameStore.getState().toggleTestingMode()
         return
       }
 
@@ -59,9 +53,12 @@ export function useGlobalKeys() {
           return
         }
 
-        const game = useGameStore.getState()
         if (game.isSettingsOpen) {
           game.closeSettings()
+          return
+        }
+
+        if (game.status === 'menu') {
           return
         }
 

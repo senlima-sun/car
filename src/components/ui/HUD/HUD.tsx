@@ -19,6 +19,7 @@ import TrackMinimap from '../CustomizationPanel/TrackMinimap'
 import ElevationProfile from '../ElevationProfile/ElevationProfile'
 import { AnimationPreviewPanel } from '../AnimationPreview'
 import { SVGEditor } from '../SVGEditor'
+import { MainMenu } from '../MainMenu'
 import { useMobileDetection } from '@/utils/isMobile'
 import { TelemetryOverlay } from '../TelemetryOverlay'
 import { TelemetryAnalysis } from '../TelemetryAnalysis'
@@ -30,6 +31,7 @@ export default function HUD() {
   const cameraMode = useGameStore(s => s.cameraMode)
   const isTestingMode = useGameStore(s => s.isTestingMode)
   const isInPitBox = usePitStore(s => s.isInPitBox)
+  const isMenuMode = status === 'menu'
   const isCustomizeMode = status === 'customize'
   const isPreviewMode = status === 'preview'
 
@@ -37,18 +39,24 @@ export default function HUD() {
   const prevTestingMode = useRef(isTestingMode)
 
   useEffect(() => {
+    if (isMenuMode) {
+      setModeNotification(null)
+      prevTestingMode.current = isTestingMode
+      return
+    }
+
     if (prevTestingMode.current !== isTestingMode) {
       setModeNotification(isTestingMode ? 'Testing Mode Enabled' : 'Racing Mode Enabled')
       const timer = setTimeout(() => setModeNotification(null), 2000)
       prevTestingMode.current = isTestingMode
       return () => clearTimeout(timer)
     }
-  }, [isTestingMode])
+  }, [isMenuMode, isTestingMode])
 
   return (
     <div className='absolute inset-0 pointer-events-none font-sans'>
       <FPSCounter />
-      {!isCustomizeMode && !isPreviewMode && <TrackMinimap />}
+      {!isMenuMode && !isCustomizeMode && !isPreviewMode && <TrackMinimap />}
 
       {modeNotification && (
         <div
@@ -63,7 +71,9 @@ export default function HUD() {
       <WeatherControlModal />
       <SettingsDialog />
 
-      {isPreviewMode ? (
+      {isMenuMode ? (
+        <MainMenu />
+      ) : isPreviewMode ? (
         <AnimationPreviewPanel />
       ) : isCustomizeMode ? (
         <>

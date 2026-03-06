@@ -90,21 +90,13 @@ export const CONTROLS: ControlDefinition[] = [
   // Racing
   { id: 'lapTimer', displayName: 'Lap Timer', keys: ['L'], category: 'racingMode' },
   { id: 'pitStop', displayName: 'Pit Stop', keys: ['P'], category: 'racingMode' },
-  { id: 'trackEditor', displayName: 'Track Editor', keys: ['F1'], category: 'racingMode' },
   { id: 'settings', displayName: 'Settings / Help', keys: ['Esc'], category: 'racingMode' },
 
   // Testing (gated by testing mode)
   {
-    id: 'cycleWeather',
-    displayName: 'Cycle Weather',
-    keys: ['Q'],
-    category: 'testingMode',
-    testingModeOnly: true,
-  },
-  {
     id: 'envSettings',
     displayName: 'Environment',
-    keys: ['Shift', 'E'],
+    keys: ['M'],
     category: 'testingMode',
     testingModeOnly: true,
   },

@@ -41,6 +41,7 @@ function usePhysicsPause() {
 export default function App() {
   const physicsDebug = usePhysicsDebugStore(s => s.enabled)
   const showFPS = useGameStore(s => s.showFPS)
+  const status = useGameStore(s => s.status)
   const physicsPaused = usePhysicsPause()
   useGlobalKeys()
 
@@ -61,7 +62,7 @@ export default function App() {
                 gravity={[0, -9.81, 0]}
                 timeStep={FIXED_TIME_STEP}
                 debug={physicsDebug}
-                paused={physicsPaused}
+                paused={physicsPaused || status === 'menu'}
               >
                 <Scene />
               </Physics>

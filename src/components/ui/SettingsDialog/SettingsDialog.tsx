@@ -35,7 +35,7 @@ const EDITOR_SHORTCUTS = [
   },
   {
     section: 'Mode',
-    items: [{ key: 'F1', description: 'Toggle editor / race mode' }],
+    items: [{ key: 'Main Screen', description: 'Choose race, test, showroom, or settings' }],
   },
 ]
 
@@ -178,12 +178,11 @@ function DebugTab() {
 }
 
 function SettingsTab() {
-  const isTestingMode = useGameStore(s => s.isTestingMode)
-  const toggleTestingMode = useGameStore(s => s.toggleTestingMode)
   const lookSensitivity = useGameStore(s => s.lookSensitivity)
   const setLookSensitivity = useGameStore(s => s.setLookSensitivity)
   const showFPS = useGameStore(s => s.showFPS)
   const toggleShowFPS = useGameStore(s => s.toggleShowFPS)
+  const enterMenu = useGameStore(s => s.enterMenu)
 
   return (
     <div>
@@ -233,22 +232,16 @@ function SettingsTab() {
 
       <div className='flex justify-between items-center py-2'>
         <div>
-          <div className='text-white text-[13px] font-medium'>Testing Mode</div>
+          <div className='text-white text-[13px] font-medium'>Main Screen</div>
           <div className='text-white/40 text-[11px] mt-0.5'>
-            Unlocks debug tools, environment controls, and testing shortcuts
+            Return to the mode selector to start a race, test session, or showroom view
           </div>
         </div>
         <button
-          onClick={toggleTestingMode}
-          className={`w-11 h-6 rounded-full relative cursor-pointer transition-colors ${
-            isTestingMode ? 'bg-red-500' : 'bg-white/20'
-          }`}
+          onClick={enterMenu}
+          className='rounded-full border border-white/15 bg-white/6 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-white/12'
         >
-          <div
-            className={`w-[18px] h-[18px] bg-white rounded-full absolute top-[3px] transition-[left] ${
-              isTestingMode ? 'left-[23px]' : 'left-[3px]'
-            }`}
-          />
+          Open
         </button>
       </div>
     </div>

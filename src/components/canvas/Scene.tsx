@@ -13,7 +13,12 @@ import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
 import DynamicSky from './Weather/DynamicSky'
 import DynamicLighting from './Weather/DynamicLighting'
-import { PlacedObjectsRenderer, ObjectPlacer, CheckpointHandles, WallHandles } from './Customization'
+import {
+  PlacedObjectsRenderer,
+  ObjectPlacer,
+  CheckpointHandles,
+  WallHandles,
+} from './Customization'
 import { TerrainGround, TerrainBrushInteraction, TerrainBrushIndicator } from './Terrain'
 import StartGrid from './TrackObjects/StartGrid'
 import SurfaceParticles from './TrackObjects/SurfaceParticles'
@@ -24,11 +29,12 @@ import PreviewScene from './Preview/PreviewScene'
 export default function Scene() {
   const carRef = useRef<Group>(null)
   const status = useGameStore(state => state.status)
+  const isMenuMode = status === 'menu'
   const isCustomizeMode = status === 'customize'
   const isPreviewMode = status === 'preview'
   const terrainEditMode = useEditorStore(s => s.terrainEditMode)
 
-  if (isPreviewMode) return <PreviewScene />
+  if (isMenuMode || isPreviewMode) return <PreviewScene />
 
   return (
     <>
@@ -39,9 +45,7 @@ export default function Scene() {
       )}
       <DynamicLighting target={carRef} />
 
-      {isCustomizeMode && (
-        <fog attach='fog' args={['#e8e8e8', 5000, 10000]} />
-      )}
+      {isCustomizeMode && <fog attach='fog' args={['#e8e8e8', 5000, 10000]} />}
 
       <TerrainGround simplified={isCustomizeMode && !terrainEditMode} />
       <PlacedObjectsRenderer />
