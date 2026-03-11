@@ -2,20 +2,21 @@ use crate::active_aero::ActiveAeroPhysicsState;
 use crate::brakes::BrakePhysicsState;
 use crate::car_physics::weight_transfer::calculate_weight_transfer;
 use crate::car_physics::CarPhysicsState;
-use crate::constants::car::BASE_BRAKE_FORCE;
+use crate::constants::car::{BASE_BRAKE_FORCE, CAR_MASS, TRACK_WIDTH, WHEELBASE};
 use crate::curb::CurbState;
 use crate::engine_temp::EngineTemperatureState;
 use crate::ers::ErsPhysicsState;
 use crate::pit_lane::PitLaneState;
 use crate::surface::SurfaceState;
+use crate::terrain::{check_bottoming_out_from_height, TerrainGrid};
 use crate::tires::{TempInput, TireMaterialSystem, TireState, TireTemperatureState, WearInput};
 use crate::track_temperature::TrackTemperatureGrid;
 use crate::types::{
     AeroMode, AmbientConditions, AmbientEnvironment, AquaplaningState, BrakeState, CarInput,
-    CarPhysicsOutput, CurbSide, CurbType, EngineBrakingLevel, ErsMode, GripBreakdown, PerWheelWear,
-    SemiAutoConfig, SemiAutoPreset, SurfaceFrictionBreakdown, SurfaceModifiers, SurfaceType,
-    TemperatureOutput, TireCompound, TireThermalShock, TrackBounds, WeatherModifiers, WindModifiers,
-    WindState,
+    CarPhysicsOutput, CurbSide, CurbType, EngineBrakingLevel, ErsMode, GripBreakdown,
+    PerWheelTerrain, PerWheelWear, SemiAutoConfig, SemiAutoPreset, SurfaceFrictionBreakdown,
+    SurfaceModifiers, SurfaceType, TemperatureOutput, TerrainMaterial, TerrainQueryResult,
+    TireCompound, TireThermalShock, TrackBounds, WeatherModifiers, WindModifiers, WindState,
 };
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
@@ -37,6 +38,11 @@ pub struct PhysicsEngine {
     pit_lane: PitLaneState,
     car: CarPhysicsState,
     tire_material: TireMaterialSystem,
+    terrain: Option<TerrainGrid>,
+    prev_wheel_terrain: [TerrainQueryResult; 4],
+    terrain_step_counter: u32,
+    cached_terrain_results: Option<[TerrainQueryResult; 4]>,
+    cached_wheel_positions: Option<[[f32; 2]; 4]>,
 }
 
 impl Default for PhysicsEngine {
@@ -62,7 +68,27 @@ impl PhysicsEngine {
             pit_lane: PitLaneState::new(),
             car: CarPhysicsState::new(),
             tire_material: TireMaterialSystem::new(TireCompound::Medium),
+            terrain: None,
+            prev_wheel_terrain: Default::default(),
+            terrain_step_counter: 0,
+            cached_terrain_results: None,
+            cached_wheel_positions: None,
         }
+    }
+
+    fn wheel_cache_stale(&self, current_wheel_positions: &[[f32; 2]; 4], max_delta_m: f32) -> bool {
+        let Some(cached_positions) = self.cached_wheel_positions else {
+            return true;
+        };
+        let max_delta_sq = max_delta_m * max_delta_m;
+        cached_positions
+            .iter()
+            .zip(current_wheel_positions.iter())
+            .any(|(cached, current)| {
+                let dx = current[0] - cached[0];
+                let dz = current[1] - cached[1];
+                dx * dx + dz * dz > max_delta_sq
+            })
     }
 
     // ========================================================================
@@ -78,7 +104,8 @@ impl PhysicsEngine {
     }
 
     pub fn set_custom_weather(&mut self, celsius: f32, humidity: f32, rain_intensity: f32) {
-        self.weather.set_custom_ambient(celsius, humidity, rain_intensity);
+        self.weather
+            .set_custom_ambient(celsius, humidity, rain_intensity);
     }
 
     pub fn set_environment(&mut self, env: AmbientEnvironment) {
@@ -365,7 +392,8 @@ impl PhysicsEngine {
 
     /// Update track temperature from normal driving (heat generation, road drying)
     pub fn update_car_driving(&mut self, x: f32, z: f32, speed_ms: f32, delta: f32) {
-        self.track_temperature.update_car_driving(x, z, speed_ms, delta);
+        self.track_temperature
+            .update_car_driving(x, z, speed_ms, delta);
     }
 
     /// Get water depth at position
@@ -389,8 +417,16 @@ impl PhysicsEngine {
     }
 
     /// Mark a rectangular region as road surface
-    pub fn set_road_region(&mut self, min_x: f32, min_z: f32, max_x: f32, max_z: f32, is_road: bool) {
-        self.track_temperature.set_road_region(min_x, min_z, max_x, max_z, is_road);
+    pub fn set_road_region(
+        &mut self,
+        min_x: f32,
+        min_z: f32,
+        max_x: f32,
+        max_z: f32,
+        is_road: bool,
+    ) {
+        self.track_temperature
+            .set_road_region(min_x, min_z, max_x, max_z, is_road);
     }
 
     /// Check for aquaplaning at position
@@ -459,7 +495,8 @@ impl PhysicsEngine {
         wheel_positions: &[[f32; 2]; 4],
         wheel_intensities: &[f32; 4],
     ) -> (f32, f32) {
-        self.track_temperature.update_car_driving(car_x, car_z, speed_ms, delta);
+        self.track_temperature
+            .update_car_driving(car_x, car_z, speed_ms, delta);
         let compound_mult = self.tires.get_rubber_deposit_multiplier();
         let wetness = self.track_temperature.get_wetness_at(car_x, car_z);
         if wheel_intensities.iter().any(|&v| v > 0.01) {
@@ -470,6 +507,54 @@ impl PhysicsEngine {
             );
         }
         (compound_mult, wetness)
+    }
+
+    // ========================================================================
+    // Terrain API
+    // ========================================================================
+
+    pub fn init_terrain(&mut self, cell_size: f32, origin_x: f32, origin_z: f32) {
+        self.terrain = Some(TerrainGrid::new(cell_size, origin_x, origin_z));
+        self.prev_wheel_terrain = Default::default();
+        self.terrain_step_counter = 0;
+        self.cached_terrain_results = None;
+        self.cached_wheel_positions = None;
+    }
+
+    pub fn set_terrain_cell(&mut self, x: f32, z: f32, height: f32, material: TerrainMaterial) {
+        if let Some(ref mut terrain) = self.terrain {
+            terrain.set_cell(x, z, height, material);
+        }
+    }
+
+    pub fn set_terrain_region(
+        &mut self,
+        min_x: f32,
+        min_z: f32,
+        max_x: f32,
+        max_z: f32,
+        height: f32,
+        material: TerrainMaterial,
+    ) {
+        if let Some(ref mut terrain) = self.terrain {
+            terrain.set_region(min_x, min_z, max_x, max_z, height, material);
+        }
+    }
+
+    pub fn query_terrain(&self, x: f32, z: f32) -> Option<TerrainQueryResult> {
+        self.terrain.as_ref().map(|t| t.query_point(x, z))
+    }
+
+    pub fn is_terrain_initialized(&self) -> bool {
+        self.terrain.as_ref().map_or(false, |t| t.is_initialized())
+    }
+
+    pub fn clear_terrain(&mut self) {
+        self.terrain = None;
+        self.prev_wheel_terrain = Default::default();
+        self.terrain_step_counter = 0;
+        self.cached_terrain_results = None;
+        self.cached_wheel_positions = None;
     }
 
     // ========================================================================
@@ -504,7 +589,8 @@ impl PhysicsEngine {
         let speed_ms = (current_linvel[0].powi(2) + current_linvel[2].powi(2)).sqrt();
 
         // Update pit lane state from surface
-        self.pit_lane.update_from_surface(self.surface.get_surface());
+        self.pit_lane
+            .update_from_surface(self.surface.get_surface());
 
         // Get pit lane throttle limiter
         let pit_lane_throttle = self.pit_lane.update(dt, speed_ms);
@@ -515,12 +601,11 @@ impl PhysicsEngine {
         // Update track temperature with ambient conditions and wind cooling
         self.track_temperature.update_time(dt);
         let ambient = self.weather.get_ambient_conditions();
-        self.track_temperature
-            .update_weather_with_ambient(
-                &ambient,
-                wind_modifiers.cooling_multiplier,
-                dt,
-            );
+        self.track_temperature.update_weather_with_ambient(
+            &ambient,
+            wind_modifiers.cooling_multiplier,
+            dt,
+        );
 
         // Get modifiers
         let weather_modifiers = self.weather.get_modifiers();
@@ -528,7 +613,86 @@ impl PhysicsEngine {
             .tires
             .calculate_degradation_modifiers_from_ambient(&ambient);
 
-        // Update surface transition and get modifiers
+        // Get track temperature at car position
+        let track_temp = self
+            .track_temperature
+            .get_temperature_at(car_position[0], car_position[2])
+            .unwrap_or(0.5);
+
+        // Get water depth at car position
+        let water_depth = self
+            .track_temperature
+            .get_water_depth_at(car_position[0], car_position[2]);
+
+        // Compute wheel world positions for per-wheel aquaplaning
+        let fwd = quat.forward();
+        let right = quat.right();
+        let half_wb = 3.38 / 2.0;
+        let half_tw = 1.525 / 2.0;
+        let wheel_xz: [[f32; 2]; 4] = [
+            [
+                car_position[0] - right.x * half_tw + fwd.x * half_wb,
+                car_position[2] - right.z * half_tw + fwd.z * half_wb,
+            ], // FL
+            [
+                car_position[0] + right.x * half_tw + fwd.x * half_wb,
+                car_position[2] + right.z * half_tw + fwd.z * half_wb,
+            ], // FR
+            [
+                car_position[0] - right.x * half_tw - fwd.x * half_wb,
+                car_position[2] - right.z * half_tw - fwd.z * half_wb,
+            ], // RL
+            [
+                car_position[0] + right.x * half_tw - fwd.x * half_wb,
+                car_position[2] + right.z * half_tw - fwd.z * half_wb,
+            ], // RR
+        ];
+
+        let aquaplaning = self
+            .track_temperature
+            .check_aquaplaning_per_wheel(&wheel_xz, speed_ms);
+
+        let movement_requires_query = self.wheel_cache_stale(&wheel_xz, 0.25);
+        let terrain_results = if let Some(ref mut terrain) = self.terrain {
+            let should_query = self.terrain_step_counter % 2 == 0
+                || self.cached_terrain_results.is_none()
+                || movement_requires_query;
+            let results = if should_query {
+                let queried = terrain.query_wheels(&wheel_xz, &self.prev_wheel_terrain);
+                self.cached_terrain_results = Some(queried);
+                self.cached_wheel_positions = Some(wheel_xz);
+                queried
+            } else {
+                self.cached_terrain_results
+                    .unwrap_or([TerrainQueryResult::default(); 4])
+            };
+            self.prev_wheel_terrain = results;
+            self.terrain_step_counter = self.terrain_step_counter.wrapping_add(1);
+            Some(results)
+        } else {
+            None
+        };
+
+        if let Some(ref results) = terrain_results {
+            let mut dominant_idx = 0usize;
+            let mut dominant_count = 0usize;
+            for i in 0..4 {
+                let material = results[i].material;
+                let count = results.iter().filter(|r| r.material == material).count();
+                if count > dominant_count
+                    || (count == dominant_count
+                        && results[i].properties.grip_coefficient
+                            < results[dominant_idx].properties.grip_coefficient)
+                {
+                    dominant_idx = i;
+                    dominant_count = count;
+                }
+            }
+            let dominant = results[dominant_idx].material;
+            let derived_surface = dominant.to_surface_type();
+            self.surface.set_surface(derived_surface);
+        }
+
         self.surface.update(dt);
         let surface_modifiers = self.surface.get_modifiers();
 
@@ -539,35 +703,6 @@ impl PhysicsEngine {
         } else {
             1.0
         };
-
-        // Get track temperature at car position
-        let track_temp = self
-            .track_temperature
-            .get_temperature_at(car_position[0], car_position[2])
-            .unwrap_or(0.5);
-
-        // Get water depth at car position
-        let water_depth = self.track_temperature.get_water_depth_at(
-            car_position[0],
-            car_position[2],
-        );
-
-        // Compute wheel world positions for per-wheel aquaplaning
-        let fwd = quat.forward();
-        let right = quat.right();
-        let half_wb = 3.38 / 2.0;
-        let half_tw = 1.525 / 2.0;
-        let wheel_xz: [[f32; 2]; 4] = [
-            [car_position[0] - right.x * half_tw + fwd.x * half_wb, car_position[2] - right.z * half_tw + fwd.z * half_wb], // FL
-            [car_position[0] + right.x * half_tw + fwd.x * half_wb, car_position[2] + right.z * half_tw + fwd.z * half_wb], // FR
-            [car_position[0] - right.x * half_tw - fwd.x * half_wb, car_position[2] - right.z * half_tw - fwd.z * half_wb], // RL
-            [car_position[0] + right.x * half_tw - fwd.x * half_wb, car_position[2] + right.z * half_tw - fwd.z * half_wb], // RR
-        ];
-
-        let aquaplaning = self.track_temperature.check_aquaplaning_per_wheel(
-            &wheel_xz,
-            speed_ms,
-        );
 
         // Update engine temperature
         self.engine_temperature
@@ -615,17 +750,26 @@ impl PhysicsEngine {
         self.tire_temperature.apply_external_heat(tire_heat_delta);
 
         // Apply puddle cooling effect (can trigger thermal shock)
-        self.tire_temperature.apply_puddle_cooling(water_depth, speed_ms, dt);
+        self.tire_temperature
+            .apply_puddle_cooling(water_depth, speed_ms, dt);
 
         // Update thermal shock recovery
         self.tire_temperature.update_thermal_shock(dt);
 
         // Update tire material science
         let tire_temps_for_material = [
-            (self.tire_temperature.get_temperatures().front_left_inner + self.tire_temperature.get_temperatures().front_left_outer) / 2.0,
-            (self.tire_temperature.get_temperatures().front_right_inner + self.tire_temperature.get_temperatures().front_right_outer) / 2.0,
-            (self.tire_temperature.get_temperatures().rear_left_inner + self.tire_temperature.get_temperatures().rear_left_outer) / 2.0,
-            (self.tire_temperature.get_temperatures().rear_right_inner + self.tire_temperature.get_temperatures().rear_right_outer) / 2.0,
+            (self.tire_temperature.get_temperatures().front_left_inner
+                + self.tire_temperature.get_temperatures().front_left_outer)
+                / 2.0,
+            (self.tire_temperature.get_temperatures().front_right_inner
+                + self.tire_temperature.get_temperatures().front_right_outer)
+                / 2.0,
+            (self.tire_temperature.get_temperatures().rear_left_inner
+                + self.tire_temperature.get_temperatures().rear_left_outer)
+                / 2.0,
+            (self.tire_temperature.get_temperatures().rear_right_inner
+                + self.tire_temperature.get_temperatures().rear_right_outer)
+                / 2.0,
         ];
         self.tire_material.update(dt, &tire_temps_for_material);
 
@@ -650,13 +794,32 @@ impl PhysicsEngine {
         let base_compound_grip = tire_config.grip_multiplier;
         let weather_friction_mult = weather_modifiers.friction_slip_multiplier;
         let tire_wear_grip_mult = tire_degradation.grip_multiplier
-            / (base_compound_grip * if self.tires.is_optimal_conditions(&ambient) { 1.0 } else { tire_config.wrong_conditions_penalty }).max(0.001);
+            / (base_compound_grip
+                * if self.tires.is_optimal_conditions(&ambient) {
+                    1.0
+                } else {
+                    tire_config.wrong_conditions_penalty
+                })
+            .max(0.001);
+
+        let terrain_grip = if let Some(ref results) = terrain_results {
+            let grips = [
+                results[0].properties.grip_coefficient,
+                results[1].properties.grip_coefficient,
+                results[2].properties.grip_coefficient,
+                results[3].properties.grip_coefficient,
+            ];
+            (grips[0] + grips[1] + grips[2] + grips[3]) / 4.0
+        } else {
+            1.0
+        };
 
         let combined_grip = surface_modifiers.grip_multiplier
             * curb_turn_grip
             * material_grip_avg
             * aquaplaning_grip
-            * thermal_shock_grip;
+            * thermal_shock_grip
+            * terrain_grip;
 
         // Speed modifier from surface
         let surface_speed = surface_modifiers.speed_multiplier;
@@ -681,7 +844,8 @@ impl PhysicsEngine {
             ambient.to_celsius(),
         );
         let brake_fade = self.brakes.get_fade_multiplier();
-        let (front_brake_force, rear_brake_force) = self.brakes.calculate_forces(BASE_BRAKE_FORCE * brake_fade);
+        let (front_brake_force, rear_brake_force) =
+            self.brakes.calculate_forces(BASE_BRAKE_FORCE * brake_fade);
         let ers_harvest_decel = if self.ers.is_harvesting() {
             let harvest_power = self.ers.get_harvest_power_watts();
             harvest_power / speed_ms.max(1.0)
@@ -724,7 +888,8 @@ impl PhysicsEngine {
         if pit_brake > 0.0 {
             let brake_decel = pit_brake * 5000.0; // N of braking force
             let brake_vel = brake_decel * dt / 750.0; // Approximate deceleration
-            let speed = (output.linear_velocity[0].powi(2) + output.linear_velocity[2].powi(2)).sqrt();
+            let speed =
+                (output.linear_velocity[0].powi(2) + output.linear_velocity[2].powi(2)).sqrt();
             if speed > 0.1 {
                 let factor = ((speed - brake_vel) / speed).max(0.0);
                 output.linear_velocity[0] *= factor;
@@ -737,8 +902,90 @@ impl PhysicsEngine {
             output.linear_velocity[1] += vibration_force * dt / 768.0;
         }
 
+        if let Some(ref terrain_results) = terrain_results {
+            output.per_wheel_terrain = PerWheelTerrain {
+                heights: [
+                    terrain_results[0].height,
+                    terrain_results[1].height,
+                    terrain_results[2].height,
+                    terrain_results[3].height,
+                ],
+                materials: [
+                    terrain_results[0].material,
+                    terrain_results[1].material,
+                    terrain_results[2].material,
+                    terrain_results[3].material,
+                ],
+                grip_multipliers: [
+                    terrain_results[0].properties.grip_coefficient,
+                    terrain_results[1].properties.grip_coefficient,
+                    terrain_results[2].properties.grip_coefficient,
+                    terrain_results[3].properties.grip_coefficient,
+                ],
+                roughness: [
+                    terrain_results[0].roughness,
+                    terrain_results[1].roughness,
+                    terrain_results[2].roughness,
+                    terrain_results[3].roughness,
+                ],
+                bump_forces: [0.0; 4],
+            };
+
+            if let Some(ref terrain) = self.terrain {
+                let fwd_speed = output.forward_speed_ms.abs();
+                let mut bump_forces = [0.0f32; 4];
+                for i in 0..4 {
+                    bump_forces[i] = terrain.compute_bump_force(
+                        wheel_xz[i][0],
+                        wheel_xz[i][1],
+                        fwd_speed,
+                        terrain_results[i].roughness,
+                        dt,
+                    );
+                }
+                output.per_wheel_terrain.bump_forces = bump_forces;
+
+                let avg_bump =
+                    (bump_forces[0] + bump_forces[1] + bump_forces[2] + bump_forces[3]) / 4.0;
+                let inertia_factor = CAR_MASS * 0.5;
+                output.linear_velocity[1] += avg_bump / inertia_factor;
+
+                let half_track = TRACK_WIDTH / 2.0;
+                let roll_moment = ((bump_forces[1] + bump_forces[3])
+                    - (bump_forces[0] + bump_forces[2]))
+                    * half_track;
+                output.angular_velocity[2] += roll_moment / inertia_factor;
+
+                let half_wheelbase = WHEELBASE / 2.0;
+                let pitch_moment = ((bump_forces[0] + bump_forces[1])
+                    - (bump_forces[2] + bump_forces[3]))
+                    * half_wheelbase;
+                output.angular_velocity[0] += pitch_moment / inertia_factor;
+
+                let center_height = terrain.query_point(car_position[0], car_position[2]).height;
+                let bottoming =
+                    check_bottoming_out_from_height(center_height, car_position[1], fwd_speed);
+                output.bottoming_out = bottoming;
+
+                if output.bottoming_out.is_contact {
+                    let drag = output.bottoming_out.drag_force;
+                    let spd = output.forward_speed_ms;
+                    if spd.abs() > 0.1 {
+                        let drag_decel = drag / CAR_MASS;
+                        let speed_sign = if spd >= 0.0 { 1.0 } else { -1.0 };
+                        let drag_delta = drag_decel * dt * speed_sign;
+                        output.linear_velocity[0] -= fwd.x * drag_delta;
+                        output.linear_velocity[2] -= fwd.z * drag_delta;
+                    }
+                    output.downforce_newtons *=
+                        1.0 - (output.bottoming_out.scrape_intensity * 0.15);
+                }
+            }
+        }
+
         // Post-step heating pass — use actual G-forces from car.step() output
-        let weight_transfer_post = calculate_weight_transfer(output.longitudinal_g, output.lateral_g);
+        let weight_transfer_post =
+            calculate_weight_transfer(output.longitudinal_g, output.lateral_g);
         let heating_input = TempInput {
             delta_seconds: dt,
             speed_ms: self.car.get_speed_ms(),
@@ -851,7 +1098,15 @@ impl PhysicsEngine {
         current_angvel: [f32; 3],
         surface_normal: [f32; 3],
     ) -> crate::types::StepAndSyncOutput {
-        let physics = self.step(delta_seconds, input, car_position, car_rotation, current_linvel, current_angvel, surface_normal);
+        let physics = self.step(
+            delta_seconds,
+            input,
+            car_position,
+            car_rotation,
+            current_linvel,
+            current_angvel,
+            surface_normal,
+        );
         let wind_state = self.get_wind_state();
         let aero_state = self.get_active_aero_state();
         let brake_state = self.get_brake_state();
@@ -984,10 +1239,13 @@ mod tests {
         let mut linvel = [0.0, 0.0, 0.0];
         for _ in 0..120 {
             let output = normal_engine.step(
-                1.0 / 60.0, input,
-                [0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0],
-                linvel, [0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
+                1.0 / 60.0,
+                input,
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                linvel,
+                [0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
             );
             linvel = output.linear_velocity;
         }
@@ -996,21 +1254,33 @@ mod tests {
         let mut overheated_engine = PhysicsEngine::new();
         let ambient = overheated_engine.get_ambient_conditions();
         for _ in 0..3000 {
-            overheated_engine.engine_temperature.update(1.0 / 60.0, true, 80.0, &ambient);
+            overheated_engine
+                .engine_temperature
+                .update(1.0 / 60.0, true, 80.0, &ambient);
         }
         assert!(
-            overheated_engine.engine_temperature.get_state().power_multiplier < 1.0,
+            overheated_engine
+                .engine_temperature
+                .get_state()
+                .power_multiplier
+                < 1.0,
             "Engine should be power-limited after sustained heat, got {}",
-            overheated_engine.engine_temperature.get_state().power_multiplier
+            overheated_engine
+                .engine_temperature
+                .get_state()
+                .power_multiplier
         );
 
         let mut linvel2 = [0.0, 0.0, 0.0];
         for _ in 0..120 {
             let output = overheated_engine.step(
-                1.0 / 60.0, input,
-                [0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0],
-                linvel2, [0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
+                1.0 / 60.0,
+                input,
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                linvel2,
+                [0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
             );
             linvel2 = output.linear_velocity;
         }
@@ -1019,7 +1289,8 @@ mod tests {
         assert!(
             overheated_speed < normal_speed,
             "Overheated engine ({}km/h) should be slower than normal ({}km/h)",
-            overheated_speed, normal_speed
+            overheated_speed,
+            normal_speed
         );
     }
 
@@ -1033,9 +1304,12 @@ mod tests {
         };
 
         let output = engine.step(
-            1.0 / 60.0, input,
-            [0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0],
-            [0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
+            1.0 / 60.0,
+            input,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
         );
 
@@ -1048,5 +1322,130 @@ mod tests {
         assert!((output.grip_breakdown.aquaplaning_grip_mult - 1.0).abs() < 0.01);
         assert!((output.grip_breakdown.thermal_shock_grip_mult - 1.0).abs() < 0.01);
         assert!(output.grip_breakdown.final_effective_grip > 0.0);
+    }
+
+    #[test]
+    fn test_terrain_queries_refresh_when_wheels_move_past_threshold() {
+        let mut engine = PhysicsEngine::new();
+        engine.init_terrain(1.0, 0.0, 0.0);
+
+        for cx in 0..32 {
+            for cz in 0..32 {
+                engine.set_terrain_cell(
+                    cx as f32,
+                    cz as f32,
+                    cx as f32 * 0.1,
+                    TerrainMaterial::Asphalt,
+                );
+            }
+        }
+
+        let input = CarInput::default();
+        let first = engine.step(
+            1.0 / 120.0,
+            input,
+            [6.0, 1.0, 6.0],
+            [0.0, 0.0, 0.0, 1.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        );
+        let second = engine.step(
+            1.0 / 120.0,
+            input,
+            [7.0, 1.0, 6.0],
+            [0.0, 0.0, 0.0, 1.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        );
+
+        assert!(
+            (second.per_wheel_terrain.heights[0] - first.per_wheel_terrain.heights[0]).abs() > 0.01
+        );
+    }
+
+    #[test]
+    fn test_bottoming_uses_center_height() {
+        let mut engine = PhysicsEngine::new();
+        engine.init_terrain(1.0, 0.0, 0.0);
+        engine.set_terrain_region(0.0, 0.0, 20.0, 20.0, 0.0, TerrainMaterial::Asphalt);
+        engine.set_terrain_cell(10.0, 10.0, 0.08, TerrainMaterial::Asphalt);
+
+        let output = engine.step(
+            1.0 / 120.0,
+            CarInput::default(),
+            [10.0, 0.03, 10.0],
+            [0.0, 0.0, 0.0, 1.0],
+            [0.0, 0.0, 15.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        );
+
+        assert!(output.bottoming_out.is_contact);
+        assert!(output.bottoming_out.drag_force > 0.0);
+    }
+
+    #[test]
+    fn test_surface_state_uses_majority_wheel_material() {
+        let mut engine = PhysicsEngine::new();
+        engine.init_terrain(1.0, 0.0, 0.0);
+        engine.set_terrain_region(0.0, 0.0, 30.0, 30.0, 0.0, TerrainMaterial::Grass);
+        engine.set_terrain_region(9.0, 11.4, 9.5, 12.0, 0.0, TerrainMaterial::Asphalt);
+
+        for _ in 0..4 {
+            engine.cached_wheel_positions = None;
+            engine.step(
+                1.0 / 120.0,
+                CarInput::default(),
+                [10.0, 1.0, 10.0],
+                [0.0, 0.0, 0.0, 1.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            );
+        }
+
+        assert_eq!(engine.get_surface(), SurfaceType::Grass);
+    }
+
+    #[test]
+    fn test_bottoming_drag_follows_car_forward_axis() {
+        let mut baseline = PhysicsEngine::new();
+        baseline.init_terrain(1.0, 0.0, 0.0);
+        baseline.set_terrain_region(0.0, 0.0, 20.0, 20.0, 0.0, TerrainMaterial::Asphalt);
+
+        let mut scraping = PhysicsEngine::new();
+        scraping.init_terrain(1.0, 0.0, 0.0);
+        scraping.set_terrain_region(0.0, 0.0, 20.0, 20.0, 0.0, TerrainMaterial::Asphalt);
+        scraping.set_terrain_cell(10.0, 10.0, 0.08, TerrainMaterial::Asphalt);
+
+        let yaw_90 = std::f32::consts::FRAC_PI_4;
+        let rotation = [0.0, yaw_90.sin(), 0.0, yaw_90.cos()];
+
+        let baseline_output = baseline.step(
+            1.0 / 120.0,
+            CarInput::default(),
+            [10.0, 0.03, 10.0],
+            rotation,
+            [25.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        );
+        let scraping_output = scraping.step(
+            1.0 / 120.0,
+            CarInput::default(),
+            [10.0, 0.03, 10.0],
+            rotation,
+            [25.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        );
+
+        assert!(scraping_output.bottoming_out.is_contact);
+        assert!(scraping_output.linear_velocity[0] < baseline_output.linear_velocity[0]);
+        assert!(
+            (scraping_output.linear_velocity[2] - baseline_output.linear_velocity[2]).abs() < 1e-3
+        );
     }
 }
