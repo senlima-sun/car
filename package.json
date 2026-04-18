@@ -13,6 +13,8 @@
     "build:wasm:release": "cd physics-engine && wasm-pack build --target web --out-dir ../src/wasm/pkg --release",
     "test:wasm": "cd physics-engine && cargo test",
     "test": "bun test",
+    "perf:smoke": "bun run scripts/perf-smoke.ts",
+    "typecheck": "tsc --noEmit",
     "compress:glb": "bunx --bun @gltf-transform/cli webp public/models/f1_2026.glb /tmp/f1_webp.glb && bunx --bun @gltf-transform/cli draco /tmp/f1_webp.glb public/models/f1_2026.glb && rm /tmp/f1_webp.glb"
   },
   "dependencies": {
