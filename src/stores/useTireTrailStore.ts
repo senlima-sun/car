@@ -1,24 +1,7 @@
 import { create } from 'zustand'
-import { usePerformanceStore } from './usePerformanceStore'
 
 const BASE_POINTS_PER_WHEEL = 600
 const TOTAL_POINTS = BASE_POINTS_PER_WHEEL * 4
-
-function getMaxPointsForTier(): number {
-  const tier = usePerformanceStore.getState().tier
-  switch (tier) {
-    case 'ultra':
-      return BASE_POINTS_PER_WHEEL * 1.2
-    case 'high':
-      return BASE_POINTS_PER_WHEEL
-    case 'medium':
-      return BASE_POINTS_PER_WHEEL * 0.7
-    case 'low':
-      return BASE_POINTS_PER_WHEEL * 0.4
-    default:
-      return BASE_POINTS_PER_WHEEL
-  }
-}
 
 const MAX_POINTS_PER_WHEEL = BASE_POINTS_PER_WHEEL
 const RUBBER_UV_DECAY_RATE = 0.033

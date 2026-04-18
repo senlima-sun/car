@@ -2,30 +2,30 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useCarStore } from './useCarStore'
 import { useActiveAeroStore } from './useActiveAeroStore'
+import { useSessionStore } from './useSessionStore'
 
-type GameStatus = 'menu' | 'countdown' | 'racing' | 'paused' | 'finished' | 'customize' | 'preview'
-type CameraMode = 'third-person' | 'first-person' | 'free'
-type NonPreviewStatus = Exclude<GameStatus, 'preview'>
+export type GameStatus = 'menu' | 'session' | 'customize' | 'preview'
+export type CameraMode = 'third-person' | 'first-person' | 'free'
+export type NonPreviewStatus = Exclude<GameStatus, 'preview'>
+
+export const isMenuStatus = (status: GameStatus) => status === 'menu'
+export const isSessionShellStatus = (status: GameStatus) => status === 'session'
+export const isCustomizeStatus = (status: GameStatus) => status === 'customize'
+export const isPreviewStatus = (status: GameStatus) => status === 'preview'
 
 interface GameState {
   status: GameStatus
   previewReturnStatus: NonPreviewStatus
   cameraMode: CameraMode
   previousCameraMode: CameraMode
-  isTestingMode: boolean
   isSettingsOpen: boolean
   lookSensitivity: number
   showFPS: boolean
 
   enterMenu: () => void
-  startRaceSession: () => void
-  startTestSession: () => void
+  openTrackEditor: () => void
   openShowroom: () => void
-  startGame: () => void
-  pauseGame: () => void
-  resumeGame: () => void
-  finishGame: () => void
-  resetGame: () => void
+  enterSessionShell: () => void
   toggleCameraMode: () => void
   setCameraMode: (mode: CameraMode) => void
   toggleFreeCamera: () => void
@@ -35,8 +35,6 @@ interface GameState {
   enterPreviewMode: () => void
   exitPreviewMode: () => void
   togglePreviewMode: () => void
-  toggleTestingMode: () => void
-  setTestingMode: (enabled: boolean) => void
   toggleSettings: () => void
   openSettings: () => void
   closeSettings: () => void
@@ -48,31 +46,30 @@ export const useGameStore = create<GameState>()(
   persist(
     set => ({
       status: 'menu',
-      previewReturnStatus: 'racing',
+      previewReturnStatus: 'session',
       cameraMode: 'third-person',
       previousCameraMode: 'third-person',
-      isTestingMode: false,
       isSettingsOpen: false,
       lookSensitivity: 0.002,
       showFPS: true,
 
-      enterMenu: () => set({ status: 'menu', isTestingMode: false, isSettingsOpen: false }),
-      startRaceSession: () =>
-        set({ status: 'countdown', isTestingMode: false, isSettingsOpen: false }),
-      startTestSession: () =>
-        set({ status: 'customize', isTestingMode: true, isSettingsOpen: false }),
+      enterMenu: () => {
+        useSessionStore.getState().resetSession()
+        set({ status: 'menu', isSettingsOpen: false })
+      },
+      openTrackEditor: () => {
+        const session = useSessionStore.getState()
+        session.resetSession()
+        session.configureSession({ kind: 'practice', testingMode: true })
+        set({ status: 'customize', isSettingsOpen: false })
+      },
       openShowroom: () =>
         set({
           status: 'preview',
           previewReturnStatus: 'menu',
-          isTestingMode: false,
           isSettingsOpen: false,
         }),
-      startGame: () => set({ status: 'countdown' }),
-      pauseGame: () => set({ status: 'paused' }),
-      resumeGame: () => set({ status: 'racing' }),
-      finishGame: () => set({ status: 'finished' }),
-      resetGame: () => set({ status: 'menu' }),
+      enterSessionShell: () => set({ status: 'session', isSettingsOpen: false }),
       toggleCameraMode: () =>
         set(state => ({
           cameraMode: state.cameraMode === 'third-person' ? 'first-person' : 'third-person',
@@ -86,10 +83,10 @@ export const useGameStore = create<GameState>()(
           return { previousCameraMode: state.cameraMode, cameraMode: 'free' }
         }),
       enterCustomizeMode: () => set({ status: 'customize' }),
-      exitCustomizeMode: () => set({ status: 'racing' }),
+      exitCustomizeMode: () => set({ status: 'session' }),
       toggleCustomizeMode: () =>
         set(state => ({
-          status: state.status === 'customize' ? 'racing' : 'customize',
+          status: state.status === 'customize' ? 'session' : 'customize',
         })),
       enterPreviewMode: () => {
         useActiveAeroStore.setState({ frontWingAngle: 0, rearWingAngle: 0 })
@@ -119,8 +116,6 @@ export const useGameStore = create<GameState>()(
             status: 'preview',
           }
         }),
-      toggleTestingMode: () => set(state => ({ isTestingMode: !state.isTestingMode })),
-      setTestingMode: enabled => set({ isTestingMode: enabled }),
       toggleSettings: () => set(state => ({ isSettingsOpen: !state.isSettingsOpen })),
       openSettings: () => set({ isSettingsOpen: true }),
       closeSettings: () => set({ isSettingsOpen: false }),

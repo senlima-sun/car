@@ -61,11 +61,11 @@ export async function saveReplay(
     trackId,
     lapTime,
     frameCount: data.frameCount,
-    positions: data.positions.buffer.slice(0, data.frameCount * 3 * 4),
-    rotations: data.rotations.buffer.slice(0, data.frameCount * 4 * 4),
-    steerAngles: data.steerAngles.buffer.slice(0, data.frameCount * 4),
-    wheelRotations: data.wheelRotations.buffer.slice(0, data.frameCount * 4 * 4),
-    timestamps: data.timestamps.buffer.slice(0, data.frameCount * 4),
+    positions: data.positions.buffer.slice(0, data.frameCount * 3 * 4) as ArrayBuffer,
+    rotations: data.rotations.buffer.slice(0, data.frameCount * 4 * 4) as ArrayBuffer,
+    steerAngles: data.steerAngles.buffer.slice(0, data.frameCount * 4) as ArrayBuffer,
+    wheelRotations: data.wheelRotations.buffer.slice(0, data.frameCount * 4 * 4) as ArrayBuffer,
+    timestamps: data.timestamps.buffer.slice(0, data.frameCount * 4) as ArrayBuffer,
   }
 
   return new Promise((resolve, reject) => {

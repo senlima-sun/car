@@ -84,6 +84,15 @@ export {
   getEngineBrakingLevel,
   cycleEngineBrakingLevel,
   getBrakeState,
+  // Terrain API
+  initTerrain,
+  setTerrainCell,
+  setTerrainRegion,
+  setTerrainHeight,
+  queryTerrain,
+  isTerrainInitialized,
+  loadTerrainHeightmap,
+  clearTerrain,
 } from './PhysicsBridge'
 
 export type {
@@ -109,6 +118,11 @@ export type {
   EngineBrakingLevel,
   BrakeState,
   StepAndSyncOutput,
+  TerrainQueryResult,
+  TerrainMaterialProperties,
+  TerrainMaterial,
+  PerWheelTerrain,
+  BottomingOutState,
 } from './PhysicsBridge'
 
 // React provider

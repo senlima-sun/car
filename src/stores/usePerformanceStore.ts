@@ -33,7 +33,7 @@ interface PerformanceActions {
   sampleFrame: (delta: number) => void
 }
 
-export const usePerformanceStore = create<PerformanceState & PerformanceActions>((set, get) => {
+export const usePerformanceStore = create<PerformanceState & PerformanceActions>((set) => {
   const frameTimes: number[] = []
   let frameIdx = 0
   let filled = false
@@ -70,13 +70,12 @@ export const usePerformanceStore = create<PerformanceState & PerformanceActions>
       const avgDelta = sum / FRAME_SAMPLE_SIZE
       const fps = 1 / avgDelta
 
-      const sorted = [...frameTimes].sort((a, b) => b - a)
-      const onePercentIdx = Math.floor(FRAME_SAMPLE_SIZE * 0.01)
-      const pointOnePercentIdx = Math.floor(FRAME_SAMPLE_SIZE * 0.001)
-      const onePercentLow = sorted[onePercentIdx] ? 1 / sorted[onePercentIdx] : 0
-      const pointOnePercentLow = sorted[pointOnePercentIdx] ? 1 / sorted[pointOnePercentIdx] : 0
-
-      const prev = get()
+      let worstFrame = 0
+      for (let i = 0; i < FRAME_SAMPLE_SIZE; i++) {
+        if (frameTimes[i] > worstFrame) worstFrame = frameTimes[i]
+      }
+      const onePercentLow = worstFrame > 0 ? 1 / worstFrame : 0
+      const pointOnePercentLow = onePercentLow
 
       let tier: QualityTier
       if (fps >= TIER_THRESHOLDS.ultra) tier = 'ultra'

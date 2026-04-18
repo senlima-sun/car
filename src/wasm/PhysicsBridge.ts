@@ -301,6 +301,50 @@ export interface BrakeState {
   rear_brake_force: number // N
 }
 
+export type TerrainMaterial =
+  | 'Asphalt'
+  | 'Concrete'
+  | 'Grass'
+  | 'Gravel'
+  | 'Sand'
+  | 'Dirt'
+  | 'Mud'
+  | 'Ice'
+  | 'Snow'
+  | 'Kerb'
+  | 'AstroTurf'
+
+export interface TerrainMaterialProperties {
+  grip_coefficient: number
+  roughness_factor: number
+  thermal_conductivity: number
+  tire_wear_rate: number
+  drag_multiplier: number
+  rolling_resistance: number
+}
+
+export interface TerrainQueryResult {
+  height: number
+  material: TerrainMaterial
+  properties: TerrainMaterialProperties
+  roughness: number
+  normal: [number, number, number]
+}
+
+export interface PerWheelTerrain {
+  heights: [number, number, number, number]
+  materials: [string, string, string, string]
+  grip_multipliers: [number, number, number, number]
+  roughness: [number, number, number, number]
+  bump_forces: [number, number, number, number]
+}
+
+export interface BottomingOutState {
+  is_contact: boolean
+  scrape_intensity: number
+  drag_force: number
+}
+
 export interface StepAndSyncOutput {
   physics: CarPhysicsOutput
   wind_state: WindState
@@ -1264,4 +1308,76 @@ export function cycleEngineBrakingLevel(): void {
  */
 export function getBrakeState(): BrakeState {
   return getPhysicsEngine().get_brake_state() as BrakeState
+}
+
+// ============================================================================
+// Terrain API
+// ============================================================================
+
+export function initTerrain(cellSize: number, originX: number, originZ: number): void {
+  const engine = getPhysicsEngine()
+  engine.init_terrain(sanitize(cellSize, 1.0), sanitize(originX), sanitize(originZ))
+}
+
+export function setTerrainCell(x: number, z: number, height: number, materialId: number): void {
+  const engine = getPhysicsEngine()
+  engine.set_terrain_cell(sanitize(x), sanitize(z), sanitize(height), materialId)
+}
+
+export function setTerrainRegion(
+  minX: number,
+  minZ: number,
+  maxX: number,
+  maxZ: number,
+  height: number,
+  materialId: number,
+): void {
+  const engine = getPhysicsEngine()
+  engine.set_terrain_region(
+    sanitize(minX),
+    sanitize(minZ),
+    sanitize(maxX),
+    sanitize(maxZ),
+    sanitize(height),
+    materialId,
+  )
+}
+
+export function setTerrainHeight(x: number, z: number, height: number): void {
+  const engine = getPhysicsEngine()
+  engine.set_terrain_height(sanitize(x), sanitize(z), sanitize(height))
+}
+
+export function queryTerrain(x: number, z: number): TerrainQueryResult | null {
+  const engine = getPhysicsEngine()
+  return engine.query_terrain(sanitize(x), sanitize(z)) as TerrainQueryResult | null
+}
+
+export function isTerrainInitialized(): boolean {
+  const engine = getPhysicsEngine()
+  return engine.is_terrain_initialized()
+}
+
+export function loadTerrainHeightmap(
+  data: Float32Array,
+  width: number,
+  height: number,
+  originX: number,
+  originZ: number,
+  cellSize: number,
+): void {
+  const engine = getPhysicsEngine()
+  engine.load_terrain_heightmap(
+    data,
+    width,
+    height,
+    sanitize(originX),
+    sanitize(originZ),
+    sanitize(cellSize, 1.0),
+  )
+}
+
+export function clearTerrain(): void {
+  const engine = getPhysicsEngine()
+  engine.clear_terrain()
 }

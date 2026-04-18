@@ -84,6 +84,15 @@ import {
   getEngineBrakingLevel,
   cycleEngineBrakingLevel,
   getBrakeState,
+  // Terrain API
+  initTerrain,
+  setTerrainCell,
+  setTerrainRegion,
+  setTerrainHeight,
+  queryTerrain,
+  isTerrainInitialized,
+  loadTerrainHeightmap,
+  clearTerrain,
   CarInput,
   CarPhysicsOutput,
   WeatherModifiers,
@@ -93,6 +102,11 @@ import {
   PerWheelWear,
   StepAndSyncOutput,
   RubberFrameResult,
+  TerrainQueryResult,
+  TerrainMaterialProperties,
+  TerrainMaterial,
+  PerWheelTerrain,
+  BottomingOutState,
   TireCompound,
   SurfaceType,
 } from './PhysicsBridge'
@@ -108,6 +122,11 @@ export type {
   PerWheelWear,
   StepAndSyncOutput,
   RubberFrameResult,
+  TerrainQueryResult,
+  TerrainMaterialProperties,
+  TerrainMaterial,
+  PerWheelTerrain,
+  BottomingOutState,
 }
 export { TireCompound, SurfaceType }
 
@@ -191,6 +210,15 @@ interface PhysicsContextValue {
   getEngineBrakingLevel: typeof getEngineBrakingLevel
   cycleEngineBrakingLevel: typeof cycleEngineBrakingLevel
   getBrakeState: typeof getBrakeState
+  // Terrain API
+  initTerrain: typeof initTerrain
+  setTerrainCell: typeof setTerrainCell
+  setTerrainRegion: typeof setTerrainRegion
+  setTerrainHeight: typeof setTerrainHeight
+  queryTerrain: typeof queryTerrain
+  isTerrainInitialized: typeof isTerrainInitialized
+  loadTerrainHeightmap: typeof loadTerrainHeightmap
+  clearTerrain: typeof clearTerrain
 }
 
 const PhysicsContext = createContext<PhysicsContextValue | null>(null)
@@ -303,6 +331,14 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       getEngineBrakingLevel,
       cycleEngineBrakingLevel,
       getBrakeState,
+      initTerrain,
+      setTerrainCell,
+      setTerrainRegion,
+      setTerrainHeight,
+      queryTerrain,
+      isTerrainInitialized,
+      loadTerrainHeightmap,
+      clearTerrain,
     }),
     [initialized],
   )

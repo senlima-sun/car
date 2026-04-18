@@ -1,32 +1,39 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
-import { useGameStore } from './useGameStore'
+import {
+  isCustomizeStatus,
+  isMenuStatus,
+  isPreviewStatus,
+  isSessionShellStatus,
+  useGameStore,
+} from './useGameStore'
+import { useSessionStore } from './useSessionStore'
 
 describe('useGameStore main screen actions', () => {
   beforeEach(() => {
+    useSessionStore.getState().resetSession()
     useGameStore.setState({
       status: 'menu',
-      previewReturnStatus: 'racing',
-      isTestingMode: false,
+      previewReturnStatus: 'session',
       isSettingsOpen: false,
     })
   })
 
-  it('starts a race session from the main screen', () => {
-    useGameStore.getState().startRaceSession()
+  it('opens the session shell from the main screen', () => {
+    useGameStore.getState().enterSessionShell()
 
     const state = useGameStore.getState()
-    expect(state.status).toBe('countdown')
-    expect(state.isTestingMode).toBe(false)
+    expect(state.status).toBe('session')
     expect(state.isSettingsOpen).toBe(false)
   })
 
-  it('starts a test session from the main screen', () => {
-    useGameStore.getState().startTestSession()
+  it('opens the track editor from the main screen', () => {
+    useGameStore.getState().openTrackEditor()
 
     const state = useGameStore.getState()
     expect(state.status).toBe('customize')
-    expect(state.isTestingMode).toBe(true)
     expect(state.isSettingsOpen).toBe(false)
+    expect(useSessionStore.getState().phase).toBe('idle')
+    expect(useSessionStore.getState().config?.testingMode).toBe(true)
   })
 
   it('opens the showroom and returns to menu when exiting preview', () => {
@@ -35,7 +42,6 @@ describe('useGameStore main screen actions', () => {
     let state = useGameStore.getState()
     expect(state.status).toBe('preview')
     expect(state.previewReturnStatus).toBe('menu')
-    expect(state.isTestingMode).toBe(false)
 
     useGameStore.getState().exitPreviewMode()
 
@@ -44,13 +50,22 @@ describe('useGameStore main screen actions', () => {
   })
 
   it('returns to the main menu and closes settings', () => {
-    useGameStore.setState({ status: 'customize', isSettingsOpen: true, isTestingMode: true })
+    useSessionStore.getState().startQuickSession('race')
+    useGameStore.setState({ status: 'customize', isSettingsOpen: true })
 
     useGameStore.getState().enterMenu()
 
     const state = useGameStore.getState()
     expect(state.status).toBe('menu')
     expect(state.isSettingsOpen).toBe(false)
-    expect(state.isTestingMode).toBe(false)
+    expect(useSessionStore.getState().phase).toBe('idle')
+  })
+
+  it('exposes shell status helpers for app composition', () => {
+    expect(isMenuStatus('menu')).toBe(true)
+    expect(isSessionShellStatus('session')).toBe(true)
+    expect(isCustomizeStatus('customize')).toBe(true)
+    expect(isPreviewStatus('preview')).toBe(true)
+    expect(isSessionShellStatus('menu')).toBe(false)
   })
 })
