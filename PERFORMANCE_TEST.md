@@ -1,5 +1,54 @@
 # 120fps Performance Testing Guide
 
+## Programmatic Scenario Harness
+
+The `PerfScenarioRecorder` (see `src/debug/perfScenarios.ts`) provides
+reproducible frame-budget measurements. `FPSMonitor` exposes two window
+helpers while dev is running:
+
+```
+window.__startPerfScenario('static_car')
+// …let it run for the scenario duration
+const metrics = window.__stopPerfScenario()
+console.log(metrics)
+```
+
+Three canonical scenarios:
+
+| id                  | label              | duration | description                                                         |
+| ------------------- | ------------------ | -------- | ------------------------------------------------------------------- |
+| `static_car`        | Static Car         | 5s       | Idle at pit exit. Baseline for render churn.                        |
+| `single_car_hotlap` | Single-Car Hot Lap | 20s      | Full throttle around a reference track.                             |
+| `twenty_car_grid`   | 20-Car Grid        | 20s      | AI + player on reference track. Becomes meaningful after phase 4.   |
+
+Metrics blob fields: `averageFrameMs`, `averageFps`, `onePercentLowFps`,
+`pointOnePercentLowFps`, `frameVarianceMs2`, `wasmCallsPerFrame`,
+`gpuUploadsPerFrame`. Tolerances are gate conditions for Phases 2–5 of
+`perf-120hz-headroom`.
+
+### Baseline capture (2026-04-19)
+
+Baselines must be filled in from the reference machine before moving on
+to the next perf phase. Leave blank if not captured.
+
+| scenario          | avgFrameMs | avgFps | 1% low fps | 0.1% low fps | wasm/frame | gpuUploads/frame |
+| ----------------- | ---------- | ------ | ---------- | ------------ | ---------- | ---------------- |
+| static_car        | TBD        | TBD    | TBD        | TBD          | TBD        | TBD              |
+| single_car_hotlap | TBD        | TBD    | TBD        | TBD          | TBD        | TBD              |
+| twenty_car_grid   | n/a        | n/a    | n/a        | n/a          | n/a        | n/a              |
+
+### Regression tolerance
+
+Any follow-up perf phase must not regress a scenario by more than **10%**
+on `avgFrameMs` or `wasmCallsPerFrame`. Improvements are recorded in the
+revision log.
+
+### Revision log
+
+| date       | change                                        | notes                 |
+| ---------- | --------------------------------------------- | --------------------- |
+| 2026-04-19 | scenario harness + baseline template landed   | phase 1.1–1.2 of perf |
+
 ## Test Environment
 
 ### Hardware Requirements
