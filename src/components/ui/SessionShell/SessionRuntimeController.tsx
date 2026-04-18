@@ -9,9 +9,11 @@ import {
   useSessionStore,
 } from '@/stores/useSessionStore'
 import { useJumpStartDetector } from '@/hooks/useJumpStartDetector'
+import { useWeatherLifecycle } from '@/hooks/useWeatherLifecycle'
 
 export default function SessionRuntimeController() {
   useJumpStartDetector()
+  useWeatherLifecycle()
   const shellStatus = useGameStore(s => s.status)
   const phase = useSessionStore(s => s.phase)
   const config = useSessionStore(s => s.config)
