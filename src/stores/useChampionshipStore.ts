@@ -32,19 +32,15 @@ function buildStandings(drivers: Array<{ driverName: string; teamId: string }>):
     wins: 0,
     podiums: 0,
   }))
-  const teamMap = new Map<string, ChampionshipStanding>()
-  for (const d of drivers) {
-    if (!teamMap.has(d.teamId)) {
-      teamMap.set(d.teamId, {
-        driverName: '',
-        teamId: d.teamId,
-        points: 0,
-        wins: 0,
-        podiums: 0,
-      })
-    }
-  }
-  return { drivers: driverStandings, teams: [...teamMap.values()] }
+  const uniqueTeamIds = Array.from(new Set(drivers.map(d => d.teamId)))
+  const teamStandings = uniqueTeamIds.map(teamId => ({
+    driverName: '',
+    teamId,
+    points: 0,
+    wins: 0,
+    podiums: 0,
+  }))
+  return { drivers: driverStandings, teams: teamStandings }
 }
 
 export const useChampionshipStore = create<ChampionshipStore>()(

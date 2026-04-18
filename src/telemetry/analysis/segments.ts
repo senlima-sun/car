@@ -20,13 +20,13 @@ export interface SegmentLoss {
 const DEFAULT_SEGMENT_COUNT = 20
 
 function integrateDistance(frames: LapTrace['frames']): number[] {
-  const result = new Array(frames.length)
+  const result = new Array<number>(frames.length)
+  if (frames.length === 0) return result
+  result[0] = 0
   let acc = 0
-  for (let i = 0; i < frames.length; i++) {
-    if (i > 0) {
-      const dt = (frames[i].tMs - frames[i - 1].tMs) / 1000
-      acc += frames[i].speedMs * dt
-    }
+  for (let i = 1; i < frames.length; i++) {
+    const dt = (frames[i].tMs - frames[i - 1].tMs) / 1000
+    acc += frames[i].speedMs * dt
     result[i] = acc
   }
   return result

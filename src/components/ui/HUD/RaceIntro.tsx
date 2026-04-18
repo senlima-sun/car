@@ -26,7 +26,7 @@ export default function RaceIntro() {
     <div className='absolute top-[12%] left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none animate-[fadeOut_3s_ease-out_forwards]'>
       <div className='rounded-xl border border-white/15 bg-black/60 px-8 py-4 text-center text-white shadow-[0_14px_60px_rgba(0,0,0,0.5)] backdrop-blur-sm'>
         <div className='text-[11px] font-semibold uppercase tracking-[0.32em] text-white/55'>
-          {config.kind.replace(/_/g, ' ')}
+          {config.kind.replace(/-/g, ' ')}
         </div>
         <div className='mt-1 font-mono text-3xl font-semibold uppercase tracking-[0.16em]'>
           {config.trackId ?? 'Practice Venue'}

@@ -58,8 +58,6 @@ export class PerfScenarioRecorder {
   private samples: PerfSample[] = []
   private startWallMs = 0
   private running = false
-  private wasmCountsAccum = 0
-  private gpuUploadsAccum = 0
 
   constructor(id: PerfScenarioId) {
     this.id = id
@@ -69,15 +67,11 @@ export class PerfScenarioRecorder {
     this.samples = []
     this.startWallMs = performance.now()
     this.running = true
-    this.wasmCountsAccum = 0
-    this.gpuUploadsAccum = 0
   }
 
   record(frameDelta: number, wasmCalls: number, gpuUploads: number): void {
     if (!this.running) return
     if (this.samples.length >= MAX_SAMPLES) return
-    this.wasmCountsAccum += wasmCalls
-    this.gpuUploadsAccum += gpuUploads
     this.samples.push({
       frameDelta,
       wasmCallCount: wasmCalls,
@@ -88,7 +82,7 @@ export class PerfScenarioRecorder {
 
   stop(): PerfMetricsBlob {
     this.running = false
-    return summarize(this.id, this.samples, this.wasmCountsAccum, this.gpuUploadsAccum)
+    return summarize(this.id, this.samples)
   }
 
   isRunning(): boolean {
@@ -96,12 +90,7 @@ export class PerfScenarioRecorder {
   }
 }
 
-function summarize(
-  id: PerfScenarioId,
-  samples: PerfSample[],
-  wasmCallsTotal: number,
-  gpuUploadsTotal: number,
-): PerfMetricsBlob {
+function summarize(id: PerfScenarioId, samples: PerfSample[]): PerfMetricsBlob {
   const scenario = PERF_SCENARIOS[id]
   const frameCount = samples.length
   if (frameCount === 0) {
@@ -127,6 +116,9 @@ function summarize(
   const mean = frameMs.reduce((s, v) => s + v, 0) / frameCount
   const median = sorted[Math.floor(sorted.length / 2)]
   const variance = frameMs.reduce((s, v) => s + (v - mean) * (v - mean), 0) / frameCount
+
+  const wasmCallsTotal = samples.reduce((s, v) => s + v.wasmCallCount, 0)
+  const gpuUploadsTotal = samples.reduce((s, v) => s + v.gpuUploadCount, 0)
 
   const onePercentIdx = Math.max(0, Math.floor(sorted.length * 0.99) - 1)
   const pointOnePercentIdx = Math.max(0, Math.floor(sorted.length * 0.999) - 1)

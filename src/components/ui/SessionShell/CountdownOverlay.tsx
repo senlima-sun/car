@@ -4,7 +4,6 @@ import { useSessionStore } from '@/stores/useSessionStore'
 type LightPhase =
   | { kind: 'idle' }
   | { kind: 'lighting'; lit: number }
-  | { kind: 'hold'; remainMs: number }
   | { kind: 'go' }
 
 const LIGHT_INTERVAL_MS = 1000
@@ -60,7 +59,7 @@ export default function CountdownOverlay() {
 
   if (phase !== 'countdown' && state.kind === 'idle') return null
 
-  const lit = state.kind === 'lighting' ? state.lit : state.kind === 'hold' ? 5 : 0
+  const lit = state.kind === 'lighting' ? state.lit : 0
 
   return (
     <div className='absolute inset-0 z-40 flex items-center justify-center bg-black/35 pointer-events-none'>
