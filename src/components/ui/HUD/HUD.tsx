@@ -11,6 +11,7 @@ import CoastIndicator from './CoastIndicator'
 import RaceIntro from './RaceIntro'
 import DeltaDisplay from './DeltaDisplay'
 import RaceInfoBar from './RaceInfoBar'
+import Callouts from './Callouts'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
 import { SettingsDialog } from '../SettingsDialog'
 import {
@@ -121,6 +122,7 @@ export default function HUD() {
           {isRunningSession && <RaceIntro />}
           {isRunningSession && cameraMode !== 'first-person' && <RaceInfoBar />}
           {isRunningSession && cameraMode !== 'first-person' && <DeltaDisplay />}
+          {isRunningSession && <Callouts />}
 
           {isRunningSession && cameraMode !== 'first-person' && <LapTimer />}
 
