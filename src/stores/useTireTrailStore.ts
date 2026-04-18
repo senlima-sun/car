@@ -22,6 +22,8 @@ interface TireTrailStore {
   heads: Uint32Array
   counts: Uint32Array
   totalActive: number
+  /** Monotonic version bumped whenever trail point data is mutated. */
+  version: number
 
   addPoint: (
     wheel: number,
@@ -51,6 +53,7 @@ export const useTireTrailStore = create<TireTrailStore>((set, get) => ({
   heads: new Uint32Array(4),
   counts: new Uint32Array(4),
   totalActive: 0,
+  version: 0,
 
   addPoint(wheel, x, z, y, dirX, dirZ, intensity, width, isWet) {
     const s = get()
@@ -72,6 +75,7 @@ export const useTireTrailStore = create<TireTrailStore>((set, get) => ({
     if (s.counts[wheel] < MAX_POINTS_PER_WHEEL) {
       s.counts[wheel]++
     }
+    set({ version: s.version + 1 })
   },
 
   tick(dt, rainIntensity, temperature) {
@@ -116,7 +120,7 @@ export const useTireTrailStore = create<TireTrailStore>((set, get) => ({
       }
     }
 
-    set({ totalActive: active })
+    set({ totalActive: active, version: s.version + 1 })
   },
 
   clear() {
@@ -125,7 +129,7 @@ export const useTireTrailStore = create<TireTrailStore>((set, get) => ({
     s.ages.fill(0)
     s.heads.fill(0)
     s.counts.fill(0)
-    set({ totalActive: 0 })
+    set({ totalActive: 0, version: s.version + 1 })
   },
 }))
 

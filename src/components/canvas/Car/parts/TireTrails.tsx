@@ -5,6 +5,7 @@ import { useTireTrailStore, MAX_POINTS_PER_WHEEL } from '../../../../stores/useT
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import { usePerformanceStore } from '../../../../stores/usePerformanceStore'
 import { tireTrailVertexShader, tireTrailFragmentShader } from '../../../../shaders/tireTrail'
+import { incrementGpuUploads } from '../../../../debug/perfCounters'
 
 const TOTAL_INSTANCES = MAX_POINTS_PER_WHEEL * 4
 const SEGMENT_LENGTH = 0.12
@@ -44,6 +45,7 @@ export default function TireTrails() {
   }, [])
 
   const prevCountRef = useRef(0)
+  const prevVersionRef = useRef(-1)
   const tickFrameCounter = useRef(0)
 
   useFrame((_, delta) => {
@@ -72,6 +74,11 @@ export default function TireTrails() {
       mesh.count = 0
       return
     }
+
+    if (store.version === prevVersionRef.current && totalCount === prevCountRef.current) {
+      return
+    }
+    prevVersionRef.current = store.version
 
     const maxPerWheel = usePerformanceStore.getState().trailPointsPerWheel
     let instanceIdx = 0
@@ -112,6 +119,7 @@ export default function TireTrails() {
     colorAttr.needsUpdate = true
     mesh.count = instanceIdx
     prevCountRef.current = instanceIdx
+    incrementGpuUploads(2)
   })
 
   return (

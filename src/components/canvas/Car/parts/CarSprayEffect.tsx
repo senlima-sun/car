@@ -203,19 +203,37 @@ export default function CarSprayEffect({ carStateRef }: CarSprayEffectProps) {
     }
   }, [sprayGeometry, mistGeometry, dropletGeometry, shaderMaterial])
 
+  const surfaceCache = useRef<{ frame: number; condition: 'wet' | 'icy' | null }>({
+    frame: 0,
+    condition: null,
+  })
+  const frameCounterRef = useRef(0)
+  const SURFACE_SAMPLE_EVERY = 15
+
   const getSurfaceCondition = () => {
+    frameCounterRef.current++
+    if (frameCounterRef.current - surfaceCache.current.frame < SURFACE_SAMPLE_EVERY) {
+      return surfaceCache.current.condition
+    }
+    surfaceCache.current.frame = frameCounterRef.current
+
     const { position: carPosition } = carStateRef.current
+    let next: 'wet' | 'icy' | null = null
     if (rainIntensity > 0.01) {
-      if (!physics?.initialized) return 'wet'
-      const wetness = physics.getTrackWetness(carPosition.x, carPosition.z)
-      return wetness > 0.2 ? 'wet' : null
+      if (!physics?.initialized) {
+        next = 'wet'
+      } else {
+        const wetness = physics.getTrackWetness(carPosition.x, carPosition.z)
+        next = wetness > 0.2 ? 'wet' : null
+      }
+    } else if (temperature < 0) {
+      if (physics?.initialized) {
+        const waterDepth = physics.getWaterDepth(carPosition.x, carPosition.z)
+        next = waterDepth > 0.1 ? 'icy' : null
+      }
     }
-    if (temperature < 0) {
-      if (!physics?.initialized) return null
-      const waterDepth = physics.getWaterDepth(carPosition.x, carPosition.z)
-      return waterDepth > 0.1 ? 'icy' : null
-    }
-    return null
+    surfaceCache.current.condition = next
+    return next
   }
 
   const spawnAccumulator = useRef({ spray: 0, mist: 0, droplet: 0 })
