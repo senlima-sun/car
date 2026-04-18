@@ -215,7 +215,7 @@ fn test_circular_turning_lateral_g() {
     let mut state = SimState::new();
     let input = throttle_input();
 
-    for _ in 0..60 {
+    for _ in 0..90 {
         step_sim(&mut engine, &mut state, &input);
     }
 

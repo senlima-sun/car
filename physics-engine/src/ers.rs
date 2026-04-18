@@ -10,6 +10,18 @@ const BATTERY_CAPACITY_KJ: f32 = 4000.0; // 4 MJ = 4000 kJ
 // 2026 regulation: per-lap ERS recovery cap is 8.5 MJ (8500 kJ).
 pub const LAP_RECOVERY_CAP_MJ: f32 = 8.5;
 
+// Deployment scheduler thresholds (pacing regulates deploy under throttle)
+// so the battery no longer drains in seconds at full throttle in Balanced.
+// Curves keep low-speed launch boost intact; the real control comes from
+// the lap-budget tapering below.
+const DEPLOY_MIN_SPEED_MS: f32 = 1.0; // ~3.6 km/h — preserves launch boost
+const DEPLOY_FULL_SPEED_MS: f32 = 12.0; // ~43 km/h — fully engaged by the end of launch
+const DEPLOY_MIN_THROTTLE: f32 = 0.3; // gate partial throttle; full throttle always deploys
+const DEPLOY_FULL_THROTTLE: f32 = 0.7;
+// Target deployment budget per lap (MJ). ~4 MJ is a typical race-lap use —
+// above the 8.5 MJ regulation cap would be wasteful, below ~2 MJ underuses.
+const LAP_DEPLOY_TARGET_MJ: f32 = 4.0;
+
 // 2026 Power levels (350kW MGU-K, up from 120kW)
 const MAX_DEPLOY_POWER_KW: f32 = 350.0; // 2026: 350kW max deployment
 const MAX_HARVEST_POWER_KW: f32 = 350.0; // 2026: 350kW max brake harvest
@@ -270,8 +282,10 @@ impl ErsPhysicsState {
         is_accelerating: bool,
         is_braking: bool,
         speed_ms: f32,
+        throttle: f32,
     ) -> f32 {
         let dt = delta.min(0.05);
+        let throttle = throttle.clamp(0.0, 1.0);
 
         let is_coasting = !is_accelerating && !is_braking;
 
@@ -421,24 +435,35 @@ impl ErsPhysicsState {
         // ========================================================================
 
         if is_accelerating && !is_braking && self.current.battery_charge > 0.0 {
-            let deploy_power = MAX_DEPLOY_POWER_KW * effective_deploy_mult;
+            let schedule = compute_deployment_schedule(
+                speed_ms,
+                throttle,
+                self.current.mode,
+                self.current.lap_deployed_mj,
+                self.overtake_override,
+            );
 
-            let energy_deployed = deploy_power * dt;
-            let battery_needed = energy_deployed / BATTERY_CAPACITY_KJ;
+            let deploy_power = MAX_DEPLOY_POWER_KW * effective_deploy_mult * schedule;
 
-            if battery_needed <= self.current.battery_charge {
-                self.current.battery_charge -= battery_needed;
-                self.current.lap_deployed_mj += energy_deployed / 1000.0;
+            if deploy_power > 1.0 {
+                let energy_deployed = deploy_power * dt;
+                let battery_needed = energy_deployed / BATTERY_CAPACITY_KJ;
 
-                // Calculate force boost (Power = Force × Velocity)
-                // At reference speed (50 m/s), 350 kW = 7000 N
-                let reference_speed = 40.0;
-                let effective_speed = speed_ms.clamp(reference_speed, 90.0);
+                if battery_needed <= self.current.battery_charge {
+                    self.current.battery_charge -= battery_needed;
+                    self.current.lap_deployed_mj += energy_deployed / 1000.0;
 
-                force_boost = (deploy_power * 1000.0 / effective_speed) * DEPLOY_EFFICIENCY;
+                    // Calculate force boost (Power = Force × Velocity)
+                    // At reference speed (50 m/s), 350 kW = 7000 N
+                    let reference_speed = 40.0;
+                    let effective_speed = speed_ms.clamp(reference_speed, 90.0);
 
-                power_flow_kw += deploy_power; // Net power (deploy - clip)
-                is_deploying = true;
+                    force_boost =
+                        (deploy_power * 1000.0 / effective_speed) * DEPLOY_EFFICIENCY;
+
+                    power_flow_kw += deploy_power; // Net power (deploy - clip)
+                    is_deploying = true;
+                }
             }
         }
 
@@ -532,6 +557,48 @@ impl ErsPhysicsState {
     }
 }
 
+/// Deployment scheduler: returns a multiplier in [0.0, 1.0] applied to
+/// deploy power before battery draw. Enforces three conditions:
+///
+/// 1. Speed gate — below `DEPLOY_MIN_SPEED_MS`, deploy is wasted
+///    (engine torque dominates). Ramps up over [min, full].
+/// 2. Throttle gate — below `DEPLOY_MIN_THROTTLE` the driver is
+///    cruising, not demanding power. Ramps over [min, full].
+/// 3. Lap-budget tapering — modes other than Attack/Overtake aim for
+///    `LAP_DEPLOY_TARGET_MJ` per lap and taper to near-zero as the
+///    target is approached, preventing full-throttle drain.
+pub(crate) fn compute_deployment_schedule(
+    speed_ms: f32,
+    throttle: f32,
+    mode: ErsMode,
+    lap_deployed_mj: f32,
+    overtake_override: bool,
+) -> f32 {
+    if overtake_override {
+        return 1.0;
+    }
+
+    let speed_factor = smoothstep(DEPLOY_MIN_SPEED_MS, DEPLOY_FULL_SPEED_MS, speed_ms);
+    let throttle_factor = smoothstep(DEPLOY_MIN_THROTTLE, DEPLOY_FULL_THROTTLE, throttle);
+
+    let budget_factor = match mode {
+        // Aggressive modes ignore per-lap pacing (still honor 8.5 MJ cap).
+        ErsMode::Attack | ErsMode::Overtake => 1.0,
+        _ => {
+            // Ramp from 1.0 at 0 MJ used to 0.0 at 1.25× target.
+            let limit = LAP_DEPLOY_TARGET_MJ * 1.25;
+            (1.0 - (lap_deployed_mj / limit)).clamp(0.0, 1.0)
+        }
+    };
+
+    speed_factor * throttle_factor * budget_factor
+}
+
+fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+    let t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -550,7 +617,7 @@ mod tests {
         let mut state = ErsPhysicsState::new();
 
         // Simulate acceleration at moderate speed
-        let boost = state.update(1.0 / 60.0, true, false, 50.0);
+        let boost = state.update(1.0 / 60.0, true, false, 50.0, 1.0);
 
         // Should deploy and provide boost
         assert!(boost > 0.0);
@@ -568,7 +635,7 @@ mod tests {
 
         // Simulate braking at high speed
         for _ in 0..60 {
-            state.update(1.0 / 60.0, false, true, 60.0);
+            state.update(1.0 / 60.0, false, true, 60.0, 0.0);
         }
 
         // Battery should have charged
@@ -581,12 +648,12 @@ mod tests {
 
         // Attack mode
         state.set_mode(ErsMode::Attack);
-        let attack_boost = state.update(1.0 / 60.0, true, false, 50.0);
+        let attack_boost = state.update(1.0 / 60.0, true, false, 50.0, 1.0);
 
         // Reset for balanced
         state.reset();
         state.set_mode(ErsMode::Balanced);
-        let balanced_boost = state.update(1.0 / 60.0, true, false, 50.0);
+        let balanced_boost = state.update(1.0 / 60.0, true, false, 50.0, 1.0);
 
         // Attack should provide more boost
         assert!(attack_boost > balanced_boost);
@@ -594,7 +661,7 @@ mod tests {
         // Harvest mode should not deploy
         state.reset();
         state.set_mode(ErsMode::Harvest);
-        let harvest_boost = state.update(1.0 / 60.0, true, false, 50.0);
+        let harvest_boost = state.update(1.0 / 60.0, true, false, 50.0, 1.0);
         assert!((harvest_boost - 0.0).abs() < 0.01);
     }
 
@@ -606,7 +673,7 @@ mod tests {
         // Deplete battery (Overtake mode at 100% deploy: 350kW, 4000kJ capacity)
         // Time to deplete: 4000/350 = ~11.4 seconds = ~685 frames at 60fps
         for _ in 0..800 {
-            state.update(1.0 / 60.0, true, false, 50.0);
+            state.update(1.0 / 60.0, true, false, 50.0, 1.0);
         }
 
         // Battery should be depleted
@@ -624,7 +691,7 @@ mod tests {
         // Accelerate at high speed (above super clip threshold of 50 m/s)
         // At 70 m/s (~250 km/h), should get max super clipping
         for _ in 0..60 {
-            state.update(1.0 / 60.0, true, false, 70.0);
+            state.update(1.0 / 60.0, true, false, 70.0, 1.0);
         }
 
         // Battery should have net depletion (deploy > super clip)
@@ -639,7 +706,7 @@ mod tests {
         state.set_battery_charge(0.5);
 
         // Accelerate at low speed (below super clip threshold)
-        state.update(1.0 / 60.0, true, false, 30.0);
+        state.update(1.0 / 60.0, true, false, 30.0, 1.0);
 
         // Super clipping should NOT be active
         assert!(!state.current.super_clip_active);
@@ -653,7 +720,7 @@ mod tests {
         state.set_battery_charge(0.5);
 
         // Accelerate at very high speed
-        state.update(1.0 / 60.0, true, false, 70.0);
+        state.update(1.0 / 60.0, true, false, 70.0, 1.0);
 
         // Super clipping should be active (Harvest mode, high speed)
         assert!(state.current.super_clip_active);
@@ -665,12 +732,12 @@ mod tests {
         let mut state = ErsPhysicsState::new();
         state.set_mode(ErsMode::Overtake);
 
-        let overtake_boost = state.update(1.0 / 60.0, true, false, 50.0);
+        let overtake_boost = state.update(1.0 / 60.0, true, false, 50.0, 1.0);
 
         // Reset for Attack comparison
         state.reset();
         state.set_mode(ErsMode::Attack);
-        let attack_boost = state.update(1.0 / 60.0, true, false, 50.0);
+        let attack_boost = state.update(1.0 / 60.0, true, false, 50.0, 1.0);
 
         // Overtake should provide more boost than Attack (100% vs 85%)
         assert!(overtake_boost > attack_boost);
@@ -682,13 +749,13 @@ mod tests {
         state.set_battery_charge(0.5);
 
         // Braking should set harvest source to Braking
-        state.update(1.0 / 60.0, false, true, 60.0);
+        state.update(1.0 / 60.0, false, true, 60.0, 0.0);
         assert_eq!(state.current.harvest_source, HarvestSource::Braking);
 
         // Coasting should set harvest source to Coast
         state.reset();
         state.set_battery_charge(0.5);
-        state.update(1.0 / 60.0, false, false, 60.0);
+        state.update(1.0 / 60.0, false, false, 60.0, 0.0);
         assert_eq!(state.current.harvest_source, HarvestSource::Coast);
     }
 
@@ -701,7 +768,7 @@ mod tests {
 
         // Simulate coasting (no throttle, no brake) at high speed
         for _ in 0..60 {
-            state.update(1.0 / 60.0, false, false, 60.0);
+            state.update(1.0 / 60.0, false, false, 60.0, 0.0);
         }
 
         // Battery should have charged from coast regen
@@ -716,7 +783,7 @@ mod tests {
         let initial_charge = state.current.battery_charge;
 
         // Try to harvest at low speed
-        state.update(1.0 / 60.0, false, true, 2.0);
+        state.update(1.0 / 60.0, false, true, 2.0, 0.0);
 
         // Should not harvest
         assert!(!state.current.is_harvesting);
@@ -729,7 +796,7 @@ mod tests {
         state.set_mode(ErsMode::Harvest);
         state.set_battery_charge(0.5);
 
-        state.update(1.0 / 60.0, false, true, 60.0);
+        state.update(1.0 / 60.0, false, true, 60.0, 0.0);
 
         assert!(state.is_harvesting());
         assert!(state.current.power_flow < 0.0);
@@ -741,10 +808,59 @@ mod tests {
         state.set_mode(ErsMode::Harvest);
         state.set_battery_charge(0.5);
 
-        state.update(1.0 / 60.0, false, true, 60.0);
+        state.update(1.0 / 60.0, false, true, 60.0, 0.0);
 
         let watts = state.get_harvest_power_watts();
         assert!(watts > 0.0);
         assert!((watts - state.current.power_flow.abs() * 1000.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_deploy_schedule_gated_by_low_throttle() {
+        let low = compute_deployment_schedule(40.0, 0.1, ErsMode::Balanced, 0.0, false);
+        let high = compute_deployment_schedule(40.0, 1.0, ErsMode::Balanced, 0.0, false);
+        assert!(low < 0.05);
+        assert!(high > 0.9);
+    }
+
+    #[test]
+    fn test_deploy_schedule_tapers_near_lap_target() {
+        let early = compute_deployment_schedule(40.0, 1.0, ErsMode::Balanced, 0.0, false);
+        let mid = compute_deployment_schedule(40.0, 1.0, ErsMode::Balanced, 3.0, false);
+        let late = compute_deployment_schedule(40.0, 1.0, ErsMode::Balanced, 5.0, false);
+        assert!(early > mid);
+        assert!(mid > late);
+        assert!(late < 0.05);
+    }
+
+    #[test]
+    fn test_deploy_schedule_attack_ignores_budget() {
+        let early = compute_deployment_schedule(40.0, 1.0, ErsMode::Attack, 0.0, false);
+        let late = compute_deployment_schedule(40.0, 1.0, ErsMode::Attack, 5.0, false);
+        assert!((early - late).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_deploy_schedule_overtake_override_full_power() {
+        let v = compute_deployment_schedule(40.0, 0.0, ErsMode::Balanced, 5.0, true);
+        assert_eq!(v, 1.0);
+    }
+
+    #[test]
+    fn test_balanced_mode_does_not_drain_in_seconds() {
+        // Simulate 10 seconds of full throttle at cruise speed in Balanced.
+        // Previously this would empty the battery; with the scheduler we
+        // should still have charge left.
+        let mut state = ErsPhysicsState::new();
+        state.set_mode(ErsMode::Balanced);
+        state.set_battery_charge(1.0);
+        for _ in 0..600 {
+            state.update(1.0 / 60.0, true, false, 55.0, 1.0);
+        }
+        assert!(
+            state.current.battery_charge > 0.25,
+            "Balanced should preserve a useful reserve after 10s; got {:.2}",
+            state.current.battery_charge,
+        );
     }
 }

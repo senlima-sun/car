@@ -724,11 +724,19 @@ impl PhysicsEngine {
             .update(dt, input.forward, speed_ms, &ambient);
 
         // Update ERS and get force boost
+        let throttle_input = if input.throttle > 0.01 {
+            input.throttle
+        } else if input.forward {
+            1.0
+        } else {
+            0.0
+        };
         let ers_boost = self.ers.update(
             dt,
             input.forward && !input.brake,
             input.backward || input.brake,
             speed_ms,
+            throttle_input,
         );
 
         // Update active aero wing positions (auto mode uses speed for adjustment)
