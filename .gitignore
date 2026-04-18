@@ -19,3 +19,7 @@ physics-engine/target/
 
 # Source texture assets
 temp/
+
+# Test & scratch artifacts
+.playwright-mcp/
+phase1-menu.png
