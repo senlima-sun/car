@@ -3,28 +3,32 @@ import { useFrame } from '@react-three/fiber'
 import { useFPSStore } from '../../stores/useFPSStore'
 import { usePerformanceStore } from '../../stores/usePerformanceStore'
 
+const BUFFER_SIZE = 120
+
 export default function FPSMonitor() {
   const updateFPS = useFPSStore(state => state.updateFPS)
   const sampleFrame = usePerformanceStore(state => state.sampleFrame)
-  const frameTimesRef = useRef<number[]>([])
+  const bufferRef = useRef(new Float32Array(BUFFER_SIZE))
+  const idxRef = useRef(0)
+  const countRef = useRef(0)
   const lastUpdateRef = useRef(0)
 
   useFrame((state, delta) => {
     const now = state.clock.elapsedTime
 
     if (delta > 0 && delta < 1) {
-      frameTimesRef.current.push(delta)
+      bufferRef.current[idxRef.current] = delta
+      idxRef.current = (idxRef.current + 1) % BUFFER_SIZE
+      if (countRef.current < BUFFER_SIZE) countRef.current++
       sampleFrame(delta)
     }
 
-    if (frameTimesRef.current.length > 120) {
-      frameTimesRef.current.shift()
-    }
-
-    if (now - lastUpdateRef.current > 0.2 && frameTimesRef.current.length > 0) {
-      const avgDelta =
-        frameTimesRef.current.reduce((a, b) => a + b, 0) / frameTimesRef.current.length
-      const fps = 1 / avgDelta
+    if (now - lastUpdateRef.current > 0.2 && countRef.current > 0) {
+      let sum = 0
+      for (let i = 0; i < countRef.current; i++) {
+        sum += bufferRef.current[i]
+      }
+      const fps = countRef.current / sum
       updateFPS(fps)
       lastUpdateRef.current = now
     }

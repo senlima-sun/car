@@ -47,7 +47,7 @@ function getProfileHeight(normalizedX: number, curbType: CurbType): number {
 }
 
 function buildCurveArcSamples(
-  curve: QuadraticBezierCurve3,
+  _curve: QuadraticBezierCurve3,
   tStart: number,
   tEnd: number,
   curveLength: number,

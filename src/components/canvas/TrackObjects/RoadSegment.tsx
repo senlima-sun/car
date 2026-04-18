@@ -175,7 +175,8 @@ export default function RoadSegment({
     const rightEdgeVertices: number[] = []
     const rightEdgeIndices: number[] = []
     const edgeWidth = 0.2
-    const edgeOffset = halfWidth - edgeWidth / 2
+
+    const hasFullSnap = hasStartSnap && hasEndSnap
 
     for (let i = 0; i <= segmentCount; i++) {
       const t = i / segmentCount
@@ -184,14 +185,14 @@ export default function RoadSegment({
       const cx = startPoint[0] + dx * t
       const cz = startPoint[2] + dz * t
 
-      const naturalLeftX = cx + perpX * halfWidth
-      const naturalLeftZ = cz + perpZ * halfWidth
-      const naturalRightX = cx - perpX * halfWidth
-      const naturalRightZ = cz - perpZ * halfWidth
-
       let leftX: number, leftZ: number, rightX: number, rightZ: number
 
-      if (i === 0 && hasStartSnap) {
+      if (hasFullSnap) {
+        leftX = startLeftEdge![0] + (endLeftEdge![0] - startLeftEdge![0]) * t
+        leftZ = startLeftEdge![2] + (endLeftEdge![2] - startLeftEdge![2]) * t
+        rightX = startRightEdge![0] + (endRightEdge![0] - startRightEdge![0]) * t
+        rightZ = startRightEdge![2] + (endRightEdge![2] - startRightEdge![2]) * t
+      } else if (i === 0 && hasStartSnap) {
         leftX = startLeftEdge![0]
         leftZ = startLeftEdge![2]
         rightX = startRightEdge![0]
@@ -201,23 +202,30 @@ export default function RoadSegment({
         leftZ = endLeftEdge![2]
         rightX = endRightEdge![0]
         rightZ = endRightEdge![2]
-      } else if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
-        const blend = smoothstep(i / (BLEND_SEGMENTS + 1))
-        leftX = startLeftEdge![0] + (naturalLeftX - startLeftEdge![0]) * blend
-        leftZ = startLeftEdge![2] + (naturalLeftZ - startLeftEdge![2]) * blend
-        rightX = startRightEdge![0] + (naturalRightX - startRightEdge![0]) * blend
-        rightZ = startRightEdge![2] + (naturalRightZ - startRightEdge![2]) * blend
-      } else if (i < segmentCount && i >= segmentCount - BLEND_SEGMENTS && hasEndSnap) {
-        const blend = smoothstep((segmentCount - i) / (BLEND_SEGMENTS + 1))
-        leftX = endLeftEdge![0] + (naturalLeftX - endLeftEdge![0]) * blend
-        leftZ = endLeftEdge![2] + (naturalLeftZ - endLeftEdge![2]) * blend
-        rightX = endRightEdge![0] + (naturalRightX - endRightEdge![0]) * blend
-        rightZ = endRightEdge![2] + (naturalRightZ - endRightEdge![2]) * blend
       } else {
-        leftX = naturalLeftX
-        leftZ = naturalLeftZ
-        rightX = naturalRightX
-        rightZ = naturalRightZ
+        const naturalLeftX = cx + perpX * halfWidth
+        const naturalLeftZ = cz + perpZ * halfWidth
+        const naturalRightX = cx - perpX * halfWidth
+        const naturalRightZ = cz - perpZ * halfWidth
+
+        if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
+          const blend = smoothstep(i / (BLEND_SEGMENTS + 1))
+          leftX = startLeftEdge![0] + (naturalLeftX - startLeftEdge![0]) * blend
+          leftZ = startLeftEdge![2] + (naturalLeftZ - startLeftEdge![2]) * blend
+          rightX = startRightEdge![0] + (naturalRightX - startRightEdge![0]) * blend
+          rightZ = startRightEdge![2] + (naturalRightZ - startRightEdge![2]) * blend
+        } else if (i < segmentCount && i >= segmentCount - BLEND_SEGMENTS && hasEndSnap) {
+          const blend = smoothstep((segmentCount - i) / (BLEND_SEGMENTS + 1))
+          leftX = endLeftEdge![0] + (naturalLeftX - endLeftEdge![0]) * blend
+          leftZ = endLeftEdge![2] + (naturalLeftZ - endLeftEdge![2]) * blend
+          rightX = endRightEdge![0] + (naturalRightX - endRightEdge![0]) * blend
+          rightZ = endRightEdge![2] + (naturalRightZ - endRightEdge![2]) * blend
+        } else {
+          leftX = naturalLeftX
+          leftZ = naturalLeftZ
+          rightX = naturalRightX
+          rightZ = naturalRightZ
+        }
       }
 
       for (let k = 0; k <= CROSS_SEGS; k++) {
@@ -239,50 +247,17 @@ export default function RoadSegment({
       }
 
       const edgeY = elevY + 0.002
-      if ((i === 0 && hasStartSnap) || (i === segmentCount && hasEndSnap)) {
-        const edgeDir = new Vector3(leftX - rightX, 0, leftZ - rightZ).normalize()
-        const lOuter = new Vector3(leftX, 0, leftZ).addScaledVector(
-          edgeDir,
-          -(halfWidth - edgeOffset - edgeWidth / 2),
-        )
-        const lInner = new Vector3(leftX, 0, leftZ).addScaledVector(
-          edgeDir,
-          -(halfWidth - edgeOffset + edgeWidth / 2),
-        )
-        const rInner = new Vector3(rightX, 0, rightZ).addScaledVector(
-          edgeDir,
-          halfWidth - edgeOffset + edgeWidth / 2,
-        )
-        const rOuter = new Vector3(rightX, 0, rightZ).addScaledVector(
-          edgeDir,
-          halfWidth - edgeOffset - edgeWidth / 2,
-        )
-        leftEdgeVertices.push(lOuter.x, edgeY, lOuter.z)
-        leftEdgeVertices.push(lInner.x, edgeY, lInner.z)
-        rightEdgeVertices.push(rInner.x, edgeY, rInner.z)
-        rightEdgeVertices.push(rOuter.x, edgeY, rOuter.z)
-      } else {
-        leftEdgeVertices.push(
-          cx + perpX * (edgeOffset + edgeWidth / 2),
-          edgeY,
-          cz + perpZ * (edgeOffset + edgeWidth / 2),
-        )
-        leftEdgeVertices.push(
-          cx + perpX * (edgeOffset - edgeWidth / 2),
-          edgeY,
-          cz + perpZ * (edgeOffset - edgeWidth / 2),
-        )
-        rightEdgeVertices.push(
-          cx - perpX * (edgeOffset - edgeWidth / 2),
-          edgeY,
-          cz - perpZ * (edgeOffset - edgeWidth / 2),
-        )
-        rightEdgeVertices.push(
-          cx - perpX * (edgeOffset + edgeWidth / 2),
-          edgeY,
-          cz - perpZ * (edgeOffset + edgeWidth / 2),
-        )
-      }
+      const edgeDirX = leftX - rightX
+      const edgeDirZ = leftZ - rightZ
+      const edgeDirLen = Math.sqrt(edgeDirX * edgeDirX + edgeDirZ * edgeDirZ)
+      const enX = edgeDirLen > 0 ? edgeDirX / edgeDirLen : perpX
+      const enZ = edgeDirLen > 0 ? edgeDirZ / edgeDirLen : perpZ
+      const inset = edgeWidth / 2
+
+      leftEdgeVertices.push(leftX + enX * inset, edgeY, leftZ + enZ * inset)
+      leftEdgeVertices.push(leftX - enX * inset, edgeY, leftZ - enZ * inset)
+      rightEdgeVertices.push(rightX + enX * inset, edgeY, rightZ + enZ * inset)
+      rightEdgeVertices.push(rightX - enX * inset, edgeY, rightZ - enZ * inset)
 
       if (i > 0) {
         const baseIdx = (i - 1) * 2

@@ -10,12 +10,14 @@ import { useActiveAeroStore } from '../stores/useActiveAeroStore'
 import { useBrakeStore } from '../stores/useBrakeStore'
 import { useAquaplaningStore } from '../stores/useAquaplaningStore'
 import { useCarStore } from '../stores/useCarStore'
+import { useSessionStore } from '../stores/useSessionStore'
 
 type AnyStore = StoreApi<Record<string, unknown>>
 
 export function registerAllStores(): (() => void)[] {
   const stores: [string, AnyStore][] = [
     ['game', useGameStore as unknown as AnyStore],
+    ['session', useSessionStore as unknown as AnyStore],
     ['tire', useTireStore as unknown as AnyStore],
     ['ers', useErsStore as unknown as AnyStore],
     ['lapTime', useLapTimeStore as unknown as AnyStore],

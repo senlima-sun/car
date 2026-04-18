@@ -14,10 +14,10 @@ import { useTerrainStore } from '@/stores/useTerrainStore'
 import { usePerformanceStore, type QualityTier } from '@/stores/usePerformanceStore'
 
 const VISUAL_SUBDIVISIONS: Record<QualityTier, number> = {
-  ultra: 255,
-  high: 191,
-  medium: 127,
-  low: 63,
+  ultra: 191,
+  high: 127,
+  medium: 63,
+  low: 31,
 }
 
 interface TerrainGroundProps {

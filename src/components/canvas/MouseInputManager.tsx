@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useThree } from '@react-three/fiber'
 import { usePointerLock } from '@/hooks/usePointerLock'
 import { useGameStore } from '@/stores/useGameStore'
+import { useSessionStore } from '@/stores/useSessionStore'
 import { resetLookState, setLookSensitivity } from '@/input/cameraLookState'
 
 export default function MouseInputManager() {
@@ -11,16 +12,20 @@ export default function MouseInputManager() {
   const lockDelayRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const isSettingsOpen = useGameStore(s => s.isSettingsOpen)
-  const status = useGameStore(s => s.status)
+  const shellStatus = useGameStore(s => s.status)
   const cameraMode = useGameStore(s => s.cameraMode)
   const lookSensitivity = useGameStore(s => s.lookSensitivity)
+  const sessionPhase = useSessionStore(s => s.phase)
 
   useEffect(() => {
     setLookSensitivity(lookSensitivity)
   }, [lookSensitivity])
 
   const shouldLock =
-    status === 'racing' && cameraMode === 'first-person' && !isSettingsOpen
+    shellStatus === 'session' &&
+    sessionPhase === 'running' &&
+    cameraMode === 'first-person' &&
+    !isSettingsOpen
 
   useEffect(() => {
     clearTimeout(lockDelayRef.current)

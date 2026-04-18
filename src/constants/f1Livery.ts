@@ -10,9 +10,9 @@ export const LIVERY = {
 } as const
 
 export const MATTE_BODY = {
-  roughness: 0.75,
-  metalness: 0.2,
-  envMapIntensity: 0.6,
+  roughness: 0.35,
+  metalness: 0.4,
+  envMapIntensity: 1.2,
 } as const
 
 export const GLOSSY_ACCENT = {

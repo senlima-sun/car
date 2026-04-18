@@ -22,16 +22,21 @@ import {
 import { TerrainGround, TerrainBrushInteraction, TerrainBrushIndicator } from './Terrain'
 import StartGrid from './TrackObjects/StartGrid'
 import SurfaceParticles from './TrackObjects/SurfaceParticles'
-import { useGameStore } from '@/stores/useGameStore'
+import {
+  isCustomizeStatus,
+  isMenuStatus,
+  isPreviewStatus,
+  useGameStore,
+} from '@/stores/useGameStore'
 import { useEditorStore } from '@/stores/useEditorStore'
 import PreviewScene from './Preview/PreviewScene'
 
 export default function Scene() {
   const carRef = useRef<Group>(null)
   const status = useGameStore(state => state.status)
-  const isMenuMode = status === 'menu'
-  const isCustomizeMode = status === 'customize'
-  const isPreviewMode = status === 'preview'
+  const isMenuMode = isMenuStatus(status)
+  const isCustomizeMode = isCustomizeStatus(status)
+  const isPreviewMode = isPreviewStatus(status)
   const terrainEditMode = useEditorStore(s => s.terrainEditMode)
 
   if (isMenuMode || isPreviewMode) return <PreviewScene />

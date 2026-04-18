@@ -109,7 +109,7 @@ export const ASPHALT_COLOR_INJECT = /* glsl */ `
   float ao = _asphaltValNoise(wXZ * 4.0 + vec2(200.0, 150.0));
   col *= mix(0.85, 1.0, ao);
 
-  float _aggLodFade = smoothstep(8.0, 12.0, distance(vAsphaltWorldPos, cameraPosition));
+  float _aggLodFade = smoothstep(5.0, 8.0, distance(vAsphaltWorldPos, cameraPosition));
   _aggCache = _asphaltAggregate(wXZ, _aggLodFade);
   _aggCacheValid = true;
 

@@ -105,15 +105,15 @@ export function useCarFrame({
       brake_analog: keys.brakeAnalog,
     }
 
-    const { steps, alpha } = accumulator.accumulate(dt)
+    const { steps } = accumulator.accumulate(dt)
 
-    let result = null
+    let result: ReturnType<typeof physicsStep.step> = null
     for (let i = 0; i < steps; i++) {
       result = physicsStep.step(accumulator.fixedTimeStep, input)
       if (!result) return
     }
 
-    if (!result && steps === 0) return
+    if (!result) return
 
     const { output, syncResult, windSyncNeeded, suspensionOutput } = result
 

@@ -11,7 +11,8 @@ import LoadingFallback from './components/ui/LoadingFallback'
 import { PhysicsProvider } from './wasm'
 import { keyboardMap } from './constants/controls'
 import { usePhysicsDebugStore } from './stores/usePhysicsDebugStore'
-import { useGameStore } from './stores/useGameStore'
+import { isSessionShellStatus, useGameStore } from './stores/useGameStore'
+import { isRunningSessionPhase, useSessionStore } from './stores/useSessionStore'
 import { FIXED_TIME_STEP } from './constants/physics'
 import { useGlobalKeys } from './hooks/useGlobalKeys'
 
@@ -41,9 +42,13 @@ function usePhysicsPause() {
 export default function App() {
   const physicsDebug = usePhysicsDebugStore(s => s.enabled)
   const showFPS = useGameStore(s => s.showFPS)
-  const status = useGameStore(s => s.status)
+  const shellStatus = useGameStore(s => s.status)
+  const sessionPhase = useSessionStore(s => s.phase)
   const physicsPaused = usePhysicsPause()
   useGlobalKeys()
+
+  const shouldPausePhysics =
+    physicsPaused || !isSessionShellStatus(shellStatus) || !isRunningSessionPhase(sessionPhase)
 
   return (
     <PhysicsProvider fallback={<LoadingFallback />}>
@@ -53,8 +58,8 @@ export default function App() {
             shadows
             frameloop='always'
             camera={{ position: [0, 5, 10], fov: 75 }}
-            dpr={[1, 1.5]}
-            gl={{ logarithmicDepthBuffer: true, toneMapping: THREE.ACESFilmicToneMapping }}
+            dpr={[1, 1]}
+            gl={{ toneMapping: THREE.ACESFilmicToneMapping, powerPreference: 'high-performance' }}
           >
             {showFPS && <FPSMonitor />}
             <Suspense fallback={null}>
@@ -62,7 +67,7 @@ export default function App() {
                 gravity={[0, -9.81, 0]}
                 timeStep={FIXED_TIME_STEP}
                 debug={physicsDebug}
-                paused={physicsPaused || status === 'menu'}
+                paused={shouldPausePhysics}
               >
                 <Scene />
               </Physics>

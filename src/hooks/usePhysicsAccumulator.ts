@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { FIXED_TIME_STEP, MAX_ACCUMULATED_TIME } from '@/constants/physics'
 
-const MAX_STEPS_PER_FRAME = 8
+const MAX_STEPS_PER_FRAME = 3
 
 export function usePhysicsAccumulator() {
   const accumulatorRef = useRef(0)

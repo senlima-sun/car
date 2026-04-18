@@ -221,6 +221,8 @@ export function useSteeringWheelDisplay() {
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   if (!ctxRef.current) ctxRef.current = canvas.getContext('2d')
 
+  const prevValuesRef = useRef('')
+
   useFrame(state => {
     const ctx = ctxRef.current
     if (!ctx) return
@@ -233,6 +235,13 @@ export function useSteeringWheelDisplay() {
 
     const flashing = flashRef.current !== null && t - flashRef.current < FLASH_DUR
     const ovt = ersMode === 'Overtake' || superClipActive
+
+    const key = `${Math.round(speed)}|${gear}|${Math.round(rpm / 100)}|${ersPreset}|${ersMode}|${superClipActive}|${overtakeAvailable}|${Math.round(batteryCharge)}|${aeroMode}|${bestLapTime}|${lastLapTime}|${lapCount}|${lastSectorSplit?.time}|${Math.round(frontBias * 10)}|${engineBraking}|${Math.round(tires.front_left_inner * 20)}|${Math.round(tires.front_right_inner * 20)}|${Math.round(tires.rear_left_inner * 20)}|${Math.round(tires.rear_right_inner * 20)}|${Math.round(perWheelWear.frontLeft)}|${Math.round(perWheelWear.frontRight)}|${Math.round(perWheelWear.rearLeft)}|${Math.round(perWheelWear.rearRight)}|${ghostTimeDelta !== null ? Math.round(ghostTimeDelta / 10) : ''}`
+
+    const needsRedraw = key !== prevValuesRef.current || flashing || ovt
+    if (!needsRedraw) return
+
+    prevValuesRef.current = key
 
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, CW, CH)

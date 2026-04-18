@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense } from 'react'
 import { Dialog } from '@base-ui-components/react/dialog'
 import { useGameStore } from '@/stores/useGameStore'
+import { useSessionStore } from '@/stores/useSessionStore'
 import {
   CONTROLS,
   CONTROL_CATEGORIES,
@@ -258,7 +259,7 @@ const TABS: { id: TabId; label: string; debugOnly?: boolean }[] = [
 export default function SettingsDialog() {
   const isOpen = useGameStore(s => s.isSettingsOpen)
   const closeSettings = useGameStore(s => s.closeSettings)
-  const isTestingMode = useGameStore(s => s.isTestingMode)
+  const isTestingMode = useSessionStore(s => s.config?.testingMode ?? false)
   const [activeTab, setActiveTab] = useState<TabId>('controls')
 
   const visibleTabs = TABS.filter(t => !t.debugOnly || isTestingMode)

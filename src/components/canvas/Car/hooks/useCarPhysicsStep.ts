@@ -1,7 +1,7 @@
 import { useRef, MutableRefObject } from 'react'
 import { RapierRigidBody } from '@react-three/rapier'
 import { useCurbStore } from '../../../../stores/useCurbStore'
-import { useGameStore } from '../../../../stores/useGameStore'
+import { useSessionStore } from '../../../../stores/useSessionStore'
 import { useErsStore } from '../../../../stores/useErsStore'
 import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { type CarInput } from '../../../../wasm'
@@ -25,9 +25,7 @@ export function useCarPhysicsStep({
   startPosition,
   suspensionStep,
 }: PhysicsStepOptions) {
-  const isOnCurb = useCurbStore(state => state.isOnCurb)
-  const curbSide = useCurbStore(state => state.curbSide)
-  const curbType = useCurbStore(state => state.curbType)
+  const getCurbState = useCurbStore.getState
 
   const suspensionOutputRef = useRef<SuspensionOutput | null>(null)
   const surfaceNormalRef = useRef<[number, number, number]>([0, 1, 0])
@@ -78,8 +76,9 @@ export function useCarPhysicsStep({
       return null
     }
 
+    const { isOnCurb, curbSide, curbType } = getCurbState()
     physics.setOnCurb(isOnCurb, curbSide || undefined, curbType || undefined)
-    physics.setErsOvertakeAvailable(useGameStore.getState().isTestingMode)
+    physics.setErsOvertakeAvailable(useSessionStore.getState().config?.testingMode ?? false)
 
     const ersState = useErsStore.getState()
     physics.setErsMode(ersState.mode)

@@ -1,5 +1,10 @@
 import { useEffect } from 'react'
-import { useGameStore } from '@/stores/useGameStore'
+import { isMenuStatus, isSessionShellStatus, useGameStore } from '@/stores/useGameStore'
+import {
+  isPausedSessionPhase,
+  isRunningSessionPhase,
+  useSessionStore,
+} from '@/stores/useSessionStore'
 import { useEnvironmentStore } from '@/stores/useEnvironmentStore'
 import { usePitStore } from '@/stores/usePitStore'
 import { useEditorStore } from '@/stores/useEditorStore'
@@ -10,11 +15,12 @@ export function useGlobalKeys() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       const game = useGameStore.getState()
+      const session = useSessionStore.getState()
       const canToggleTelemetry =
-        game.status !== 'menu' && game.status !== 'preview' && game.status !== 'customize'
+        isSessionShellStatus(game.status) && isRunningSessionPhase(session.phase)
 
       if (e.key === 'F2') {
-        if (game.status === 'menu') return
+        if (isMenuStatus(game.status)) return
         e.preventDefault()
         game.togglePreviewMode()
         return
@@ -58,7 +64,17 @@ export function useGlobalKeys() {
           return
         }
 
-        if (game.status === 'menu') {
+        if (isSessionShellStatus(game.status) && isRunningSessionPhase(session.phase)) {
+          session.pauseSession()
+          return
+        }
+
+        if (isSessionShellStatus(game.status) && isPausedSessionPhase(session.phase)) {
+          session.resumeSession()
+          return
+        }
+
+        if (isMenuStatus(game.status)) {
           return
         }
 
@@ -66,7 +82,7 @@ export function useGlobalKeys() {
         return
       }
 
-      const { isTestingMode } = useGameStore.getState()
+      const isTestingMode = useSessionStore.getState().config?.testingMode ?? false
       if (!isTestingMode) return
 
       if (e.code === 'KeyM' && !useEnvironmentStore.getState().isModalOpen) {

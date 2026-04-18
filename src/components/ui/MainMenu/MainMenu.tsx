@@ -1,46 +1,88 @@
 import { useGameStore } from '@/stores/useGameStore'
+import { useSessionStore } from '@/stores/useSessionStore'
 
-const MENU_ACTIONS = [
+interface MenuAction {
+  id: string
+  label: string
+  detail: string
+  actionKey:
+    | 'startRaceSession'
+    | 'startTestSession'
+    | 'openTrackEditor'
+    | 'openShowroom'
+    | 'openSettings'
+}
+
+const MENU_ACTIONS: MenuAction[] = [
   {
     id: 'race',
     label: 'Start Race',
     detail: 'Launch the countdown and go straight to the circuit.',
-    action: (startRaceSession: () => void) => startRaceSession(),
+    actionKey: 'startRaceSession',
   },
   {
     id: 'test',
     label: 'Start Test',
-    detail: 'Open the editor and testing tools for track work and debug runs.',
-    action: (_startRaceSession: () => void, startTestSession: () => void) => startTestSession(),
+    detail: 'Free practice run with debug overlay and testing tools.',
+    actionKey: 'startTestSession',
+  },
+  {
+    id: 'editor',
+    label: 'Track Editor',
+    detail: 'Open the editor and testing tools for track work.',
+    actionKey: 'openTrackEditor',
   },
   {
     id: 'showroom',
     label: 'Watch Car',
     detail: 'Inspect the 2026 F1 model in the showroom camera.',
-    action: (
-      _startRaceSession: () => void,
-      _startTestSession: () => void,
-      openShowroom: () => void,
-    ) => openShowroom(),
+    actionKey: 'openShowroom',
   },
   {
     id: 'settings',
     label: 'Settings',
     detail: 'Tune controls and display options before you drive.',
-    action: (
-      _startRaceSession: () => void,
-      _startTestSession: () => void,
-      _openShowroom: () => void,
-      openSettings: () => void,
-    ) => openSettings(),
+    actionKey: 'openSettings',
   },
-] as const
+]
 
 export default function MainMenu() {
-  const startRaceSession = useGameStore(s => s.startRaceSession)
-  const startTestSession = useGameStore(s => s.startTestSession)
-  const openShowroom = useGameStore(s => s.openShowroom)
-  const openSettings = useGameStore(s => s.openSettings)
+  const gameActions = {
+    enterSessionShell: useGameStore(s => s.enterSessionShell),
+    openTrackEditor: useGameStore(s => s.openTrackEditor),
+    openShowroom: useGameStore(s => s.openShowroom),
+    openSettings: useGameStore(s => s.openSettings),
+  }
+
+  const sessionActions = {
+    beginSessionFlow: useSessionStore(s => s.beginSessionFlow),
+  }
+
+  const handleAction = (actionKey: MenuAction['actionKey']) => {
+    if (actionKey === 'startRaceSession') {
+      sessionActions.beginSessionFlow('race')
+      gameActions.enterSessionShell()
+      return
+    }
+
+    if (actionKey === 'startTestSession') {
+      sessionActions.beginSessionFlow('practice', { testingMode: true })
+      gameActions.enterSessionShell()
+      return
+    }
+
+    if (actionKey === 'openTrackEditor') {
+      gameActions.openTrackEditor()
+      return
+    }
+
+    if (actionKey === 'openShowroom') {
+      gameActions.openShowroom()
+      return
+    }
+
+    gameActions.openSettings()
+  }
 
   return (
     <div className='absolute inset-0 z-30 flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(201,44,44,0.24),transparent_38%),linear-gradient(135deg,rgba(8,10,15,0.9),rgba(8,10,15,0.66)_42%,rgba(21,25,34,0.88))] px-6 py-8 pointer-events-auto'>
@@ -56,8 +98,8 @@ export default function MainMenu() {
                   Main Screen
                 </h1>
                 <p className='max-w-2xl text-sm leading-7 text-white/72 md:text-base'>
-                  Choose how to enter the sim. Race mode starts the lap flow, test mode opens the
-                  editor and debug tooling, and showroom mode keeps the car front and center.
+                  Choose how to enter the sim. Race mode starts the lap flow, test mode gives you
+                  free practice with debug tools, and the editor lets you build tracks.
                 </p>
               </div>
             </div>
@@ -67,10 +109,10 @@ export default function MainMenu() {
                 Countdown race start
               </div>
               <div className='rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4'>
-                Editor + testing tools
+                Free practice + debug
               </div>
               <div className='rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4'>
-                Showroom camera orbit
+                Track editor + tools
               </div>
             </div>
           </section>
@@ -79,9 +121,7 @@ export default function MainMenu() {
             {MENU_ACTIONS.map(item => (
               <button
                 key={item.id}
-                onClick={() =>
-                  item.action(startRaceSession, startTestSession, openShowroom, openSettings)
-                }
+                onClick={() => handleAction(item.actionKey)}
                 className='group flex min-h-[92px] flex-col justify-between rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] px-5 py-4 text-left transition hover:border-red-300/45 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.1),rgba(255,255,255,0.04))]'
               >
                 <div className='flex items-center justify-between gap-4'>

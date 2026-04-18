@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useVisibilityStore } from '../stores/useVisibilityStore'
 import { useCarStore } from '../stores/useCarStore'
-import { useGameStore } from '../stores/useGameStore'
+import { isCustomizeStatus, useGameStore } from '../stores/useGameStore'
 import { useCustomizationStore } from '../stores/useCustomizationStore'
 import { usePerformanceStore } from '../stores/usePerformanceStore'
 import { getEditorCameraState } from '../components/canvas/Camera/EditorCamera'
@@ -12,7 +12,7 @@ const UPDATE_INTERVAL = 0.2
 function runVisibilityUpdate() {
   const { updateVisibility } = useVisibilityStore.getState()
   const status = useGameStore.getState().status
-  const isEditor = status === 'customize'
+  const isEditor = isCustomizeStatus(status)
   const tier = usePerformanceStore.getState().tier
   const objects = useCustomizationStore.getState().placedObjects
 

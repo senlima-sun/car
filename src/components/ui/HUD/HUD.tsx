@@ -10,7 +10,14 @@ import LapTimer from './LapTimer'
 import CoastIndicator from './CoastIndicator'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
 import { SettingsDialog } from '../SettingsDialog'
-import { useGameStore } from '@/stores/useGameStore'
+import {
+  isCustomizeStatus,
+  isMenuStatus,
+  isPreviewStatus,
+  isSessionShellStatus,
+  useGameStore,
+} from '@/stores/useGameStore'
+import { isRunningSessionPhase, isSetupSessionPhase, useSessionStore } from '@/stores/useSessionStore'
 import { usePitStore } from '@/stores/usePitStore'
 import { TrackEditorDock } from '../TrackEditorDock'
 import { TrackSelector } from '../TrackSelector'
@@ -20,6 +27,14 @@ import ElevationProfile from '../ElevationProfile/ElevationProfile'
 import { AnimationPreviewPanel } from '../AnimationPreview'
 import { SVGEditor } from '../SVGEditor'
 import { MainMenu } from '../MainMenu'
+import {
+  CountdownOverlay,
+  PauseOverlay,
+  ResultsScreen,
+  SessionEventBridge,
+  SessionRuntimeController,
+  SessionSetup,
+} from '../SessionShell'
 import { useMobileDetection } from '@/utils/isMobile'
 import { TelemetryOverlay } from '../TelemetryOverlay'
 import { TelemetryAnalysis } from '../TelemetryAnalysis'
@@ -27,13 +42,16 @@ import FPSCounter from './FPSCounter'
 
 export default function HUD() {
   const isMobile = useMobileDetection()
-  const status = useGameStore(s => s.status)
+  const shellStatus = useGameStore(s => s.status)
   const cameraMode = useGameStore(s => s.cameraMode)
-  const isTestingMode = useGameStore(s => s.isTestingMode)
+  const isTestingMode = useSessionStore(s => s.config?.testingMode ?? false)
+  const sessionPhase = useSessionStore(s => s.phase)
   const isInPitBox = usePitStore(s => s.isInPitBox)
-  const isMenuMode = status === 'menu'
-  const isCustomizeMode = status === 'customize'
-  const isPreviewMode = status === 'preview'
+  const isMenuMode = isMenuStatus(shellStatus)
+  const isCustomizeMode = isCustomizeStatus(shellStatus)
+  const isPreviewMode = isPreviewStatus(shellStatus)
+  const isSessionShell = isSessionShellStatus(shellStatus)
+  const isRunningSession = isSessionShell && isRunningSessionPhase(sessionPhase)
 
   const [modeNotification, setModeNotification] = useState<string | null>(null)
   const prevTestingMode = useRef(isTestingMode)
@@ -56,7 +74,9 @@ export default function HUD() {
   return (
     <div className='absolute inset-0 pointer-events-none font-sans'>
       <FPSCounter />
-      {!isMenuMode && !isCustomizeMode && !isPreviewMode && <TrackMinimap />}
+      {isSessionShell && <SessionRuntimeController />}
+      {isSessionShell && <SessionEventBridge />}
+      {isRunningSession && <TrackMinimap />}
 
       {modeNotification && (
         <div
@@ -88,13 +108,18 @@ export default function HUD() {
             <ElevationProfile />
           </div>
         </>
-      ) : (
+      ) : isSessionShell ? (
         <>
-          {cameraMode !== 'first-person' && <LapTimer />}
+          {isSetupSessionPhase(sessionPhase) && <SessionSetup />}
+          <CountdownOverlay />
+          <PauseOverlay />
+          <ResultsScreen />
 
-          {isMobile && <MobileSpeedGear />}
+          {isRunningSession && cameraMode !== 'first-person' && <LapTimer />}
 
-          {!isMobile && cameraMode !== 'first-person' && (
+          {isRunningSession && isMobile && <MobileSpeedGear />}
+
+          {isRunningSession && !isMobile && cameraMode !== 'first-person' && (
             <>
               <div className='absolute bottom-[100px] left-1/2 -translate-x-1/2'>
                 <CoastIndicator />
@@ -105,25 +130,25 @@ export default function HUD() {
             </>
           )}
 
-          {isInPitBox && (
+          {isRunningSession && isInPitBox && (
             <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-orange-500/90 text-white px-6 py-3 rounded-lg font-bold text-base pointer-events-none'>
               {isMobile ? 'Tap P for tires' : 'Press P to open tire selection'}
             </div>
           )}
 
-          <PitStopUI />
+          {isRunningSession && <PitStopUI />}
 
-          {isMobile && <MobileControls />}
+          {isRunningSession && isMobile && <MobileControls />}
 
-          <AquaplaningIndicator />
-          <TrackLimitsIndicator />
-          <WrongWayIndicator />
-          <PitLaneSpeedIndicator />
-          {isTestingMode && <PhysicsDebugOverlay />}
-          <TelemetryOverlay />
-          <TelemetryAnalysis />
+          {isRunningSession && <AquaplaningIndicator />}
+          {isRunningSession && <TrackLimitsIndicator />}
+          {isRunningSession && <WrongWayIndicator />}
+          {isRunningSession && <PitLaneSpeedIndicator />}
+          {isRunningSession && isTestingMode && <PhysicsDebugOverlay />}
+          {isRunningSession && <TelemetryOverlay />}
+          {isRunningSession && <TelemetryAnalysis />}
         </>
-      )}
+      ) : null}
     </div>
   )
 }

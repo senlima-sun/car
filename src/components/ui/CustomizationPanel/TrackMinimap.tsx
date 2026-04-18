@@ -3,7 +3,7 @@ import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useCarStore } from '../../../stores/useCarStore'
 import { useGhostCarStore } from '../../../stores/useGhostCarStore'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
-import { useGameStore } from '../../../stores/useGameStore'
+import { isCustomizeStatus, useGameStore } from '../../../stores/useGameStore'
 import { getEditorCameraState } from '../../canvas/Camera/EditorCamera'
 import { isCurveMode } from '../../../types/trackObjects'
 
@@ -261,7 +261,7 @@ export default function TrackMinimap() {
         }
       }
 
-      const isCustomize = useGameStore.getState().status === 'customize'
+      const isCustomize = isCustomizeStatus(useGameStore.getState().status)
 
       if (isCustomize) {
         const camState = getEditorCameraState()

@@ -51,7 +51,7 @@ export default function DynamicLighting({ target }: DynamicLightingProps) {
     sunLightRef.current.target.updateMatrixWorld()
   })
 
-  const shadowSize = 2048
+  const shadowSize = 512
 
   return (
     <>
@@ -64,30 +64,17 @@ export default function DynamicLighting({ target }: DynamicLightingProps) {
         color={config.sunColor}
         castShadow={!isCustomizeMode}
         shadow-mapSize={[shadowSize, shadowSize]}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
-        shadow-camera-near={0.5}
-        shadow-camera-far={100}
-        shadow-bias={-0.0005}
-      />
-
-      <directionalLight
-        position={[-30, 40, -20]}
-        intensity={config.fillLightIntensity}
-        color={config.fillLightColor}
+        shadow-camera-left={-15}
+        shadow-camera-right={15}
+        shadow-camera-top={15}
+        shadow-camera-bottom={-15}
+        shadow-camera-near={1}
+        shadow-camera-far={60}
+        shadow-bias={-0.001}
       />
 
       <hemisphereLight
         args={[config.hemisphereSkyColor, config.hemisphereGroundColor, config.hemisphereIntensity]}
-      />
-
-      <pointLight
-        position={[0, 10, 30]}
-        intensity={50 * config.ambientIntensity}
-        distance={60}
-        color='#ffffff'
       />
     </>
   )

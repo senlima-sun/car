@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useGameStore } from '../../../../stores/useGameStore'
+import { useSessionStore } from '../../../../stores/useSessionStore'
 import { useThermalViewStore } from '../../../../stores/useThermalViewStore'
 import { useHeatmapStore } from '../../../../stores/useHeatmapStore'
 import { useWindViewStore } from '../../../../stores/useWindViewStore'
@@ -42,7 +43,7 @@ interface CarInputOptions {
 export function useCarInputControl({ physics }: CarInputOptions) {
   const toggleCameraMode = useGameStore(state => state.toggleCameraMode)
   const toggleFreeCamera = useGameStore(state => state.toggleFreeCamera)
-  const isTestingMode = useGameStore(state => state.isTestingMode)
+  const isTestingMode = useSessionStore(state => state.config?.testingMode ?? false)
 
   const toggleThermalView = useThermalViewStore(state => state.toggle)
   const toggleHeatmap = useHeatmapStore(state => state.toggleHeatmap)

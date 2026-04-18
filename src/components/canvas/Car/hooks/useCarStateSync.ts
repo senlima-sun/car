@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useTireStore } from '../../../../stores/useTireStore'
 import { useTemperatureStore } from '../../../../stores/useTemperatureStore'
 import { useAquaplaningStore } from '../../../../stores/useAquaplaningStore'
@@ -15,6 +16,7 @@ export function useCarStateSync() {
   const syncAeroState = useActiveAeroStore(state => state.syncFromPhysics)
   const syncBrakeState = useBrakeStore(state => state.syncFromPhysics)
   const syncWindState = useWindStore(state => state.syncFromPhysics)
+  const slowSyncCounter = useRef(0)
 
   const syncAll = (output: any, syncResult: any, windSyncNeeded: boolean) => {
     syncAeroState(syncResult.aero_state)
@@ -24,7 +26,10 @@ export function useCarStateSync() {
       syncWindState(syncResult.wind_state)
     }
 
-    if (output.tire_wear) {
+    slowSyncCounter.current++
+    const slowSync = slowSyncCounter.current % 3 === 0
+
+    if (slowSync && output.tire_wear) {
       syncAllTire(
         {
           frontLeft: output.tire_wear.front_left * 100,
@@ -38,11 +43,11 @@ export function useCarStateSync() {
       )
     }
 
-    if (output.temperature) {
+    if (slowSync && output.temperature) {
       syncTemperature(output.temperature)
     }
 
-    if (output.aquaplaning && output.tire_thermal_shock) {
+    if (slowSync && output.aquaplaning && output.tire_thermal_shock) {
       syncAllAquaplaning(
         output.aquaplaning.is_aquaplaning,
         output.aquaplaning.intensity,

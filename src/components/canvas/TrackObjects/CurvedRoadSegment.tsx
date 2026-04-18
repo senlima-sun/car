@@ -89,6 +89,32 @@ export default function CurvedRoadSegment({
 
     const BLEND_SEGMENTS = 3
 
+    const hasStartSnap = !!(startLeftEdge && startRightEdge)
+    const hasEndSnap = !!(endLeftEdge && endRightEdge)
+    const hasFullSnap = hasStartSnap && hasEndSnap
+
+    let startLeftOffset: Vector3 | null = null
+    let startRightOffset: Vector3 | null = null
+    let endLeftOffset: Vector3 | null = null
+    let endRightOffset: Vector3 | null = null
+
+    if (hasFullSnap) {
+      const startTangent = new Vector3().subVectors(control, start).normalize()
+      const startPerp = new Vector3(-startTangent.z, 0, startTangent.x)
+      const naturalLeftAtStart = new Vector3().copy(points[0]).addScaledVector(startPerp, halfWidth)
+      const naturalRightAtStart = new Vector3().copy(points[0]).addScaledVector(startPerp, -halfWidth)
+
+      const endTangent = new Vector3().subVectors(end, control).normalize()
+      const endPerp = new Vector3(-endTangent.z, 0, endTangent.x)
+      const naturalLeftAtEnd = new Vector3().copy(points[points.length - 1]).addScaledVector(endPerp, halfWidth)
+      const naturalRightAtEnd = new Vector3().copy(points[points.length - 1]).addScaledVector(endPerp, -halfWidth)
+
+      startLeftOffset = new Vector3(startLeftEdge![0], 0, startLeftEdge![2]).sub(naturalLeftAtStart)
+      startRightOffset = new Vector3(startRightEdge![0], 0, startRightEdge![2]).sub(naturalRightAtStart)
+      endLeftOffset = new Vector3(endLeftEdge![0], 0, endLeftEdge![2]).sub(naturalLeftAtEnd)
+      endRightOffset = new Vector3(endRightEdge![0], 0, endRightEdge![2]).sub(naturalRightAtEnd)
+    }
+
     const computeEdgePoints = (i: number, p: Vector3, t: number) => {
       const elevationY = startElev + (endElev - startElev) * t + 0.01
 
@@ -111,10 +137,12 @@ export default function CurvedRoadSegment({
       let leftPoint: Vector3
       let rightPoint: Vector3
 
-      const hasStartSnap = !!(startLeftEdge && startRightEdge)
-      const hasEndSnap = !!(endLeftEdge && endRightEdge)
-
-      if (i === 0 && hasStartSnap) {
+      if (hasFullSnap) {
+        const leftOff = new Vector3().lerpVectors(startLeftOffset!, endLeftOffset!, t)
+        const rightOff = new Vector3().lerpVectors(startRightOffset!, endRightOffset!, t)
+        leftPoint = new Vector3().addVectors(naturalLeft, leftOff)
+        rightPoint = new Vector3().addVectors(naturalRight, rightOff)
+      } else if (i === 0 && hasStartSnap) {
         leftPoint = new Vector3(startLeftEdge![0], 0, startLeftEdge![2])
         rightPoint = new Vector3(startRightEdge![0], 0, startRightEdge![2])
       } else if (i === points.length - 1 && hasEndSnap) {
@@ -122,16 +150,16 @@ export default function CurvedRoadSegment({
         rightPoint = new Vector3(endRightEdge![0], 0, endRightEdge![2])
       } else if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
         const blend = smoothstep(i / (BLEND_SEGMENTS + 1))
-        const snapLeft = new Vector3(startLeftEdge![0], 0, startLeftEdge![2])
-        const snapRight = new Vector3(startRightEdge![0], 0, startRightEdge![2])
-        leftPoint = new Vector3().lerpVectors(snapLeft, naturalLeft, blend)
-        rightPoint = new Vector3().lerpVectors(snapRight, naturalRight, blend)
+        const sLeft = new Vector3(startLeftEdge![0], 0, startLeftEdge![2])
+        const sRight = new Vector3(startRightEdge![0], 0, startRightEdge![2])
+        leftPoint = new Vector3().lerpVectors(sLeft, naturalLeft, blend)
+        rightPoint = new Vector3().lerpVectors(sRight, naturalRight, blend)
       } else if (i < points.length - 1 && i >= points.length - 1 - BLEND_SEGMENTS && hasEndSnap) {
         const blend = smoothstep((points.length - 1 - i) / (BLEND_SEGMENTS + 1))
-        const snapLeft = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
-        const snapRight = new Vector3(endRightEdge![0], 0, endRightEdge![2])
-        leftPoint = new Vector3().lerpVectors(snapLeft, naturalLeft, blend)
-        rightPoint = new Vector3().lerpVectors(snapRight, naturalRight, blend)
+        const eLeft = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
+        const eRight = new Vector3(endRightEdge![0], 0, endRightEdge![2])
+        leftPoint = new Vector3().lerpVectors(eLeft, naturalLeft, blend)
+        rightPoint = new Vector3().lerpVectors(eRight, naturalRight, blend)
       } else {
         leftPoint = naturalLeft
         rightPoint = naturalRight
@@ -155,13 +183,12 @@ export default function CurvedRoadSegment({
     const rightEdgeIndices: number[] = []
 
     const edgeWidth = 0.2
-    const edgeOffset = halfWidth - edgeWidth / 2
 
     for (let i = 0; i < points.length; i++) {
       const p = points[i]
       const t = i / (points.length - 1)
 
-      const { leftPoint, rightPoint, leftY, rightY, perpendicular, elevationY } = computeEdgePoints(
+      const { leftPoint, rightPoint, leftY, rightY, perpendicular } = computeEdgePoints(
         i,
         p,
         t,
@@ -189,51 +216,24 @@ export default function CurvedRoadSegment({
         }
       }
 
-      let leftEdgeOuter: Vector3
-      let leftEdgeInner: Vector3
-      let rightEdgeOuter: Vector3
-      let rightEdgeInner: Vector3
+      const edgeDir = new Vector3().subVectors(leftPoint, rightPoint)
+      const edgeDirLen = edgeDir.length()
+      if (edgeDirLen > 0) edgeDir.divideScalar(edgeDirLen)
+      else edgeDir.copy(perpendicular)
+      const inset = edgeWidth / 2
 
-      if (
-        (i === 0 && startLeftEdge && startRightEdge) ||
-        (i === points.length - 1 && endLeftEdge && endRightEdge)
-      ) {
-        const edgeInset = edgeWidth / 2
-        const roadEdgeInset = halfWidth - edgeOffset
-
-        const edgeDir = new Vector3().subVectors(leftPoint, rightPoint).normalize()
-
-        leftEdgeOuter = new Vector3()
-          .copy(leftPoint)
-          .addScaledVector(edgeDir, -roadEdgeInset + edgeInset)
-        leftEdgeInner = new Vector3()
-          .copy(leftPoint)
-          .addScaledVector(edgeDir, -roadEdgeInset - edgeInset)
-
-        rightEdgeInner = new Vector3()
-          .copy(rightPoint)
-          .addScaledVector(edgeDir, roadEdgeInset + edgeInset)
-        rightEdgeOuter = new Vector3()
-          .copy(rightPoint)
-          .addScaledVector(edgeDir, roadEdgeInset - edgeInset)
-      } else {
-        leftEdgeOuter = new Vector3()
-          .copy(p)
-          .addScaledVector(perpendicular, edgeOffset + edgeWidth / 2)
-        leftEdgeInner = new Vector3()
-          .copy(p)
-          .addScaledVector(perpendicular, edgeOffset - edgeWidth / 2)
-        rightEdgeOuter = new Vector3()
-          .copy(p)
-          .addScaledVector(perpendicular, -(edgeOffset + edgeWidth / 2))
-        rightEdgeInner = new Vector3()
-          .copy(p)
-          .addScaledVector(perpendicular, -(edgeOffset - edgeWidth / 2))
-      }
-
-      const edgeY = elevationY + 0.002
-      leftEdgeVertices.push(leftEdgeOuter.x, edgeY, leftEdgeOuter.z)
-      leftEdgeVertices.push(leftEdgeInner.x, edgeY, leftEdgeInner.z)
+      const leftEdgeY = leftY + 0.002
+      const rightEdgeY = rightY + 0.002
+      leftEdgeVertices.push(
+        leftPoint.x + edgeDir.x * inset,
+        leftEdgeY,
+        leftPoint.z + edgeDir.z * inset,
+      )
+      leftEdgeVertices.push(
+        leftPoint.x - edgeDir.x * inset,
+        leftEdgeY,
+        leftPoint.z - edgeDir.z * inset,
+      )
 
       if (i > 0) {
         const baseIdx = (i - 1) * 2
@@ -241,8 +241,16 @@ export default function CurvedRoadSegment({
         leftEdgeIndices.push(baseIdx + 1, baseIdx + 3, baseIdx + 2)
       }
 
-      rightEdgeVertices.push(rightEdgeInner.x, edgeY, rightEdgeInner.z)
-      rightEdgeVertices.push(rightEdgeOuter.x, edgeY, rightEdgeOuter.z)
+      rightEdgeVertices.push(
+        rightPoint.x + edgeDir.x * inset,
+        rightEdgeY,
+        rightPoint.z + edgeDir.z * inset,
+      )
+      rightEdgeVertices.push(
+        rightPoint.x - edgeDir.x * inset,
+        rightEdgeY,
+        rightPoint.z - edgeDir.z * inset,
+      )
 
       if (i > 0) {
         const baseIdx = (i - 1) * 2

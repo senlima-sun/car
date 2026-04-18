@@ -1,8 +1,10 @@
 import { MutableRefObject, useMemo, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { useGLTF, useTexture } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 import { SuspensionLinkageGroup } from './SuspensionLinkage'
 import type { SuspensionOutput } from '../hooks/useRaycastSuspension'
+import { useCarPaintMaterial } from '../hooks/useCarPaintMaterial'
 import { WHEELBASE } from '@/constants/dimensions'
 import { useTireStore } from '@/stores/useTireStore'
 import { TIRE_COMPOUND } from '@/constants/colors'
@@ -54,6 +56,8 @@ interface BodyFrameProps {
   onRearWingRefs?: (refs: RearWingFlapRefs) => void
 }
 
+const _tmpVec3 = new THREE.Vector3()
+
 export function BodyFrame({
   isRaining,
   suspensionRef,
@@ -65,6 +69,7 @@ export function BodyFrame({
   const bodyRef = useRef<THREE.Group>(null)
   const currentCompound = useTireStore(s => s.currentCompound)
   const liveryTexture = useTexture(LIVERY_BASE_COLOR_PATH)
+  const { applyCarPaint, updateUniforms } = useCarPaintMaterial()
 
   const bodyScene = useMemo(() => {
     const cloned = scene.clone(true)
@@ -82,17 +87,18 @@ export function BodyFrame({
         const mat = child.material
         if (wheelMeshSet.has(child.name) && mat instanceof THREE.MeshStandardMaterial) {
           child.material = mat.clone()
+          applyCarPaint(child.material, child.name)
         } else if (mat instanceof THREE.MeshStandardMaterial && mat.name.startsWith('Livery')) {
           child.material = mat.clone()
           child.material.map = liveryTexture
-          child.material.needsUpdate = true
+          applyCarPaint(child.material, child.name)
           replaced++
         }
       }
     })
-    console.log(`[BodyFrame] Replaced livery texture on ${replaced} meshes`)
+    console.log(`[BodyFrame] Applied car paint shader to ${replaced} livery meshes`)
     return cloned
-  }, [scene, liveryTexture])
+  }, [scene, liveryTexture, applyCarPaint])
 
   useEffect(() => {
     const f1Car = bodyScene.getObjectByName('F1_Car')
@@ -170,6 +176,7 @@ export function BodyFrame({
       if (!(child instanceof THREE.Mesh)) return
       const mat = child.material
       if (!(mat instanceof THREE.MeshStandardMaterial)) return
+      if (mat.name.startsWith('Livery')) return
       if (isRaining) {
         mat.roughness = Math.min(mat.roughness, 0.15)
         mat.envMapIntensity = 2.5
@@ -177,6 +184,12 @@ export function BodyFrame({
       mat.needsUpdate = true
     })
   }, [isRaining])
+
+  useFrame(({ camera }) => {
+    if (!bodyRef.current) return
+    bodyRef.current.getWorldPosition(_tmpVec3)
+    updateUniforms(camera.position.distanceTo(_tmpVec3))
+  })
 
   return (
     <group>

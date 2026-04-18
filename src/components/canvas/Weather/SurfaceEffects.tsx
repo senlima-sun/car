@@ -8,7 +8,6 @@ import { usePhysicsOptional } from '../../../wasm'
 const MAX_PUDDLES = 150
 const MAX_ICE_PATCHES = 100
 const WATER_DEPTH_THRESHOLD = 0.2
-const ICE_THRESHOLD = 0.3
 
 let _surfaceCellCache: Float32Array | null = null
 let _surfaceCellFrame = -1
