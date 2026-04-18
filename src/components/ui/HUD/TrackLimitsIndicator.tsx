@@ -2,46 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTrackLimitsStore } from '../../../stores/useTrackLimitsStore'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
-import { TRACK_LIMITS } from '@/constants/colors'
-
-const styles: Record<string, React.CSSProperties> = {
-  // Full screen overlay with red border
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-    zIndex: 100,
-    boxSizing: 'border-box',
-  },
-  // Central warning text
-  warningContainer: {
-    position: 'absolute',
-    top: 80,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 4,
-  },
-  warningText: {
-    color: TRACK_LIMITS.warningText,
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    textShadow: `0 0 10px ${TRACK_LIMITS.warningBorder}, 0 2px 4px rgba(0, 0, 0, 0.8)`,
-    letterSpacing: 4,
-  },
-  violationCount: {
-    color: TRACK_LIMITS.warningText,
-    fontSize: 12,
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    opacity: 0.8,
-  },
-}
 
 export default function TrackLimitsIndicator() {
   const currentSurface = useSurfaceStore(s => s.currentSurface)
@@ -56,12 +16,9 @@ export default function TrackLimitsIndicator() {
   const violationCount = useTrackLimitsStore(s => s.violationCount)
   const setOffTrack = useTrackLimitsStore(s => s.setOffTrack)
 
-  // Track previous state to avoid rapid flickering
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const lastOffTrackRef = useRef(false)
 
-  // Determine if car is off track
-  // Off track = on grass AND not touching any road or curb
   useEffect(() => {
     const isCurrentlyOffTrack =
       (currentSurface === 'grass' || currentSurface === 'gravel') &&
@@ -69,15 +26,9 @@ export default function TrackLimitsIndicator() {
       curbContactCount === 0 &&
       pitroadContactCount === 0
 
-    // Debounce to prevent rapid flickering when on track edges
     if (isCurrentlyOffTrack !== lastOffTrackRef.current) {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
-
-      // Small delay before registering off-track (prevents micro-violations)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
       const delay = isCurrentlyOffTrack ? 100 : 0
-
       debounceRef.current = setTimeout(() => {
         setOffTrack(isCurrentlyOffTrack)
         lastOffTrackRef.current = isCurrentlyOffTrack
@@ -85,9 +36,7 @@ export default function TrackLimitsIndicator() {
     }
 
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [
     currentSurface,
@@ -98,36 +47,35 @@ export default function TrackLimitsIndicator() {
     setOffTrack,
   ])
 
-  if (!isLapTimingActive || !isOffTrack) {
-    return null
-  }
+  if (!isLapTimingActive || !isOffTrack) return null
 
   return (
     <div
+      className='fixed inset-0 z-[100] pointer-events-none'
       style={{
-        ...styles.overlay,
-        border: `4px solid ${TRACK_LIMITS.warningBorder}`,
-        animation: 'trackLimitsPulse 0.5s ease-in-out infinite',
+        boxShadow: 'inset 0 0 0 3px rgba(255,204,0,0.85), inset 0 0 40px rgba(255,204,0,0.25)',
+        animation: 'hud-pulse 0.55s ease-in-out infinite',
       }}
     >
-      <style>
-        {`
-          @keyframes trackLimitsPulse {
-            0%, 100% {
-              border-color: ${TRACK_LIMITS.warningBorder};
-              box-shadow: inset 0 0 30px ${TRACK_LIMITS.warningGlow};
-            }
-            50% {
-              border-color: transparent;
-              box-shadow: none;
-            }
-          }
-        `}
-      </style>
-
-      <div style={styles.warningContainer}>
-        <div style={styles.warningText}>TRACK LIMITS</div>
-        {violationCount > 1 && <div style={styles.violationCount}>×{violationCount}</div>}
+      <div className='absolute top-[90px] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1'>
+        <div
+          className='border border-[#ffcc00]/60 bg-black/70 px-6 py-2 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,0.5)]'
+          style={{
+            clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
+          }}
+        >
+          <span
+            className='font-sans text-[16px] font-bold uppercase tracking-[0.42em]'
+            style={{ color: '#ffcc00', textShadow: '0 0 14px rgba(255,204,0,0.5)' }}
+          >
+            Track Limits
+          </span>
+        </div>
+        {violationCount > 1 && (
+          <span className='font-mono text-[11px] font-semibold tabular-nums text-[#ffcc00]/80'>
+            ×{violationCount}
+          </span>
+        )}
       </div>
     </div>
   )

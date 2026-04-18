@@ -1,56 +1,6 @@
 import { useCarStore } from '../../../stores/useCarStore'
-import { GEAR, UI } from '@/constants/colors'
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 15,
-    padding: '20px 25px',
-    textAlign: 'center',
-    minWidth: 80,
-  },
-  gear: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: GEAR.reverse,
-    lineHeight: 1,
-    textShadow: '0 0 10px rgba(255, 107, 107, 0.5)',
-  },
-  label: {
-    fontSize: 12,
-    color: UI.textDisabled,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 2,
-    marginBottom: 5,
-  },
-  rpmContainer: {
-    marginTop: 8,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    gap: 3,
-  },
-  rpmValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: UI.textPrimary,
-    fontFamily: 'monospace',
-  },
-  rpmBarBg: {
-    width: '100%',
-    height: 4,
-    background: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  rpmBarFill: {
-    height: '100%',
-    borderRadius: 2,
-    transition: 'width 0.05s linear, background-color 0.1s ease',
-  },
-}
-
-const gearLabels: Record<number, string> = {
+const GEAR_LABEL: Record<number, string> = {
   [-1]: 'R',
   0: 'N',
   1: '1',
@@ -64,44 +14,72 @@ const gearLabels: Record<number, string> = {
 }
 
 const MAX_RPM = 15000
+const RPM_LIGHTS = 12
 
-function getRpmColor(rpmPercent: number): string {
-  if (rpmPercent >= 0.95) return GEAR.redline
-  if (rpmPercent >= 0.8) return '#ff6600'
-  return '#22c55e'
+function rpmLightColor(index: number, litCount: number): string {
+  if (index >= litCount) return 'rgba(255,255,255,0.06)'
+  if (index < 6) return '#22c55e'
+  if (index < 10) return '#f59e0b'
+  return '#ef4444'
 }
 
 export default function GearIndicator() {
-  const gear = useCarStore(state => state.gear)
-  const rpm = useCarStore(state => state.rpm)
-  const displayGear = gearLabels[gear] ?? gear.toString()
+  const gear = useCarStore(s => s.gear)
+  const rpm = useCarStore(s => s.rpm)
+  const displayGear = GEAR_LABEL[gear] ?? gear.toString()
   const rpmPercent = Math.min(rpm / MAX_RPM, 1)
-  const rpmColor = getRpmColor(rpmPercent)
+  const litLights = Math.round(rpmPercent * RPM_LIGHTS)
+  const redline = rpmPercent >= 0.95
+  const gearColor = gear === -1 ? '#ff9f43' : redline ? '#ff2929' : '#ffffff'
 
   return (
-    <div style={styles.container}>
-      <div style={styles.label}>Gear</div>
-      <div
+    <div
+      className='relative flex flex-col items-center gap-1 border border-white/10 bg-gradient-to-b from-black/85 to-black/70 px-5 py-2.5 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,0.45)]'
+      style={{
+        clipPath: 'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%, 0 8px)',
+        minWidth: 110,
+      }}
+    >
+      <div className='flex items-center gap-[2px]'>
+        {Array.from({ length: RPM_LIGHTS }).map((_, i) => (
+          <div
+            key={i}
+            className='h-1 w-2 rounded-[1px]'
+            style={{
+              background: rpmLightColor(i, litLights),
+              boxShadow: i < litLights ? `0 0 4px ${rpmLightColor(i, litLights)}` : 'none',
+            }}
+          />
+        ))}
+      </div>
+
+      <div className='text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>Gear</div>
+
+      <span
+        className='font-mono text-[52px] font-bold leading-none tabular-nums'
         style={{
-          ...styles.gear,
-          color: gear === -1 ? GEAR.reverseAlt : GEAR.reverse,
+          color: gearColor,
+          textShadow: redline ? '0 0 16px rgba(255,41,41,0.7)' : '0 0 14px rgba(255,255,255,0.12)',
         }}
       >
         {displayGear}
-      </div>
-      <div style={styles.rpmContainer}>
-        <span style={{ ...styles.rpmValue, color: rpmColor }}>
-          {Math.round(rpm).toLocaleString()}
-        </span>
-        <div style={styles.rpmBarBg}>
+      </span>
+
+      <div className='mt-1 flex w-full items-center gap-2'>
+        <div className='relative h-1 flex-1 overflow-hidden bg-white/10'>
           <div
+            className='h-full transition-[width,background-color]'
             style={{
-              ...styles.rpmBarFill,
               width: `${rpmPercent * 100}%`,
-              backgroundColor: rpmColor,
+              background:
+                redline ? '#ef4444' : rpmPercent > 0.8 ? '#f97316' : '#22c55e',
             }}
           />
         </div>
+        <span className='font-mono text-[10px] font-semibold tabular-nums text-white/85'>
+          {Math.round(rpm / 1000)}
+          <span className='text-white/35'>K</span>
+        </span>
       </div>
     </div>
   )

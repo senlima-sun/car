@@ -1,149 +1,93 @@
 import { useBrakeStore } from '../../../stores/useBrakeStore'
-import { BRAKE_BIAS, ENGINE_BRAKING, UI } from '@/constants/colors'
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 10,
-    padding: '8px 16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    alignItems: 'center',
-    minWidth: 120,
-  },
-  label: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-    textTransform: 'uppercase' as const,
-    textAlign: 'center' as const,
-  },
-  balanceContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    width: '100%',
-  },
-  balanceBar: {
-    flex: 1,
-    height: 20,
-    background: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 4,
-    overflow: 'hidden',
-    position: 'relative' as const,
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-  },
-  frontFill: {
-    position: 'absolute' as const,
-    left: 0,
-    top: 0,
-    bottom: 0,
-    transition: 'width 0.2s ease, background-color 0.2s ease',
-  },
-  biasText: {
-    position: 'absolute' as const,
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    fontWeight: 'bold',
-    fontSize: 10,
-    color: UI.textPrimary,
-    textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
-    zIndex: 1,
-  },
-  separator: {
-    width: '100%',
-    height: 1,
-    background: 'rgba(255, 255, 255, 0.15)',
-  },
-  engineBraking: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    alignItems: 'center',
-  },
-  engineBrakingLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 8,
-    textTransform: 'uppercase' as const,
-  },
-  engineBrakingValue: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    textAlign: 'center' as const,
-  },
+function biasTone(frontBias: number): string {
+  if (frontBias > 60) return '#f97316'
+  if (frontBias < 55) return '#60a5fa'
+  return '#22c55e'
 }
 
-function getBiasColor(frontBias: number): string {
-  if (frontBias > 60) return BRAKE_BIAS.front
-  if (frontBias < 55) return BRAKE_BIAS.rear
-  return BRAKE_BIAS.balanced
-}
-
-function getEngineBrakingAbbreviation(level: string): string {
+function engineBrakeMeta(level: string): { abbrev: string; color: string } {
   switch (level) {
     case 'Low':
-      return 'L'
-    case 'Medium':
-      return 'M'
+      return { abbrev: 'L', color: '#60a5fa' }
     case 'High':
-      return 'H'
+      return { abbrev: 'H', color: '#f97316' }
     default:
-      return 'M'
-  }
-}
-
-function getEngineBrakingColor(level: string): string {
-  switch (level) {
-    case 'Low':
-      return ENGINE_BRAKING.low
-    case 'Medium':
-      return ENGINE_BRAKING.medium
-    case 'High':
-      return ENGINE_BRAKING.high
-    default:
-      return ENGINE_BRAKING.medium
+      return { abbrev: 'M', color: '#22c55e' }
   }
 }
 
 export default function BrakeIndicator() {
-  const frontBias = useBrakeStore(state => state.frontBias)
-  const engineBraking = useBrakeStore(state => state.engineBraking)
+  const frontBias = useBrakeStore(s => s.frontBias)
+  const engineBraking = useBrakeStore(s => s.engineBraking)
 
   const rearBias = 100 - frontBias
-  const biasColor = getBiasColor(frontBias)
-  const engineBrakingAbbr = getEngineBrakingAbbreviation(engineBraking)
-  const engineBrakingColor = getEngineBrakingColor(engineBraking)
+  const tone = biasTone(frontBias)
+  const eb = engineBrakeMeta(engineBraking)
 
   return (
-    <div style={styles.container}>
-      {/* Label */}
-      <span style={styles.label}>Brake Balance</span>
+    <div
+      className='relative flex flex-col gap-2 border border-white/10 bg-gradient-to-b from-black/85 to-black/70 px-3 py-2 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,0.45)]'
+      style={{
+        clipPath: 'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%, 0 8px)',
+        minWidth: 140,
+      }}
+    >
+      <div
+        className='absolute left-0 top-0 h-full w-[3px]'
+        style={{ background: tone, boxShadow: `0 0 10px ${tone}` }}
+      />
 
-      {/* Brake balance bar */}
-      <div style={styles.balanceContainer as React.CSSProperties}>
-        <div style={styles.balanceBar}>
+      <div className='flex items-center justify-between pl-1'>
+        <span className='text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>
+          Brake Bias
+        </span>
+        <span className='font-mono text-[10px] font-semibold tabular-nums text-white'>
+          {Math.round(frontBias)}
+          <span className='text-white/35 mx-0.5'>:</span>
+          {Math.round(rearBias)}
+        </span>
+      </div>
+
+      <div className='pl-1'>
+        <div className='relative h-2 overflow-hidden border border-white/15 bg-white/5'>
           <div
+            className='absolute inset-y-0 left-0 transition-[width] duration-200'
             style={{
-              ...styles.frontFill,
               width: `${frontBias}%`,
-              backgroundColor: biasColor,
+              background: `linear-gradient(to right, ${tone}, ${tone}aa)`,
             }}
           />
-          <div style={styles.biasText}>
-            {Math.round(frontBias)} | {Math.round(rearBias)}
+          <div className='absolute inset-y-0 left-1/2 w-px bg-white/30' />
+          <div className='absolute inset-0 flex justify-between px-1 text-[7px] font-bold uppercase tracking-[0.2em] text-white/65'>
+            <span>F</span>
+            <span>R</span>
           </div>
         </div>
       </div>
 
-      <div style={styles.separator} />
-
-      {/* Engine braking level */}
-      <div style={styles.engineBraking as React.CSSProperties}>
-        <span style={styles.engineBrakingLabel}>Engine Brake</span>
-        <span style={{ ...styles.engineBrakingValue, color: engineBrakingColor }}>
-          {engineBrakingAbbr}
+      <div className='flex items-center justify-between gap-2 border-t border-white/10 pl-1 pt-1.5'>
+        <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+          Engine Brake
         </span>
+        <div className='flex items-center gap-1'>
+          {['L', 'M', 'H'].map(l => {
+            const active = l === eb.abbrev
+            return (
+              <span
+                key={l}
+                className='flex h-4 w-4 items-center justify-center font-mono text-[9px] font-bold tabular-nums'
+                style={{
+                  background: active ? eb.color : 'rgba(255,255,255,0.06)',
+                  color: active ? '#0a0a0a' : 'rgba(255,255,255,0.4)',
+                  border: `1px solid ${active ? eb.color : 'rgba(255,255,255,0.12)'}`,
+                }}
+              >
+                {l}
+              </span>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

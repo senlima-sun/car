@@ -2,63 +2,6 @@ import { usePitStore, PIT_LANE_SPEED_LIMIT_KMH } from '../../../stores/usePitSto
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { useCarStore } from '../../../stores/useCarStore'
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    position: 'fixed',
-    top: 140,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 6,
-    pointerEvents: 'none',
-    zIndex: 101,
-  },
-  speedLimit: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '6px 16px',
-    background: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 8,
-    border: '2px solid rgba(255, 255, 255, 0.3)',
-  },
-  speedLimitSpeeding: {
-    border: '2px solid #ef4444',
-    background: 'rgba(239, 68, 68, 0.2)',
-  },
-  limitIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: '50%',
-    border: '2px solid #ef4444',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#fff',
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-  },
-  limitText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 600,
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-  },
-  penaltyBadge: {
-    padding: '4px 12px',
-    background: 'rgba(239, 68, 68, 0.9)',
-    borderRadius: 6,
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    animation: 'penaltyFlash 0.6s ease-in-out',
-  },
-}
-
 export default function PitLaneSpeedIndicator() {
   const isInPitLane = usePitStore(s => s.isInPitLane)
   const isPitLaneSpeeding = usePitStore(s => s.isPitLaneSpeeding)
@@ -68,28 +11,54 @@ export default function PitLaneSpeedIndicator() {
 
   if (!isInPitLane) return null
 
-  return (
-    <div style={styles.container}>
-      <style>
-        {`
-          @keyframes penaltyFlash {
-            0% { transform: scale(1.3); }
-            100% { transform: scale(1); }
-          }
-        `}
-      </style>
+  const accent = isPitLaneSpeeding ? '#ef4444' : '#ffcc00'
+  const speedRounded = Math.round(speed)
 
+  return (
+    <div className='fixed top-[140px] left-1/2 z-[101] -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none'>
       <div
+        className='relative flex items-center gap-3 border bg-gradient-to-b from-black/85 to-black/70 px-4 py-2 backdrop-blur-md shadow-[0_12px_30px_rgba(0,0,0,0.5)]'
         style={{
-          ...styles.speedLimit,
-          ...(isPitLaneSpeeding ? styles.speedLimitSpeeding : {}),
+          borderColor: accent,
+          clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
+          animation: isPitLaneSpeeding ? 'hud-critical 0.5s ease-in-out infinite' : undefined,
         }}
       >
-        <div style={styles.limitIcon}>{PIT_LANE_SPEED_LIMIT_KMH}</div>
-        <div style={styles.limitText}>PIT LANE — {Math.round(speed)} km/h</div>
+        <div
+          className='flex h-8 w-8 items-center justify-center rounded-full border-[2.5px] font-mono text-[11px] font-bold tabular-nums'
+          style={{
+            borderColor: accent,
+            color: accent,
+            background: 'rgba(0,0,0,0.4)',
+          }}
+        >
+          {PIT_LANE_SPEED_LIMIT_KMH}
+        </div>
+        <div className='flex flex-col'>
+          <span
+            className='text-[8px] font-bold uppercase tracking-[0.32em]'
+            style={{ color: accent }}
+          >
+            Pit Lane
+          </span>
+          <span className='font-mono text-[14px] font-semibold tabular-nums text-white'>
+            {speedRounded}
+            <span className='ml-0.5 text-[10px] text-white/45'>km/h</span>
+          </span>
+        </div>
       </div>
 
-      {isRecording && penalty > 0 && <div style={styles.penaltyBadge}>+{penalty}s PENALTY</div>}
+      {isRecording && penalty > 0 && (
+        <div
+          className='border border-red-500/70 bg-red-900/70 px-3 py-1 font-mono text-[12px] font-bold tabular-nums text-white backdrop-blur-md'
+          style={{
+            clipPath: 'polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px)',
+            animation: 'hud-fade-in 250ms ease-out',
+          }}
+        >
+          +{penalty}s PENALTY
+        </div>
+      )}
     </div>
   )
 }

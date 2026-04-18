@@ -1,82 +1,4 @@
-import { useEffect, useState } from 'react'
 import { useAquaplaningStore } from '../../../stores/useAquaplaningStore'
-
-const styles: Record<string, React.CSSProperties> = {
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100,
-  },
-  warning: {
-    background: 'rgba(200, 50, 50, 0.85)',
-    borderRadius: 12,
-    padding: '20px 40px',
-    textAlign: 'center',
-    border: '3px solid #ff4444',
-    boxShadow: '0 0 30px rgba(255, 0, 0, 0.6)',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 4,
-    marginBottom: 8,
-    textShadow: '0 0 10px rgba(255, 255, 255, 0.8)',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#ffcccc',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 2,
-  },
-  wheels: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: 10,
-    marginTop: 12,
-  },
-  wheel: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    border: '2px solid #ffffff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  thermalShock: {
-    background: 'rgba(100, 100, 200, 0.85)',
-    borderRadius: 12,
-    padding: '15px 30px',
-    textAlign: 'center',
-    border: '3px solid #6666ff',
-    boxShadow: '0 0 20px rgba(100, 100, 255, 0.5)',
-    marginTop: 20,
-  },
-  shockTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 2,
-  },
-  shockInfo: {
-    fontSize: 12,
-    color: '#ccccff',
-    marginTop: 4,
-  },
-}
 
 export default function AquaplaningIndicator() {
   const isAquaplaning = useAquaplaningStore(s => s.isAquaplaning)
@@ -84,42 +6,50 @@ export default function AquaplaningIndicator() {
   const thermalShockPenalty = useAquaplaningStore(s => s.thermalShockPenalty)
   const thermalShockRecoveryTime = useAquaplaningStore(s => s.thermalShockRecoveryTime)
 
-  // Pulsing animation state
-  const [pulse, setPulse] = useState(0)
-
-  useEffect(() => {
-    if (!isAquaplaning && !isThermalShock) {
-      setPulse(0)
-      return
-    }
-
-    const interval = setInterval(() => {
-      setPulse(p => (p + 1) % 100)
-    }, 30)
-
-    return () => clearInterval(interval)
-  }, [isAquaplaning, isThermalShock])
-
-  // Don't render if nothing to show
   if (!isAquaplaning && !isThermalShock) return null
 
-  // Calculate pulsing opacity
-  const pulseOpacity = 0.7 + Math.sin((pulse / 100) * Math.PI * 2) * 0.3
-
-  // Wheel labels
   return (
-    <div style={{ ...styles.overlay, opacity: pulseOpacity }}>
-      <div>
-        {isThermalShock && (
-          <div style={styles.thermalShock}>
-            <div style={styles.shockTitle}>Tire Thermal Shock</div>
-            <div style={styles.shockInfo}>
-              Grip -{Math.round(thermalShockPenalty * 100)}% | Recovery:{' '}
-              {thermalShockRecoveryTime.toFixed(1)}s
-            </div>
+    <div className='fixed top-[22%] left-1/2 z-[100] -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none'>
+      {isAquaplaning && (
+        <div
+          className='relative border border-red-500/60 bg-gradient-to-b from-red-900/80 to-black/80 px-8 py-3 backdrop-blur-md shadow-[0_14px_40px_rgba(239,68,68,0.35)]'
+          style={{
+            clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px)',
+            animation: 'hud-critical 0.8s ease-in-out infinite',
+          }}
+        >
+          <div className='text-center text-[10px] font-bold uppercase tracking-[0.42em] text-[#ef4444]'>
+            Warning
           </div>
-        )}
-      </div>
+          <div className='mt-1 font-sans text-[24px] font-bold uppercase tracking-[0.28em] text-white'>
+            Aquaplaning
+          </div>
+        </div>
+      )}
+
+      {isThermalShock && (
+        <div
+          className='relative border border-[#60a5fa]/60 bg-gradient-to-b from-blue-950/80 to-black/80 px-6 py-2 backdrop-blur-md shadow-[0_12px_30px_rgba(96,165,250,0.25)]'
+          style={{
+            clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
+          }}
+        >
+          <div className='text-center text-[9px] font-bold uppercase tracking-[0.32em] text-[#60a5fa]'>
+            Tire Thermal Shock
+          </div>
+          <div className='mt-1 flex items-center justify-center gap-3 font-mono text-[11px] tabular-nums text-white/85'>
+            <span>
+              <span className='text-white/45'>Grip </span>
+              <span className='font-bold text-[#ef4444]'>−{Math.round(thermalShockPenalty * 100)}%</span>
+            </span>
+            <span className='h-3 w-px bg-white/20' />
+            <span>
+              <span className='text-white/45'>Recover </span>
+              <span className='font-bold text-white'>{thermalShockRecoveryTime.toFixed(1)}s</span>
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

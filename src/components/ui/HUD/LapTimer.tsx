@@ -6,41 +6,44 @@ import { useGhostCarStore } from '../../../stores/useGhostCarStore'
 
 const GHOST_POLL_INTERVAL = 100
 
-function getSectorBg(
+function sectorTone(
   sectorNum: number,
   sectorTimes: Map<number, number>,
   bestSectorTimes: Map<number, number>,
-): string {
+): { bar: string; tint: string } {
   const time = sectorTimes.get(sectorNum)
-  if (time === undefined) return 'transparent'
+  if (time === undefined) return { bar: 'rgba(255,255,255,0.18)', tint: 'rgba(255,255,255,0.04)' }
   const best = bestSectorTimes.get(sectorNum)
-  if (best === time) return '#a855f7'
-  return '#eab308'
+  if (best === time) return { bar: '#b388ff', tint: 'rgba(179,136,255,0.18)' }
+  return { bar: '#ffcc00', tint: 'rgba(255,204,0,0.15)' }
 }
 
 function formatTime(ms: number | null): string {
-  if (ms === null) return '--:--.---'
+  if (ms === null) return '—:——.———'
   const minutes = Math.floor(ms / 60000)
   const seconds = Math.floor((ms % 60000) / 1000)
   const milliseconds = Math.floor(ms % 1000)
   return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`
 }
 
-const LABEL = 'text-[10px] text-[#888] uppercase tracking-wide mb-0.5'
+function formatSector(ms: number | undefined): string {
+  if (ms === undefined) return '—'
+  const seconds = ms / 1000
+  return seconds.toFixed(3)
+}
 
 export default function LapTimer() {
-  const isActive = useLapTimeStore(state => state.isActive)
-  const isRecording = useLapTimeStore(state => state.isRecording)
-  const currentLapStart = useLapTimeStore(state => state.currentLapStart)
-  const currentLapTime = useLapTimeStore(state => state.currentLapTime)
-  const lastLapTime = useLapTimeStore(state => state.lastLapTime)
-  const bestLapTime = useLapTimeStore(state => state.bestLapTime)
-  const lapCount = useLapTimeStore(state => state.lapCount)
-  const updateCurrentTime = useLapTimeStore(state => state.updateCurrentTime)
-  const totalSectors = useLapTimeStore(state => state.totalSectors)
-  const sectorTimes = useLapTimeStore(state => state.sectorTimes)
-  const bestSectorTimes = useLapTimeStore(state => state.bestSectorTimes)
-  const pitPenalty = usePitStore(state => state.pitLaneSpeedingPenalty)
+  const isActive = useLapTimeStore(s => s.isActive)
+  const isRecording = useLapTimeStore(s => s.isRecording)
+  const currentLapStart = useLapTimeStore(s => s.currentLapStart)
+  const currentLapTime = useLapTimeStore(s => s.currentLapTime)
+  const lastLapTime = useLapTimeStore(s => s.lastLapTime)
+  const bestLapTime = useLapTimeStore(s => s.bestLapTime)
+  const updateCurrentTime = useLapTimeStore(s => s.updateCurrentTime)
+  const totalSectors = useLapTimeStore(s => s.totalSectors)
+  const sectorTimes = useLapTimeStore(s => s.sectorTimes)
+  const bestSectorTimes = useLapTimeStore(s => s.bestSectorTimes)
+  const pitPenalty = usePitStore(s => s.pitLaneSpeedingPenalty)
   const [ghostTimeDelta, setGhostDelta] = useState<number | null>(null)
 
   useEffect(() => {
@@ -52,102 +55,152 @@ export default function LapTimer() {
 
   useEffect(() => {
     if (!isActive || !isRecording || currentLapStart === null) return
-
     let animationId: number
     const update = () => {
       updateCurrentTime()
       animationId = requestAnimationFrame(update)
     }
     animationId = requestAnimationFrame(update)
-
     return () => cancelAnimationFrame(animationId)
   }, [isActive, isRecording, currentLapStart, updateCurrentTime])
 
   if (!isActive || !isRecording) return null
 
   const hasStarted = currentLapStart !== null
+  const ghostAhead = ghostTimeDelta !== null && ghostTimeDelta <= 0
+  const ghostColor = ghostAhead ? '#22c55e' : '#ef4444'
 
   return (
-    <div className='absolute top-0 left-1/2 -translate-x-1/2 rounded-b bg-black/70 p-2'>
-      <div className='flex gap-6'>
-        <div className='text-center'>
-          <div className={LABEL}>Current</div>
-          {hasStarted ? (
-            <div className='font-bold font-mono text-[#00ff88] [text-shadow:0_0_10px_rgba(0,255,136,0.5)]'>
-              {formatTime(currentLapTime)}
-            </div>
-          ) : (
-            <div className='text-xs italic text-[#666]'>Cross checkpoint</div>
-          )}
-        </div>
+    <div className='absolute top-[72px] left-1/2 -translate-x-1/2 z-20 pointer-events-none select-none'>
+      <div
+        className='border border-white/10 bg-gradient-to-b from-black/85 to-black/70 px-4 py-2 backdrop-blur-md shadow-[0_14px_40px_rgba(0,0,0,0.5)]'
+        style={{
+          clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
+        }}
+      >
+        <div className='flex items-center gap-5'>
+          <Column label='Current' accent='#00e5ff'>
+            {hasStarted ? (
+              <span
+                className='font-mono text-[18px] font-semibold leading-none tabular-nums text-white'
+                style={{ textShadow: '0 0 14px rgba(0,229,255,0.35)' }}
+              >
+                {formatTime(currentLapTime)}
+              </span>
+            ) : (
+              <span className='font-sans text-[11px] italic text-white/45'>Cross checkpoint</span>
+            )}
+          </Column>
 
-        <div className='text-center'>
-          <div className={LABEL}>Last</div>
-          <div className='text-base font-mono text-white'>{formatTime(lastLapTime)}</div>
-        </div>
+          <Divider />
 
-        <div className='text-center'>
-          <div className={LABEL}>Best</div>
-          <div className='text-base font-mono text-[#ff00ff] [text-shadow:0_0_8px_rgba(255,0,255,0.5)]'>
-            {formatTime(bestLapTime)}
-          </div>
-        </div>
+          <Column label='Last'>
+            <span className='font-mono text-[14px] tabular-nums text-white/85'>
+              {formatTime(lastLapTime)}
+            </span>
+          </Column>
 
-        <div className='text-center'>
-          <div className={LABEL}>Lap</div>
-          <div className='text-sm font-mono text-[#aaa]'>{lapCount}</div>
-        </div>
+          <Divider />
 
-        <div className='text-center'>
-          <div className={`${LABEL} text-red-500!`}>Penalty</div>
-          {pitPenalty > 0 && (
-            <div className='text-sm font-bold font-mono text-red-500'>+{pitPenalty}s</div>
-          )}
-        </div>
-
-        {ghostTimeDelta !== null && (
-          <div className='text-center'>
-            <div className={LABEL}>Gap</div>
-            <div
-              className='text-base font-bold font-mono'
-              style={{
-                color: ghostTimeDelta <= 0 ? '#00ff88' : '#ff4444',
-                textShadow: `0 0 8px ${ghostTimeDelta <= 0 ? 'rgba(0,255,136,0.5)' : 'rgba(255,68,68,0.5)'}`,
-              }}
+          <Column label='Best' accent='#b388ff'>
+            <span
+              className='font-mono text-[14px] font-semibold tabular-nums'
+              style={{ color: '#b388ff', textShadow: '0 0 12px rgba(179,136,255,0.4)' }}
             >
-              {ghostTimeDelta <= 0 ? '-' : '+'}
-              {Math.abs(ghostTimeDelta / 1000).toFixed(3)}s
-            </div>
+              {formatTime(bestLapTime)}
+            </span>
+          </Column>
+
+          {pitPenalty > 0 && (
+            <>
+              <Divider />
+              <Column label='Penalty' accent='#ef4444'>
+                <span className='font-mono text-[14px] font-semibold tabular-nums text-[#ef4444]'>
+                  +{pitPenalty}s
+                </span>
+              </Column>
+            </>
+          )}
+
+          {ghostTimeDelta !== null && (
+            <>
+              <Divider />
+              <Column label='Ghost' accent={ghostColor}>
+                <span
+                  className='font-mono text-[14px] font-semibold tabular-nums'
+                  style={{ color: ghostColor }}
+                >
+                  {ghostAhead ? '−' : '+'}
+                  {Math.abs(ghostTimeDelta / 1000).toFixed(3)}
+                </span>
+              </Column>
+            </>
+          )}
+        </div>
+
+        {totalSectors > 0 && (
+          <div className='mt-2 grid gap-1' style={{ gridTemplateColumns: `repeat(${totalSectors}, minmax(0, 1fr))` }}>
+            {Array.from({ length: totalSectors }, (_, i) => {
+              const sectorNum = i + 1
+              const tone = sectorTone(sectorNum, sectorTimes, bestSectorTimes)
+              const time = sectorTimes.get(sectorNum)
+              const isEmpty = time === undefined
+              return (
+                <div
+                  key={sectorNum}
+                  className='relative overflow-hidden border-white/10 px-2 py-1'
+                  style={{
+                    background: isEmpty ? 'rgba(255,255,255,0.03)' : tone.tint,
+                    borderLeft: `2px solid ${tone.bar}`,
+                    clipPath: 'polygon(4px 0, 100% 0, 100% 100%, 0 100%, 0 4px)',
+                  }}
+                >
+                  <div className='flex items-center justify-between'>
+                    <span
+                      className='text-[8px] font-bold uppercase tracking-[0.28em]'
+                      style={{ color: tone.bar }}
+                    >
+                      S{sectorNum}
+                    </span>
+                    <span
+                      className='font-mono text-[11px] font-semibold tabular-nums'
+                      style={{ color: isEmpty ? 'rgba(255,255,255,0.35)' : '#ffffff' }}
+                    >
+                      {formatSector(time)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
-
-      {totalSectors > 0 && (
-        <div className='flex gap-1 mt-1'>
-          {Array.from({ length: totalSectors }, (_, i) => {
-            const sectorNum = i + 1
-            const bg = getSectorBg(sectorNum, sectorTimes, bestSectorTimes)
-            const time = sectorTimes.get(sectorNum)
-            const isEmpty = time === undefined
-            return (
-              <div
-                key={sectorNum}
-                className={`flex-1 py-1 text-center rounded-sm ${
-                  isEmpty ? 'border border-white/30' : ''
-                }`}
-                style={isEmpty ? undefined : { backgroundColor: bg }}
-              >
-                <div className='text-[9px] text-white/70 leading-none'>S{sectorNum}</div>
-                {time !== undefined && (
-                  <div className='text-[11px] font-mono text-white font-semibold leading-tight'>
-                    {formatTime(time)}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
     </div>
   )
+}
+
+function Column({
+  label,
+  accent,
+  children,
+}: {
+  label: string
+  accent?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className='flex flex-col items-start gap-1'>
+      <span
+        className='text-[8px] font-bold uppercase tracking-[0.32em]'
+        style={{ color: accent ?? 'rgba(255,255,255,0.42)' }}
+      >
+        {label}
+      </span>
+      {children}
+    </div>
+  )
+}
+
+function Divider() {
+  return <div className='h-7 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent' />
 }

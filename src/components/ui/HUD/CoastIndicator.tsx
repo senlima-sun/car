@@ -1,68 +1,9 @@
 import { useErsStore } from '../../../stores/useErsStore'
-import { STATUS, ERS_MODE, UI } from '@/constants/colors'
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 8,
-    padding: '6px 12px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    fontSize: 11,
-    minWidth: 100,
-  },
-  icon: {
-    fontSize: 16,
-    lineHeight: '16px',
-  },
-  content: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 2,
-  },
-  label: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-    textTransform: 'uppercase' as const,
-  },
-  value: {
-    fontWeight: 'bold',
-    fontSize: 12,
-    fontFamily: 'monospace',
-  },
-  presetBadge: {
-    background: 'rgba(168, 85, 247, 0.3)',
-    color: ERS_MODE.semiAuto,
-    padding: '2px 6px',
-    borderRadius: 4,
-    fontSize: 9,
-    fontWeight: 'bold',
-    textTransform: 'uppercase' as const,
-  },
-  criticalOverlay: {
-    position: 'fixed' as const,
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    background: 'rgba(239, 68, 68, 0.9)',
-    color: UI.textPrimary,
-    padding: '12px 24px',
-    borderRadius: 8,
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center' as const,
-    zIndex: 1000,
-    pointerEvents: 'none' as const,
-  },
-}
-
-function getPresetAbbrev(preset: string): string {
+function presetAbbrev(preset: string): string {
   switch (preset) {
     case 'Aggressive':
       return 'AGG'
-    case 'Balanced':
-      return 'BAL'
     case 'Conservative':
       return 'CON'
     default:
@@ -71,75 +12,93 @@ function getPresetAbbrev(preset: string): string {
 }
 
 export default function CoastIndicator() {
-  const mode = useErsStore(state => state.mode)
-  const semiAuto = useErsStore(state => state.semiAuto)
-  const semiAutoConfig = useErsStore(state => state.semiAutoConfig)
-  const coastIndicatorVisible = useErsStore(state => state.coastIndicatorVisible)
+  const mode = useErsStore(s => s.mode)
+  const semiAuto = useErsStore(s => s.semiAuto)
+  const semiAutoConfig = useErsStore(s => s.semiAutoConfig)
+  const coastIndicatorVisible = useErsStore(s => s.coastIndicatorVisible)
 
-  // Only show when in SemiAuto mode and visibility is enabled
-  if (mode !== 'SemiAuto' || !coastIndicatorVisible) {
-    return null
-  }
+  if (mode !== 'SemiAuto' || !coastIndicatorVisible) return null
 
   const { coast_recommended, coast_benefit, is_critical, deploy_efficiency } = semiAuto
   const { preset } = semiAutoConfig
 
-  // Calculate display values
   const coastBenefitPercent = Math.round(coast_benefit * 100)
   const efficiencyPercent = Math.round(deploy_efficiency * 100)
 
-  // Determine indicator state
   const isCoastActive = coast_recommended && coast_benefit > 0.1
-  const indicatorColor = is_critical ? STATUS.danger : isCoastActive ? STATUS.info : STATUS.success
+  const accent = is_critical ? '#ef4444' : isCoastActive ? '#00e5ff' : '#22c55e'
   const statusText = is_critical ? 'CRITICAL' : isCoastActive ? 'COAST' : 'DEPLOY'
-  const statusIcon = is_critical ? '!' : isCoastActive ? '↓' : '↑'
+  const statusGlyph = is_critical ? '!' : isCoastActive ? '▼' : '▲'
 
   return (
     <>
       <div
+        className='relative flex items-center gap-3 border border-white/10 bg-gradient-to-b from-black/85 to-black/70 px-3 py-1.5 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,0.45)]'
         style={{
-          ...styles.container,
-          borderLeft: `3px solid ${indicatorColor}`,
-          animation: is_critical ? 'criticalPulse 0.5s ease-in-out infinite' : 'none',
+          clipPath: 'polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px)',
+          animation: is_critical ? 'hud-critical 0.6s ease-in-out infinite' : undefined,
+          minWidth: 200,
         }}
       >
-        {/* Status icon */}
-        <span style={{ ...styles.icon, color: indicatorColor }}>{statusIcon}</span>
-
-        {/* Main content */}
-        <div style={styles.content as React.CSSProperties}>
-          <span style={styles.label}>Semi-Auto</span>
-          <span style={{ ...styles.value, color: indicatorColor }}>{statusText}</span>
+        <div
+          className='absolute left-0 top-0 h-full w-[3px]'
+          style={{ background: accent, boxShadow: `0 0 10px ${accent}` }}
+        />
+        <div className='flex items-center gap-1.5 pl-1'>
+          <span
+            className='flex h-5 w-5 items-center justify-center text-[13px] font-bold'
+            style={{ color: accent }}
+          >
+            {statusGlyph}
+          </span>
+          <div className='flex flex-col'>
+            <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Auto</span>
+            <span
+              className='font-mono text-[12px] font-semibold tabular-nums'
+              style={{ color: accent }}
+            >
+              {statusText}
+            </span>
+          </div>
         </div>
 
-        {/* Efficiency or coast benefit */}
-        <div style={styles.content as React.CSSProperties}>
-          <span style={styles.label}>{isCoastActive ? 'Benefit' : 'Efficiency'}</span>
-          <span style={{ ...styles.value, color: indicatorColor }}>
+        <div className='h-7 w-px bg-white/10' />
+
+        <div className='flex flex-col'>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+            {isCoastActive ? 'Benefit' : 'Efficiency'}
+          </span>
+          <span
+            className='font-mono text-[12px] font-semibold tabular-nums'
+            style={{ color: accent }}
+          >
             {isCoastActive ? coastBenefitPercent : efficiencyPercent}%
           </span>
         </div>
 
-        {/* Preset badge */}
-        <span style={styles.presetBadge}>{getPresetAbbrev(preset)}</span>
+        <div
+          className='ml-auto border border-white/15 px-2 py-0.5 font-mono text-[9px] font-bold tabular-nums'
+          style={{ background: 'rgba(179,136,255,0.14)', color: '#b388ff' }}
+        >
+          {presetAbbrev(preset)}
+        </div>
       </div>
 
-      {/* Critical battery warning overlay */}
-      {is_critical && <div style={styles.criticalOverlay}>CRITICAL BATTERY - HARVESTING ONLY</div>}
-
-      {/* CSS animations */}
-      <style>{`
-        @keyframes criticalPulse {
-          0%, 100% {
-            opacity: 1;
-            box-shadow: 0 0 0 rgba(239, 68, 68, 0);
-          }
-          50% {
-            opacity: 0.8;
-            box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
-          }
-        }
-      `}</style>
+      {is_critical && (
+        <div
+          className='fixed left-1/2 top-1/2 z-[1000] -translate-x-1/2 -translate-y-1/2 border px-6 py-3 pointer-events-none'
+          style={{
+            borderColor: 'rgba(239,68,68,0.7)',
+            background: 'rgba(40,10,10,0.85)',
+            animation: 'hud-critical 0.5s ease-in-out infinite',
+            clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
+          }}
+        >
+          <span className='font-sans text-[13px] font-bold uppercase tracking-[0.32em] text-[#ffb4b4]'>
+            Critical Battery — Harvest Only
+          </span>
+        </div>
+      )}
     </>
   )
 }

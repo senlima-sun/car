@@ -5,210 +5,7 @@ import { useTireStore } from '../../../stores/useTireStore'
 import { useBrakeStore } from '../../../stores/useBrakeStore'
 import { TIRE_CONFIG, TIRE_WEAR_WARNING, TIRE_WEAR_CRITICAL } from '../../../constants/tires'
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 10,
-    padding: '10px 16px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-  },
-  separator: {
-    width: 1,
-    height: 44,
-    background: 'rgba(255, 255, 255, 0.15)',
-  },
-  // Left section (Aero + ERS)
-  leftSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-  },
-  // Center section (Gear + Speed)
-  centerSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 16,
-  },
-  gearBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 6,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'rgba(255, 107, 107, 0.15)',
-    border: '2px solid rgba(255, 107, 107, 0.4)',
-  },
-  gear: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ff6b6b',
-    lineHeight: 1,
-    fontFamily: 'monospace',
-  },
-  speedSection: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  speed: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#00ff88',
-    lineHeight: 1,
-    fontFamily: 'monospace',
-    minWidth: 72,
-    textAlign: 'right',
-  },
-  unit: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
-    textTransform: 'uppercase' as const,
-  },
-  // Right section (Tires + Brake)
-  rightSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-  },
-  // Compact Aero
-  aeroBox: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 2,
-    minWidth: 40,
-  },
-  aeroLabel: {
-    fontSize: 8,
-    color: 'rgba(255, 255, 255, 0.4)',
-    textTransform: 'uppercase' as const,
-  },
-  aeroMode: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-  },
-  // Compact ERS
-  ersBox: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    minWidth: 70,
-  },
-  ersBatteryContainer: {
-    width: 20,
-    height: 40,
-    background: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-    position: 'relative' as const,
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-  },
-  ersBatteryFill: {
-    position: 'absolute' as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    transition: 'height 0.3s ease',
-    borderRadius: '1px 1px 0 0',
-  },
-  ersBatteryText: {
-    position: 'absolute' as const,
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#fff',
-    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
-  },
-  ersInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 2,
-  },
-  ersLabel: {
-    fontSize: 8,
-    color: 'rgba(255, 255, 255, 0.4)',
-    textTransform: 'uppercase' as const,
-  },
-  ersMode: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-  },
-  // Compact Tires
-  tireBox: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    minWidth: 70,
-  },
-  tireCompound: {
-    width: 22,
-    height: 22,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 'bold',
-    fontSize: 12,
-    color: '#000',
-  },
-  tireInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 3,
-    minWidth: 40,
-  },
-  tireLabel: {
-    fontSize: 8,
-    color: 'rgba(255, 255, 255, 0.4)',
-    textTransform: 'uppercase' as const,
-  },
-  tireLifeBar: {
-    width: 40,
-    height: 6,
-    background: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  tireLifeFill: {
-    height: '100%',
-    borderRadius: 3,
-    transition: 'width 0.3s ease',
-  },
-  // Compact Brake
-  brakeBox: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 2,
-    minWidth: 40,
-  },
-  brakeLabel: {
-    fontSize: 8,
-    color: 'rgba(255, 255, 255, 0.4)',
-    textTransform: 'uppercase' as const,
-  },
-  brakeValue: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-    color: '#fff',
-  },
-  brakeEngineLevel: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-  },
-}
-
-const gearLabels: Record<number, string> = {
+const GEAR_LABEL: Record<number, string> = {
   [-1]: 'R',
   0: 'N',
   1: '1',
@@ -218,235 +15,277 @@ const gearLabels: Record<number, string> = {
   5: '5',
   6: '6',
   7: '7',
+  8: '8',
 }
 
-function getAeroModeAbbrev(mode: string): string {
-  return mode === 'Corner' ? 'CRN' : 'STR'
+const MAX_RPM = 15000
+const RPM_LIGHTS = 15
+
+function aeroMeta(mode: string) {
+  if (mode === 'Corner') return { label: 'CRN', color: '#00e5ff' }
+  return { label: 'STR', color: '#22c55e' }
 }
 
-function getAeroModeColor(mode: string): string {
-  return mode === 'Corner' ? '#3b82f6' : '#22c55e'
-}
-
-function getErsPresetAbbrev(preset: string): string {
+function ersPresetMeta(preset: string) {
   switch (preset) {
     case 'Aggressive':
-      return 'AGR'
+      return { label: 'AGR', color: '#ef4444' }
     case 'Conservative':
-      return 'CON'
-    case 'Balanced':
+      return { label: 'CON', color: '#60a5fa' }
     default:
-      return 'BAL'
+      return { label: 'BAL', color: '#f59e0b' }
   }
 }
 
-function getErsPresetColor(preset: string): string {
-  switch (preset) {
-    case 'Aggressive':
-      return '#ef4444' // Red for aggressive
-    case 'Conservative':
-      return '#3b82f6' // Blue for conservative
-    case 'Balanced':
-    default:
-      return '#f59e0b' // Yellow/amber for balanced
-  }
-}
-
-function getTireWearColor(wear: number): string {
+function wearColor(wear: number) {
   if (wear >= TIRE_WEAR_CRITICAL) return '#ef4444'
   if (wear >= TIRE_WEAR_WARNING) return '#f59e0b'
   return '#22c55e'
 }
 
-function getBrakeEngineColor(level: string): string {
+function engineBrakeMeta(level: string) {
   switch (level) {
     case 'Low':
-      return '#3b82f6'
-    case 'Medium':
-      return '#22c55e'
+      return { abbrev: 'L', color: '#60a5fa' }
     case 'High':
-      return '#f97316'
+      return { abbrev: 'H', color: '#f97316' }
     default:
-      return '#22c55e'
+      return { abbrev: 'M', color: '#22c55e' }
   }
 }
 
-function getBrakeEngineAbbrev(level: string): string {
-  switch (level) {
-    case 'Low':
-      return 'L'
-    case 'Medium':
-      return 'M'
-    case 'High':
-      return 'H'
-    default:
-      return 'M'
-  }
+function rpmLightColor(index: number, litCount: number) {
+  if (index >= litCount) return 'rgba(255,255,255,0.06)'
+  if (index < 7) return '#22c55e'
+  if (index < 12) return '#f59e0b'
+  return '#ef4444'
 }
 
 export default function RacePanel() {
-  // Car state
-  const gear = useCarStore(state => state.gear)
-  const speed = useCarStore(state => state.speed)
+  const gear = useCarStore(s => s.gear)
+  const speed = useCarStore(s => s.speed)
+  const rpm = useCarStore(s => s.rpm)
 
-  // Aero state
-  const aeroMode = useActiveAeroStore(state => state.mode)
+  const aeroMode = useActiveAeroStore(s => s.mode)
 
-  // ERS state
-  const batteryCharge = useErsStore(state => state.batteryCharge)
-  const semiAutoConfig = useErsStore(state => state.semiAutoConfig)
+  const batteryCharge = useErsStore(s => s.batteryCharge)
+  const semiAutoConfig = useErsStore(s => s.semiAutoConfig)
+  const ersIsDeploying = useErsStore(s => s.isDeploying)
+  const ersIsHarvesting = useErsStore(s => s.isHarvesting)
 
-  // Tire state
-  const currentCompound = useTireStore(state => state.currentCompound)
-  const averageWear = useTireStore(state => state.averageWear)
+  const currentCompound = useTireStore(s => s.currentCompound)
+  const averageWear = useTireStore(s => s.averageWear)
 
-  // Brake state
-  const frontBias = useBrakeStore(state => state.frontBias)
-  const engineBraking = useBrakeStore(state => state.engineBraking)
+  const frontBias = useBrakeStore(s => s.frontBias)
+  const engineBraking = useBrakeStore(s => s.engineBraking)
 
-  // Derived values
-  const displayGear = gearLabels[gear] ?? gear.toString()
+  const displayGear = GEAR_LABEL[gear] ?? gear.toString()
   const displaySpeed = Math.round(Math.abs(speed))
+  const rpmPercent = Math.min(1, rpm / MAX_RPM)
+  const litLights = Math.round(rpmPercent * RPM_LIGHTS)
+  const aero = aeroMeta(aeroMode)
+  const preset = ersPresetMeta(semiAutoConfig.preset)
   const tireConfig = TIRE_CONFIG[currentCompound]
   const tireLife = Math.max(0, 100 - averageWear)
+  const tireTone = wearColor(averageWear)
   const batteryPercent = Math.max(0, Math.min(100, batteryCharge))
   const rearBias = 100 - frontBias
+  const eb = engineBrakeMeta(engineBraking)
+
+  const ersFlow = ersIsDeploying && ersIsHarvesting ? '⇅' : ersIsDeploying ? '▲' : ersIsHarvesting ? '▼' : '·'
+  const ersFlowColor = ersIsDeploying ? '#22c55e' : ersIsHarvesting ? '#60a5fa' : 'rgba(255,255,255,0.35)'
+
+  const gearColor = gear === -1 ? '#ff9f43' : rpmPercent > 0.95 ? '#ff2929' : '#ffffff'
 
   return (
-    <div style={styles.container}>
-      {/* LEFT SECTION: Aero + ERS */}
-      <div style={styles.leftSection as React.CSSProperties}>
-        {/* Compact Aero */}
-        <div style={styles.aeroBox as React.CSSProperties}>
-          <span style={styles.aeroLabel}>Aero</span>
-          <span style={{ ...styles.aeroMode, color: getAeroModeColor(aeroMode) }}>
-            {getAeroModeAbbrev(aeroMode)}
-          </span>
+    <div className='relative flex flex-col items-stretch gap-0 select-none'>
+      <div className='flex items-center justify-center gap-[3px] px-2'>
+        {Array.from({ length: RPM_LIGHTS }).map((_, i) => (
+          <div
+            key={i}
+            className='h-1.5 w-3 rounded-[1px]'
+            style={{
+              backgroundColor: rpmLightColor(i, litLights),
+              boxShadow: i < litLights ? `0 0 6px ${rpmLightColor(i, litLights)}` : 'none',
+              transition: 'background-color 40ms linear',
+            }}
+          />
+        ))}
+      </div>
+
+      <div
+        className='mt-1 flex items-stretch gap-0 border border-white/10 bg-gradient-to-b from-black/85 via-black/75 to-black/85 backdrop-blur-md shadow-[0_18px_60px_rgba(0,0,0,0.55)]'
+        style={{
+          clipPath:
+            'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px)',
+        }}
+      >
+        {/* LEFT : Aero + ERS */}
+        <div className='flex items-center gap-4 px-4 py-2.5'>
+          <Cell label='Aero'>
+            <div className='flex items-baseline gap-1.5'>
+              <span className='font-mono text-base font-semibold tabular-nums' style={{ color: aero.color }}>
+                {aero.label}
+              </span>
+            </div>
+          </Cell>
+
+          <div className='h-10 w-px bg-white/10' />
+
+          <Cell label='ERS'>
+            <div className='flex items-center gap-2'>
+              <div
+                className='relative h-10 w-4 overflow-hidden rounded-[2px] border border-white/15 bg-white/5'
+                aria-label='battery'
+              >
+                <div
+                  className='absolute inset-x-0 bottom-0'
+                  style={{
+                    height: `${semiAutoConfig.targetMax - semiAutoConfig.targetMin}%`,
+                    bottom: `${semiAutoConfig.targetMin}%`,
+                    background: 'rgba(179,136,255,0.18)',
+                  }}
+                />
+                <div
+                  className='absolute inset-x-0 bottom-0 transition-[height] duration-300'
+                  style={{
+                    height: `${batteryPercent}%`,
+                    background: 'linear-gradient(to top, #6d3eff, #b388ff)',
+                    boxShadow: '0 0 6px rgba(179,136,255,0.5)',
+                  }}
+                />
+                <div
+                  className='absolute inset-x-0 h-px bg-[#b388ff]'
+                  style={{ bottom: `${semiAutoConfig.targetMin}%` }}
+                />
+                <div
+                  className='absolute inset-x-0 h-px bg-[#b388ff]'
+                  style={{ bottom: `${semiAutoConfig.targetMax}%` }}
+                />
+              </div>
+              <div className='flex flex-col items-start gap-0.5'>
+                <span className='font-mono text-[13px] font-semibold tabular-nums text-white'>
+                  {Math.round(batteryPercent)}
+                  <span className='text-white/40'>%</span>
+                </span>
+                <span className='flex items-center gap-1 text-[10px] font-semibold'>
+                  <span style={{ color: ersFlowColor }}>{ersFlow}</span>
+                  <span style={{ color: preset.color }}>{preset.label}</span>
+                </span>
+              </div>
+            </div>
+          </Cell>
         </div>
 
-        {/* Compact ERS */}
-        <div style={styles.ersBox as React.CSSProperties}>
-          <div style={styles.ersBatteryContainer}>
-            {/* Target range zone */}
-            <div
+        <div className='w-px self-stretch bg-gradient-to-b from-transparent via-white/15 to-transparent' />
+
+        {/* CENTER : Gear + Speed */}
+        <div className='flex items-center gap-5 px-6 py-2'>
+          <div
+            className='relative flex h-16 w-14 items-center justify-center border border-white/15 bg-black/60'
+            style={{
+              clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
+              background:
+                gear === -1
+                  ? 'linear-gradient(to bottom, rgba(255,159,67,0.14), rgba(0,0,0,0.6))'
+                  : 'linear-gradient(to bottom, rgba(255,255,255,0.07), rgba(0,0,0,0.7))',
+            }}
+          >
+            <span
+              className='font-mono text-[42px] font-bold leading-none tabular-nums'
               style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: `${semiAutoConfig.targetMin}%`,
-                height: `${semiAutoConfig.targetMax - semiAutoConfig.targetMin}%`,
-                background: 'rgba(168, 85, 247, 0.2)',
-                pointerEvents: 'none',
+                color: gearColor,
+                textShadow: rpmPercent > 0.9 ? '0 0 12px rgba(255,41,41,0.7)' : '0 0 10px rgba(255,255,255,0.12)',
               }}
-            />
-            <div
-              style={{
-                ...styles.ersBatteryFill,
-                height: `${batteryPercent}%`,
-                backgroundColor: '#a855f7',
-              }}
-            />
-            {/* Target range markers */}
-            {/* Min marker */}
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: `${semiAutoConfig.targetMin}%`,
-                height: 1,
-                background: '#a855f7',
-                boxShadow: '0 0 2px #a855f7',
-              }}
-            />
-            {/* Max marker */}
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: `${semiAutoConfig.targetMax}%`,
-                height: 1,
-                background: '#a855f7',
-                boxShadow: '0 0 2px #a855f7',
-              }}
-            />
-            <span style={styles.ersBatteryText}>{Math.round(batteryPercent)}</span>
+            >
+              {displayGear}
+            </span>
+            <span className='absolute bottom-1 right-1.5 font-mono text-[7px] tracking-[0.3em] text-white/35'>
+              GEAR
+            </span>
           </div>
-          <div style={styles.ersInfo as React.CSSProperties}>
-            <span style={styles.ersLabel}>ERS</span>
-            <span style={{ ...styles.ersMode, color: getErsPresetColor(semiAutoConfig.preset) }}>
-              {getErsPresetAbbrev(semiAutoConfig.preset)}
+
+          <div className='flex items-baseline gap-1.5'>
+            <span
+              className='font-mono text-[54px] font-bold leading-none tabular-nums text-white'
+              style={{
+                textShadow: '0 0 24px rgba(0,229,255,0.2)',
+                minWidth: '92px',
+                textAlign: 'right',
+              }}
+            >
+              {displaySpeed.toString().padStart(3, '\u00A0')}
+            </span>
+            <span className='flex flex-col text-[9px] font-semibold uppercase tracking-[0.28em] text-white/45'>
+              <span>km</span>
+              <span>/h</span>
             </span>
           </div>
         </div>
-      </div>
 
-      <div style={styles.separator} />
+        <div className='w-px self-stretch bg-gradient-to-b from-transparent via-white/15 to-transparent' />
 
-      {/* CENTER SECTION: Gear + Speed */}
-      <div style={styles.centerSection}>
-        <div
-          style={{
-            ...styles.gearBox,
-            background: gear === -1 ? 'rgba(255, 159, 67, 0.15)' : 'rgba(255, 107, 107, 0.15)',
-            borderColor: gear === -1 ? 'rgba(255, 159, 67, 0.4)' : 'rgba(255, 107, 107, 0.4)',
-          }}
-        >
-          <span
-            style={{
-              ...styles.gear,
-              color: gear === -1 ? '#ff9f43' : '#ff6b6b',
-            }}
-          >
-            {displayGear}
-          </span>
-        </div>
-        <div style={styles.speedSection}>
-          <span style={styles.speed as React.CSSProperties}>{displaySpeed}</span>
-          <span style={styles.unit}>km/h</span>
-        </div>
-      </div>
-
-      <div style={styles.separator} />
-
-      {/* RIGHT SECTION: Tires + Brake */}
-      <div style={styles.rightSection as React.CSSProperties}>
-        {/* Compact Tires */}
-        <div style={styles.tireBox as React.CSSProperties}>
-          <div style={{ ...styles.tireCompound, backgroundColor: tireConfig.color }}>
-            {tireConfig.icon}
-          </div>
-          <div style={styles.tireInfo as React.CSSProperties}>
-            <span style={styles.tireLabel}>Tire</span>
-            <div style={styles.tireLifeBar}>
+        {/* RIGHT : Tires + Brake */}
+        <div className='flex items-center gap-4 px-4 py-2.5'>
+          <Cell label='Tire'>
+            <div className='flex items-center gap-2'>
               <div
+                className='flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-bold text-black'
                 style={{
-                  ...styles.tireLifeFill,
-                  width: `${tireLife}%`,
-                  backgroundColor: getTireWearColor(averageWear),
+                  background: tireConfig.color,
+                  boxShadow: `0 0 0 2px rgba(255,255,255,0.12)`,
                 }}
-              />
+              >
+                {tireConfig.icon}
+              </div>
+              <div className='flex flex-col items-start gap-1'>
+                <div className='flex items-baseline gap-1'>
+                  <span
+                    className='font-mono text-[12px] font-semibold tabular-nums'
+                    style={{ color: tireTone }}
+                  >
+                    {Math.round(tireLife)}
+                  </span>
+                  <span className='text-[8px] uppercase tracking-[0.28em] text-white/35'>%life</span>
+                </div>
+                <div className='h-1 w-[56px] overflow-hidden rounded-[1px] bg-white/10'>
+                  <div
+                    className='h-full transition-[width] duration-300'
+                    style={{ width: `${tireLife}%`, background: tireTone }}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </Cell>
 
-        {/* Compact Brake */}
-        <div style={styles.brakeBox as React.CSSProperties}>
-          <span style={styles.brakeLabel}>Brake</span>
-          <span style={styles.brakeValue}>
-            {Math.round(frontBias)}:{Math.round(rearBias)}
-          </span>
-          <span
-            style={{
-              ...styles.brakeEngineLevel,
-              color: getBrakeEngineColor(engineBraking),
-            }}
-          >
-            EB:{getBrakeEngineAbbrev(engineBraking)}
-          </span>
+          <div className='h-10 w-px bg-white/10' />
+
+          <Cell label='Brake'>
+            <div className='flex flex-col gap-1'>
+              <div className='flex items-baseline gap-1 font-mono text-[12px] font-semibold tabular-nums text-white'>
+                <span>{Math.round(frontBias)}</span>
+                <span className='text-white/35'>:</span>
+                <span>{Math.round(rearBias)}</span>
+              </div>
+              <span
+                className='font-mono text-[10px] font-semibold tabular-nums'
+                style={{ color: eb.color }}
+              >
+                EB·{eb.abbrev}
+              </span>
+            </div>
+          </Cell>
         </div>
       </div>
+    </div>
+  )
+}
+
+function Cell({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className='flex flex-col items-start gap-1'>
+      <span className='text-[8px] font-semibold uppercase tracking-[0.32em] text-white/40'>{label}</span>
+      {children}
     </div>
   )
 }

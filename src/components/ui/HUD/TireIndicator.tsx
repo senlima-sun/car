@@ -1,137 +1,19 @@
 import { useTireStore } from '../../../stores/useTireStore'
 import { TIRE_CONFIG, TIRE_WEAR_WARNING, TIRE_WEAR_CRITICAL } from '../../../constants/tires'
-import { PERFORMANCE, UI } from '@/constants/colors'
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 10,
-    padding: '12px 16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-    minWidth: 160,
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-  },
-  compoundBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: UI.backgroundDark,
-    border: '2px solid rgba(255, 255, 255, 0.3)',
-  },
-  compoundInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  compoundName: {
-    color: UI.textPrimary,
-    fontSize: 13,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  gripLabel: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 10,
-  },
-  wheelsContainer: {
-    display: 'flex',
-    gap: 8,
-    justifyContent: 'center',
-  },
-  wheelColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-  },
-  wheelIndicator: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    width: 50,
-  },
-  wheelLabel: {
-    fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginBottom: 2,
-  },
-  wheelBar: {
-    width: 32,
-    height: 56,
-    background: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 6,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-end',
-  },
-  wheelFill: {
-    borderRadius: 4,
-    transition: 'height 0.3s ease, background-color 0.3s ease',
-  },
-  wheelPercent: {
-    fontSize: 9,
-    color: UI.textPrimary,
-    marginTop: 2,
-    fontWeight: 'bold',
-  },
-  carBody: {
-    width: 14,
-    height: 52,
-    background: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 4,
-    alignSelf: 'center',
-    marginTop: 10,
-  },
-  avgContainer: {
-    width: '100%',
-  },
-  avgLabel: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 10,
-    marginBottom: 3,
-  },
-  avgBarBackground: {
-    width: '100%',
-    height: 6,
-    background: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  avgBar: {
-    height: '100%',
-    borderRadius: 3,
-    transition: 'width 0.3s ease, background-color 0.3s ease',
-  },
-  materialWarning: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    padding: '4px 8px',
-    borderRadius: 4,
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
+function wearColor(wear: number): string {
+  if (wear >= TIRE_WEAR_CRITICAL) return '#ef4444'
+  if (wear >= TIRE_WEAR_WARNING) return '#f59e0b'
+  return '#22c55e'
 }
 
-function getWearColor(wear: number): string {
-  if (wear >= TIRE_WEAR_CRITICAL) return PERFORMANCE.wearCritical
-  if (wear >= TIRE_WEAR_WARNING) return PERFORMANCE.wearWarning
-  return PERFORMANCE.wearGood
+function gripColor(g: number): string {
+  if (g >= 80) return '#22c55e'
+  if (g >= 50) return '#f59e0b'
+  return '#ef4444'
 }
 
-function WheelIndicator({
+function WheelCell({
   label,
   wear,
   compoundColor,
@@ -141,36 +23,35 @@ function WheelIndicator({
   compoundColor: string
 }) {
   const remaining = Math.max(0, 100 - wear)
-  const color = getWearColor(wear)
-
+  const color = wearColor(wear)
   return (
-    <div style={styles.wheelIndicator}>
-      <span style={styles.wheelLabel}>{label}</span>
+    <div className='flex flex-col items-center gap-1'>
+      <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>{label}</span>
       <div
-        style={{
-          ...styles.wheelBar,
-          border: `3px solid ${compoundColor}`,
-        }}
+        className='relative flex h-12 w-7 flex-col justify-end overflow-hidden bg-white/5'
+        style={{ border: `1.5px solid ${compoundColor}`, borderRadius: 2 }}
       >
         <div
-          style={{
-            ...styles.wheelFill,
-            height: `${remaining}%`,
-            backgroundColor: color,
-          }}
+          className='w-full transition-[height,background-color] duration-300'
+          style={{ height: `${remaining}%`, background: color }}
         />
       </div>
-      <span style={{ ...styles.wheelPercent, color }}>{Math.round(remaining)}%</span>
+      <span
+        className='font-mono text-[10px] font-semibold tabular-nums'
+        style={{ color }}
+      >
+        {Math.round(remaining)}
+      </span>
     </div>
   )
 }
 
 export default function TireIndicator() {
-  const currentCompound = useTireStore(state => state.currentCompound)
-  const perWheelWear = useTireStore(state => state.perWheelWear)
-  const averageWear = useTireStore(state => state.averageWear)
-  const effectiveGrip = useTireStore(state => state.effectiveGripMultiplier)
-  const tireMaterial = useTireStore(state => state.tireMaterial)
+  const currentCompound = useTireStore(s => s.currentCompound)
+  const perWheelWear = useTireStore(s => s.perWheelWear)
+  const averageWear = useTireStore(s => s.averageWear)
+  const effectiveGrip = useTireStore(s => s.effectiveGripMultiplier)
+  const tireMaterial = useTireStore(s => s.tireMaterial)
 
   const config = TIRE_CONFIG[currentCompound]
   const avgRemaining = Math.max(0, 100 - averageWear)
@@ -182,7 +63,7 @@ export default function TireIndicator() {
     perWheelWear.rearLeft,
     perWheelWear.rearRight,
   )
-  const isFlashing = maxWear >= TIRE_WEAR_CRITICAL
+  const isCritical = maxWear >= TIRE_WEAR_CRITICAL
 
   const maxGraining = tireMaterial ? Math.max(...tireMaterial.per_wheel_graining) : 0
   const maxBlistering = tireMaterial ? Math.max(...tireMaterial.per_wheel_blistering) : 0
@@ -191,90 +72,98 @@ export default function TireIndicator() {
 
   return (
     <div
+      className='relative border border-white/10 bg-gradient-to-b from-black/85 to-black/70 backdrop-blur-md shadow-[0_14px_40px_rgba(0,0,0,0.5)]'
       style={{
-        ...styles.container,
-        animation: isFlashing ? 'pulse 1s ease-in-out infinite' : 'none',
+        clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
+        animation: isCritical ? 'hud-critical 1.1s ease-in-out infinite' : undefined,
+        minWidth: 180,
       }}
     >
-      <style>
-        {`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-        `}
-      </style>
-
-      <div style={styles.header}>
-        <div
-          style={{
-            ...styles.compoundBadge,
-            backgroundColor: config.color,
-          }}
-        >
-          {config.icon}
-        </div>
-        <div style={styles.compoundInfo as React.CSSProperties}>
-          <span style={styles.compoundName}>{config.displayName}</span>
-          <span style={styles.gripLabel}>GRIP: {gripPercent}%</span>
-        </div>
-      </div>
-
-      <div style={styles.wheelsContainer}>
-        <div style={styles.wheelColumn}>
-          <WheelIndicator label='FL' wear={perWheelWear.frontLeft} compoundColor={config.color} />
-          <WheelIndicator label='RL' wear={perWheelWear.rearLeft} compoundColor={config.color} />
-        </div>
-
-        <div style={styles.carBody} />
-
-        <div style={styles.wheelColumn}>
-          <WheelIndicator label='FR' wear={perWheelWear.frontRight} compoundColor={config.color} />
-          <WheelIndicator label='RR' wear={perWheelWear.rearRight} compoundColor={config.color} />
-        </div>
-      </div>
-
-      <div style={styles.avgContainer}>
-        <div style={styles.avgLabel}>
-          <span>AVG TIRE LIFE</span>
-          <span>{Math.round(avgRemaining)}%</span>
-        </div>
-        <div style={styles.avgBarBackground}>
+      <div className='flex items-center justify-between border-b border-white/10 px-3 py-1.5'>
+        <div className='flex items-center gap-2'>
           <div
-            style={{
-              ...styles.avgBar,
-              width: `${avgRemaining}%`,
-              backgroundColor: getWearColor(averageWear),
-            }}
+            className='flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-bold text-black'
+            style={{ background: config.color, boxShadow: '0 0 0 2px rgba(255,255,255,0.12)' }}
+          >
+            {config.icon}
+          </div>
+          <span className='font-sans text-[11px] font-bold uppercase tracking-[0.24em] text-white'>
+            {config.displayName}
+          </span>
+        </div>
+        <div className='flex items-baseline gap-1'>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Grip</span>
+          <span
+            className='font-mono text-[12px] font-semibold tabular-nums'
+            style={{ color: gripColor(gripPercent) }}
+          >
+            {gripPercent}%
+          </span>
+        </div>
+      </div>
+
+      <div className='flex items-center justify-center gap-3 px-3 py-3'>
+        <div className='flex flex-col gap-2'>
+          <WheelCell label='FL' wear={perWheelWear.frontLeft} compoundColor={config.color} />
+          <WheelCell label='RL' wear={perWheelWear.rearLeft} compoundColor={config.color} />
+        </div>
+
+        <div className='relative h-[104px] w-2 rounded-full bg-gradient-to-b from-white/15 via-white/5 to-white/15' />
+
+        <div className='flex flex-col gap-2'>
+          <WheelCell label='FR' wear={perWheelWear.frontRight} compoundColor={config.color} />
+          <WheelCell label='RR' wear={perWheelWear.rearRight} compoundColor={config.color} />
+        </div>
+      </div>
+
+      <div className='border-t border-white/10 px-3 py-2'>
+        <div className='mb-1 flex items-baseline justify-between'>
+          <span className='text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>Avg Life</span>
+          <span
+            className='font-mono text-[11px] font-semibold tabular-nums'
+            style={{ color: wearColor(averageWear) }}
+          >
+            {Math.round(avgRemaining)}%
+          </span>
+        </div>
+        <div className='h-1 overflow-hidden bg-white/10'>
+          <div
+            className='h-full transition-[width,background-color] duration-300'
+            style={{ width: `${avgRemaining}%`, background: wearColor(averageWear) }}
           />
         </div>
+
+        {(hasGrainingWarn || hasBlisteringWarn) && (
+          <div className='mt-2 flex flex-col gap-1'>
+            {hasGrainingWarn && (
+              <div
+                className='flex items-center justify-between px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.28em]'
+                style={{
+                  background: 'rgba(245,158,11,0.14)',
+                  border: '1px solid rgba(245,158,11,0.35)',
+                  color: '#f59e0b',
+                }}
+              >
+                <span>Graining</span>
+                <span className='font-mono tabular-nums'>{Math.round(maxGraining * 100)}%</span>
+              </div>
+            )}
+            {hasBlisteringWarn && (
+              <div
+                className='flex items-center justify-between px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.28em]'
+                style={{
+                  background: 'rgba(239,68,68,0.14)',
+                  border: '1px solid rgba(239,68,68,0.35)',
+                  color: '#ef4444',
+                }}
+              >
+                <span>Blistering</span>
+                <span className='font-mono tabular-nums'>{Math.round(maxBlistering * 100)}%</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
-      {hasGrainingWarn && (
-        <div
-          style={{
-            ...styles.materialWarning,
-            background: 'rgba(245, 158, 11, 0.2)',
-            color: '#f59e0b',
-            border: '1px solid rgba(245, 158, 11, 0.4)',
-          }}
-        >
-          GRAINING {Math.round(maxGraining * 100)}%
-        </div>
-      )}
-
-      {hasBlisteringWarn && (
-        <div
-          style={{
-            ...styles.materialWarning,
-            background: 'rgba(239, 68, 68, 0.2)',
-            color: '#ef4444',
-            border: '1px solid rgba(239, 68, 68, 0.4)',
-          }}
-        >
-          BLISTERING {Math.round(maxBlistering * 100)}%
-        </div>
-      )}
     </div>
   )
 }

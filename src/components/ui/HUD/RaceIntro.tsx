@@ -20,23 +20,39 @@ export default function RaceIntro() {
 
   if (!visible || !config) return null
 
-  const weather = rainIntensity > 0.3 ? 'Rain' : temperature > 32 ? 'Hot' : temperature < 8 ? 'Cold' : 'Dry'
+  const weather =
+    rainIntensity > 0.3 ? 'Rain' : temperature > 32 ? 'Hot' : temperature < 8 ? 'Cold' : 'Dry'
 
   return (
-    <div className='absolute top-[12%] left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none animate-[fadeOut_3s_ease-out_forwards]'>
-      <div className='rounded-xl border border-white/15 bg-black/60 px-8 py-4 text-center text-white shadow-[0_14px_60px_rgba(0,0,0,0.5)] backdrop-blur-sm'>
-        <div className='text-[11px] font-semibold uppercase tracking-[0.32em] text-white/55'>
+    <div className='absolute top-[14%] left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none animate-[hud-fade-out_3s_ease-out_forwards]'>
+      <div
+        className='relative overflow-hidden border border-white/10 bg-gradient-to-b from-black/80 to-black/60 px-10 py-5 backdrop-blur-md shadow-[0_24px_80px_rgba(0,0,0,0.6)]'
+        style={{
+          clipPath: 'polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%, 0 14px)',
+        }}
+      >
+        <div className='absolute inset-x-6 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#ffcc00] to-transparent' />
+        <div className='text-center text-[10px] font-bold uppercase tracking-[0.42em] text-[#ffcc00]'>
           {config.kind.replace(/-/g, ' ')}
         </div>
-        <div className='mt-1 font-mono text-3xl font-semibold uppercase tracking-[0.16em]'>
+        <div className='mt-2 text-center font-sans text-[34px] font-bold uppercase leading-none tracking-[0.16em] text-white'>
           {config.trackId ?? 'Practice Venue'}
         </div>
-        <div className='mt-2 flex items-center justify-center gap-4 text-[11px] uppercase tracking-[0.24em] text-white/55'>
-          <span>Laps {config.lapLimit ?? '—'}</span>
-          <span>·</span>
-          <span>{weather}</span>
-          <span>·</span>
-          <span>{temperature.toFixed(0)}°C</span>
+        <div className='mt-3 flex items-center justify-center gap-6 text-[10px] uppercase tracking-[0.32em] text-white/55'>
+          <span className='flex items-center gap-1.5'>
+            <span className='text-white/35'>Laps</span>
+            <span className='font-mono text-white tabular-nums'>{config.lapLimit ?? '—'}</span>
+          </span>
+          <span className='h-3 w-px bg-white/20' />
+          <span className='flex items-center gap-1.5'>
+            <span className='text-white/35'>Weather</span>
+            <span className='font-mono text-white tabular-nums'>{weather}</span>
+          </span>
+          <span className='h-3 w-px bg-white/20' />
+          <span className='flex items-center gap-1.5'>
+            <span className='text-white/35'>Track</span>
+            <span className='font-mono text-white tabular-nums'>{temperature.toFixed(0)}°C</span>
+          </span>
         </div>
       </div>
     </div>

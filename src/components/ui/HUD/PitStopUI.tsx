@@ -1,246 +1,17 @@
 import { usePitStore } from '../../../stores/usePitStore'
 import { useTireStore } from '../../../stores/useTireStore'
 import { useCarStore } from '../../../stores/useCarStore'
-import { TireCompound, TIRE_CONFIG, TIRE_ORDER } from '../../../constants/tires'
+import { TIRE_CONFIG, TIRE_ORDER } from '../../../constants/tires'
 import { getErsBatteryCharge, setErsBatteryCharge } from '../../../wasm/PhysicsBridge'
 
-const styles: Record<string, React.CSSProperties> = {
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'rgba(0, 0, 0, 0.7)',
-    zIndex: 1000,
-    pointerEvents: 'auto',
-  },
-  panel: {
-    background: 'rgba(20, 20, 20, 0.95)',
-    borderRadius: 16,
-    padding: 24,
-    minWidth: 400,
-    border: '2px solid #ff6600',
-    boxShadow: '0 0 30px rgba(255, 102, 0, 0.3)',
-  },
-  title: {
-    color: '#ff6600',
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  subtitle: {
-    color: '#888',
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  tireGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(5, 1fr)',
-    gap: 10,
-    marginBottom: 20,
-  },
-  tireButton: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: 12,
-    border: '2px solid transparent',
-    borderRadius: 10,
-    background: 'rgba(255, 255, 255, 0.1)',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-  tireButtonSelected: {
-    background: 'rgba(255, 255, 255, 0.2)',
-    transform: 'scale(1.05)',
-  },
-  tireBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 'bold',
-    fontSize: 24,
-    color: '#000',
-    marginBottom: 8,
-    border: '3px solid rgba(255, 255, 255, 0.3)',
-  },
-  tireName: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  tireGrip: {
-    color: '#888',
-    fontSize: 10,
-    marginTop: 4,
-  },
-  currentTireInfo: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  currentLabel: {
-    color: '#888',
-    fontSize: 12,
-  },
-  currentValue: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  actionRow: {
-    display: 'flex',
-    gap: 12,
-  },
-  confirmButton: {
-    flex: 1,
-    padding: '14px 24px',
-    border: 'none',
-    borderRadius: 8,
-    fontSize: 16,
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    textTransform: 'uppercase',
-  },
-  confirmButtonEnabled: {
-    background: '#22c55e',
-    color: '#fff',
-  },
-  confirmButtonDisabled: {
-    background: '#444',
-    color: '#888',
-    cursor: 'not-allowed',
-  },
-  cancelButton: {
-    padding: '14px 24px',
-    border: '2px solid #666',
-    borderRadius: 8,
-    background: 'transparent',
-    color: '#888',
-    fontSize: 16,
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-  hint: {
-    color: '#666',
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  speedWarning: {
-    color: '#ef4444',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 16,
-    padding: 10,
-    background: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 6,
-  },
-  ersSection: {
-    marginBottom: 20,
-    padding: 14,
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 8,
-  },
-  ersSectionLabel: {
-    color: '#ff6600',
-    fontSize: 13,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
-  ersLevelRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  ersLevelLabel: {
-    color: '#888',
-    fontSize: 12,
-  },
-  ersLevelValue: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  ersBarTrack: {
-    width: '100%',
-    height: 6,
-    background: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  ersBarFill: {
-    height: '100%',
-    borderRadius: 3,
-    transition: 'width 0.3s ease',
-  },
-  ersToggle: {
-    width: '100%',
-    padding: '10px 14px',
-    border: '2px solid transparent',
-    borderRadius: 8,
-    fontSize: 13,
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    textAlign: 'center',
-  },
-  ersToggleOff: {
-    background: 'rgba(255, 255, 255, 0.1)',
-    color: '#aaa',
-    borderColor: 'transparent',
-  },
-  ersToggleOn: {
-    background: 'rgba(255, 102, 0, 0.2)',
-    color: '#ff6600',
-    borderColor: '#ff6600',
-  },
-  summarySection: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  summaryLabel: {
-    color: '#888',
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  summaryItem: {
-    color: '#fff',
-    fontSize: 13,
-    marginBottom: 4,
-  },
-}
-
-function getErsBarColor(charge: number): string {
+function ersBarColor(charge: number): string {
   if (charge > 0.5) return '#22c55e'
-  if (charge > 0.2) return '#eab308'
+  if (charge > 0.2) return '#f59e0b'
   return '#ef4444'
 }
+
+const BROADCAST_CLIP =
+  'polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%, 0 14px)'
 
 export default function PitStopUI() {
   const isPitStopActive = usePitStore(s => s.isPitStopActive)
@@ -276,7 +47,6 @@ export default function PitStopUI() {
 
   const handleConfirm = () => {
     if (!canConfirm) return
-
     const result = completePitStop()
     if (result.tire) {
       setTireCompound(result.tire)
@@ -287,132 +57,203 @@ export default function PitStopUI() {
     }
   }
 
-  const handleSelectTire = (compound: TireCompound) => {
-    selectTire(compound)
-  }
-
   const currentConfig = TIRE_CONFIG[currentCompound]
   const selectedConfig = selectedNewTire ? TIRE_CONFIG[selectedNewTire] : null
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.panel}>
-        <div style={styles.title as React.CSSProperties}>PIT STOP</div>
-        <div style={styles.subtitle as React.CSSProperties}>Select services</div>
+    <div className='fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-auto'>
+      <div
+        className='relative flex w-[480px] flex-col gap-5 border border-[#ffcc00]/40 bg-gradient-to-b from-black/90 via-black/85 to-black/90 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.7)]'
+        style={{ clipPath: BROADCAST_CLIP }}
+      >
+        <div className='absolute inset-x-5 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#ffcc00] to-transparent' />
+
+        <div className='flex items-baseline justify-between'>
+          <div>
+            <div className='text-[9px] font-bold uppercase tracking-[0.42em] text-[#ffcc00]'>
+              Service Menu
+            </div>
+            <div className='mt-1 font-sans text-[24px] font-bold uppercase tracking-[0.22em] text-white'>
+              Pit Stop
+            </div>
+          </div>
+          <span className='font-mono text-[10px] font-semibold uppercase tracking-[0.32em] text-white/40'>
+            ESC to cancel
+          </span>
+        </div>
 
         {!canPerformPitStop && (
-          <div style={styles.speedWarning}>STOP THE CAR TO PERFORM PIT STOP</div>
+          <div
+            className='border border-red-500/50 bg-red-950/50 px-4 py-2 text-center font-sans text-[11px] font-bold uppercase tracking-[0.32em] text-[#ff8b8b] backdrop-blur-sm'
+            style={{ clipPath: 'polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px)' }}
+          >
+            Stop the car to perform pit stop
+          </div>
         )}
 
-        <div style={styles.currentTireInfo}>
-          <div>
-            <div style={styles.currentLabel}>Current</div>
-            <div style={styles.currentValue}>
-              <span style={{ color: currentConfig.color }}>{currentConfig.icon}</span>{' '}
-              {currentConfig.displayName} ({Math.round(100 - averageWear)}% life)
+        <div
+          className='flex items-center justify-between border border-white/10 bg-white/[0.03] px-4 py-2'
+          style={{ clipPath: 'polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px)' }}
+        >
+          <div className='flex flex-col'>
+            <span className='text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>
+              Current
+            </span>
+            <div className='mt-1 flex items-center gap-2'>
+              <div
+                className='flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-black'
+                style={{ background: currentConfig.color }}
+              >
+                {currentConfig.icon}
+              </div>
+              <span className='font-sans text-[12px] font-bold uppercase tracking-[0.2em] text-white'>
+                {currentConfig.displayName}
+              </span>
+              <span className='font-mono text-[11px] tabular-nums text-white/60'>
+                {Math.round(100 - averageWear)}% life
+              </span>
             </div>
           </div>
           {selectedConfig && (
-            <div style={{ textAlign: 'right' as const }}>
-              <div style={styles.currentLabel}>New</div>
-              <div style={styles.currentValue}>
-                <span style={{ color: selectedConfig.color }}>{selectedConfig.icon}</span>{' '}
-                {selectedConfig.displayName}
+            <div className='flex flex-col items-end'>
+              <span className='text-[8px] font-bold uppercase tracking-[0.32em] text-[#ffcc00]'>
+                New
+              </span>
+              <div className='mt-1 flex items-center gap-2'>
+                <span className='font-sans text-[12px] font-bold uppercase tracking-[0.2em] text-white'>
+                  {selectedConfig.displayName}
+                </span>
+                <div
+                  className='flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-black'
+                  style={{ background: selectedConfig.color }}
+                >
+                  {selectedConfig.icon}
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        <div style={styles.tireGrid}>
-          {TIRE_ORDER.map(compound => {
-            const config = TIRE_CONFIG[compound]
-            const isSelected = selectedNewTire === compound
-            return (
-              <button
-                key={compound}
-                style={{
-                  ...styles.tireButton,
-                  ...(isSelected ? styles.tireButtonSelected : {}),
-                  borderColor: isSelected ? config.color : 'transparent',
-                }}
-                onClick={() => handleSelectTire(compound)}
-              >
-                <div
+        <div>
+          <div className='mb-2 text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>
+            Tires
+          </div>
+          <div className='grid grid-cols-5 gap-2'>
+            {TIRE_ORDER.map(compound => {
+              const cfg = TIRE_CONFIG[compound]
+              const isSelected = selectedNewTire === compound
+              return (
+                <button
+                  key={compound}
+                  type='button'
+                  className='flex flex-col items-center gap-1.5 border bg-white/[0.03] px-2 py-3 transition-all hover:bg-white/[0.08] active:scale-[0.98]'
+                  onClick={() => selectTire(compound)}
                   style={{
-                    ...styles.tireBadge,
-                    backgroundColor: config.color,
+                    borderColor: isSelected ? cfg.color : 'rgba(255,255,255,0.1)',
+                    boxShadow: isSelected ? `0 0 0 1px ${cfg.color}80, 0 0 18px ${cfg.color}40` : 'none',
+                    clipPath: 'polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px)',
                   }}
                 >
-                  {config.icon}
-                </div>
-                <div style={styles.tireName}>{config.displayName}</div>
-              </button>
-            )
-          })}
+                  <div
+                    className='flex h-9 w-9 items-center justify-center rounded-full text-[16px] font-bold text-black'
+                    style={{
+                      background: cfg.color,
+                      boxShadow: isSelected ? `0 0 12px ${cfg.color}` : 'none',
+                    }}
+                  >
+                    {cfg.icon}
+                  </div>
+                  <span className='font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-white'>
+                    {cfg.displayName}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        <div style={styles.ersSection}>
-          <div style={styles.ersSectionLabel as React.CSSProperties}>Energy Recovery System</div>
-          <div style={styles.ersLevelRow}>
-            <div style={styles.ersLevelLabel}>Current ERS Level</div>
-            <div style={styles.ersLevelValue}>{ersPercent}%</div>
+        <div
+          className='border border-white/10 bg-white/[0.03] px-4 py-3'
+          style={{ clipPath: 'polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px)' }}
+        >
+          <div className='flex items-baseline justify-between'>
+            <span className='text-[8px] font-bold uppercase tracking-[0.32em] text-[#ffcc00]'>
+              Energy Recovery System
+            </span>
+            <span className='font-mono text-[12px] font-semibold tabular-nums text-white'>
+              {ersPercent}%
+            </span>
           </div>
-          <div style={styles.ersBarTrack}>
+          <div className='mt-2 h-1.5 overflow-hidden bg-white/10'>
             <div
-              style={{
-                ...styles.ersBarFill,
-                width: `${ersPercent}%`,
-                background: getErsBarColor(currentErsCharge),
-              }}
+              className='h-full transition-[width]'
+              style={{ width: `${ersPercent}%`, background: ersBarColor(currentErsCharge) }}
             />
           </div>
           <button
-            style={
-              {
-                ...styles.ersToggle,
-                ...(ersChargeSelected ? styles.ersToggleOn : styles.ersToggleOff),
-              } as React.CSSProperties
-            }
+            type='button'
             onClick={toggleErsCharge}
+            className='mt-3 w-full border px-4 py-2 font-sans text-[11px] font-bold uppercase tracking-[0.28em] transition-all'
+            style={{
+              borderColor: ersChargeSelected ? '#ffcc00' : 'rgba(255,255,255,0.12)',
+              background: ersChargeSelected ? 'rgba(255,204,0,0.14)' : 'rgba(255,255,255,0.04)',
+              color: ersChargeSelected ? '#ffcc00' : 'rgba(255,255,255,0.7)',
+              clipPath: 'polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px)',
+            }}
           >
-            {ersChargeSelected ? 'ERS Charge to 100% - SELECTED' : 'Charge ERS to 100%'}
+            {ersChargeSelected ? 'Charge to 100% — Selected' : 'Charge ERS to 100%'}
           </button>
         </div>
 
         {hasSelection && (
-          <div style={styles.summarySection}>
-            <div style={styles.summaryLabel as React.CSSProperties}>Pit Stop Summary</div>
+          <div
+            className='border border-white/10 bg-white/[0.03] px-4 py-2'
+            style={{ clipPath: 'polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px)' }}
+          >
+            <div className='text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>
+              Summary
+            </div>
             {selectedConfig && (
-              <div style={styles.summaryItem}>
-                Tires: <span style={{ color: selectedConfig.color }}>{selectedConfig.icon}</span>{' '}
-                {selectedConfig.displayName}
+              <div className='mt-1 flex items-center gap-2 font-sans text-[12px] text-white'>
+                <span style={{ color: selectedConfig.color }}>●</span>
+                <span className='uppercase tracking-[0.14em]'>{selectedConfig.displayName}</span>
               </div>
             )}
             {ersChargeSelected && (
-              <div style={styles.summaryItem}>
-                ERS: Charge {ersPercent}% <span style={{ color: '#ff6600' }}>-&gt;</span> 100%
+              <div className='mt-0.5 font-mono text-[11px] tabular-nums text-white/85'>
+                ERS {ersPercent}% → 100%
               </div>
             )}
           </div>
         )}
 
-        <div style={styles.actionRow}>
-          <button style={styles.cancelButton} onClick={cancelPitStop}>
+        <div className='flex gap-3'>
+          <button
+            type='button'
+            onClick={cancelPitStop}
+            className='flex-1 border border-white/20 bg-white/[0.03] px-4 py-2.5 font-sans text-[12px] font-bold uppercase tracking-[0.28em] text-white/70 transition hover:bg-white/[0.08]'
+            style={{ clipPath: 'polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px)' }}
+          >
             Cancel
           </button>
           <button
-            style={{
-              ...styles.confirmButton,
-              ...(canConfirm ? styles.confirmButtonEnabled : styles.confirmButtonDisabled),
-            }}
+            type='button'
             onClick={handleConfirm}
             disabled={!canConfirm}
+            className='flex-[2] border px-4 py-2.5 font-sans text-[13px] font-bold uppercase tracking-[0.28em] transition disabled:cursor-not-allowed'
+            style={{
+              borderColor: canConfirm ? '#22c55e' : 'rgba(255,255,255,0.08)',
+              background: canConfirm
+                ? 'linear-gradient(to bottom, rgba(34,197,94,0.2), rgba(0,0,0,0.4))'
+                : 'rgba(255,255,255,0.03)',
+              color: canConfirm ? '#bef5c8' : 'rgba(255,255,255,0.35)',
+              boxShadow: canConfirm ? '0 0 24px rgba(34,197,94,0.25)' : 'none',
+              clipPath: 'polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px)',
+            }}
           >
             Confirm Pit Stop
           </button>
         </div>
-
-        <div style={styles.hint as React.CSSProperties}>Press ESC to cancel</div>
       </div>
     </div>
   )

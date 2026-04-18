@@ -1,292 +1,142 @@
 import { useErsStore } from '../../../stores/useErsStore'
 import type { HarvestSource } from '../../../wasm/PhysicsBridge'
-import { STATUS, ERS_MODE, UI } from '@/constants/colors'
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 10,
-    padding: '8px 12px',
-    display: 'flex',
-    gap: 10,
-    alignItems: 'center',
-    fontSize: 11,
-  },
-  // Battery section
-  battery: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    minWidth: 60,
-  },
-  batteryLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-    textTransform: 'uppercase' as const,
-    textAlign: 'center' as const,
-  },
-  batteryBarContainer: {
-    width: '100%',
-    height: 50,
-    background: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 4,
-    overflow: 'hidden',
-    position: 'relative' as const,
-    border: '2px solid rgba(255, 255, 255, 0.2)',
-  },
-  batteryFill: {
-    position: 'absolute' as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    transition: 'height 0.3s ease, background-color 0.3s ease',
-    borderRadius: '2px 2px 0 0',
-  },
-  batteryText: {
-    position: 'absolute' as const,
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    fontWeight: 'bold',
-    fontSize: 12,
-    color: UI.textPrimary,
-    textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
-    zIndex: 1,
-  },
-  separator: {
-    width: 1,
-    height: 50,
-    background: 'rgba(255, 255, 255, 0.15)',
-  },
-  // Mode section
-  mode: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    alignItems: 'center',
-    minWidth: 50,
-  },
-  modeLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-    textTransform: 'uppercase' as const,
-  },
-  modeValue: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    color: UI.textPrimary,
-  },
-  // Power flow section
-  powerFlow: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 2,
-    alignItems: 'center',
-    minWidth: 50,
-  },
-  powerLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-    textTransform: 'uppercase' as const,
-  },
-  powerValue: {
-    fontWeight: 'bold',
-    fontSize: 11,
-    fontFamily: 'monospace',
-  },
-  powerArrow: {
-    fontSize: 16,
-    lineHeight: '16px',
-  },
-  // Harvest source section
-  harvestSource: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    alignItems: 'center',
-    minWidth: 40,
-  },
-  harvestLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-    textTransform: 'uppercase' as const,
-  },
-  harvestValue: {
-    fontWeight: 'bold',
-    fontSize: 10,
-    fontFamily: 'monospace',
-  },
-  // Super clip indicator
-  superClipIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    marginTop: 2,
-  },
+function batteryColor(charge: number): string {
+  if (charge > 50) return '#22c55e'
+  if (charge > 20) return '#f59e0b'
+  return '#ef4444'
 }
 
-function getBatteryColor(charge: number): string {
-  if (charge > 50) return STATUS.success
-  if (charge > 20) return STATUS.warning
-  return STATUS.danger
-}
-
-function getModeAbbreviation(mode: string): string {
+function modeMeta(mode: string): { abbrev: string; color: string } {
   switch (mode) {
     case 'Attack':
-      return 'ATK'
-    case 'Balanced':
-      return 'BAL'
+      return { abbrev: 'ATK', color: '#22c55e' }
     case 'Harvest':
-      return 'HRV'
+      return { abbrev: 'HRV', color: '#60a5fa' }
     case 'Overtake':
-      return 'OVT'
+      return { abbrev: 'OVT', color: '#f97316' }
     case 'SemiAuto':
-      return 'AUTO'
+      return { abbrev: 'AUTO', color: '#b388ff' }
     default:
-      return 'BAL'
+      return { abbrev: 'BAL', color: '#ffffff' }
   }
 }
 
-function getModeColor(mode: string): string {
-  switch (mode) {
-    case 'Attack':
-      return ERS_MODE.attack
-    case 'Balanced':
-      return ERS_MODE.balanced
-    case 'Harvest':
-      return ERS_MODE.harvest
-    case 'Overtake':
-      return ERS_MODE.overtake
-    case 'SemiAuto':
-      return ERS_MODE.semiAuto
-    default:
-      return ERS_MODE.balanced
-  }
-}
-
-function getHarvestSourceAbbrev(source: HarvestSource): string {
+function harvestMeta(source: HarvestSource): { abbrev: string; color: string } {
   switch (source) {
     case 'Braking':
-      return 'BRK'
+      return { abbrev: 'BRK', color: '#ef4444' }
     case 'Coast':
-      return 'CST'
+      return { abbrev: 'CST', color: '#60a5fa' }
     case 'SuperClip':
-      return 'CLIP'
+      return { abbrev: 'CLIP', color: '#b388ff' }
     default:
-      return '-'
-  }
-}
-
-function getHarvestSourceColor(source: HarvestSource): string {
-  switch (source) {
-    case 'Braking':
-      return STATUS.danger
-    case 'Coast':
-      return STATUS.info
-    case 'SuperClip':
-      return ERS_MODE.superClip
-    default:
-      return 'rgba(255, 255, 255, 0.3)'
+      return { abbrev: '—', color: 'rgba(255,255,255,0.35)' }
   }
 }
 
 export default function ErsIndicator() {
-  const batteryCharge = useErsStore(state => state.batteryCharge)
-  const mode = useErsStore(state => state.mode)
-  const powerFlow = useErsStore(state => state.powerFlow)
-  const isDeploying = useErsStore(state => state.isDeploying)
-  const isHarvesting = useErsStore(state => state.isHarvesting)
-  const superClipActive = useErsStore(state => state.superClipActive)
-  const harvestSource = useErsStore(state => state.harvestSource)
+  const batteryCharge = useErsStore(s => s.batteryCharge)
+  const mode = useErsStore(s => s.mode)
+  const powerFlow = useErsStore(s => s.powerFlow)
+  const isDeploying = useErsStore(s => s.isDeploying)
+  const isHarvesting = useErsStore(s => s.isHarvesting)
+  const superClipActive = useErsStore(s => s.superClipActive)
+  const harvestSource = useErsStore(s => s.harvestSource)
 
   const batteryPercent = Math.max(0, Math.min(100, batteryCharge))
-  const batteryColor = getBatteryColor(batteryPercent)
-  const modeText = getModeAbbreviation(mode)
-  const modeColor = getModeColor(mode)
+  const batteryTone = batteryColor(batteryPercent)
+  const modeInfo = modeMeta(mode)
+  const harvestInfo = harvestMeta(harvestSource)
 
-  // Determine power flow display
-  let powerArrow = ''
-  let powerColor = 'rgba(255, 255, 255, 0.5)'
+  let flowGlyph = '·'
+  let flowColor = 'rgba(255,255,255,0.35)'
   if (isDeploying && isHarvesting) {
-    // Super clipping: deploying and harvesting simultaneously
-    powerArrow = '⇅'
-    powerColor = ERS_MODE.superClip
+    flowGlyph = '⇅'
+    flowColor = '#b388ff'
   } else if (isDeploying) {
-    powerArrow = '↑'
-    powerColor = ERS_MODE.attack
+    flowGlyph = '▲'
+    flowColor = '#22c55e'
   } else if (isHarvesting) {
-    powerArrow = '↓'
-    powerColor = ERS_MODE.harvest
+    flowGlyph = '▼'
+    flowColor = '#60a5fa'
   }
 
-  const harvestSourceText = getHarvestSourceAbbrev(harvestSource)
-  const harvestSourceColor = getHarvestSourceColor(harvestSource)
-
   return (
-    <div style={styles.container}>
-      {/* Battery charge vertical bar */}
-      <div style={styles.battery as React.CSSProperties}>
-        <span style={styles.batteryLabel}>Battery</span>
-        <div style={styles.batteryBarContainer}>
+    <div
+      className='relative flex items-stretch gap-3 border border-white/10 bg-gradient-to-b from-black/85 to-black/70 px-3 py-2 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,0.45)]'
+      style={{
+        clipPath: 'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%, 0 8px)',
+      }}
+    >
+      <div
+        className='absolute left-0 top-0 h-full w-[3px]'
+        style={{ background: modeInfo.color, boxShadow: `0 0 10px ${modeInfo.color}55` }}
+      />
+
+      <div className='flex flex-col items-center gap-1 pl-1'>
+        <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Battery</span>
+        <div className='relative h-14 w-5 overflow-hidden border border-white/15 bg-white/5' style={{ borderRadius: 2 }}>
           <div
+            className='absolute inset-x-0 bottom-0 transition-[height,background-color] duration-300'
             style={{
-              ...styles.batteryFill,
               height: `${batteryPercent}%`,
-              backgroundColor: batteryColor,
+              background: `linear-gradient(to top, ${batteryTone}aa, ${batteryTone})`,
             }}
           />
-          <div style={styles.batteryText}>{Math.round(batteryPercent)}%</div>
+          <div className='absolute inset-x-0 top-0 flex items-center justify-center pt-1 font-mono text-[9px] font-bold tabular-nums text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.9)]'>
+            {Math.round(batteryPercent)}
+          </div>
         </div>
       </div>
 
-      <div style={styles.separator} />
+      <div className='w-px self-stretch bg-white/10' />
 
-      {/* ERS mode */}
-      <div style={styles.mode as React.CSSProperties}>
-        <span style={styles.modeLabel}>Mode</span>
-        <span style={{ ...styles.modeValue, color: modeColor }}>{modeText}</span>
-      </div>
-
-      <div style={styles.separator} />
-
-      {/* Power flow indicator */}
-      <div style={styles.powerFlow as React.CSSProperties}>
-        <span style={styles.powerLabel}>Power</span>
-        {powerArrow && (
-          <span style={{ ...styles.powerArrow, color: powerColor }}>{powerArrow}</span>
-        )}
-        <span style={{ ...styles.powerValue, color: powerColor }}>
-          {Math.abs(Math.round(powerFlow))} kW
+      <div className='flex flex-col items-center gap-1'>
+        <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Mode</span>
+        <span
+          className='font-mono text-[13px] font-bold tabular-nums'
+          style={{ color: modeInfo.color }}
+        >
+          {modeInfo.abbrev}
         </span>
       </div>
 
-      <div style={styles.separator} />
+      <div className='w-px self-stretch bg-white/10' />
 
-      {/* Harvest source with super clip indicator */}
-      <div style={styles.harvestSource as React.CSSProperties}>
-        <span style={styles.harvestLabel}>Regen</span>
-        <span style={{ ...styles.harvestValue, color: harvestSourceColor }}>
-          {harvestSourceText}
+      <div className='flex flex-col items-center gap-1'>
+        <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Flow</span>
+        <span
+          className='font-mono text-[12px] font-bold leading-none tabular-nums'
+          style={{ color: flowColor }}
+        >
+          {flowGlyph}
         </span>
-        {/* Super clip indicator dot */}
-        <div
+        <span className='font-mono text-[10px] font-semibold tabular-nums' style={{ color: flowColor }}>
+          {Math.abs(Math.round(powerFlow))}
+          <span className='text-white/35'>kW</span>
+        </span>
+      </div>
+
+      <div className='w-px self-stretch bg-white/10' />
+
+      <div className='flex flex-col items-center gap-1'>
+        <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Regen</span>
+        <span
+          className='font-mono text-[11px] font-bold tabular-nums'
+          style={{ color: harvestInfo.color }}
+        >
+          {harvestInfo.abbrev}
+        </span>
+        <span
+          className='h-1.5 w-1.5 rounded-full'
           style={{
-            ...styles.superClipIndicator,
-            backgroundColor: superClipActive ? ERS_MODE.superClip : 'rgba(255, 255, 255, 0.1)',
-            boxShadow: superClipActive ? `0 0 8px ${ERS_MODE.superClip}` : 'none',
-            animation: superClipActive ? 'pulse 0.5s ease-in-out infinite' : 'none',
+            background: superClipActive ? '#b388ff' : 'rgba(255,255,255,0.1)',
+            boxShadow: superClipActive ? '0 0 8px #b388ff' : 'none',
+            animation: superClipActive ? 'hud-pulse 0.5s ease-in-out infinite' : undefined,
           }}
         />
       </div>
-
-      {/* CSS animation for pulse */}
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.2); }
-        }
-      `}</style>
     </div>
   )
 }

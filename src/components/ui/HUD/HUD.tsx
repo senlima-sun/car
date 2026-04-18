@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import RacePanel from './RacePanel'
+import TireIndicator from './TireIndicator'
+import TemperaturePanel from './TemperaturePanel'
 import PitStopUI from './PitStopUI'
 import WeatherControlModal from './WeatherControlModal'
 import AquaplaningIndicator from './AquaplaningIndicator'
@@ -85,11 +87,26 @@ export default function HUD() {
 
       {modeNotification && (
         <div
-          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white px-8 py-4 rounded-lg font-bold text-lg pointer-events-none z-[999] animate-[fadeInOut_2s_ease] ${
-            isTestingMode ? 'bg-red-500/90' : 'bg-green-400/90'
-          }`}
+          className='absolute top-1/2 left-1/2 pointer-events-none z-[999]'
+          style={{ animation: 'hud-fade-in-out 2s ease forwards' }}
         >
-          {modeNotification}
+          <div
+            className='border px-8 py-3 backdrop-blur-md shadow-[0_18px_60px_rgba(0,0,0,0.5)]'
+            style={{
+              borderColor: isTestingMode ? 'rgba(239,68,68,0.6)' : 'rgba(34,197,94,0.6)',
+              background: isTestingMode
+                ? 'linear-gradient(to bottom, rgba(60,10,10,0.82), rgba(10,10,10,0.9))'
+                : 'linear-gradient(to bottom, rgba(10,50,20,0.82), rgba(10,10,10,0.9))',
+              clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px)',
+            }}
+          >
+            <span
+              className='font-sans text-[14px] font-bold uppercase tracking-[0.32em]'
+              style={{ color: isTestingMode ? '#ffb4b4' : '#9ef0a9' }}
+            >
+              {modeNotification}
+            </span>
+          </div>
         </div>
       )}
 
@@ -132,18 +149,36 @@ export default function HUD() {
 
           {isRunningSession && !isMobile && cameraMode !== 'first-person' && (
             <>
-              <div className='absolute bottom-[100px] left-1/2 -translate-x-1/2'>
+              <div className='absolute bottom-[112px] left-1/2 -translate-x-1/2'>
                 <CoastIndicator />
               </div>
-              <div className='absolute bottom-5 left-1/2 -translate-x-1/2'>
+              <div className='absolute bottom-4 left-1/2 -translate-x-1/2'>
                 <RacePanel />
+              </div>
+              <div className='absolute bottom-4 left-4'>
+                <TireIndicator />
+              </div>
+              <div className='absolute bottom-4 right-4'>
+                <TemperaturePanel />
               </div>
             </>
           )}
 
           {isRunningSession && isInPitBox && (
-            <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-orange-500/90 text-white px-6 py-3 rounded-lg font-bold text-base pointer-events-none'>
-              {isMobile ? 'Tap P for tires' : 'Press P to open tire selection'}
+            <div
+              className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none'
+              style={{ animation: 'hud-pulse 1.4s ease-in-out infinite' }}
+            >
+              <div
+                className='border border-[#ffcc00]/60 bg-black/75 px-6 py-2.5 backdrop-blur-md shadow-[0_14px_40px_rgba(0,0,0,0.5)]'
+                style={{
+                  clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
+                }}
+              >
+                <span className='font-sans text-[12px] font-bold uppercase tracking-[0.32em] text-[#ffcc00]'>
+                  {isMobile ? 'Tap P — Tire Service' : 'Press P — Tire Service'}
+                </span>
+              </div>
             </div>
           )}
 

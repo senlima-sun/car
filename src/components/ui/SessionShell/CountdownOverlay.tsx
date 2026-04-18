@@ -42,7 +42,7 @@ export default function CountdownOverlay() {
           startSession()
           timeoutRef.current = window.setTimeout(
             () => setState({ kind: 'idle' }),
-            800,
+            900,
           )
         }, holdMs)
       }
@@ -60,37 +60,80 @@ export default function CountdownOverlay() {
   if (phase !== 'countdown' && state.kind === 'idle') return null
 
   const lit = state.kind === 'lighting' ? state.lit : 0
+  const allOut = state.kind === 'go'
 
   return (
-    <div className='absolute inset-0 z-40 flex items-center justify-center bg-black/35 pointer-events-none'>
-      <div className='rounded-2xl border border-white/10 bg-black/70 px-10 py-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.5)]'>
-        <div className='mb-4 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/55'>
-          {state.kind === 'go' ? 'Lights Out' : 'Formation — Prepare'}
-        </div>
-        <div className='flex items-center justify-center gap-3'>
-          {[0, 1, 2, 3, 4].map(i => (
-            <Light key={i} on={i < lit && state.kind !== 'go'} />
-          ))}
-        </div>
-        <div className='mt-4 font-mono text-2xl font-semibold uppercase tracking-[0.12em] text-white'>
-          {state.kind === 'go' ? 'GO GO GO' : '—'}
-        </div>
+    <div className='absolute inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-[2px] pointer-events-none'>
+      <div className='flex flex-col items-center gap-4'>
+        <Gantry lit={lit} allOut={allOut} />
       </div>
     </div>
   )
 }
 
-function Light({ on }: { on: boolean }) {
+function Gantry({ lit, allOut }: { lit: number; allOut: boolean }) {
   return (
     <div
-      className='h-10 w-10 rounded-full border border-black/60'
+      className='relative flex items-center gap-4 rounded-[6px] bg-gradient-to-b from-[#0a0a0a] via-[#1a1a1a] to-[#080808] px-6 py-5 shadow-[0_26px_70px_rgba(0,0,0,0.75)]'
       style={{
-        background: on
-          ? 'radial-gradient(circle at 35% 35%, #ff4a4a, #a60000 55%, #3a0000 90%)'
-          : 'radial-gradient(circle at 35% 35%, #2a0808, #1a0505 60%, #050000 100%)',
-        boxShadow: on ? '0 0 24px rgba(255, 40, 40, 0.7)' : 'inset 0 1px 2px rgba(0,0,0,0.8)',
-        transition: 'background 120ms, box-shadow 120ms',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow:
+          '0 0 0 1px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05), 0 26px 70px rgba(0,0,0,0.75)',
       }}
-    />
+    >
+      <div className='absolute inset-x-6 -top-[2px] h-[3px] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-60' />
+      {[0, 1, 2, 3, 4].map(column => {
+        const on = column < lit && !allOut
+        return <LightPair key={column} on={on} allOut={allOut} />
+      })}
+    </div>
+  )
+}
+
+function LightPair({ on, allOut }: { on: boolean; allOut: boolean }) {
+  return (
+    <div
+      className='flex flex-col items-center gap-2 rounded-[4px] bg-[#050505] px-[10px] py-[10px]'
+      style={{
+        border: '1px solid rgba(255,255,255,0.06)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -2px 4px rgba(0,0,0,0.8)',
+      }}
+    >
+      <Lamp on={on} allOut={allOut} />
+      <Lamp on={on} allOut={allOut} />
+    </div>
+  )
+}
+
+function Lamp({ on, allOut }: { on: boolean; allOut: boolean }) {
+  const activeBg =
+    'radial-gradient(circle at 35% 30%, #ff9494 0%, #ff1a1a 22%, #c80000 55%, #4a0000 85%, #1a0000 100%)'
+  const offBg =
+    'radial-gradient(circle at 35% 30%, #331414 0%, #1a0808 45%, #090303 80%, #050101 100%)'
+  const lit = on && !allOut
+  return (
+    <div
+      className='relative h-[46px] w-[46px] rounded-full'
+      style={{
+        background: lit ? activeBg : offBg,
+        border: '1.5px solid #000',
+        boxShadow: lit
+          ? '0 0 28px rgba(255,32,32,0.75), 0 0 10px rgba(255,40,40,0.55), inset 0 1px 2px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.7)'
+          : 'inset 0 2px 4px rgba(0,0,0,0.85), inset 0 -1px 2px rgba(255,255,255,0.02)',
+        transition: allOut
+          ? 'background 60ms linear, box-shadow 60ms linear'
+          : 'background 130ms linear, box-shadow 130ms linear',
+      }}
+    >
+      <div
+        className='absolute left-[26%] top-[18%] h-[22%] w-[28%] rounded-full'
+        style={{
+          background: lit
+            ? 'radial-gradient(circle, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 70%)'
+            : 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 80%)',
+          filter: 'blur(1px)',
+        }}
+      />
+    </div>
   )
 }

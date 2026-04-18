@@ -1,113 +1,67 @@
 import { useActiveAeroStore } from '../../../stores/useActiveAeroStore'
-import { AERO_MODE, STATUS, UI } from '@/constants/colors'
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 10,
-    padding: '8px 16px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-    alignItems: 'center',
-    minWidth: 100,
-  },
-  label: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-    textTransform: 'uppercase' as const,
-    textAlign: 'center' as const,
-  },
-  modeValue: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: UI.textPrimary,
-    textAlign: 'center' as const,
-  },
-  multipliers: {
-    display: 'flex',
-    gap: 12,
-    fontSize: 10,
-  },
-  multiplierItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 2,
-  },
-  multiplierLabel: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 8,
-  },
-  multiplierValue: {
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-  },
-}
-
-function getModeColor(mode: string): string {
-  switch (mode) {
-    case 'Corner':
-      return AERO_MODE.corner
-    case 'Straight':
-      return AERO_MODE.straight
-    default:
-      return STATUS.neutral
-  }
+function modeColor(mode: string): string {
+  if (mode === 'Corner') return '#00e5ff'
+  if (mode === 'Straight') return '#22c55e'
+  return '#ffffff'
 }
 
 export default function AeroIndicator() {
-  const mode = useActiveAeroStore(state => state.mode)
-  const autoMode = useActiveAeroStore(state => state.autoMode)
-  const dragMultiplier = useActiveAeroStore(state => state.dragMultiplier)
-  const downforceMultiplier = useActiveAeroStore(state => state.downforceMultiplier)
+  const mode = useActiveAeroStore(s => s.mode)
+  const autoMode = useActiveAeroStore(s => s.autoMode)
+  const dragMultiplier = useActiveAeroStore(s => s.dragMultiplier)
+  const downforceMultiplier = useActiveAeroStore(s => s.downforceMultiplier)
 
-  const modeColor = getModeColor(mode)
+  const tone = modeColor(mode)
 
   return (
-    <div style={styles.container}>
-      <span style={styles.label}>Active Aero</span>
+    <div
+      className='relative flex flex-col gap-1.5 border border-white/10 bg-gradient-to-b from-black/85 to-black/70 px-3 py-2 backdrop-blur-md shadow-[0_10px_28px_rgba(0,0,0,0.45)]'
+      style={{
+        clipPath: 'polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%, 0 8px)',
+        minWidth: 120,
+      }}
+    >
+      <div
+        className='absolute left-0 top-0 h-full w-[3px]'
+        style={{ background: tone, boxShadow: `0 0 10px ${tone}` }}
+      />
 
-      {/* Auto/Manual badge */}
+      <div className='flex items-center justify-between pl-1'>
+        <span className='text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>Aero</span>
+        <span
+          className='font-mono text-[9px] font-bold tabular-nums'
+          style={{ color: autoMode ? '#00e5ff' : 'rgba(255,255,255,0.5)' }}
+        >
+          {autoMode ? 'AUTO' : 'MAN'}
+        </span>
+      </div>
+
       <span
-        style={{
-          fontSize: 9,
-          fontWeight: 'bold',
-          color: autoMode ? '#00e5ff' : 'rgba(255, 255, 255, 0.6)',
-          letterSpacing: 1,
-        }}
+        className='pl-1 font-sans text-[15px] font-bold uppercase tracking-[0.18em]'
+        style={{ color: tone, textShadow: `0 0 12px ${tone}33` }}
       >
-        {autoMode ? 'AUTO' : 'MANUAL'}
+        {mode}
       </span>
 
-      {/* Mode display */}
-      <span style={{ ...styles.modeValue, color: modeColor }}>{mode.toUpperCase()}</span>
-
-      {/* Multipliers */}
-      <div style={styles.multipliers as React.CSSProperties}>
-        {/* Drag multiplier */}
-        <div style={styles.multiplierItem as React.CSSProperties}>
-          <span style={styles.multiplierLabel}>Drag</span>
+      <div className='mt-1 flex items-stretch gap-2 pl-1'>
+        <div className='flex flex-col'>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/40'>Drag</span>
           <span
-            style={{
-              ...styles.multiplierValue,
-              color: dragMultiplier > 1 ? STATUS.warning : STATUS.success,
-            }}
+            className='font-mono text-[11px] font-semibold tabular-nums'
+            style={{ color: dragMultiplier > 1 ? '#f59e0b' : '#22c55e' }}
           >
-            {dragMultiplier.toFixed(1)}x
+            {dragMultiplier.toFixed(1)}×
           </span>
         </div>
-
-        {/* Downforce multiplier */}
-        <div style={styles.multiplierItem as React.CSSProperties}>
-          <span style={styles.multiplierLabel}>Downforce</span>
+        <div className='h-7 w-px bg-white/10' />
+        <div className='flex flex-col'>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/40'>DF</span>
           <span
-            style={{
-              ...styles.multiplierValue,
-              color: downforceMultiplier > 1 ? STATUS.success : STATUS.warning,
-            }}
+            className='font-mono text-[11px] font-semibold tabular-nums'
+            style={{ color: downforceMultiplier > 1 ? '#22c55e' : '#f59e0b' }}
           >
-            {downforceMultiplier.toFixed(1)}x
+            {downforceMultiplier.toFixed(1)}×
           </span>
         </div>
       </div>
