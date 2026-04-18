@@ -7,6 +7,8 @@ use crate::types::{
 // ============================================================================
 
 const BATTERY_CAPACITY_KJ: f32 = 4000.0; // 4 MJ = 4000 kJ
+// 2026 regulation: per-lap ERS recovery cap is 8.5 MJ (8500 kJ).
+pub const LAP_RECOVERY_CAP_MJ: f32 = 8.5;
 
 // 2026 Power levels (350kW MGU-K, up from 120kW)
 const MAX_DEPLOY_POWER_KW: f32 = 350.0; // 2026: 350kW max deployment
@@ -97,6 +99,9 @@ impl ErsPhysicsState {
                 harvest_source: HarvestSource::None,
                 overtake_available: false,
                 semi_auto: SemiAutoState::default(),
+                lap_recovered_mj: 0.0,
+                lap_deployed_mj: 0.0,
+                lap_recovery_cap_reached: false,
             },
             semi_auto_config: SemiAutoConfig::default(),
             overtake_override: false,
@@ -343,13 +348,18 @@ impl ErsPhysicsState {
         // ========================================================================
 
         // 1. Braking harvest (highest priority, up to 350kW)
-        if is_braking && speed_ms > MIN_HARVEST_SPEED && self.current.battery_charge < 1.0 {
+        if is_braking
+            && speed_ms > MIN_HARVEST_SPEED
+            && self.current.battery_charge < 1.0
+            && !self.current.lap_recovery_cap_reached
+        {
             let speed_factor = (speed_ms / OPTIMAL_HARVEST_SPEED).min(1.0);
             let harvest_power = MAX_HARVEST_POWER_KW * harvest_mult * speed_factor;
 
             let energy_harvested = harvest_power * HARVEST_EFFICIENCY * dt;
             let battery_change = energy_harvested / BATTERY_CAPACITY_KJ;
             self.current.battery_charge = (self.current.battery_charge + battery_change).min(1.0);
+            self.accumulate_recovered(energy_harvested);
 
             power_flow_kw = -harvest_power;
             is_harvesting = true;
@@ -357,13 +367,18 @@ impl ErsPhysicsState {
         }
 
         // 2. Coast harvest (when off throttle, up to 100kW)
-        if is_coasting && speed_ms > MIN_HARVEST_SPEED && self.current.battery_charge < 1.0 {
+        if is_coasting
+            && speed_ms > MIN_HARVEST_SPEED
+            && self.current.battery_charge < 1.0
+            && !self.current.lap_recovery_cap_reached
+        {
             let speed_factor = (speed_ms / OPTIMAL_HARVEST_SPEED).min(1.0);
             let coast_power = MAX_COAST_POWER_KW * coast_mult * speed_factor;
 
             let energy_harvested = coast_power * COAST_EFFICIENCY * dt;
             let battery_change = energy_harvested / BATTERY_CAPACITY_KJ;
             self.current.battery_charge = (self.current.battery_charge + battery_change).min(1.0);
+            self.accumulate_recovered(energy_harvested);
 
             power_flow_kw = -coast_power;
             is_harvesting = true;
@@ -384,13 +399,14 @@ impl ErsPhysicsState {
                 / (SUPER_CLIP_OPTIMAL_SPEED - SUPER_CLIP_MIN_SPEED))
                 .clamp(0.0, 1.0);
 
-            if clip_intensity > 0.05 {
+            if clip_intensity > 0.05 && !self.current.lap_recovery_cap_reached {
                 let clip_power = MAX_SUPER_CLIP_POWER_KW * clip_mult * clip_intensity;
 
                 let energy_harvested = clip_power * SUPER_CLIP_EFFICIENCY * dt;
                 let battery_change = energy_harvested / BATTERY_CAPACITY_KJ;
                 self.current.battery_charge =
                     (self.current.battery_charge + battery_change).min(1.0);
+                self.accumulate_recovered(energy_harvested);
 
                 // Super clip reduces net power flow (harvesting while deploying)
                 power_flow_kw += -clip_power;
@@ -412,6 +428,7 @@ impl ErsPhysicsState {
 
             if battery_needed <= self.current.battery_charge {
                 self.current.battery_charge -= battery_needed;
+                self.current.lap_deployed_mj += energy_deployed / 1000.0;
 
                 // Calculate force boost (Power = Force × Velocity)
                 // At reference speed (50 m/s), 350 kW = 7000 N
@@ -443,6 +460,23 @@ impl ErsPhysicsState {
         };
 
         force_boost
+    }
+
+    /// Accumulate kJ into this lap's recovered counter and set the cap
+    /// flag when the 2026 per-lap regulation cap is reached.
+    fn accumulate_recovered(&mut self, energy_harvested_kj: f32) {
+        self.current.lap_recovered_mj += energy_harvested_kj / 1000.0;
+        if self.current.lap_recovered_mj >= LAP_RECOVERY_CAP_MJ {
+            self.current.lap_recovery_cap_reached = true;
+        }
+    }
+
+    /// Reset per-lap recovery/deployment accounting. Called on a
+    /// `lap_complete` event.
+    pub fn reset_lap(&mut self) {
+        self.current.lap_recovered_mj = 0.0;
+        self.current.lap_deployed_mj = 0.0;
+        self.current.lap_recovery_cap_reached = false;
     }
 
     /// Get current ERS state

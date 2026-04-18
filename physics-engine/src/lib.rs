@@ -217,6 +217,12 @@ impl PhysicsEngine {
         to_value(&self.inner.get_ers_state()).unwrap_or(JsValue::NULL)
     }
 
+    /// Reset per-lap ERS accounting (call on lap_complete)
+    #[wasm_bindgen]
+    pub fn reset_ers_lap(&mut self) {
+        self.inner.reset_ers_lap();
+    }
+
     /// Get ERS battery charge (0.0 to 1.0)
     #[wasm_bindgen]
     pub fn get_ers_battery_charge(&self) -> f32 {
@@ -306,25 +312,39 @@ impl PhysicsEngine {
     // ========================================================================
 
     /// Set active aero mode
-    /// mode: 0 = Corner (max downforce), 1 = Straight (low drag)
+    /// mode: 0 = Corner (max downforce), 1 = Straight (low drag), 2 = DRS
     #[wasm_bindgen]
     pub fn set_aero_mode(&mut self, mode: u8) {
         let aero_mode = match mode {
             0 => AeroMode::Corner,
             1 => AeroMode::Straight,
+            2 => AeroMode::Drs,
             _ => AeroMode::Corner,
         };
         self.inner.set_aero_mode(aero_mode);
     }
 
     /// Get current active aero mode
-    /// Returns: 0 = Corner, 1 = Straight
+    /// Returns: 0 = Corner, 1 = Straight, 2 = DRS
     #[wasm_bindgen]
     pub fn get_aero_mode(&self) -> u8 {
         match self.inner.get_aero_mode() {
             AeroMode::Corner => 0,
             AeroMode::Straight => 1,
+            AeroMode::Drs => 2,
         }
+    }
+
+    /// Set whether the car is currently inside a DRS zone.
+    #[wasm_bindgen]
+    pub fn set_drs_zone(&mut self, in_zone: bool) {
+        self.inner.set_drs_zone(in_zone);
+    }
+
+    /// Force DRS off (call when brake is applied).
+    #[wasm_bindgen]
+    pub fn disable_drs_on_brake(&mut self) {
+        self.inner.disable_drs_on_brake();
     }
 
     /// Toggle active aero mode between Corner and Straight (manual mode)

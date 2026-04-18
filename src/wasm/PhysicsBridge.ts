@@ -253,6 +253,12 @@ export interface ErsState {
   overtake_available: boolean // True when in testing mode
   // Semi-Auto mode state
   semi_auto: SemiAutoState
+  /** Megajoules recovered this lap (regulation cap: 8.5 MJ). */
+  lap_recovered_mj: number
+  /** Megajoules deployed this lap. */
+  lap_deployed_mj: number
+  /** Whether the 8.5 MJ per-lap recovery cap has been hit. */
+  lap_recovery_cap_reached: boolean
 }
 
 // ============================================================================
@@ -283,7 +289,7 @@ export interface TireThermalShock {
 // Active Aero Types
 // ============================================================================
 
-export type AeroMode = 'Corner' | 'Straight'
+export type AeroMode = 'Corner' | 'Straight' | 'Drs'
 
 export interface ActiveAeroState {
   mode: AeroMode
@@ -292,6 +298,10 @@ export interface ActiveAeroState {
   drag_multiplier: number
   downforce_multiplier: number
   auto_mode: boolean
+  /** Whether the car is inside a DRS zone. */
+  drs_zone_active: boolean
+  /** Whether DRS is currently deployed. */
+  drs_enabled: boolean
 }
 
 // ============================================================================
@@ -923,6 +933,9 @@ export function getErsState(): ErsState {
       effective_deploy_mult: 0.35,
       effective_harvest_mult: 0.9,
     },
+    lap_recovered_mj: 0,
+    lap_deployed_mj: 0,
+    lap_recovery_cap_reached: false,
   }
 }
 
@@ -1224,10 +1237,10 @@ export function getWheelAvgTemp(temps: PerWheelTemperature, wheel: 0 | 1 | 2 | 3
 
 /**
  * Set active aero mode
- * @param mode - 'Corner' for high downforce, 'Straight' for low drag
+ * @param mode - 'Corner', 'Straight', or 'Drs' (DRS only takes effect inside a DRS zone)
  */
 export function setAeroMode(mode: AeroMode): void {
-  const modeIndex = mode === 'Corner' ? 0 : 1
+  const modeIndex = mode === 'Corner' ? 0 : mode === 'Straight' ? 1 : 2
   getPhysicsEngine().set_aero_mode(modeIndex)
 }
 
@@ -1236,7 +1249,25 @@ export function setAeroMode(mode: AeroMode): void {
  */
 export function getAeroMode(): AeroMode {
   const modeIndex = getPhysicsEngine().get_aero_mode()
-  return modeIndex === 0 ? 'Corner' : 'Straight'
+  return modeIndex === 0 ? 'Corner' : modeIndex === 1 ? 'Straight' : 'Drs'
+}
+
+/**
+ * Mark the car as inside/outside a DRS zone. Outside a zone, `Drs`
+ * mode automatically falls back to Straight behavior.
+ */
+export function setDrsZone(inZone: boolean): void {
+  getPhysicsEngine().set_drs_zone(inZone)
+}
+
+/** Force DRS off (call when the driver applies the brake). */
+export function disableDrsOnBrake(): void {
+  getPhysicsEngine().disable_drs_on_brake()
+}
+
+/** Reset per-lap ERS accounting (8.5 MJ cap, deployed counter). */
+export function resetErsLap(): void {
+  getPhysicsEngine().reset_ers_lap()
 }
 
 /**

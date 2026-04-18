@@ -75,6 +75,9 @@ import {
   getAeroMode,
   getActiveAeroState,
   toggleAeroAuto,
+  setDrsZone,
+  disableDrsOnBrake,
+  resetErsLap,
   // Brake System API
   setBrakeBias,
   getBrakeBias,
@@ -201,6 +204,9 @@ interface PhysicsContextValue {
   getAeroMode: typeof getAeroMode
   getActiveAeroState: typeof getActiveAeroState
   toggleAeroAuto: typeof toggleAeroAuto
+  setDrsZone: typeof setDrsZone
+  disableDrsOnBrake: typeof disableDrsOnBrake
+  resetErsLap: typeof resetErsLap
   // Brake System API
   setBrakeBias: typeof setBrakeBias
   getBrakeBias: typeof getBrakeBias
@@ -323,6 +329,9 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       getAeroMode,
       getActiveAeroState,
       toggleAeroAuto,
+      setDrsZone,
+      disableDrsOnBrake,
+      resetErsLap,
       setBrakeBias,
       getBrakeBias,
       increaseBrakeBias,

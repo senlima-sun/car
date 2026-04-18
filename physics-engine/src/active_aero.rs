@@ -10,6 +10,10 @@ const CORNER_DOWNFORCE_MULT: f32 = 1.0;
 const STRAIGHT_DRAG_MULT: f32 = 0.55; // 45% drag reduction
 const STRAIGHT_DOWNFORCE_MULT: f32 = 0.42; // 58% downforce reduction
 
+// DRS Mode: Straight + additional drag slot (2026 F1 DRS zones)
+const DRS_DRAG_MULT: f32 = 0.40; // ~60% drag reduction vs Corner
+const DRS_DOWNFORCE_MULT: f32 = 0.30; // 70% downforce reduction
+
 // Wing transition speed
 const WING_LERP_SPEED: f32 = 2.0; // ~0.5 seconds for full transition
 const REAR_WING_SPEED_MULT: f32 = 1.2; // Rear wing moves 20% faster than front
@@ -41,8 +45,28 @@ impl ActiveAeroPhysicsState {
                 drag_multiplier: CORNER_DRAG_MULT,
                 downforce_multiplier: CORNER_DOWNFORCE_MULT,
                 auto_mode: true,
+                drs_zone_active: false,
+                drs_enabled: false,
             },
             auto_mode: true,
+        }
+    }
+
+    /// Set whether the car is currently in a DRS zone. Outside a DRS
+    /// zone, requesting `AeroMode::Drs` downgrades to Straight behavior
+    /// so the eligibility gate is enforced at the physics layer.
+    pub fn set_drs_zone(&mut self, in_zone: bool) {
+        self.current.drs_zone_active = in_zone;
+        if !in_zone && self.current.mode == AeroMode::Drs {
+            self.current.mode = AeroMode::Straight;
+        }
+    }
+
+    /// Disable DRS immediately (called when the player brakes).
+    pub fn disable_drs_on_brake(&mut self) {
+        if self.current.mode == AeroMode::Drs {
+            self.current.mode = AeroMode::Straight;
+            self.current.drs_enabled = false;
         }
     }
 
@@ -77,6 +101,7 @@ impl ActiveAeroPhysicsState {
             match self.current.mode {
                 AeroMode::Corner => 0.0,
                 AeroMode::Straight => 1.0,
+                AeroMode::Drs => 1.0,
             }
         };
 
@@ -95,15 +120,21 @@ impl ActiveAeroPhysicsState {
         // Calculate average wing angle for multiplier interpolation
         let avg_wing_angle = (self.current.front_wing_angle + self.current.rear_wing_angle) / 2.0;
 
-        // Interpolate drag multiplier: 1.0 (corner) -> 0.65 (straight)
-        self.current.drag_multiplier = lerp(CORNER_DRAG_MULT, STRAIGHT_DRAG_MULT, avg_wing_angle);
+        // DRS contributes an extra slot beyond Straight.
+        let drs_applied = self.current.mode == AeroMode::Drs && self.current.drs_zone_active;
+        self.current.drs_enabled = drs_applied;
+        let (base_drag, base_df) = if drs_applied {
+            (DRS_DRAG_MULT, DRS_DOWNFORCE_MULT)
+        } else {
+            (STRAIGHT_DRAG_MULT, STRAIGHT_DOWNFORCE_MULT)
+        };
 
-        // Interpolate downforce multiplier: 1.0 (corner) -> 0.55 (straight)
-        self.current.downforce_multiplier = lerp(
-            CORNER_DOWNFORCE_MULT,
-            STRAIGHT_DOWNFORCE_MULT,
-            avg_wing_angle,
-        );
+        // Interpolate drag multiplier: 1.0 (corner) -> base_drag (straight/DRS)
+        self.current.drag_multiplier = lerp(CORNER_DRAG_MULT, base_drag, avg_wing_angle);
+
+        // Interpolate downforce multiplier: 1.0 (corner) -> base_df (straight/DRS)
+        self.current.downforce_multiplier =
+            lerp(CORNER_DOWNFORCE_MULT, base_df, avg_wing_angle);
 
         self.current
     }
@@ -133,10 +164,17 @@ impl ActiveAeroPhysicsState {
             self.auto_mode = false;
             self.current.auto_mode = false;
         } else {
-            // In manual mode, toggle Corner/Straight
+            // In manual mode, toggle Corner/Straight/DRS (when eligible)
             self.current.mode = match self.current.mode {
                 AeroMode::Corner => AeroMode::Straight,
-                AeroMode::Straight => AeroMode::Corner,
+                AeroMode::Straight => {
+                    if self.current.drs_zone_active {
+                        AeroMode::Drs
+                    } else {
+                        AeroMode::Corner
+                    }
+                }
+                AeroMode::Drs => AeroMode::Corner,
             };
         }
     }

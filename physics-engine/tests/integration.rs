@@ -579,6 +579,9 @@ fn test_ers_serde_serialization_format() {
         harvest_source: HarvestSource::Braking,
         overtake_available: false,
         semi_auto: SemiAutoState::default(),
+        lap_recovered_mj: 0.0,
+        lap_deployed_mj: 0.0,
+        lap_recovery_cap_reached: false,
     };
 
     let json = serde_json::to_string(&state).unwrap();

@@ -315,6 +315,13 @@ pub struct ErsState {
     pub overtake_available: bool, // True when in testing mode
     // Semi-Auto mode state
     pub semi_auto: SemiAutoState,
+    /// Megajoules recovered so far on the current lap. Capped per 2026
+    /// technical regulation at 8.5 MJ per lap.
+    pub lap_recovered_mj: f32,
+    /// Megajoules deployed so far on the current lap.
+    pub lap_deployed_mj: f32,
+    /// Whether the 8.5 MJ per-lap recovery cap has been reached.
+    pub lap_recovery_cap_reached: bool,
 }
 
 // ============================================================================
@@ -327,6 +334,9 @@ pub enum AeroMode {
     #[default]
     Corner, // Max downforce, high drag
     Straight, // Low drag, reduced downforce
+    /// 2026 DRS: additional drag-reduction stage beyond Straight.
+    /// Auto-disables on brake input or when leaving the DRS zone.
+    Drs,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
@@ -337,6 +347,10 @@ pub struct ActiveAeroState {
     pub drag_multiplier: f32,
     pub downforce_multiplier: f32,
     pub auto_mode: bool,
+    /// Whether the car is currently inside a DRS-enabled zone.
+    pub drs_zone_active: bool,
+    /// Whether DRS is currently deployed (drs_zone_active && gate-pass && not braking).
+    pub drs_enabled: bool,
 }
 
 // ============================================================================

@@ -7,6 +7,7 @@ import {
   useSessionStore,
 } from '@/stores/useSessionStore'
 import { useTrackLimitsStore } from '@/stores/useTrackLimitsStore'
+import { resetErsLap, isPhysicsEngineInitialized } from '@/wasm'
 
 export default function SessionEventBridge() {
   const phase = useSessionStore(s => s.phase)
@@ -78,6 +79,13 @@ export default function SessionEventBridge() {
         valid: lastLapTime !== null,
         isPersonalBest: lastLapTime !== null && bestLapTime !== null && lastLapTime === bestLapTime,
       })
+      if (isPhysicsEngineInitialized()) {
+        try {
+          resetErsLap()
+        } catch {
+          // WASM not ready; ignore
+        }
+      }
     }
 
     prevLapCountRef.current = lapCount

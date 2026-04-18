@@ -202,6 +202,10 @@ impl PhysicsEngine {
         self.ers.get_state()
     }
 
+    pub fn reset_ers_lap(&mut self) {
+        self.ers.reset_lap();
+    }
+
     pub fn get_ers_battery_charge(&self) -> f32 {
         self.ers.get_battery_charge()
     }
@@ -272,6 +276,17 @@ impl PhysicsEngine {
 
     pub fn get_active_aero_state(&self) -> crate::types::ActiveAeroState {
         self.active_aero.get_state()
+    }
+
+    /// Mark DRS zone eligibility. Outside a zone, `AeroMode::Drs`
+    /// degrades to Straight.
+    pub fn set_drs_zone(&mut self, in_zone: bool) {
+        self.active_aero.set_drs_zone(in_zone);
+    }
+
+    /// Auto-disable DRS (call when driver applies brake).
+    pub fn disable_drs_on_brake(&mut self) {
+        self.active_aero.disable_drs_on_brake();
     }
 
     // ========================================================================

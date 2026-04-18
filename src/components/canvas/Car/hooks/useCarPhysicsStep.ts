@@ -88,6 +88,10 @@ export function useCarPhysicsStep({
       physics.setAeroMode(aeroState.mode)
     }
 
+    if (input.brake || (input.brake_analog ?? 0) > 0.05) {
+      physics.disableDrsOnBrake()
+    }
+
     const syncResult = physics.stepAndSync(
       dt,
       input,
