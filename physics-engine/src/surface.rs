@@ -49,11 +49,8 @@ impl SurfaceState {
         let t = (self.transition_timer / TRANSITION_DURATION).min(1.0);
         let smoothed = t * t * (3.0 - 2.0 * t);
 
-        self.active_modifiers = SurfaceModifiers::lerp(
-            &self.previous_modifiers,
-            &self.target_modifiers,
-            smoothed,
-        );
+        self.active_modifiers =
+            SurfaceModifiers::lerp(&self.previous_modifiers, &self.target_modifiers, smoothed);
 
         if t >= 1.0 {
             self.is_transitioning = false;

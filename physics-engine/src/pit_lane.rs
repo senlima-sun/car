@@ -140,7 +140,11 @@ mod tests {
 
         // 60 km/h = 16.67 m/s, well below 80 km/h limit
         let throttle = state.update(1.0 / 60.0, 16.67);
-        assert!((throttle - 1.0).abs() < 0.01, "Should allow full throttle below limit, got {}", throttle);
+        assert!(
+            (throttle - 1.0).abs() < 0.01,
+            "Should allow full throttle below limit, got {}",
+            throttle
+        );
     }
 
     #[test]
@@ -151,7 +155,11 @@ mod tests {
 
         // At 80 km/h = 22.22 m/s
         let throttle = state.update(1.0 / 60.0, 22.22);
-        assert!(throttle < 0.5, "Should heavily reduce throttle at limit, got {}", throttle);
+        assert!(
+            throttle < 0.5,
+            "Should heavily reduce throttle at limit, got {}",
+            throttle
+        );
     }
 
     #[test]
@@ -162,7 +170,11 @@ mod tests {
 
         // At 100 km/h = 27.78 m/s (over limit)
         let throttle = state.update(1.0 / 60.0, 27.78);
-        assert!(throttle < 0.2, "Should cut throttle when over limit, got {}", throttle);
+        assert!(
+            throttle < 0.2,
+            "Should cut throttle when over limit, got {}",
+            throttle
+        );
     }
 
     #[test]
@@ -176,7 +188,11 @@ mod tests {
 
         // Over limit - should have braking force
         let braking = state.get_braking_force(27.78);
-        assert!(braking > 0.0, "Should have braking force over limit, got {}", braking);
+        assert!(
+            braking > 0.0,
+            "Should have braking force over limit, got {}",
+            braking
+        );
     }
 
     #[test]
@@ -195,7 +211,10 @@ mod tests {
         for _ in 0..30 {
             let _ = state.update(1.0 / 60.0, 20.0);
         }
-        assert!(state.get_limiter_blend() < 0.5, "Should blend out over time");
+        assert!(
+            state.get_limiter_blend() < 0.5,
+            "Should blend out over time"
+        );
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use crate::types::{AeroMode, ActiveAeroState};
+use crate::types::{ActiveAeroState, AeroMode};
 
 // Active Aero Constants (2026 F1-style regulations)
 
@@ -7,16 +7,16 @@ const CORNER_DRAG_MULT: f32 = 1.0;
 const CORNER_DOWNFORCE_MULT: f32 = 1.0;
 
 // Straight Mode: Low drag, reduced downforce (wings open)
-const STRAIGHT_DRAG_MULT: f32 = 0.65; // 35% drag reduction
-const STRAIGHT_DOWNFORCE_MULT: f32 = 0.55; // 45% downforce reduction
+const STRAIGHT_DRAG_MULT: f32 = 0.55; // 45% drag reduction
+const STRAIGHT_DOWNFORCE_MULT: f32 = 0.42; // 58% downforce reduction
 
 // Wing transition speed
 const WING_LERP_SPEED: f32 = 2.0; // ~0.5 seconds for full transition
 const REAR_WING_SPEED_MULT: f32 = 1.2; // Rear wing moves 20% faster than front
 
 // Auto mode speed thresholds (km/h)
-const AUTO_LOW_SPEED: f32 = 150.0;  // Below: full downforce
-const AUTO_HIGH_SPEED: f32 = 250.0; // Above: minimum drag
+const AUTO_LOW_SPEED: f32 = 120.0; // Below: full downforce
+const AUTO_HIGH_SPEED: f32 = 220.0; // Above: minimum drag
 
 /// Active Aero Physics State Machine
 #[derive(Debug)]
@@ -82,10 +82,14 @@ impl ActiveAeroPhysicsState {
 
         // Lerp front wing toward target
         let front_delta = (target_angle - self.current.front_wing_angle) * WING_LERP_SPEED * dt;
-        self.current.front_wing_angle = (self.current.front_wing_angle + front_delta).clamp(0.0, 1.0);
+        self.current.front_wing_angle =
+            (self.current.front_wing_angle + front_delta).clamp(0.0, 1.0);
 
         // Lerp rear wing toward target (slightly faster)
-        let rear_delta = (target_angle - self.current.rear_wing_angle) * WING_LERP_SPEED * REAR_WING_SPEED_MULT * dt;
+        let rear_delta = (target_angle - self.current.rear_wing_angle)
+            * WING_LERP_SPEED
+            * REAR_WING_SPEED_MULT
+            * dt;
         self.current.rear_wing_angle = (self.current.rear_wing_angle + rear_delta).clamp(0.0, 1.0);
 
         // Calculate average wing angle for multiplier interpolation
@@ -95,7 +99,11 @@ impl ActiveAeroPhysicsState {
         self.current.drag_multiplier = lerp(CORNER_DRAG_MULT, STRAIGHT_DRAG_MULT, avg_wing_angle);
 
         // Interpolate downforce multiplier: 1.0 (corner) -> 0.55 (straight)
-        self.current.downforce_multiplier = lerp(CORNER_DOWNFORCE_MULT, STRAIGHT_DOWNFORCE_MULT, avg_wing_angle);
+        self.current.downforce_multiplier = lerp(
+            CORNER_DOWNFORCE_MULT,
+            STRAIGHT_DOWNFORCE_MULT,
+            avg_wing_angle,
+        );
 
         self.current
     }

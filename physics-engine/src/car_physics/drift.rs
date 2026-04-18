@@ -163,8 +163,11 @@ mod tests {
         let mut state = DriftState::new();
 
         let correction = state.get_lateral_correction(1.0, 1.0, 1.0, 1.0);
-        assert!(correction > 0.8 && correction <= 0.95,
-            "grip=1.0 correction should be ~0.85, got {:.3}", correction);
+        assert!(
+            correction > 0.8 && correction <= 0.95,
+            "grip=1.0 correction should be ~0.85, got {:.3}",
+            correction
+        );
 
         state.update(15.0, 50.0, 1.0, 1.0, 1.0);
         let drift_correction = state.get_lateral_correction(1.0, 1.0, 1.0, 1.0);
@@ -178,9 +181,16 @@ mod tests {
         let fresh_correction = state.get_lateral_correction(1.0, 1.0, 1.0, 1.0);
         let worn_correction = state.get_lateral_correction(1.0, 1.0, 1.0, 0.7);
 
-        assert!(worn_correction < fresh_correction,
-            "worn={:.3} should be < fresh={:.3}", worn_correction, fresh_correction);
-        assert!((worn_correction / fresh_correction - 0.7).abs() < 0.15,
-            "ratio={:.3}, expected ~0.7", worn_correction / fresh_correction);
+        assert!(
+            worn_correction < fresh_correction,
+            "worn={:.3} should be < fresh={:.3}",
+            worn_correction,
+            fresh_correction
+        );
+        assert!(
+            (worn_correction / fresh_correction - 0.7).abs() < 0.15,
+            "ratio={:.3}, expected ~0.7",
+            worn_correction / fresh_correction
+        );
     }
 }

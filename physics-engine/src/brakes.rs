@@ -32,13 +32,7 @@ impl BrakeDiscTemperatures {
         }
     }
 
-    pub fn update(
-        &mut self,
-        dt: f32,
-        speed_ms: f32,
-        brake_forces: [f32; 4],
-        ambient_celsius: f32,
-    ) {
+    pub fn update(&mut self, dt: f32, speed_ms: f32, brake_forces: [f32; 4], ambient_celsius: f32) {
         let ambient_k = ambient_celsius + 273.15;
         for i in 0..4 {
             let q_in = brake_forces[i] * speed_ms;
@@ -141,12 +135,14 @@ impl BrakePhysicsState {
 
     /// Increase brake bias by 2% (clamped to max)
     pub fn increase_brake_bias(&mut self) {
-        self.config.front_bias = (self.config.front_bias + BIAS_ADJUSTMENT_STEP).min(MAX_FRONT_BIAS);
+        self.config.front_bias =
+            (self.config.front_bias + BIAS_ADJUSTMENT_STEP).min(MAX_FRONT_BIAS);
     }
 
     /// Decrease brake bias by 2% (clamped to min)
     pub fn decrease_brake_bias(&mut self) {
-        self.config.front_bias = (self.config.front_bias - BIAS_ADJUSTMENT_STEP).max(MIN_FRONT_BIAS);
+        self.config.front_bias =
+            (self.config.front_bias - BIAS_ADJUSTMENT_STEP).max(MIN_FRONT_BIAS);
     }
 
     /// Set engine braking level
@@ -202,7 +198,8 @@ impl BrakePhysicsState {
         } else {
             [0.0; 4]
         };
-        self.disc_temps.update(dt, speed_ms, forces, ambient_celsius);
+        self.disc_temps
+            .update(dt, speed_ms, forces, ambient_celsius);
     }
 
     pub fn get_brake_temperatures(&self) -> [f32; 4] {
@@ -221,8 +218,8 @@ impl BrakePhysicsState {
         BrakeState {
             front_bias: self.config.front_bias,
             engine_braking: self.config.engine_braking,
-            front_brake_force: 0.0,  // Will be set during physics step
-            rear_brake_force: 0.0,   // Will be set during physics step
+            front_brake_force: 0.0, // Will be set during physics step
+            rear_brake_force: 0.0,  // Will be set during physics step
         }
     }
 
@@ -246,7 +243,10 @@ mod tests {
     fn test_default_config() {
         let brakes = BrakePhysicsState::new();
         assert_eq!(brakes.get_brake_bias(), DEFAULT_FRONT_BIAS);
-        assert_eq!(brakes.get_engine_braking_level(), EngineBrakingLevel::Medium);
+        assert_eq!(
+            brakes.get_engine_braking_level(),
+            EngineBrakingLevel::Medium
+        );
     }
 
     #[test]
@@ -295,7 +295,10 @@ mod tests {
         let mut brakes = BrakePhysicsState::new();
 
         // Start at Medium
-        assert_eq!(brakes.get_engine_braking_level(), EngineBrakingLevel::Medium);
+        assert_eq!(
+            brakes.get_engine_braking_level(),
+            EngineBrakingLevel::Medium
+        );
 
         // Cycle to High
         brakes.cycle_engine_braking_level();
@@ -307,7 +310,10 @@ mod tests {
 
         // Cycle back to Medium
         brakes.cycle_engine_braking_level();
-        assert_eq!(brakes.get_engine_braking_level(), EngineBrakingLevel::Medium);
+        assert_eq!(
+            brakes.get_engine_braking_level(),
+            EngineBrakingLevel::Medium
+        );
     }
 
     #[test]
@@ -319,7 +325,7 @@ mod tests {
 
         // Check bias is applied correctly
         assert!((front - 5800.0).abs() < 0.1); // 58% of 10000
-        assert!((rear - 4200.0).abs() < 0.1);  // 42% of 10000
+        assert!((rear - 4200.0).abs() < 0.1); // 42% of 10000
         assert!((front + rear - total_force).abs() < 0.1); // Forces sum to total
     }
 
@@ -347,7 +353,7 @@ mod tests {
         assert_eq!(state.front_bias, DEFAULT_FRONT_BIAS);
         assert_eq!(state.engine_braking, EngineBrakingLevel::Medium);
         assert!((state.front_brake_force - 11600.0).abs() < 0.1); // 58% of 20000
-        assert!((state.rear_brake_force - 8400.0).abs() < 0.1);   // 42% of 20000
+        assert!((state.rear_brake_force - 8400.0).abs() < 0.1); // 42% of 20000
     }
 
     #[test]
@@ -361,7 +367,8 @@ mod tests {
         assert!(
             after_temp > initial_temp + 50.0,
             "Brake disc should heat up from {} to well above, got {}",
-            initial_temp, after_temp
+            initial_temp,
+            after_temp
         );
     }
 
@@ -382,7 +389,8 @@ mod tests {
         assert!(
             fast_discs.celsius()[0] < slow_discs.celsius()[0],
             "High speed ({}) should cool faster than low speed ({})",
-            fast_discs.celsius()[0], slow_discs.celsius()[0]
+            fast_discs.celsius()[0],
+            slow_discs.celsius()[0]
         );
     }
 
@@ -393,7 +401,8 @@ mod tests {
         assert!(
             mu_500 > mu_700,
             "Friction at 500C ({}) should be > 700C ({})",
-            mu_500, mu_700
+            mu_500,
+            mu_700
         );
         assert!((mu_500 - 0.45).abs() < 0.01);
     }
@@ -405,7 +414,8 @@ mod tests {
         assert!(
             mu_cold < mu_optimal,
             "Cold brake friction ({}) should be < optimal ({})",
-            mu_cold, mu_optimal
+            mu_cold,
+            mu_optimal
         );
     }
 
@@ -419,7 +429,8 @@ mod tests {
             assert!(
                 discs.celsius()[i] < 1000.0,
                 "Disc {} temp {} should stay under 1000C with cooling",
-                i, discs.celsius()[i]
+                i,
+                discs.celsius()[i]
             );
         }
     }
@@ -452,12 +463,18 @@ mod tests {
             assert!(
                 (front + rear - total).abs() < 0.01,
                 "Front + rear ({} + {} = {}) should equal total force ({}) at bias {}",
-                front, rear, front + rear, total, bias
+                front,
+                rear,
+                front + rear,
+                total,
+                bias
             );
             assert!(
                 (front / total - bias).abs() < 0.001,
                 "Front ratio {} should match bias {} at bias {}",
-                front / total, bias, bias
+                front / total,
+                bias,
+                bias
             );
         }
     }

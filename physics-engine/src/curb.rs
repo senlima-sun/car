@@ -1,6 +1,8 @@
 use crate::constants::curb::{amplitude_for_type, grip_for_type, TOOTH_SPACING};
 use crate::types::{CurbModifiers, CurbSide, CurbType};
 
+const DECAY_RATE: f32 = 8.0;
+
 #[derive(Debug, Default)]
 pub struct CurbState {
     is_on_curb: bool,
@@ -8,6 +10,9 @@ pub struct CurbState {
     curb_type: CurbType,
     modifiers: CurbModifiers,
     time_on_curb: f32,
+    residual_amplitude: f32,
+    residual_frequency: f32,
+    time_since_exit: f32,
 }
 
 impl CurbState {
@@ -16,35 +21,54 @@ impl CurbState {
     }
 
     pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<CurbSide>, curb_type: CurbType) {
+        let was_on_curb = self.is_on_curb;
         self.is_on_curb = is_on_curb;
         self.side = side;
         self.curb_type = curb_type;
 
         if is_on_curb {
             self.modifiers = CurbModifiers::for_type(curb_type);
-        } else {
+            self.residual_amplitude = 0.0;
+            self.time_since_exit = 0.0;
+        } else if was_on_curb {
+            self.residual_amplitude = amplitude_for_type(self.curb_type);
+            self.residual_frequency = self.residual_frequency.max(1.0);
+            self.time_since_exit = 0.0;
             self.time_on_curb = 0.0;
         }
     }
 
     pub fn update(&mut self, dt: f32, speed_ms: f32) -> f32 {
-        if !self.is_on_curb {
-            return 0.0;
+        if self.is_on_curb {
+            self.time_on_curb += dt;
+
+            let vibration_amplitude = amplitude_for_type(self.curb_type);
+            if vibration_amplitude < 0.001 {
+                return 0.0;
+            }
+
+            let frequency = speed_ms / TOOTH_SPACING;
+            self.residual_frequency = frequency;
+            let speed_factor = (speed_ms / 50.0).min(0.8).max(0.15);
+            let oscillation = (self.time_on_curb * frequency * std::f32::consts::TAU).sin();
+
+            return vibration_amplitude * oscillation * speed_factor;
         }
 
-        self.time_on_curb += dt;
-
-        let vibration_amplitude = amplitude_for_type(self.curb_type);
-
-        if vibration_amplitude < 0.001 {
-            return 0.0;
+        if self.residual_amplitude > 0.001 {
+            self.time_since_exit += dt;
+            let decay = (-DECAY_RATE * self.time_since_exit).exp();
+            if decay < 0.01 {
+                self.residual_amplitude = 0.0;
+                return 0.0;
+            }
+            let oscillation =
+                (self.time_since_exit * self.residual_frequency * std::f32::consts::TAU).sin();
+            let speed_factor = (speed_ms / 50.0).min(0.8).max(0.15);
+            return self.residual_amplitude * oscillation * decay * speed_factor;
         }
 
-        let frequency = speed_ms / TOOTH_SPACING;
-        let speed_factor = (speed_ms / 50.0).min(0.8).max(0.15);
-        let oscillation = (self.time_on_curb * frequency * std::f32::consts::TAU).sin();
-
-        vibration_amplitude * oscillation * speed_factor
+        0.0
     }
 
     pub fn is_on_curb(&self) -> bool {
@@ -82,7 +106,8 @@ impl CurbState {
             return 0.0;
         }
 
-        let curb_drag = current_speed.abs() * car_mass * (1.0 - self.modifiers.speed_multiplier) * 0.5;
+        let curb_drag =
+            current_speed.abs() * car_mass * (1.0 - self.modifiers.speed_multiplier) * 0.5;
         curb_drag * current_speed.signum()
     }
 }
@@ -173,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn test_vibration_zero_when_off_curb() {
+    fn test_vibration_zero_when_never_on_curb() {
         let mut state = CurbState::new();
         let vib = state.update(1.0 / 120.0, 30.0);
         assert!((vib).abs() < 0.001);
@@ -190,5 +215,50 @@ mod tests {
         let vib_fast = state.update(1.0 / 120.0, 45.0).abs();
 
         assert!(vib_fast > vib_slow);
+    }
+
+    #[test]
+    fn test_vibration_decays_after_exit() {
+        let mut state = CurbState::new();
+        state.set_on_curb(true, None, CurbType::Exit);
+
+        for _ in 0..60 {
+            state.update(1.0 / 120.0, 30.0);
+        }
+
+        state.set_on_curb(false, None, CurbType::Exit);
+
+        let mut max_early = 0.0_f32;
+        for _ in 0..12 {
+            let v = state.update(1.0 / 120.0, 30.0).abs();
+            max_early = max_early.max(v);
+        }
+
+        let mut max_late = 0.0_f32;
+        for _ in 0..120 {
+            let v = state.update(1.0 / 120.0, 30.0).abs();
+            max_late = max_late.max(v);
+        }
+
+        assert!(max_early > max_late, "vibration should decay over time");
+    }
+
+    #[test]
+    fn test_vibration_fully_stops_after_exit() {
+        let mut state = CurbState::new();
+        state.set_on_curb(true, None, CurbType::Exit);
+
+        for _ in 0..60 {
+            state.update(1.0 / 120.0, 30.0);
+        }
+
+        state.set_on_curb(false, None, CurbType::Exit);
+
+        for _ in 0..600 {
+            state.update(1.0 / 120.0, 30.0);
+        }
+
+        let vib = state.update(1.0 / 120.0, 30.0);
+        assert!(vib.abs() < 0.001, "vibration should fully stop after ~0.5s");
     }
 }

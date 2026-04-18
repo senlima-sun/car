@@ -78,10 +78,12 @@ impl WindState {
 
         // Multi-frequency gust simulation for natural variation
         // Primary gust wave
-        let primary_gust = (self.gust_timer * GUST_BASE_FREQUENCY * 2.0 * std::f32::consts::PI).sin();
+        let primary_gust =
+            (self.gust_timer * GUST_BASE_FREQUENCY * 2.0 * std::f32::consts::PI).sin();
 
         // Secondary slower wave for longer-term variation
-        let secondary_gust = (self.gust_timer * GUST_SECONDARY_FREQUENCY * 2.0 * std::f32::consts::PI).sin();
+        let secondary_gust =
+            (self.gust_timer * GUST_SECONDARY_FREQUENCY * 2.0 * std::f32::consts::PI).sin();
 
         // Combine waves with weights
         let combined_gust = primary_gust * 0.7 + secondary_gust * 0.3;
@@ -101,7 +103,8 @@ impl WindState {
         }
 
         // Add subtle direction wobble based on gust timer
-        let wobble = (self.gust_timer * DIRECTION_WOBBLE_FREQUENCY * 2.0 * std::f32::consts::PI).sin()
+        let wobble = (self.gust_timer * DIRECTION_WOBBLE_FREQUENCY * 2.0 * std::f32::consts::PI)
+            .sin()
             * DIRECTION_WOBBLE_AMPLITUDE;
 
         self.direction + wobble
@@ -153,7 +156,9 @@ impl WindState {
         // Calculate lateral force from crosswind
         // Force increases with both wind speed and car speed (more surface area exposed at speed)
         let speed_factor = (car_speed / 30.0).clamp(0.2, 1.5);
-        let lateral_force = crosswind_component * (BASE_LATERAL_FORCE + LATERAL_FORCE_COEFFICIENT * car_speed) * speed_factor;
+        let lateral_force = crosswind_component
+            * (BASE_LATERAL_FORCE + LATERAL_FORCE_COEFFICIENT * car_speed)
+            * speed_factor;
 
         // Steering difficulty from crosswind
         // Strong crosswinds make it harder to maintain direction

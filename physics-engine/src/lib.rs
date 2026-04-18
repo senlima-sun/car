@@ -8,8 +8,9 @@ mod curb;
 pub mod engine;
 mod engine_temp;
 mod ers;
-mod surface;
 mod pit_lane;
+mod surface;
+mod terrain;
 mod tires;
 mod track_temperature;
 pub mod types;
@@ -20,15 +21,15 @@ mod wind;
 use engine::PhysicsEngine as PhysicsEngineInternal;
 use serde_wasm_bindgen::{from_value, to_value};
 use types::{
-    AeroMode, AmbientEnvironment, CarInput, CurbSide, CurbType, ErsMode, SemiAutoPreset, SurfaceType,
-    TireCompound, TrackBounds,
+    AeroMode, AmbientEnvironment, CarInput, CurbSide, CurbType, ErsMode, SemiAutoPreset,
+    SurfaceType, TerrainMaterial, TireCompound, TrackBounds,
 };
 use wasm_bindgen::prelude::*;
 
 // Re-export enums for JavaScript
-pub use types::TireCompound as TireCompoundEnum;
-pub use types::ErsMode as ErsModeEnum;
 pub use types::AeroMode as AeroModeEnum;
+pub use types::ErsMode as ErsModeEnum;
+pub use types::TireCompound as TireCompoundEnum;
 
 /// WASM-exposed physics engine wrapper
 #[wasm_bindgen]
@@ -72,7 +73,8 @@ impl PhysicsEngine {
     /// rain_intensity: 0.0 to 1.0 (0% to 100%)
     #[wasm_bindgen]
     pub fn set_custom_weather(&mut self, celsius: f32, humidity: f32, rain_intensity: f32) {
-        self.inner.set_custom_weather(celsius, humidity, rain_intensity);
+        self.inner
+            .set_custom_weather(celsius, humidity, rain_intensity);
     }
 
     /// Get current rain intensity (0.0 to 1.0)
@@ -419,17 +421,24 @@ impl PhysicsEngine {
 
     /// Set whether the car is on a curb
     #[wasm_bindgen]
-    pub fn set_on_curb(&mut self, is_on_curb: bool, side: Option<String>, curb_type: Option<String>) {
+    pub fn set_on_curb(
+        &mut self,
+        is_on_curb: bool,
+        side: Option<String>,
+        curb_type: Option<String>,
+    ) {
         let curb_side = side.and_then(|s| match s.as_str() {
             "left" | "Left" => Some(CurbSide::Left),
             "right" | "Right" => Some(CurbSide::Right),
             _ => None,
         });
-        let ct = curb_type.map(|s| match s.as_str() {
-            "exit" | "Exit" => CurbType::Exit,
-            "flat" | "Flat" => CurbType::Flat,
-            _ => CurbType::Apex,
-        }).unwrap_or(CurbType::Apex);
+        let ct = curb_type
+            .map(|s| match s.as_str() {
+                "exit" | "Exit" => CurbType::Exit,
+                "flat" | "Flat" => CurbType::Flat,
+                _ => CurbType::Apex,
+            })
+            .unwrap_or(CurbType::Apex);
         self.inner.set_on_curb(is_on_curb, curb_side, ct);
     }
 
@@ -568,8 +577,16 @@ impl PhysicsEngine {
     /// Mark a rectangular region as road surface
     /// Useful for registering entire road segments at once
     #[wasm_bindgen]
-    pub fn set_road_region(&mut self, min_x: f32, min_z: f32, max_x: f32, max_z: f32, is_road: bool) {
-        self.inner.set_road_region(min_x, min_z, max_x, max_z, is_road);
+    pub fn set_road_region(
+        &mut self,
+        min_x: f32,
+        min_z: f32,
+        max_x: f32,
+        max_z: f32,
+        is_road: bool,
+    ) {
+        self.inner
+            .set_road_region(min_x, min_z, max_x, max_z, is_road);
     }
 
     /// Check for aquaplaning conditions at a position
@@ -622,7 +639,8 @@ impl PhysicsEngine {
             wheel_intensities[3],
         ];
 
-        self.inner.update_rubber_deposits(&positions, &intensities, delta_seconds);
+        self.inner
+            .update_rubber_deposits(&positions, &intensities, delta_seconds);
     }
 
     #[wasm_bindgen]
@@ -677,9 +695,9 @@ impl PhysicsEngine {
             wheel_intensities[3],
         ];
 
-        let (compound_mult, wetness) = self.inner.update_rubber_frame(
-            car_x, car_z, speed_ms, delta, &positions, &intensities,
-        );
+        let (compound_mult, wetness) =
+            self.inner
+                .update_rubber_frame(car_x, car_z, speed_ms, delta, &positions, &intensities);
         vec![compound_mult, wetness]
     }
 
@@ -717,7 +735,15 @@ impl PhysicsEngine {
         let angvel: [f32; 3] = from_value(current_angvel).unwrap_or([0.0, 0.0, 0.0]);
         let normal: [f32; 3] = from_value(surface_normal).unwrap_or([0.0, 1.0, 0.0]);
 
-        let output = self.inner.step(delta_seconds, input, position, rotation, linvel, angvel, normal);
+        let output = self.inner.step(
+            delta_seconds,
+            input,
+            position,
+            rotation,
+            linvel,
+            angvel,
+            normal,
+        );
         to_value(&output).unwrap_or(JsValue::NULL)
     }
 
@@ -745,8 +771,103 @@ impl PhysicsEngine {
         let angvel: [f32; 3] = from_value(current_angvel).unwrap_or([0.0, 0.0, 0.0]);
         let normal: [f32; 3] = from_value(surface_normal).unwrap_or([0.0, 1.0, 0.0]);
 
-        let output = self.inner.step_and_sync(delta_seconds, input, position, rotation, linvel, angvel, normal);
+        let output = self.inner.step_and_sync(
+            delta_seconds,
+            input,
+            position,
+            rotation,
+            linvel,
+            angvel,
+            normal,
+        );
         to_value(&output).unwrap_or(JsValue::NULL)
+    }
+
+    // ========================================================================
+    // Terrain API
+    // ========================================================================
+
+    #[wasm_bindgen]
+    pub fn init_terrain(&mut self, cell_size: f32, origin_x: f32, origin_z: f32) {
+        self.inner.init_terrain(cell_size, origin_x, origin_z);
+    }
+
+    #[wasm_bindgen]
+    pub fn set_terrain_cell(&mut self, x: f32, z: f32, height: f32, material_id: u8) {
+        self.inner
+            .set_terrain_cell(x, z, height, TerrainMaterial::from_u8(material_id));
+    }
+
+    #[wasm_bindgen]
+    pub fn set_terrain_region(
+        &mut self,
+        min_x: f32,
+        min_z: f32,
+        max_x: f32,
+        max_z: f32,
+        height: f32,
+        material_id: u8,
+    ) {
+        self.inner.set_terrain_region(
+            min_x,
+            min_z,
+            max_x,
+            max_z,
+            height,
+            TerrainMaterial::from_u8(material_id),
+        );
+    }
+
+    #[wasm_bindgen]
+    pub fn set_terrain_height(&mut self, x: f32, z: f32, height: f32) {
+        self.inner
+            .set_terrain_cell(x, z, height, TerrainMaterial::Asphalt);
+    }
+
+    #[wasm_bindgen]
+    pub fn query_terrain(&self, x: f32, z: f32) -> JsValue {
+        match self.inner.query_terrain(x, z) {
+            Some(result) => to_value(&result).unwrap_or(JsValue::NULL),
+            None => JsValue::NULL,
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn is_terrain_initialized(&self) -> bool {
+        self.inner.is_terrain_initialized()
+    }
+
+    #[wasm_bindgen]
+    pub fn load_terrain_heightmap(
+        &mut self,
+        data: &[f32],
+        width: u32,
+        height: u32,
+        origin_x: f32,
+        origin_z: f32,
+        cell_size: f32,
+    ) {
+        self.inner.init_terrain(cell_size, origin_x, origin_z);
+        for z in 0..height {
+            for x in 0..width {
+                let idx = (z * width + x) as usize;
+                if idx < data.len() {
+                    let world_x = origin_x + x as f32 * cell_size;
+                    let world_z = origin_z + z as f32 * cell_size;
+                    self.inner.set_terrain_cell(
+                        world_x,
+                        world_z,
+                        data[idx],
+                        TerrainMaterial::Asphalt,
+                    );
+                }
+            }
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn clear_terrain(&mut self) {
+        self.inner.clear_terrain();
     }
 
     // ========================================================================

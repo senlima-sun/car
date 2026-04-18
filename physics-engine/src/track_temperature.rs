@@ -1,5 +1,5 @@
-use rustc_hash::FxHashMap;
 use crate::types::{AmbientConditions, AquaplaningState, GridCell, TrackBounds};
+use rustc_hash::FxHashMap;
 
 const DEFAULT_CELL_SIZE: f32 = 2.0;
 const MAX_CELLS: usize = 5000;
@@ -93,8 +93,11 @@ impl TrackTemperatureGrid {
         let world_x = cell_x as f32 * self.cell_size;
         let world_z = cell_z as f32 * self.cell_size;
 
-        if world_x < self.bounds.min_x || world_x > self.bounds.max_x
-            || world_z < self.bounds.min_z || world_z > self.bounds.max_z {
+        if world_x < self.bounds.min_x
+            || world_x > self.bounds.max_x
+            || world_z < self.bounds.min_z
+            || world_z > self.bounds.max_z
+        {
             return None;
         }
 
@@ -150,9 +153,12 @@ impl TrackTemperatureGrid {
                 });
 
                 cell.temperature = (cell.temperature + heat_gain).min(1.0);
-                cell.wetness = (cell.wetness - CAR_SKID_DRYING_RATE * falloff * delta_seconds).max(0.0);
+                cell.wetness =
+                    (cell.wetness - CAR_SKID_DRYING_RATE * falloff * delta_seconds).max(0.0);
                 // Water depth also reduces when car drives through
-                cell.water_depth = (cell.water_depth - CAR_SKID_DRYING_RATE * 0.5 * falloff * delta_seconds).max(0.0);
+                cell.water_depth = (cell.water_depth
+                    - CAR_SKID_DRYING_RATE * 0.5 * falloff * delta_seconds)
+                    .max(0.0);
                 // Rubber builds up from skidding (slower than heat)
                 let rubber_gain = RUBBER_BUILDUP_RATE * skid_intensity * falloff * delta_seconds;
                 cell.rubber_buildup = (cell.rubber_buildup + rubber_gain).min(1.0);
@@ -216,7 +222,8 @@ impl TrackTemperatureGrid {
                 // Water depth also reduces when car drives through (displaces water)
                 cell.water_depth = (cell.water_depth - dry_amount * 0.5).max(0.0);
                 // Clear ice when driving over it
-                cell.ice_formation = (cell.ice_formation - 0.1 * speed_factor * falloff * delta_seconds).max(0.0);
+                cell.ice_formation =
+                    (cell.ice_formation - 0.1 * speed_factor * falloff * delta_seconds).max(0.0);
                 cell.last_updated = self.time;
                 self.texture_dirty = true;
             }
@@ -225,11 +232,7 @@ impl TrackTemperatureGrid {
 
     /// Update weather effects on all cells (decay, wetness, ice, water depth)
     /// Wrapper for tests - calls update_weather_with_ambient with wind_cooling = 1.0
-    pub fn update_weather(
-        &mut self,
-        ambient: &AmbientConditions,
-        delta_seconds: f32,
-    ) {
+    pub fn update_weather(&mut self, ambient: &AmbientConditions, delta_seconds: f32) {
         self.update_weather_with_ambient(ambient, 1.0, delta_seconds);
 
         // Periodic pruning
@@ -297,12 +300,14 @@ impl TrackTemperatureGrid {
             // Wetness and water depth changes - scaled by rain_exposure, wind helps drying
             if is_raining {
                 let effective_rain = rain_intensity * cell.rain_exposure;
-                cell.wetness = (cell.wetness + WETNESS_GAIN_RATE * effective_rain * delta_seconds).min(1.0);
+                cell.wetness =
+                    (cell.wetness + WETNESS_GAIN_RATE * effective_rain * delta_seconds).min(1.0);
 
                 // Water depth accumulation (affected by drainage)
                 let water_gain = WATER_ACCUMULATION_RATE * effective_rain * delta_seconds;
                 let water_drain = cell.drainage_rate * WATER_DRAINAGE_BASE_RATE * delta_seconds;
-                cell.water_depth = (cell.water_depth + water_gain - water_drain).clamp(0.0, MAX_WATER_DEPTH);
+                cell.water_depth =
+                    (cell.water_depth + water_gain - water_drain).clamp(0.0, MAX_WATER_DEPTH);
             } else {
                 // Wind helps dry the track, sheltered areas also dry faster
                 let dry_multiplier = if cell.rain_exposure < 0.5 {
@@ -310,20 +315,28 @@ impl TrackTemperatureGrid {
                 } else {
                     wind_cooling_multiplier
                 };
-                cell.wetness = (cell.wetness - WETNESS_DECAY_RATE * dry_multiplier * delta_seconds).max(0.0);
+                cell.wetness =
+                    (cell.wetness - WETNESS_DECAY_RATE * dry_multiplier * delta_seconds).max(0.0);
                 // Water drains faster with wind
-                let drain_rate = WATER_DRAINAGE_BASE_RATE * (1.0 + cell.drainage_rate) * wind_cooling_multiplier * delta_seconds;
+                let drain_rate = WATER_DRAINAGE_BASE_RATE
+                    * (1.0 + cell.drainage_rate)
+                    * wind_cooling_multiplier
+                    * delta_seconds;
                 cell.water_depth = (cell.water_depth - drain_rate).max(0.0);
             }
 
             // Ice formation/melting
             if is_freezing {
                 let ice_potential = cell.wetness.max(ambient.humidity * 0.5);
-                let ice_gain = ICE_FORMATION_RATE * ice_potential * (FREEZING_THRESHOLD - ambient.temperature) * delta_seconds;
+                let ice_gain = ICE_FORMATION_RATE
+                    * ice_potential
+                    * (FREEZING_THRESHOLD - ambient.temperature)
+                    * delta_seconds;
                 cell.ice_formation = (cell.ice_formation + ice_gain).min(1.0);
             } else {
                 let melt_factor = (ambient.temperature - FREEZING_THRESHOLD).min(0.2);
-                cell.ice_formation = (cell.ice_formation - ICE_MELT_RATE * melt_factor * delta_seconds).max(0.0);
+                cell.ice_formation =
+                    (cell.ice_formation - ICE_MELT_RATE * melt_factor * delta_seconds).max(0.0);
             }
 
             // Rubber decay based on ambient conditions (wind helps drying/decay)
@@ -336,7 +349,8 @@ impl TrackTemperatureGrid {
             } else {
                 RUBBER_UV_DECAY_RATE * wind_cooling_multiplier.sqrt() // Wind has modest effect
             };
-            cell.rubber_buildup = (cell.rubber_buildup - rubber_decay_rate * delta_seconds).max(0.0);
+            cell.rubber_buildup =
+                (cell.rubber_buildup - rubber_decay_rate * delta_seconds).max(0.0);
 
             if (cell.temperature - old_temp).abs() > 0.001 {
                 cells_modified = true;
@@ -398,13 +412,13 @@ impl TrackTemperatureGrid {
             if let Some((u, v)) = self.cell_to_texture(*cell_x, *cell_z) {
                 let idx = (v * TEXTURE_SIZE + u) * 4;
                 if idx + 3 < self.texture_data.len() {
-                    self.texture_data[idx] = (cell.temperature * 255.0) as u8;     // R = temperature
-                    self.texture_data[idx + 1] = (cell.wetness * 255.0) as u8;     // G = wetness
-                    // Pack rubber (lower 4 bits) and ice (upper 4 bits) into B channel
+                    self.texture_data[idx] = (cell.temperature * 255.0) as u8; // R = temperature
+                    self.texture_data[idx + 1] = (cell.wetness * 255.0) as u8; // G = wetness
+                                                                               // Pack rubber (lower 4 bits) and ice (upper 4 bits) into B channel
                     let rubber_packed = (cell.rubber_buildup * 15.0).min(15.0) as u8;
                     let ice_packed = (cell.ice_formation * 15.0).min(15.0) as u8;
                     self.texture_data[idx + 2] = rubber_packed | (ice_packed << 4); // B = rubber + ice
-                    self.texture_data[idx + 3] = 255;                               // A = full alpha
+                    self.texture_data[idx + 3] = 255; // A = full alpha
                 }
             }
         }
@@ -435,7 +449,8 @@ impl TrackTemperatureGrid {
     /// Get water depth at a world position (0.0 to 1.0)
     pub fn get_water_depth_at(&self, world_x: f32, world_z: f32) -> f32 {
         let (cell_x, cell_z) = self.world_to_cell(world_x, world_z);
-        self.cells.get(&(cell_x, cell_z))
+        self.cells
+            .get(&(cell_x, cell_z))
             .map(|c| c.water_depth)
             .unwrap_or(0.0)
     }
@@ -475,7 +490,14 @@ impl TrackTemperatureGrid {
 
     /// Mark a rectangular region as road surface
     /// Useful for registering entire road segments at once
-    pub fn set_road_region(&mut self, min_x: f32, min_z: f32, max_x: f32, max_z: f32, is_road: bool) {
+    pub fn set_road_region(
+        &mut self,
+        min_x: f32,
+        min_z: f32,
+        max_x: f32,
+        max_z: f32,
+        is_road: bool,
+    ) {
         let (start_cell_x, start_cell_z) = self.world_to_cell(min_x, min_z);
         let (end_cell_x, end_cell_z) = self.world_to_cell(max_x, max_z);
 
@@ -569,8 +591,8 @@ impl TrackTemperatureGrid {
         &mut self,
         world_x: f32,
         world_z: f32,
-        tire_temperature: f32,  // Average tire temperature (0.0-1.0, maps to 20-150C)
-        ambient_temp: f32,      // Ambient temperature (0.0-1.0, maps to -20 to 50C)
+        tire_temperature: f32, // Average tire temperature (0.0-1.0, maps to 20-150C)
+        ambient_temp: f32,     // Ambient temperature (0.0-1.0, maps to -20 to 50C)
         delta_seconds: f32,
     ) -> f32 {
         if self.cells.len() >= MAX_CELLS {
@@ -656,7 +678,8 @@ impl TrackTemperatureGrid {
 
                     // Distance from wheel to cell center
                     let dist = ((cell_world_x - world_x).powi(2)
-                              + (cell_world_z - world_z).powi(2)).sqrt();
+                        + (cell_world_z - world_z).powi(2))
+                    .sqrt();
 
                     if dist > RUBBER_CONTACT_RADIUS {
                         continue;
@@ -700,7 +723,8 @@ impl TrackTemperatureGrid {
     /// Get wetness at a world position (for rubber intensity calculation)
     pub fn get_wetness_at(&self, world_x: f32, world_z: f32) -> f32 {
         let (cell_x, cell_z) = self.world_to_cell(world_x, world_z);
-        self.cells.get(&(cell_x, cell_z))
+        self.cells
+            .get(&(cell_x, cell_z))
             .map(|c| c.wetness)
             .unwrap_or(0.0)
     }
@@ -711,16 +735,16 @@ impl TrackTemperatureGrid {
 ///
 /// Formula: base_intensity * speed_factor * wetness_factor * temp_factor * compound_mult
 pub fn calculate_rubber_intensity(
-    slip_angle: f32,            // Slip angle in degrees
-    lateral_g: f32,             // Lateral G-force
-    longitudinal_g: f32,        // Longitudinal G-force (braking/accel)
-    speed_ms: f32,              // Speed in m/s
+    slip_angle: f32,     // Slip angle in degrees
+    lateral_g: f32,      // Lateral G-force
+    longitudinal_g: f32, // Longitudinal G-force (braking/accel)
+    speed_ms: f32,       // Speed in m/s
     is_braking: bool,
     is_handbrake: bool,
     is_drifting: bool,
-    tire_temp: f32,             // Tire temperature 0-1 normalized
-    track_wetness: f32,         // Track wetness 0-1
-    compound_multiplier: f32,   // Tire compound rubber deposit multiplier
+    tire_temp: f32,           // Tire temperature 0-1 normalized
+    track_wetness: f32,       // Track wetness 0-1
+    compound_multiplier: f32, // Tire compound rubber deposit multiplier
 ) -> f32 {
     // No rubber marks at very low speeds
     if speed_ms < MIN_SPEED_FOR_RUBBER {
@@ -757,15 +781,16 @@ pub fn calculate_rubber_intensity(
 
     // Temperature factor: cold tires deposit less, hot tires deposit more
     let temp_factor = if tire_temp < 0.3 {
-        0.6  // Cold tires
+        0.6 // Cold tires
     } else if tire_temp > 0.7 {
-        1.3  // Hot tires (more rubber transfer)
+        1.3 // Hot tires (more rubber transfer)
     } else {
-        1.0  // Optimal temperature
+        1.0 // Optimal temperature
     };
 
     // Final intensity with compound multiplier
-    let final_intensity = base_intensity * speed_factor * wetness_factor * temp_factor * compound_multiplier;
+    let final_intensity =
+        base_intensity * speed_factor * wetness_factor * temp_factor * compound_multiplier;
 
     final_intensity.clamp(0.0, 1.0)
 }
@@ -816,7 +841,11 @@ mod tests {
             grid.update_time(1.0 / 60.0);
         }
 
-        let final_temp = grid.cells.get(&(cx, cz)).map(|c| c.temperature).unwrap_or(0.0);
+        let final_temp = grid
+            .cells
+            .get(&(cx, cz))
+            .map(|c| c.temperature)
+            .unwrap_or(0.0);
         assert!(final_temp < initial_temp);
     }
 
@@ -876,19 +905,32 @@ mod tests {
 
         // Let them decay (dry weather - road should retain heat better)
         let ambient = AmbientConditions::from_celsius(25.0, 0.3);
-        for _ in 0..600 { // 10 seconds at 60fps
+        for _ in 0..600 {
+            // 10 seconds at 60fps
             road_grid.update_weather(&ambient, 1.0 / 60.0);
             grass_grid.update_weather(&ambient, 1.0 / 60.0);
             road_grid.update_time(1.0 / 60.0);
             grass_grid.update_time(1.0 / 60.0);
         }
 
-        let final_road_temp = road_grid.cells.get(&(cx, cz)).map(|c| c.temperature).unwrap_or(0.0);
-        let final_grass_temp = grass_grid.cells.get(&(cx, cz)).map(|c| c.temperature).unwrap_or(0.0);
+        let final_road_temp = road_grid
+            .cells
+            .get(&(cx, cz))
+            .map(|c| c.temperature)
+            .unwrap_or(0.0);
+        let final_grass_temp = grass_grid
+            .cells
+            .get(&(cx, cz))
+            .map(|c| c.temperature)
+            .unwrap_or(0.0);
 
         // Road should retain more heat (higher temperature)
-        assert!(final_road_temp > final_grass_temp,
-            "Road temp {} should be > grass temp {}", final_road_temp, final_grass_temp);
+        assert!(
+            final_road_temp > final_grass_temp,
+            "Road temp {} should be > grass temp {}",
+            final_road_temp,
+            final_grass_temp
+        );
     }
 
     #[test]
@@ -908,20 +950,33 @@ mod tests {
 
         // Let them decay in rain (road should lose heat faster)
         let ambient = AmbientConditions::new(15.0, 0.9, 0.8); // 15C, 90% humidity, 80% rain
-        for _ in 0..600 { // 10 seconds at 60fps
+        for _ in 0..600 {
+            // 10 seconds at 60fps
             road_grid.update_weather(&ambient, 1.0 / 60.0);
             grass_grid.update_weather(&ambient, 1.0 / 60.0);
             road_grid.update_time(1.0 / 60.0);
             grass_grid.update_time(1.0 / 60.0);
         }
 
-        let final_road_temp = road_grid.cells.get(&(cx, cz)).map(|c| c.temperature).unwrap_or(0.0);
-        let final_grass_temp = grass_grid.cells.get(&(cx, cz)).map(|c| c.temperature).unwrap_or(0.0);
+        let final_road_temp = road_grid
+            .cells
+            .get(&(cx, cz))
+            .map(|c| c.temperature)
+            .unwrap_or(0.0);
+        let final_grass_temp = grass_grid
+            .cells
+            .get(&(cx, cz))
+            .map(|c| c.temperature)
+            .unwrap_or(0.0);
 
         // In rain, road should lose heat faster (lower temperature) than grass
         // Due to ROAD_RAIN_DECAY_MULTIPLIER = 2.5
-        assert!(final_road_temp < final_grass_temp,
-            "Road temp {} should be < grass temp {} in rain", final_road_temp, final_grass_temp);
+        assert!(
+            final_road_temp < final_grass_temp,
+            "Road temp {} should be < grass temp {} in rain",
+            final_road_temp,
+            final_grass_temp
+        );
     }
 
     #[test]
@@ -933,13 +988,25 @@ mod tests {
 
         // Check cells within the region
         let (cx, cz) = grid.world_to_cell(0.0, 0.0);
-        assert!(grid.cells.get(&(cx, cz)).map(|c| c.is_road).unwrap_or(false));
+        assert!(grid
+            .cells
+            .get(&(cx, cz))
+            .map(|c| c.is_road)
+            .unwrap_or(false));
 
         let (cx2, cz2) = grid.world_to_cell(4.0, 4.0);
-        assert!(grid.cells.get(&(cx2, cz2)).map(|c| c.is_road).unwrap_or(false));
+        assert!(grid
+            .cells
+            .get(&(cx2, cz2))
+            .map(|c| c.is_road)
+            .unwrap_or(false));
 
         // Check cell outside the region (should not exist or not be road)
         let (cx3, cz3) = grid.world_to_cell(10.0, 10.0);
-        assert!(!grid.cells.get(&(cx3, cz3)).map(|c| c.is_road).unwrap_or(false));
+        assert!(!grid
+            .cells
+            .get(&(cx3, cz3))
+            .map(|c| c.is_road)
+            .unwrap_or(false));
     }
 }

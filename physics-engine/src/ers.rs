@@ -1,4 +1,6 @@
-use crate::types::{ErsMode, ErsState, HarvestSource, SemiAutoConfig, SemiAutoPreset, SemiAutoState};
+use crate::types::{
+    ErsMode, ErsState, HarvestSource, SemiAutoConfig, SemiAutoPreset, SemiAutoState,
+};
 
 // ============================================================================
 // 2026 F1 ERS Constants
@@ -173,7 +175,7 @@ impl ErsPhysicsState {
 
         // Preset-specific deploy scaling (AGR deploys more, CON deploys less)
         let preset_deploy_scale = match self.semi_auto_config.preset {
-            SemiAutoPreset::Aggressive => 1.4,   // 40% more deploy
+            SemiAutoPreset::Aggressive => 1.4, // 40% more deploy
             SemiAutoPreset::Balanced => 1.0,
             SemiAutoPreset::Conservative => 0.7, // 30% less deploy
         };
@@ -414,7 +416,7 @@ impl ErsPhysicsState {
                 // Calculate force boost (Power = Force × Velocity)
                 // At reference speed (50 m/s), 350 kW = 7000 N
                 let reference_speed = 40.0;
-                let effective_speed = speed_ms.clamp(reference_speed, 70.0);
+                let effective_speed = speed_ms.clamp(reference_speed, 90.0);
 
                 force_boost = (deploy_power * 1000.0 / effective_speed) * DEPLOY_EFFICIENCY;
 

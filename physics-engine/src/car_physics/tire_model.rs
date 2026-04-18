@@ -14,11 +14,21 @@ pub struct PacejkaCoeffs {
 
 impl PacejkaCoeffs {
     pub fn lateral_default() -> Self {
-        Self { b: 10.0, c: 1.9, d: 1.0, e: 0.97 }
+        Self {
+            b: 10.0,
+            c: 1.9,
+            d: 1.0,
+            e: 0.97,
+        }
     }
 
     pub fn longitudinal_default() -> Self {
-        Self { b: 20.0, c: 1.65, d: 1.0, e: 0.97 }
+        Self {
+            b: 20.0,
+            c: 1.65,
+            d: 1.0,
+            e: 0.97,
+        }
     }
 }
 
@@ -145,8 +155,8 @@ pub fn calculate_tire_grip(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::weight_transfer::WeightTransferResult;
+    use super::*;
 
     const EPSILON: f32 = 0.01;
     const FZ_NOMINAL: f32 = CAR_MASS * 9.81 / 4.0;
@@ -207,7 +217,8 @@ mod tests {
         assert!(
             combined_total <= pure_max * 1.05,
             "Combined force ({}) should not exceed friction circle ({})",
-            combined_total, pure_max
+            combined_total,
+            pure_max
         );
     }
 
@@ -225,12 +236,14 @@ mod tests {
         assert!(
             force_2x < force_1x * 2.0,
             "Doubling load ({}) should give < 2x grip ({})",
-            force_2x, force_1x * 2.0
+            force_2x,
+            force_1x * 2.0
         );
         assert!(
             force_2x > force_1x * 1.3,
             "Doubling load ({}) should still increase grip significantly (>1.3x = {})",
-            force_2x, force_1x * 1.3
+            force_2x,
+            force_1x * 1.3
         );
     }
 
@@ -256,8 +269,10 @@ mod tests {
     #[test]
     fn test_handbrake_reduces_rear() {
         let weight = WeightTransferResult::default();
-        let (_, rear_normal) = calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, false, false, &weight);
-        let (_, rear_handbrake) = calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, true, false, &weight);
+        let (_, rear_normal) =
+            calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, false, false, &weight);
+        let (_, rear_handbrake) =
+            calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, true, false, &weight);
         assert!(rear_handbrake < rear_normal * 0.3);
     }
 
@@ -265,7 +280,8 @@ mod tests {
     fn test_throttle_oversteer() {
         let weight = WeightTransferResult::default();
         let (_, rear_coast) = calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, false, false, &weight);
-        let (_, rear_throttle) = calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, false, true, &weight);
+        let (_, rear_throttle) =
+            calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, false, true, &weight);
         assert!(rear_throttle < rear_coast);
         assert!(rear_throttle > rear_coast * 0.5);
     }
@@ -282,14 +298,17 @@ mod tests {
     fn test_per_wheel_forces() {
         let lat_coeffs = PacejkaCoeffs::lateral_default();
         let lon_coeffs = PacejkaCoeffs::longitudinal_default();
-        let forces = calculate_per_wheel_forces(
-            10.0, 0.05, FZ_NOMINAL, &lat_coeffs, &lon_coeffs, 0.015,
-        );
+        let forces =
+            calculate_per_wheel_forces(10.0, 0.05, FZ_NOMINAL, &lat_coeffs, &lon_coeffs, 0.015);
         assert!(forces.fy.abs() > 0.0, "Should have lateral force");
         assert!(forces.fx.abs() > 0.0, "Should have longitudinal force");
     }
 
-    fn calculate_single_tire_grip_legacy(slip_angle: f32, normal_load: f32, base_grip_coeff: f32) -> f32 {
+    fn calculate_single_tire_grip_legacy(
+        slip_angle: f32,
+        normal_load: f32,
+        base_grip_coeff: f32,
+    ) -> f32 {
         pacejka_grip_efficiency(slip_angle, normal_load) * base_grip_coeff
     }
 }

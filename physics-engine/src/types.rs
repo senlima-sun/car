@@ -32,7 +32,11 @@ impl AmbientEnvironment {
         } else if celsius < 0.0 {
             PrecipitationType::Snow
         } else if celsius < 2.0 {
-            if precipitation_rate_mmh > 10.0 { PrecipitationType::Snow } else { PrecipitationType::Rain }
+            if precipitation_rate_mmh > 10.0 {
+                PrecipitationType::Snow
+            } else {
+                PrecipitationType::Rain
+            }
         } else {
             PrecipitationType::Rain
         };
@@ -42,7 +46,11 @@ impl AmbientEnvironment {
             precipitation_rate_mmh: precipitation_rate_mmh.max(0.0),
             precipitation_type: precip_type,
             atmospheric_pressure_hpa: 1013.25,
-            cloud_cover: if precipitation_rate_mmh > 0.1 { 0.8 } else { 0.2 },
+            cloud_cover: if precipitation_rate_mmh > 0.1 {
+                0.8
+            } else {
+                0.2
+            },
         }
     }
 
@@ -96,7 +104,6 @@ pub struct WeatherModifiers {
     pub drift_lateral_correction_multiplier: f32,
     pub max_speed_multiplier: f32,
 }
-
 
 // ============================================================================
 // Wind Types
@@ -177,7 +184,7 @@ pub enum EngineBrakingLevel {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct BrakeConfig {
-    pub front_bias: f32,           // 0.50-0.70 (50-70% front)
+    pub front_bias: f32, // 0.50-0.70 (50-70% front)
     pub engine_braking: EngineBrakingLevel,
 }
 
@@ -185,8 +192,8 @@ pub struct BrakeConfig {
 pub struct BrakeState {
     pub front_bias: f32,
     pub engine_braking: EngineBrakingLevel,
-    pub front_brake_force: f32,    // Current front brake force (N)
-    pub rear_brake_force: f32,     // Current rear brake force (N)
+    pub front_brake_force: f32, // Current front brake force (N)
+    pub rear_brake_force: f32,  // Current rear brake force (N)
 }
 
 // ============================================================================
@@ -220,7 +227,7 @@ pub enum HarvestSource {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum SemiAutoPreset {
     #[default]
-    Balanced,     // 40-70% target range
+    Balanced, // 40-70% target range
     Aggressive,   // 25-50% target range (more deploy)
     Conservative, // 60-85% target range (more harvest)
 }
@@ -297,15 +304,15 @@ pub struct SemiAutoState {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct ErsState {
-    pub battery_charge: f32,       // 0.0-1.0
+    pub battery_charge: f32, // 0.0-1.0
     pub mode: ErsMode,
-    pub power_flow: f32,           // kW (positive=deploy, negative=harvest)
+    pub power_flow: f32, // kW (positive=deploy, negative=harvest)
     pub is_deploying: bool,
     pub is_harvesting: bool,
     // 2026 ERS fields
-    pub super_clip_active: bool,   // True when harvesting at full throttle
+    pub super_clip_active: bool, // True when harvesting at full throttle
     pub harvest_source: HarvestSource,
-    pub overtake_available: bool,  // True when in testing mode
+    pub overtake_available: bool, // True when in testing mode
     // Semi-Auto mode state
     pub semi_auto: SemiAutoState,
 }
@@ -318,15 +325,15 @@ pub struct ErsState {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum AeroMode {
     #[default]
-    Corner,   // Max downforce, high drag
+    Corner, // Max downforce, high drag
     Straight, // Low drag, reduced downforce
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct ActiveAeroState {
     pub mode: AeroMode,
-    pub front_wing_angle: f32,    // 0.0 = closed, 1.0 = open
-    pub rear_wing_angle: f32,     // 0.0 = closed, 1.0 = open
+    pub front_wing_angle: f32, // 0.0 = closed, 1.0 = open
+    pub rear_wing_angle: f32,  // 0.0 = closed, 1.0 = open
     pub drag_multiplier: f32,
     pub downforce_multiplier: f32,
     pub auto_mode: bool,
@@ -394,8 +401,8 @@ impl TireConfig {
                 rain_suitability: 0.3,            // Poor in rain
                 wrong_conditions_penalty: 0.25,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.50,  // 85C
-                    max_optimal: 0.70,  // 111C
+                    min_optimal: 0.50, // 85C
+                    max_optimal: 0.70, // 111C
                     cold_grip_penalty: 0.75,
                     hot_grip_penalty: 0.85,
                 },
@@ -408,8 +415,8 @@ impl TireConfig {
                 rain_suitability: 0.4,            // Moderate in rain
                 wrong_conditions_penalty: 0.3,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.45,  // 78C
-                    max_optimal: 0.75,  // 117C
+                    min_optimal: 0.45, // 78C
+                    max_optimal: 0.75, // 117C
                     cold_grip_penalty: 0.80,
                     hot_grip_penalty: 0.88,
                 },
@@ -422,8 +429,8 @@ impl TireConfig {
                 rain_suitability: 0.35,           // Poor in rain
                 wrong_conditions_penalty: 0.35,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.55,  // 91C
-                    max_optimal: 0.85,  // 130C
+                    min_optimal: 0.55,       // 91C
+                    max_optimal: 0.85,       // 130C
                     cold_grip_penalty: 0.70, // Hard tires need more heat
                     hot_grip_penalty: 0.92,
                 },
@@ -432,12 +439,12 @@ impl TireConfig {
             TireCompound::Wet => Self {
                 grip_multiplier: 0.75,
                 degradation_rate: 0.000315,
-                optimal_temp_range: (5.0, 30.0),  // Works in cooler temps
-                rain_suitability: 1.0,            // Excellent in rain
+                optimal_temp_range: (5.0, 30.0), // Works in cooler temps
+                rain_suitability: 1.0,           // Excellent in rain
                 wrong_conditions_penalty: 0.5,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.25,  // 52C (lower operating temp)
-                    max_optimal: 0.50,  // 85C
+                    min_optimal: 0.25, // 52C (lower operating temp)
+                    max_optimal: 0.50, // 85C
                     cold_grip_penalty: 0.90,
                     hot_grip_penalty: 0.70, // Overheats easily
                 },
@@ -446,12 +453,12 @@ impl TireConfig {
             TireCompound::Intermediate => Self {
                 grip_multiplier: 0.88,
                 degradation_rate: 0.000263,
-                optimal_temp_range: (0.0, 25.0),  // Works in cold/wet conditions
-                rain_suitability: 0.8,            // Good in rain
+                optimal_temp_range: (0.0, 25.0), // Works in cold/wet conditions
+                rain_suitability: 0.8,           // Good in rain
                 wrong_conditions_penalty: 0.7,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.35,  // 65C
-                    max_optimal: 0.60,  // 98C
+                    min_optimal: 0.35, // 65C
+                    max_optimal: 0.60, // 98C
                     cold_grip_penalty: 0.85,
                     hot_grip_penalty: 0.80,
                 },
@@ -494,6 +501,151 @@ pub struct GripBreakdown {
     pub final_effective_grip: f32,
 }
 
+// ============================================================================
+// Terrain Types
+// ============================================================================
+
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum TerrainMaterial {
+    #[default]
+    Asphalt = 0,
+    Concrete = 1,
+    Painted = 2,
+    WornTarmac = 3,
+    FreshTarmac = 4,
+    Grass = 5,
+    Gravel = 6,
+    Sand = 7,
+    Astroturf = 8,
+    WetCurb = 9,
+    PaintedLine = 10,
+}
+
+impl TerrainMaterial {
+    pub fn from_u8(val: u8) -> Self {
+        match val {
+            0 => Self::Asphalt,
+            1 => Self::Concrete,
+            2 => Self::Painted,
+            3 => Self::WornTarmac,
+            4 => Self::FreshTarmac,
+            5 => Self::Grass,
+            6 => Self::Gravel,
+            7 => Self::Sand,
+            8 => Self::Astroturf,
+            9 => Self::WetCurb,
+            10 => Self::PaintedLine,
+            _ => Self::Asphalt,
+        }
+    }
+
+    pub fn to_surface_type(self) -> SurfaceType {
+        match self {
+            Self::Asphalt
+            | Self::Concrete
+            | Self::Painted
+            | Self::WornTarmac
+            | Self::FreshTarmac
+            | Self::PaintedLine => SurfaceType::Road,
+            Self::Grass | Self::Astroturf => SurfaceType::Grass,
+            Self::Gravel | Self::Sand => SurfaceType::Gravel,
+            Self::WetCurb => SurfaceType::Curb,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct TerrainMaterialProperties {
+    pub grip_coefficient: f32,
+    pub roughness_factor: f32,
+    pub thermal_conductivity: f32,
+    pub tire_wear_rate: f32,
+    pub drag_multiplier: f32,
+    pub rolling_resistance: f32,
+}
+
+impl Default for TerrainMaterialProperties {
+    fn default() -> Self {
+        Self {
+            grip_coefficient: 1.0,
+            roughness_factor: 0.3,
+            thermal_conductivity: 0.8,
+            tire_wear_rate: 1.0,
+            drag_multiplier: 1.0,
+            rolling_resistance: 1.0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TerrainCell {
+    pub height: u16,
+    pub material: u8,
+    pub roughness_override: u8,
+}
+
+impl TerrainCell {
+    pub const HEIGHT_RESOLUTION: f32 = 0.001;
+
+    pub fn new(height_m: f32, material: TerrainMaterial, roughness: f32) -> Self {
+        Self {
+            height: (height_m / Self::HEIGHT_RESOLUTION).clamp(0.0, u16::MAX as f32) as u16,
+            material: material as u8,
+            roughness_override: (roughness * 255.0).clamp(0.0, 255.0) as u8,
+        }
+    }
+
+    pub fn height_m(&self) -> f32 {
+        self.height as f32 * Self::HEIGHT_RESOLUTION
+    }
+
+    pub fn material(&self) -> TerrainMaterial {
+        TerrainMaterial::from_u8(self.material)
+    }
+
+    pub fn roughness(&self) -> f32 {
+        self.roughness_override as f32 / 255.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct TerrainQueryResult {
+    pub height: f32,
+    pub material: TerrainMaterial,
+    pub properties: TerrainMaterialProperties,
+    pub roughness: f32,
+    pub normal: [f32; 3],
+}
+
+impl Default for TerrainQueryResult {
+    fn default() -> Self {
+        Self {
+            height: 0.0,
+            material: TerrainMaterial::Asphalt,
+            properties: TerrainMaterialProperties::default(),
+            roughness: 0.3,
+            normal: [0.0, 1.0, 0.0],
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct PerWheelTerrain {
+    pub heights: [f32; 4],
+    pub materials: [TerrainMaterial; 4],
+    pub grip_multipliers: [f32; 4],
+    pub roughness: [f32; 4],
+    pub bump_forces: [f32; 4],
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct BottomingOutState {
+    pub is_contact: bool,
+    pub scrape_intensity: f32,
+    pub drag_force: f32,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct CarPhysicsOutput {
     pub linear_velocity: [f32; 3],
@@ -519,6 +671,8 @@ pub struct CarPhysicsOutput {
     pub grip_breakdown: GripBreakdown,
     pub tire_material: TireMaterialOutput,
     pub downforce_newtons: f32,
+    pub per_wheel_terrain: PerWheelTerrain,
+    pub bottoming_out: BottomingOutState,
 }
 
 /// Combined output for step + sync (reduces FFI calls per frame)
@@ -990,7 +1144,8 @@ pub struct PerWheelThermalShock {
 impl PerWheelThermalShock {
     /// Get the worst grip penalty across all wheels
     pub fn max_grip_penalty(&self) -> f32 {
-        self.front_left.grip_penalty
+        self.front_left
+            .grip_penalty
             .max(self.front_right.grip_penalty)
             .max(self.rear_left.grip_penalty)
             .max(self.rear_right.grip_penalty)
@@ -1720,13 +1875,22 @@ mod tests {
     #[test]
     fn surface_modifiers_for_surface_matches_named_constructors() {
         let road = SurfaceModifiers::for_surface(SurfaceType::Road);
-        assert_approx(road.grip_multiplier, SurfaceModifiers::road().grip_multiplier);
+        assert_approx(
+            road.grip_multiplier,
+            SurfaceModifiers::road().grip_multiplier,
+        );
 
         let grass = SurfaceModifiers::for_surface(SurfaceType::Grass);
-        assert_approx(grass.grip_multiplier, SurfaceModifiers::grass().grip_multiplier);
+        assert_approx(
+            grass.grip_multiplier,
+            SurfaceModifiers::grass().grip_multiplier,
+        );
 
         let curb = SurfaceModifiers::for_surface(SurfaceType::Curb);
-        assert_approx(curb.grip_multiplier, SurfaceModifiers::curb().grip_multiplier);
+        assert_approx(
+            curb.grip_multiplier,
+            SurfaceModifiers::curb().grip_multiplier,
+        );
     }
 
     #[test]
@@ -1772,13 +1936,21 @@ mod tests {
 
     #[test]
     fn engine_temperature_to_celsius_at_zero_is_20c() {
-        let et = EngineTemperature { temperature: 0.0, is_overheating: false, power_multiplier: 1.0 };
+        let et = EngineTemperature {
+            temperature: 0.0,
+            is_overheating: false,
+            power_multiplier: 1.0,
+        };
         assert_approx(et.to_celsius(), 20.0);
     }
 
     #[test]
     fn engine_temperature_to_celsius_at_one_is_120c() {
-        let et = EngineTemperature { temperature: 1.0, is_overheating: false, power_multiplier: 1.0 };
+        let et = EngineTemperature {
+            temperature: 1.0,
+            is_overheating: false,
+            power_multiplier: 1.0,
+        };
         assert_approx(et.to_celsius(), 120.0);
     }
 
@@ -1824,10 +1996,26 @@ mod tests {
     #[test]
     fn per_wheel_thermal_shock_max_grip_penalty_multiple_wheels() {
         let pwts = PerWheelThermalShock {
-            front_left: TireThermalShock { is_shocked: true, grip_penalty: 0.3, recovery_time: 1.0 },
-            front_right: TireThermalShock { is_shocked: true, grip_penalty: 0.5, recovery_time: 1.0 },
-            rear_left: TireThermalShock { is_shocked: true, grip_penalty: 0.8, recovery_time: 1.0 },
-            rear_right: TireThermalShock { is_shocked: false, grip_penalty: 0.1, recovery_time: 0.0 },
+            front_left: TireThermalShock {
+                is_shocked: true,
+                grip_penalty: 0.3,
+                recovery_time: 1.0,
+            },
+            front_right: TireThermalShock {
+                is_shocked: true,
+                grip_penalty: 0.5,
+                recovery_time: 1.0,
+            },
+            rear_left: TireThermalShock {
+                is_shocked: true,
+                grip_penalty: 0.8,
+                recovery_time: 1.0,
+            },
+            rear_right: TireThermalShock {
+                is_shocked: false,
+                grip_penalty: 0.1,
+                recovery_time: 0.0,
+            },
         };
         assert_approx(pwts.max_grip_penalty(), 0.8);
     }

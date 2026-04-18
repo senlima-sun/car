@@ -129,7 +129,8 @@ impl WeatherState {
                 self.snow_depth_mm = (precip * 0.06).clamp(0.0, 20.0);
                 self.water_film_mm = 0.0;
                 if env.temperature_celsius < -2.0 {
-                    let compact_fraction = ((-env.temperature_celsius - 2.0) / 10.0).clamp(0.0, 0.3);
+                    let compact_fraction =
+                        ((-env.temperature_celsius - 2.0) / 10.0).clamp(0.0, 0.3);
                     self.ice_thickness_mm = self.snow_depth_mm * compact_fraction;
                     self.snow_depth_mm *= 1.0 - compact_fraction;
                 }
@@ -160,7 +161,8 @@ impl WeatherState {
                 let accumulation = precip * 0.001 * dt;
                 let evaporation = self.evaporation_rate(celsius) * dt;
                 let drainage = self.water_film_mm * 0.05 * dt;
-                self.water_film_mm = (self.water_film_mm + accumulation - evaporation - drainage).clamp(0.0, 5.0);
+                self.water_film_mm =
+                    (self.water_film_mm + accumulation - evaporation - drainage).clamp(0.0, 5.0);
 
                 if celsius < 0.0 {
                     let freeze_rate = (-celsius * 0.01).min(0.1);
@@ -194,11 +196,13 @@ impl WeatherState {
 
                 if celsius > 0.0 {
                     let melt_rate = celsius * 0.005;
-                    let ice_melted = (self.ice_thickness_mm * melt_rate * dt).min(self.ice_thickness_mm);
+                    let ice_melted =
+                        (self.ice_thickness_mm * melt_rate * dt).min(self.ice_thickness_mm);
                     self.ice_thickness_mm -= ice_melted;
                     self.water_film_mm = (self.water_film_mm + ice_melted * 0.5).min(5.0);
 
-                    let snow_melted = (self.snow_depth_mm * melt_rate * 1.5 * dt).min(self.snow_depth_mm);
+                    let snow_melted =
+                        (self.snow_depth_mm * melt_rate * 1.5 * dt).min(self.snow_depth_mm);
                     self.snow_depth_mm -= snow_melted;
                     self.water_film_mm = (self.water_film_mm + snow_melted * 0.3).min(5.0);
                 }
@@ -273,7 +277,10 @@ impl WeatherState {
         let p = self.environment.atmospheric_pressure_hpa * 100.0;
         let rho_dry = p / (R_AIR * temp_k);
 
-        let e_sat = 611.2 * ((17.67 * self.environment.temperature_celsius) / (self.environment.temperature_celsius + 243.5)).exp();
+        let e_sat = 611.2
+            * ((17.67 * self.environment.temperature_celsius)
+                / (self.environment.temperature_celsius + 243.5))
+                .exp();
         let e = self.environment.humidity * e_sat;
         let rho = rho_dry * (1.0 - 0.378 * e / p);
 

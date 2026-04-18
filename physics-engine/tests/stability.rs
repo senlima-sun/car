@@ -23,14 +23,16 @@ fn assert_output_finite(output: &car_physics_engine::types::CarPhysicsOutput, fr
         assert!(
             v.is_finite(),
             "linear_velocity[{}] is not finite at frame {}",
-            i, frame
+            i,
+            frame
         );
     }
     for (i, v) in output.angular_velocity.iter().enumerate() {
         assert!(
             v.is_finite(),
             "angular_velocity[{}] is not finite at frame {}",
-            i, frame
+            i,
+            frame
         );
     }
     assert!(

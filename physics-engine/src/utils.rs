@@ -50,10 +50,26 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    pub const ZERO: Self = Self { x: 0.0, y: 0.0, z: 0.0 };
-    pub const UP: Self = Self { x: 0.0, y: 1.0, z: 0.0 };
-    pub const FORWARD: Self = Self { x: 0.0, y: 0.0, z: 1.0 };
-    pub const RIGHT: Self = Self { x: 1.0, y: 0.0, z: 0.0 };
+    pub const ZERO: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+    pub const UP: Self = Self {
+        x: 0.0,
+        y: 1.0,
+        z: 0.0,
+    };
+    pub const FORWARD: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 1.0,
+    };
+    pub const RIGHT: Self = Self {
+        x: 1.0,
+        y: 0.0,
+        z: 0.0,
+    };
 
     #[inline]
     pub fn new(x: f32, y: f32, z: f32) -> Self {
@@ -62,7 +78,11 @@ impl Vec3 {
 
     #[inline]
     pub fn from_array(arr: [f32; 3]) -> Self {
-        Self { x: arr[0], y: arr[1], z: arr[2] }
+        Self {
+            x: arr[0],
+            y: arr[1],
+            z: arr[2],
+        }
     }
 
     #[inline]
@@ -161,7 +181,12 @@ impl Default for Quat {
 }
 
 impl Quat {
-    pub const IDENTITY: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 1.0 };
+    pub const IDENTITY: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        w: 1.0,
+    };
 
     #[inline]
     pub fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
@@ -170,7 +195,12 @@ impl Quat {
 
     #[inline]
     pub fn from_array(arr: [f32; 4]) -> Self {
-        Self { x: arr[0], y: arr[1], z: arr[2], w: arr[3] }
+        Self {
+            x: arr[0],
+            y: arr[1],
+            z: arr[2],
+            w: arr[3],
+        }
     }
 
     #[inline]
@@ -538,8 +568,7 @@ mod tests {
     #[test]
     fn quat_rotation_preserves_length_multiple_axes() {
         let v = Vec3::new(1.0, 0.0, 0.0);
-        let q = Quat::from_axis_angle(Vec3::UP, 0.5)
-            .mul(Quat::from_axis_angle(Vec3::RIGHT, 0.3));
+        let q = Quat::from_axis_angle(Vec3::UP, 0.5).mul(Quat::from_axis_angle(Vec3::RIGHT, 0.3));
         let rotated = q.rotate_vec3(v);
         assert!(approx_eq(rotated.length(), v.length()));
     }

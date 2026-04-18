@@ -59,7 +59,8 @@ pub fn calculate_turn_dynamics(
 
     // Apply grip influence
     let grip_factor = if is_drifting { 0.5 } else { 0.4 };
-    let final_angular_velocity = base_angular_velocity * (1.0 + (grip_influence - 1.0) * grip_factor);
+    let final_angular_velocity =
+        base_angular_velocity * (1.0 + (grip_influence - 1.0) * grip_factor);
 
     // Apply steering direction
     final_angular_velocity * -steer_angle.signum()

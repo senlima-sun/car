@@ -6,7 +6,9 @@ pub mod tire_model;
 pub mod weight_transfer;
 
 use crate::constants::car::*;
-use crate::types::{CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers, WindModifiers};
+use crate::types::{
+    CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers, WindModifiers,
+};
 use crate::utils::{lerp, sanitize, Quat, Vec3};
 
 // ============================================================================
@@ -94,12 +96,16 @@ impl CarPhysicsState {
         self.speed_ms = forward_speed.abs();
         self.speed_kmh = self.speed_ms * 3.6;
         let signed_forward_speed = forward_speed;
+        let max_speed = BASE_MAX_SPEED
+            * weather_modifiers.max_speed_multiplier
+            * tire_degradation.max_speed_multiplier;
 
         let effective_throttle_for_pt = input.throttle > 0.01 || (input.forward && !input.brake);
 
         let pt_out = self.powertrain.update(
             dt,
             self.speed_ms,
+            max_speed,
             effective_throttle_for_pt,
             ers_boost,
             weather_modifiers.engine_efficiency_multiplier * engine_power_multiplier,
@@ -150,7 +156,8 @@ impl CarPhysicsState {
         let target_steer = steer_input * max_steer.to_radians();
 
         // Steering speed affected by both weather and wind (crosswinds make steering harder)
-        let steer_speed = 12.0 * weather_modifiers.steer_response_multiplier * wind_modifiers.steering_difficulty;
+        let steer_speed =
+            12.0 * weather_modifiers.steer_response_multiplier * wind_modifiers.steering_difficulty;
         let center_speed = 8.0 + self.speed_ms * 0.06;
 
         if steer_input.abs() > 0.01 {
@@ -205,14 +212,21 @@ impl CarPhysicsState {
             }
         }
 
-        if effective_throttle < 0.01 && effective_brake < 0.01 && !input.backward && self.speed_ms > 1.0 {
+        if effective_throttle < 0.01
+            && effective_brake < 0.01
+            && !input.backward
+            && self.speed_ms > 1.0
+        {
             let rpm_engine_brake = pt_out.engine_brake_force;
             let configured_brake = engine_braking_force;
             longitudinal_force -= rpm_engine_brake.max(configured_brake) * forward_speed.signum();
         }
 
-        let drag = aerodynamics::get_drag_force_with_density(self.speed_ms, active_aero_drag_mult, air_density)
-            * wind_modifiers.drag_modifier;
+        let drag = aerodynamics::get_drag_force_with_density(
+            self.speed_ms,
+            active_aero_drag_mult,
+            air_density,
+        ) * wind_modifiers.drag_modifier;
         longitudinal_force -= drag * forward_speed.signum();
 
         // Curb drag
@@ -232,29 +246,38 @@ impl CarPhysicsState {
         let gravity_normal = CAR_MASS * 9.81 * slope_angle.cos();
 
         // Pitch component: project surface normal onto forward dir
-        let normal_forward = surface_normal[0] * forward_dir.x + surface_normal[1] * forward_dir.y + surface_normal[2] * forward_dir.z;
+        let normal_forward = surface_normal[0] * forward_dir.x
+            + surface_normal[1] * forward_dir.y
+            + surface_normal[2] * forward_dir.z;
         let pitch_angle = normal_forward.asin().clamp(-0.5, 0.5);
         let gravity_tangent = CAR_MASS * 9.81 * pitch_angle.sin();
 
         // Banking component: project surface normal onto right dir
-        let normal_right = surface_normal[0] * right_dir.x + surface_normal[1] * right_dir.y + surface_normal[2] * right_dir.z;
+        let normal_right = surface_normal[0] * right_dir.x
+            + surface_normal[1] * right_dir.y
+            + surface_normal[2] * right_dir.z;
         let banking_angle = normal_right.asin().clamp(-0.5, 0.5);
         let banking_lateral_force = CAR_MASS * 9.81 * banking_angle.sin();
 
         // Apply slope-induced longitudinal force (downhill = positive, uphill = negative)
         longitudinal_force += gravity_tangent;
 
-        let downforce = aerodynamics::get_downforce_with_density(self.speed_ms, active_aero_downforce_mult, air_density);
+        let downforce = aerodynamics::get_downforce_with_density(
+            self.speed_ms,
+            active_aero_downforce_mult,
+            air_density,
+        );
         let total_load = gravity_normal + downforce;
         let load_sensitivity = 0.015;
         let load_ratio = total_load / gravity_normal.max(1.0);
-        let downforce_grip_bonus = load_ratio.powf(1.0 - load_sensitivity * (load_ratio - 1.0).max(0.0));
+        let downforce_grip_bonus =
+            load_ratio.powf(1.0 - load_sensitivity * (load_ratio - 1.0).max(0.0));
 
         let safe_dt = dt.max(0.001);
-        let long_g_raw = ((forward_speed - self.prev_forward_speed) / safe_dt / 9.81)
-            .clamp(-10.0, 10.0);
-        let lat_g_raw = ((lateral_speed - self.prev_lateral_speed) / safe_dt / 9.81)
-            .clamp(-10.0, 10.0);
+        let long_g_raw =
+            ((forward_speed - self.prev_forward_speed) / safe_dt / 9.81).clamp(-10.0, 10.0);
+        let lat_g_raw =
+            ((lateral_speed - self.prev_lateral_speed) / safe_dt / 9.81).clamp(-10.0, 10.0);
 
         let ema_alpha = (dt * 30.0).min(1.0);
         self.long_g_filtered += (long_g_raw - self.long_g_filtered) * ema_alpha;
@@ -262,10 +285,8 @@ impl CarPhysicsState {
         let long_g = self.long_g_filtered;
         let lat_g = self.lat_g_filtered;
 
-        let weight_transfer = weight_transfer::calculate_weight_transfer(
-            sanitize(long_g, 0.0),
-            sanitize(lat_g, 0.0),
-        );
+        let weight_transfer =
+            weight_transfer::calculate_weight_transfer(sanitize(long_g, 0.0), sanitize(lat_g, 0.0));
 
         // Tire grip calculation
         let (front_grip, rear_grip) = tire_model::calculate_tire_grip(
@@ -319,23 +340,25 @@ impl CarPhysicsState {
 
         let wind_lateral_accel = wind_modifiers.lateral_force / CAR_MASS;
         let banking_accel = -banking_lateral_force / CAR_MASS;
-        let new_lateral_speed = lateral_speed * lateral_correction + (wind_lateral_accel + banking_accel) * dt;
+        let new_lateral_speed =
+            lateral_speed * lateral_correction + (wind_lateral_accel + banking_accel) * dt;
 
         let crosswind_yaw_moment = wind_modifiers.lateral_force * 0.3 / (CAR_MASS * WHEELBASE);
 
         // Clamp speeds with tire degradation effects
-        let max_speed = BASE_MAX_SPEED
-            * weather_modifiers.max_speed_multiplier
-            * tire_degradation.max_speed_multiplier;
         let clamped_forward = new_forward_speed.clamp(-40.0 / 3.6, max_speed);
         let clamped_lateral = new_lateral_speed.clamp(-30.0, 30.0);
 
         // Reconstruct velocity
-        let new_velocity = forward_dir.scale(clamped_forward).add(right_dir.scale(clamped_lateral));
+        let new_velocity = forward_dir
+            .scale(clamped_forward)
+            .add(right_dir.scale(clamped_lateral));
 
         // Cap angular velocity
         let max_ang_vel = if self.drift.is_drifting() { 2.8 } else { 1.8 };
-        let final_ang_vel = (self.target_angular_velocity + drift_rotation + crosswind_yaw_moment * dt).clamp(-max_ang_vel, max_ang_vel);
+        let final_ang_vel =
+            (self.target_angular_velocity + drift_rotation + crosswind_yaw_moment * dt)
+                .clamp(-max_ang_vel, max_ang_vel);
 
         // Update previous values
         self.prev_forward_speed = clamped_forward;
@@ -386,6 +409,8 @@ impl CarPhysicsState {
             grip_breakdown: Default::default(),
             tire_material: Default::default(),
             downforce_newtons: sanitize(downforce, 0.0),
+            per_wheel_terrain: Default::default(),
+            bottoming_out: Default::default(),
         }
     }
 

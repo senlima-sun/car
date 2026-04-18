@@ -16,17 +16,17 @@ pub const RR: usize = 3; // Rear Right
 pub struct WearInput {
     pub delta_seconds: f32,
     pub speed_ms: f32,
-    pub steer_angle: f32,        // Radians, negative = left, positive = right
+    pub steer_angle: f32, // Radians, negative = left, positive = right
     pub is_braking: bool,
     pub is_throttle: bool,
     pub is_drifting: bool,
     pub is_handbrake: bool,
     pub ambient: AmbientConditions,
-    pub track_temperature: f32,  // 0.0 to 1.0 normalized
+    pub track_temperature: f32, // 0.0 to 1.0 normalized
     pub weight_transfer: WeightTransferResult,
-    pub lateral_g: f32,          // Lateral G-force (cornering force)
-    pub longitudinal_g: f32,     // Longitudinal G-force (accel/brake)
-    pub tire_temperatures: [f32; 4], // Per-wheel tire temperature (0.0 to 1.0)
+    pub lateral_g: f32,               // Lateral G-force (cornering force)
+    pub longitudinal_g: f32,          // Longitudinal G-force (accel/brake)
+    pub tire_temperatures: [f32; 4],  // Per-wheel tire temperature (0.0 to 1.0)
     pub slip_angle: f32,              // degrees, from CarPhysicsOutput
     pub surface_wear_multiplier: f32, // from SurfaceState.get_tire_wear_modifier()
 }
@@ -327,7 +327,10 @@ impl TireState {
     }
 
     /// Calculate all degradation modifiers based on current tire wear and ambient conditions
-    pub fn calculate_degradation_modifiers_from_ambient(&self, ambient: &AmbientConditions) -> TireDegradationModifiers {
+    pub fn calculate_degradation_modifiers_from_ambient(
+        &self,
+        ambient: &AmbientConditions,
+    ) -> TireDegradationModifiers {
         let avg_wear = self.get_wear();
 
         // Calculate grip with ambient conditions factored in
@@ -420,7 +423,7 @@ pub struct TempInput {
 /// Per-wheel tire temperature tracking (inner/outer edges)
 #[derive(Debug)]
 pub struct TireTemperatureState {
-    temps: [[f32; 2]; 4], // [wheel][inner/outer]
+    temps: [[f32; 2]; 4],                 // [wheel][inner/outer]
     thermal_shock: [TireThermalShock; 4], // Per-wheel thermal shock state
 }
 
@@ -539,9 +542,17 @@ impl TireTemperatureState {
                 };
 
                 let outer_bonus = if turning_left && !is_left {
-                    if is_inner { 0.6 } else { 1.4 }
+                    if is_inner {
+                        0.6
+                    } else {
+                        1.4
+                    }
                 } else if turning_right && is_left {
-                    if is_inner { 0.6 } else { 1.4 }
+                    if is_inner {
+                        0.6
+                    } else {
+                        1.4
+                    }
                 } else {
                     1.0
                 };
@@ -654,7 +665,12 @@ impl TireTemperatureState {
 
     /// Apply puddle cooling effect when driving through standing water
     /// Returns true if any thermal shock was triggered
-    pub fn apply_puddle_cooling(&mut self, water_depth: f32, speed_ms: f32, delta_seconds: f32) -> bool {
+    pub fn apply_puddle_cooling(
+        &mut self,
+        water_depth: f32,
+        speed_ms: f32,
+        delta_seconds: f32,
+    ) -> bool {
         // Check thresholds
         if water_depth < PUDDLE_COOLING_THRESHOLD || speed_ms < PUDDLE_MIN_SPEED {
             return false;
@@ -663,8 +679,8 @@ impl TireTemperatureState {
         let dt = delta_seconds.min(0.05);
 
         // Cooling intensity based on water depth and speed
-        let water_factor = (water_depth - PUDDLE_COOLING_THRESHOLD)
-            / (1.0 - PUDDLE_COOLING_THRESHOLD);
+        let water_factor =
+            (water_depth - PUDDLE_COOLING_THRESHOLD) / (1.0 - PUDDLE_COOLING_THRESHOLD);
         let speed_factor = (speed_ms / 30.0).min(1.5);
         let cooling = PUDDLE_COOLING_RATE * water_factor * speed_factor * dt;
 
@@ -715,8 +731,7 @@ impl TireTemperatureState {
                 } else {
                     // Gradual grip recovery
                     self.thermal_shock[wheel].grip_penalty =
-                        (self.thermal_shock[wheel].grip_penalty
-                            - THERMAL_SHOCK_RECOVERY_RATE * dt)
+                        (self.thermal_shock[wheel].grip_penalty - THERMAL_SHOCK_RECOVERY_RATE * dt)
                             .max(0.0);
                 }
             }
@@ -739,7 +754,8 @@ impl TireTemperatureState {
         TireThermalShock {
             is_shocked: any_shocked,
             grip_penalty: max_penalty,
-            recovery_time: self.thermal_shock
+            recovery_time: self
+                .thermal_shock
                 .iter()
                 .map(|s| s.recovery_time)
                 .fold(0.0, f32::max),
@@ -808,25 +824,31 @@ impl TireMaterialSystem {
         let sigma_sq = props.temp_sigma_celsius * props.temp_sigma_celsius;
         let gaussian = (-delta_t * delta_t / (2.0 * sigma_sq)).exp();
         let min_grip_floor = props.peak_grip_amplitude * 0.4;
-        state.viscoelastic_grip = min_grip_floor + (props.peak_grip_amplitude - min_grip_floor) * gaussian;
+        state.viscoelastic_grip =
+            min_grip_floor + (props.peak_grip_amplitude - min_grip_floor) * gaussian;
 
         let delta_from_ref = temp_celsius - REFERENCE_TEMP_CELSIUS;
-        state.shore_hardness = (props.base_shore_hardness - props.hardness_temp_coefficient * delta_from_ref).max(20.0);
+        state.shore_hardness = (props.base_shore_hardness
+            - props.hardness_temp_coefficient * delta_from_ref)
+            .max(20.0);
 
         let graining_threshold = props.optimal_temp_celsius - props.graining_onset_delta;
         if temp_celsius < graining_threshold {
             let cold_excess = (graining_threshold - temp_celsius) / props.graining_onset_delta;
             let severity_target = cold_excess.clamp(0.0, 1.0);
-            state.graining_severity = (state.graining_severity + GRAINING_BUILDUP_RATE * severity_target * dt).min(1.0);
+            state.graining_severity =
+                (state.graining_severity + GRAINING_BUILDUP_RATE * severity_target * dt).min(1.0);
         } else {
-            state.graining_severity = (state.graining_severity - GRAINING_RECOVERY_RATE * dt).max(0.0);
+            state.graining_severity =
+                (state.graining_severity - GRAINING_RECOVERY_RATE * dt).max(0.0);
         }
 
         let blistering_threshold = props.optimal_temp_celsius + props.blistering_onset_delta;
         if temp_celsius > blistering_threshold {
             let hot_excess = (temp_celsius - blistering_threshold) / props.blistering_onset_delta;
             let damage_rate = hot_excess.clamp(0.0, 1.0);
-            state.blistering_damage = (state.blistering_damage + BLISTERING_BUILDUP_RATE * damage_rate * dt).min(1.0);
+            state.blistering_damage =
+                (state.blistering_damage + BLISTERING_BUILDUP_RATE * damage_rate * dt).min(1.0);
         }
     }
 
@@ -838,7 +860,11 @@ impl TireMaterialSystem {
     }
 
     pub fn get_average_effective_grip(&self) -> f32 {
-        (self.get_effective_grip(0) + self.get_effective_grip(1) + self.get_effective_grip(2) + self.get_effective_grip(3)) / 4.0
+        (self.get_effective_grip(0)
+            + self.get_effective_grip(1)
+            + self.get_effective_grip(2)
+            + self.get_effective_grip(3))
+            / 4.0
     }
 
     pub fn get_wear_rate_modifier(&self, wheel: usize) -> f32 {
@@ -1369,22 +1395,32 @@ mod tests {
             grips.push((temp_c, sys_copy.get_effective_grip(0)));
         }
 
-        let peak_idx = grips.iter().enumerate()
-            .max_by(|a, b| a.1.1.partial_cmp(&b.1.1).unwrap())
-            .unwrap().0;
+        let peak_idx = grips
+            .iter()
+            .enumerate()
+            .max_by(|a, b| a.1 .1.partial_cmp(&b.1 .1).unwrap())
+            .unwrap()
+            .0;
 
         let peak_temp = grips[peak_idx].0;
         assert!(
             (peak_temp as f32 - props.optimal_temp_celsius).abs() <= 5.0,
             "Peak grip should be near optimal temp {}°C, got {}°C",
-            props.optimal_temp_celsius, peak_temp
+            props.optimal_temp_celsius,
+            peak_temp
         );
 
         if peak_idx > 0 {
-            assert!(grips[peak_idx].1 > grips[0].1, "Peak should be higher than coldest");
+            assert!(
+                grips[peak_idx].1 > grips[0].1,
+                "Peak should be higher than coldest"
+            );
         }
         if peak_idx < grips.len() - 1 {
-            assert!(grips[peak_idx].1 > grips[grips.len() - 1].1, "Peak should be higher than hottest");
+            assert!(
+                grips[peak_idx].1 > grips[grips.len() - 1].1,
+                "Peak should be higher than hottest"
+            );
         }
     }
 
@@ -1405,7 +1441,8 @@ mod tests {
         assert!(
             soft_peak > hard_peak,
             "Soft peak grip ({}) should exceed hard peak grip ({})",
-            soft_peak, hard_peak
+            soft_peak,
+            hard_peak
         );
 
         let off_by_30 = temp_celsius_to_normalized(95.0 + 30.0);
@@ -1422,7 +1459,8 @@ mod tests {
         assert!(
             soft_drop > hard_drop,
             "Soft tires should drop more off-peak ({:.2}%) vs hard ({:.2}%)",
-            soft_drop * 100.0, hard_drop * 100.0
+            soft_drop * 100.0,
+            hard_drop * 100.0
         );
     }
 
@@ -1462,7 +1500,8 @@ mod tests {
         assert!(
             graining_after < graining_before,
             "Graining should recover at optimal temp: before={}, after={}",
-            graining_before, graining_after
+            graining_before,
+            graining_after
         );
     }
 
@@ -1503,7 +1542,8 @@ mod tests {
         assert!(
             (damage_after_cool - damage_after_heat).abs() < 0.001,
             "Blistering damage should not recover: before={}, after={}",
-            damage_after_heat, damage_after_cool
+            damage_after_heat,
+            damage_after_cool
         );
     }
 
@@ -1522,7 +1562,8 @@ mod tests {
         assert!(
             cold_hardness > hot_hardness,
             "Shore hardness should decrease with temperature: cold={}, hot={}",
-            cold_hardness, hot_hardness
+            cold_hardness,
+            hot_hardness
         );
     }
 
@@ -1543,7 +1584,8 @@ mod tests {
         assert!(
             (actual_diff - expected_diff).abs() < 0.5,
             "Shore hardness drop should be linear: expected ~{}, got {}",
-            expected_diff, actual_diff
+            expected_diff,
+            actual_diff
         );
     }
 
@@ -1570,19 +1612,55 @@ mod tests {
 
     #[test]
     fn test_material_no_nan_or_infinity() {
-        for compound in [TireCompound::Soft, TireCompound::Medium, TireCompound::Hard, TireCompound::Wet, TireCompound::Intermediate] {
+        for compound in [
+            TireCompound::Soft,
+            TireCompound::Medium,
+            TireCompound::Hard,
+            TireCompound::Wet,
+            TireCompound::Intermediate,
+        ] {
             let mut sys = TireMaterialSystem::new(compound);
 
             for norm_temp in [0.0_f32, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0] {
                 sys.update(0.016, &[norm_temp; 4]);
                 for w in 0..4 {
                     let state = sys.get_wheel_state(w);
-                    assert!(!state.viscoelastic_grip.is_nan(), "NaN grip for {:?} at temp {}", compound, norm_temp);
-                    assert!(!state.viscoelastic_grip.is_infinite(), "Inf grip for {:?} at temp {}", compound, norm_temp);
-                    assert!(!state.shore_hardness.is_nan(), "NaN hardness for {:?} at temp {}", compound, norm_temp);
-                    assert!(!state.graining_severity.is_nan(), "NaN graining for {:?} at temp {}", compound, norm_temp);
-                    assert!(!state.blistering_damage.is_nan(), "NaN blistering for {:?} at temp {}", compound, norm_temp);
-                    assert!(sys.get_effective_grip(w) >= 0.1, "Grip too low for {:?} at temp {}", compound, norm_temp);
+                    assert!(
+                        !state.viscoelastic_grip.is_nan(),
+                        "NaN grip for {:?} at temp {}",
+                        compound,
+                        norm_temp
+                    );
+                    assert!(
+                        !state.viscoelastic_grip.is_infinite(),
+                        "Inf grip for {:?} at temp {}",
+                        compound,
+                        norm_temp
+                    );
+                    assert!(
+                        !state.shore_hardness.is_nan(),
+                        "NaN hardness for {:?} at temp {}",
+                        compound,
+                        norm_temp
+                    );
+                    assert!(
+                        !state.graining_severity.is_nan(),
+                        "NaN graining for {:?} at temp {}",
+                        compound,
+                        norm_temp
+                    );
+                    assert!(
+                        !state.blistering_damage.is_nan(),
+                        "NaN blistering for {:?} at temp {}",
+                        compound,
+                        norm_temp
+                    );
+                    assert!(
+                        sys.get_effective_grip(w) >= 0.1,
+                        "Grip too low for {:?} at temp {}",
+                        compound,
+                        norm_temp
+                    );
                 }
             }
         }
@@ -1603,7 +1681,8 @@ mod tests {
         assert!(
             soft_rate > hard_rate,
             "Soft tires should wear faster: soft_rate={}, hard_rate={}",
-            soft_rate, hard_rate
+            soft_rate,
+            hard_rate
         );
     }
 
@@ -1630,28 +1709,63 @@ mod tests {
         assert!(
             wet_props.optimal_temp_celsius < soft_props.optimal_temp_celsius,
             "Wet tires should have lower optimal temp: wet={}°C, soft={}°C",
-            wet_props.optimal_temp_celsius, soft_props.optimal_temp_celsius
+            wet_props.optimal_temp_celsius,
+            soft_props.optimal_temp_celsius
         );
     }
 
     #[test]
     fn test_material_all_compounds_have_valid_properties() {
-        for compound in [TireCompound::Soft, TireCompound::Medium, TireCompound::Hard, TireCompound::Wet, TireCompound::Intermediate] {
+        for compound in [
+            TireCompound::Soft,
+            TireCompound::Medium,
+            TireCompound::Hard,
+            TireCompound::Wet,
+            TireCompound::Intermediate,
+        ] {
             let props = TireMaterialProperties::for_compound(compound);
-            assert!(props.optimal_temp_celsius > 20.0 && props.optimal_temp_celsius < 150.0,
-                "Invalid optimal temp for {:?}: {}°C", compound, props.optimal_temp_celsius);
-            assert!(props.temp_sigma_celsius > 5.0 && props.temp_sigma_celsius < 50.0,
-                "Invalid sigma for {:?}: {}°C", compound, props.temp_sigma_celsius);
-            assert!(props.peak_grip_amplitude > 0.5 && props.peak_grip_amplitude < 2.0,
-                "Invalid peak grip for {:?}: {}", compound, props.peak_grip_amplitude);
-            assert!(props.base_shore_hardness > 30.0 && props.base_shore_hardness < 100.0,
-                "Invalid Shore A for {:?}: {}", compound, props.base_shore_hardness);
-            assert!(props.hardness_temp_coefficient > 0.0 && props.hardness_temp_coefficient < 1.0,
-                "Invalid hardness coefficient for {:?}: {}", compound, props.hardness_temp_coefficient);
-            assert!(props.graining_onset_delta > 5.0 && props.graining_onset_delta < 50.0,
-                "Invalid graining onset for {:?}: {}°C", compound, props.graining_onset_delta);
-            assert!(props.blistering_onset_delta > 10.0 && props.blistering_onset_delta < 60.0,
-                "Invalid blistering onset for {:?}: {}°C", compound, props.blistering_onset_delta);
+            assert!(
+                props.optimal_temp_celsius > 20.0 && props.optimal_temp_celsius < 150.0,
+                "Invalid optimal temp for {:?}: {}°C",
+                compound,
+                props.optimal_temp_celsius
+            );
+            assert!(
+                props.temp_sigma_celsius > 5.0 && props.temp_sigma_celsius < 50.0,
+                "Invalid sigma for {:?}: {}°C",
+                compound,
+                props.temp_sigma_celsius
+            );
+            assert!(
+                props.peak_grip_amplitude > 0.5 && props.peak_grip_amplitude < 2.0,
+                "Invalid peak grip for {:?}: {}",
+                compound,
+                props.peak_grip_amplitude
+            );
+            assert!(
+                props.base_shore_hardness > 30.0 && props.base_shore_hardness < 100.0,
+                "Invalid Shore A for {:?}: {}",
+                compound,
+                props.base_shore_hardness
+            );
+            assert!(
+                props.hardness_temp_coefficient > 0.0 && props.hardness_temp_coefficient < 1.0,
+                "Invalid hardness coefficient for {:?}: {}",
+                compound,
+                props.hardness_temp_coefficient
+            );
+            assert!(
+                props.graining_onset_delta > 5.0 && props.graining_onset_delta < 50.0,
+                "Invalid graining onset for {:?}: {}°C",
+                compound,
+                props.graining_onset_delta
+            );
+            assert!(
+                props.blistering_onset_delta > 10.0 && props.blistering_onset_delta < 60.0,
+                "Invalid blistering onset for {:?}: {}°C",
+                compound,
+                props.blistering_onset_delta
+            );
         }
     }
 
@@ -1660,8 +1774,14 @@ mod tests {
         let mut sys = TireMaterialSystem::new(TireCompound::Medium);
         sys.update(1.0, &[0.0; 4]);
         let grip = sys.get_effective_grip(0);
-        assert!(grip >= 0.1, "Grip should not go below minimum floor even at 20°C");
-        assert!(grip < 0.8, "Grip should be significantly reduced at 20°C for medium compound");
+        assert!(
+            grip >= 0.1,
+            "Grip should not go below minimum floor even at 20°C"
+        );
+        assert!(
+            grip < 0.8,
+            "Grip should be significantly reduced at 20°C for medium compound"
+        );
     }
 
     #[test]
@@ -1669,7 +1789,13 @@ mod tests {
         let mut sys = TireMaterialSystem::new(TireCompound::Medium);
         sys.update(1.0, &[1.0; 4]);
         let grip = sys.get_effective_grip(0);
-        assert!(grip >= 0.1, "Grip should not go below minimum floor even at 150°C");
-        assert!(grip < 0.8, "Grip should be significantly reduced at 150°C for medium compound");
+        assert!(
+            grip >= 0.1,
+            "Grip should not go below minimum floor even at 150°C"
+        );
+        assert!(
+            grip < 0.8,
+            "Grip should be significantly reduced at 150°C for medium compound"
+        );
     }
 }

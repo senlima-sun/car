@@ -35,7 +35,8 @@ pub fn calculate_weight_transfer(longitudinal_g: f32, lateral_g: f32) -> WeightT
     // Longitudinal weight transfer (acceleration/braking)
     // Positive G = accelerating = weight shifts to rear
     // Negative G = braking = weight shifts to front
-    let long_transfer = (longitudinal_g * CAR_MASS * CG_HEIGHT / WHEELBASE) * LONGITUDINAL_TRANSFER_FACTOR;
+    let long_transfer =
+        (longitudinal_g * CAR_MASS * CG_HEIGHT / WHEELBASE) * LONGITUDINAL_TRANSFER_FACTOR;
 
     // Lateral weight transfer (cornering)
     // Positive G = turning right = weight shifts to left
@@ -136,12 +137,14 @@ mod tests {
         assert!(
             braking_result.front_load_pct > static_result.front_load_pct,
             "Braking should shift load forward: braking front={}, static front={}",
-            braking_result.front_load_pct, static_result.front_load_pct
+            braking_result.front_load_pct,
+            static_result.front_load_pct
         );
         assert!(
             braking_result.rear_load_pct < static_result.rear_load_pct,
             "Braking should reduce rear load: braking rear={}, static rear={}",
-            braking_result.rear_load_pct, static_result.rear_load_pct
+            braking_result.rear_load_pct,
+            static_result.rear_load_pct
         );
         assert!(
             braking_result.front_load_change > 0.0,
