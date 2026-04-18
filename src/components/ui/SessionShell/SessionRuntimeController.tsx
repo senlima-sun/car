@@ -8,8 +8,10 @@ import {
   isSetupSessionPhase,
   useSessionStore,
 } from '@/stores/useSessionStore'
+import { useJumpStartDetector } from '@/hooks/useJumpStartDetector'
 
 export default function SessionRuntimeController() {
+  useJumpStartDetector()
   const shellStatus = useGameStore(s => s.status)
   const phase = useSessionStore(s => s.phase)
   const config = useSessionStore(s => s.config)

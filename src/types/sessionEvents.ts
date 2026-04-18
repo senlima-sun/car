@@ -52,6 +52,11 @@ export type SessionEvent =
       violationCount: number
       totalViolationTime: number
     }
+  | {
+      id: string
+      type: 'jump_start'
+      at: number
+    }
 
 export type SessionEventInput = SessionEvent extends infer Event
   ? Event extends { id: string }

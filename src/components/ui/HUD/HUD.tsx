@@ -8,6 +8,9 @@ import WrongWayIndicator from './WrongWayIndicator'
 import PitLaneSpeedIndicator from './PitLaneSpeedIndicator'
 import LapTimer from './LapTimer'
 import CoastIndicator from './CoastIndicator'
+import RaceIntro from './RaceIntro'
+import DeltaDisplay from './DeltaDisplay'
+import RaceInfoBar from './RaceInfoBar'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
 import { SettingsDialog } from '../SettingsDialog'
 import {
@@ -114,6 +117,10 @@ export default function HUD() {
           <CountdownOverlay />
           <PauseOverlay />
           <ResultsScreen />
+
+          {isRunningSession && <RaceIntro />}
+          {isRunningSession && cameraMode !== 'first-person' && <RaceInfoBar />}
+          {isRunningSession && cameraMode !== 'first-person' && <DeltaDisplay />}
 
           {isRunningSession && cameraMode !== 'first-person' && <LapTimer />}
 
