@@ -3,6 +3,12 @@
  */
 
 import init, { PhysicsEngine, TireCompound, SurfaceType } from './pkg/car_physics_engine'
+import { incrementWasmCalls } from '../debug/perfCounters'
+import { publishStepBundle } from './stepBundleSnapshot'
+
+function recordWasmCall(): void {
+  incrementWasmCalls(1)
+}
 
 // Re-export types for convenience
 export { TireCompound, SurfaceType }
@@ -355,6 +361,8 @@ export interface StepAndSyncOutput {
   input_throttle: number
   input_brake: number
   input_steer: number
+  ambient: AmbientConditions
+  world_downforce: [number, number, number]
 }
 
 // ============================================================================
@@ -490,6 +498,8 @@ export function stepAndSync(
     surfaceNormal,
   ) as StepAndSyncOutput
 
+  recordWasmCall()
+  publishStepBundle(result)
   return result
 }
 

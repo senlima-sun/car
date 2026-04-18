@@ -687,6 +687,14 @@ pub struct StepAndSyncOutput {
     pub input_throttle: f32,
     pub input_brake: f32,
     pub input_steer: f32,
+    /// Ambient conditions snapshot (temperature, humidity, rain). Exposed so
+    /// JS overlays no longer need a separate `getAmbientConditions` FFI call
+    /// per frame.
+    pub ambient: AmbientConditions,
+    /// World-space downforce vector (Newtons) already oriented through the
+    /// chassis up axis. JS applies a single impulse instead of four per
+    /// wheel, with no rotation math on the JS side.
+    pub world_downforce: [f32; 3],
 }
 
 // ============================================================================

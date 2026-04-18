@@ -1110,6 +1110,8 @@ impl PhysicsEngine {
         let wind_state = self.get_wind_state();
         let aero_state = self.get_active_aero_state();
         let brake_state = self.get_brake_state();
+        let ambient = self.weather.get_ambient_conditions();
+        let world_downforce = compute_world_downforce(&physics, car_rotation);
 
         crate::types::StepAndSyncOutput {
             physics,
@@ -1121,6 +1123,8 @@ impl PhysicsEngine {
             input_throttle: input.throttle,
             input_brake: input.brake_analog,
             input_steer: input.steer,
+            ambient,
+            world_downforce,
         }
     }
 
@@ -1145,6 +1149,21 @@ impl PhysicsEngine {
             is_drifting: self.car.is_drifting(),
         }
     }
+}
+
+fn compute_world_downforce(output: &CarPhysicsOutput, rotation: [f32; 4]) -> [f32; 3] {
+    let df = output.downforce_newtons;
+    if df <= 0.0 {
+        return [0.0, 0.0, 0.0];
+    }
+    let qx = rotation[0];
+    let qy = rotation[1];
+    let qz = rotation[2];
+    let qw = rotation[3];
+    let up_x = 2.0 * (qx * qy - qw * qz);
+    let up_y = 1.0 - 2.0 * (qx * qx + qz * qz);
+    let up_z = 2.0 * (qy * qz + qw * qx);
+    [-df * up_x, -df * up_y, -df * up_z]
 }
 
 #[derive(Debug, Clone)]

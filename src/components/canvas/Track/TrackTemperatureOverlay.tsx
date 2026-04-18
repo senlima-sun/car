@@ -14,6 +14,7 @@ import {
   WEATHER_TYPE_MAP,
 } from '../../../shaders/trackSurface'
 import { usePhysics } from '../../../wasm'
+import { readStepBundle } from '../../../wasm/stepBundleSnapshot'
 
 function computeWeatherType(temperature: number, rainIntensity: number): number {
   if (rainIntensity > 0.3) return WEATHER_TYPE_MAP.rain
@@ -101,16 +102,10 @@ export default function TrackTemperatureOverlay() {
         prevHeatmapVisible.current = isHeatmapVisible
       }
 
-      if (frameCounter.current % 6 === 0 && physics.initialized) {
-        try {
-          const ambient = physics.getAmbientConditions()
-          if (ambient) {
-            materialRef.current.uniforms.ambientTemp.value = ambient.temperature
-            materialRef.current.uniforms.ambientHumidity.value = ambient.humidity
-          }
-        } catch {
-          // Physics not ready yet
-        }
+      if (frameCounter.current % 6 === 0) {
+        const { ambient } = readStepBundle()
+        materialRef.current.uniforms.ambientTemp.value = ambient.temperature
+        materialRef.current.uniforms.ambientHumidity.value = ambient.humidity
       }
     }
   })

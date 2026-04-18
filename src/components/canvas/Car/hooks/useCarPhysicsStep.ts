@@ -119,30 +119,12 @@ export function useCarPhysicsStep({
       true,
     )
 
-    if (output.downforce_newtons > 1) {
-      const qx = rot.x, qy = rot.y, qz = rot.z, qw = rot.w
-      const upX = 2 * (qx * qy - qw * qz)
-      const upY = 1 - 2 * (qx * qx + qz * qz)
-      const upZ = 2 * (qy * qz + qw * qx)
-      const perWheel = -output.downforce_newtons * dt * 0.25
-      const impulse = { x: upX * perWheel, y: upY * perWheel, z: upZ * perWheel }
-
-      const r00 = 1 - 2 * (qy * qy + qz * qz)
-      const r01 = 2 * (qx * qy - qw * qz)
-      const r02 = 2 * (qx * qz + qw * qy)
-      const r10 = 2 * (qx * qy + qw * qz)
-      const r11 = 1 - 2 * (qx * qx + qz * qz)
-      const r12 = 2 * (qy * qz - qw * qx)
-      const r20 = 2 * (qx * qz - qw * qy)
-      const r21 = 2 * (qy * qz + qw * qx)
-      const r22 = 1 - 2 * (qx * qx + qy * qy)
-
-      for (const wp of [DIM_WHEEL_POS.FL, DIM_WHEEL_POS.FR, DIM_WHEEL_POS.RL, DIM_WHEEL_POS.RR]) {
-        const wx = pos.x + r00 * wp[0] + r01 * wp[1] + r02 * wp[2]
-        const wy = pos.y + r10 * wp[0] + r11 * wp[1] + r12 * wp[2]
-        const wz = pos.z + r20 * wp[0] + r21 * wp[1] + r22 * wp[2]
-        chassis.applyImpulseAtPoint(impulse, { x: wx, y: wy, z: wz }, true)
-      }
+    const wdf = syncResult.world_downforce
+    if (wdf && (wdf[0] !== 0 || wdf[1] !== 0 || wdf[2] !== 0)) {
+      chassis.applyImpulse(
+        { x: wdf[0] * dt, y: wdf[1] * dt, z: wdf[2] * dt },
+        true,
+      )
     }
 
     suspensionOutputRef.current = suspensionStep(dt)
