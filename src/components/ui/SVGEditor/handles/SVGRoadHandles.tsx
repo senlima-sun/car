@@ -1,7 +1,8 @@
-import { memo, useCallback, useRef, useEffect } from 'react'
+import { memo, useCallback, useRef, useEffect, useState } from 'react'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { useCustomizationStore } from '@/stores/useCustomizationStore'
-import { isCurveMode } from '@/types/trackObjects'
+import { isCurveMode, type SnapPointWithDirection } from '@/types/trackObjects'
+import { getSnapPoints } from '@/utils/roadGeometry'
 import { worldToSVG } from '../hooks/useSVGCoordinates'
 import type { useSVGCoordinates as UseSVGCoordinates } from '../hooks/useSVGCoordinates'
 
@@ -12,10 +13,40 @@ interface SVGRoadHandlesProps {
 
 interface RoadDragState {
   roadId: string
-  handle: 'start' | 'end' | 'control'
+  handle: 'start' | 'end' | 'control' | 'midpoint'
   initialStart: [number, number, number]
   initialEnd: [number, number, number]
   initialControl: [number, number, number] | undefined
+  initialTrackMode: string | undefined
+  initialStartLeftEdge: [number, number, number] | undefined
+  initialStartRightEdge: [number, number, number] | undefined
+  initialEndLeftEdge: [number, number, number] | undefined
+  initialEndRightEdge: [number, number, number] | undefined
+}
+
+const ENDPOINT_SNAP_RADIUS = 5
+
+function findEndpointSnap(
+  position: [number, number, number],
+  excludeRoadId: string,
+): SnapPointWithDirection | null {
+  const objects = useCustomizationStore.getState().placedObjects
+  const others = objects.filter(o => o.id !== excludeRoadId)
+  const snapPoints = getSnapPoints(others)
+
+  let best: SnapPointWithDirection | null = null
+  let bestDist = ENDPOINT_SNAP_RADIUS
+
+  for (const sp of snapPoints) {
+    const dx = sp.position[0] - position[0]
+    const dz = sp.position[2] - position[2]
+    const dist = Math.sqrt(dx * dx + dz * dz)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = sp
+    }
+  }
+  return best
 }
 
 export const SVGRoadHandles = memo(function SVGRoadHandles({
@@ -30,9 +61,10 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
     : null
 
   const dragState = useRef<RoadDragState | null>(null)
+  const [snapTarget, setSnapTarget] = useState<SnapPointWithDirection | null>(null)
 
   const handlePointerDown = useCallback(
-    (handle: 'start' | 'end' | 'control', e: React.PointerEvent) => {
+    (handle: 'start' | 'end' | 'control' | 'midpoint', e: React.PointerEvent) => {
       e.stopPropagation()
       if (!road || !road.startPoint || !road.endPoint) return
 
@@ -43,6 +75,19 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
         initialEnd: [...road.endPoint] as [number, number, number],
         initialControl: road.controlPoint
           ? ([...road.controlPoint] as [number, number, number])
+          : undefined,
+        initialTrackMode: road.trackMode,
+        initialStartLeftEdge: road.startLeftEdge
+          ? ([...road.startLeftEdge] as [number, number, number])
+          : undefined,
+        initialStartRightEdge: road.startRightEdge
+          ? ([...road.startRightEdge] as [number, number, number])
+          : undefined,
+        initialEndLeftEdge: road.endLeftEdge
+          ? ([...road.endLeftEdge] as [number, number, number])
+          : undefined,
+        initialEndRightEdge: road.endRightEdge
+          ? ([...road.endRightEdge] as [number, number, number])
           : undefined,
       }
     },
@@ -63,18 +108,51 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
 
       const updates: Record<string, unknown> = {}
 
-      if (ds.handle === 'start') {
-        updates.startPoint = world
-        updates.position = [(world[0] + obj.endPoint[0]) / 2, 0, (world[2] + obj.endPoint[2]) / 2]
-      } else if (ds.handle === 'end') {
-        updates.endPoint = world
-        updates.position = [
-          (obj.startPoint[0] + world[0]) / 2,
-          0,
-          (obj.startPoint[2] + world[2]) / 2,
-        ]
+      if (ds.handle === 'start' || ds.handle === 'end') {
+        const snap = findEndpointSnap(world, ds.roadId)
+        setSnapTarget(snap)
+        const effective: [number, number, number] = snap ? snap.position : world
+
+        if (ds.handle === 'start') {
+          updates.startPoint = effective
+          updates.position = [
+            (effective[0] + obj.endPoint[0]) / 2,
+            0,
+            (effective[2] + obj.endPoint[2]) / 2,
+          ]
+          if (snap) {
+            updates.startLeftEdge = snap.leftEdge
+            updates.startRightEdge = snap.rightEdge
+          } else {
+            updates.startLeftEdge = undefined
+            updates.startRightEdge = undefined
+          }
+        } else {
+          updates.endPoint = effective
+          updates.position = [
+            (obj.startPoint[0] + effective[0]) / 2,
+            0,
+            (obj.startPoint[2] + effective[2]) / 2,
+          ]
+          if (snap) {
+            updates.endLeftEdge = snap.leftEdge
+            updates.endRightEdge = snap.rightEdge
+          } else {
+            updates.endLeftEdge = undefined
+            updates.endRightEdge = undefined
+          }
+        }
       } else if (ds.handle === 'control') {
         updates.controlPoint = world
+      } else if (ds.handle === 'midpoint') {
+        updates.controlPoint = world
+        if (!isCurveMode(obj.trackMode)) {
+          if (obj.trackMode === 'pitroad') {
+            updates.trackMode = 'pitroad-curve'
+          } else {
+            updates.trackMode = 'curve'
+          }
+        }
       }
 
       store.updateObject(ds.roadId, updates)
@@ -82,6 +160,7 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
 
     const handleUp = () => {
       dragState.current = null
+      setSnapTarget(null)
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -91,6 +170,11 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
           startPoint: ds.initialStart,
           endPoint: ds.initialEnd,
           controlPoint: ds.initialControl,
+          trackMode: ds.initialTrackMode as never,
+          startLeftEdge: ds.initialStartLeftEdge,
+          startRightEdge: ds.initialStartRightEdge,
+          endLeftEdge: ds.initialEndLeftEdge,
+          endRightEdge: ds.initialEndRightEdge,
           position: [
             (ds.initialStart[0] + ds.initialEnd[0]) / 2,
             0,
@@ -98,6 +182,7 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
           ],
         })
         dragState.current = null
+        setSnapTarget(null)
       }
     }
 
@@ -119,8 +204,40 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
   const r = 3 / zoom
   const strokeW = 1 / zoom
 
+  const midWorldX = hasCurve && road.controlPoint
+    ? (road.startPoint[0] + 2 * road.controlPoint[0] + road.endPoint[0]) / 4
+    : (road.startPoint[0] + road.endPoint[0]) / 2
+  const midWorldZ = hasCurve && road.controlPoint
+    ? (road.startPoint[2] + 2 * road.controlPoint[2] + road.endPoint[2]) / 4
+    : (road.startPoint[2] + road.endPoint[2]) / 2
+  const [mx, my] = worldToSVG(midWorldX, midWorldZ)
+
+  const snapIndicator = snapTarget ? worldToSVG(snapTarget.position[0], snapTarget.position[2]) : null
+
   return (
     <g>
+      {snapIndicator && (
+        <g style={{ pointerEvents: 'none' }}>
+          <circle
+            cx={snapIndicator[0]}
+            cy={snapIndicator[1]}
+            r={r * 1.8}
+            fill="none"
+            stroke="#00ffff"
+            strokeWidth={strokeW * 1.5}
+            opacity={0.9}
+          />
+          <circle
+            cx={snapIndicator[0]}
+            cy={snapIndicator[1]}
+            r={r * 2.6}
+            fill="none"
+            stroke="#00ffff"
+            strokeWidth={strokeW * 0.6}
+            opacity={0.4}
+          />
+        </g>
+      )}
       <circle
         cx={sx}
         cy={sy}
@@ -143,6 +260,19 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
         cursor="grab"
         onPointerDown={e => handlePointerDown('end', e)}
       />
+      {!hasCurve && (
+        <circle
+          cx={mx}
+          cy={my}
+          r={r * 0.6}
+          fill="#cc66ff"
+          fillOpacity={0.3}
+          stroke="#cc66ff"
+          strokeWidth={strokeW}
+          cursor="grab"
+          onPointerDown={e => handlePointerDown('midpoint', e)}
+        />
+      )}
       {hasCurve && road.controlPoint && (() => {
         const [cpx, cpy] = worldToSVG(road.controlPoint[0], road.controlPoint[2])
         return (

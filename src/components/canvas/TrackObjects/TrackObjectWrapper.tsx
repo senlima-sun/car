@@ -5,6 +5,7 @@ import { isPitRoad, isCurveMode } from '../../../types/trackObjects'
 import Cone from './Cone'
 import Ramp from './Ramp'
 import Checkpoint from './Checkpoint'
+import CornerMarker from './CornerMarker'
 import Barrier from './Barrier'
 import RoadSegment from './RoadSegment'
 import CurvedRoadSegment from './CurvedRoadSegment'
@@ -76,6 +77,15 @@ function TrackObjectWrapper({
           checkpointId={object.id}
           checkpointType={object.checkpointType ?? 'start-finish'}
           checkpointOrder={object.checkpointOrder ?? 0}
+          flowDirection={object.flowDirection ?? null}
+        />
+      )
+      break
+    case 'corner':
+      component = (
+        <CornerMarker
+          {...commonProps}
+          cornerNumber={object.cornerNumber ?? 1}
         />
       )
       break

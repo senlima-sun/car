@@ -1,6 +1,7 @@
 export { default as Cone } from './Cone'
 export { default as Ramp } from './Ramp'
 export { default as Checkpoint } from './Checkpoint'
+export { default as CornerMarker } from './CornerMarker'
 export { default as TracksideBoard } from './TracksideBoard'
 export { default as Barrier } from './Barrier'
 export { default as RoadSegment } from './RoadSegment'

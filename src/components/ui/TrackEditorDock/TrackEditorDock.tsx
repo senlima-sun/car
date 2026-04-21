@@ -8,6 +8,7 @@ import TrackSettings from './TrackSettings'
 import GenerationTools from './GenerationTools'
 import TerrainTools from './TerrainTools'
 import TrackManagement from './TrackManagement'
+import RaceDirectionControl from './RaceDirectionControl'
 import ContextHint from './ContextHint'
 import { useTerrainStore } from '../../../stores/useTerrainStore'
 
@@ -111,13 +112,52 @@ export default function TrackEditorDock() {
     return () => clearTimeout(timer)
   }, [placedObjects, terrainVersion, isDirty, saveCurrentTrack])
 
-  // Handle Delete/Backspace key to delete selected object
   useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false
+      return (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      )
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedObjectId) {
-        if (e.key === 'Backspace' && (e.target as HTMLElement)?.tagName !== 'INPUT') {
-          e.preventDefault()
+      const editable = isEditableTarget(e.target)
+      const isMeta = e.metaKey || e.ctrlKey
+
+      if (isMeta && (e.key === 'z' || e.key === 'Z')) {
+        if (editable) return
+        e.preventDefault()
+        const editor = useEditorStore.getState()
+        if (e.shiftKey) {
+          if (editor.canRedo) editor.redo()
+        } else {
+          if (editor.canUndo) editor.undo()
         }
+        return
+      }
+
+      if (isMeta && (e.key === 'c' || e.key === 'C')) {
+        if (editable) return
+        e.preventDefault()
+        useEditorStore.getState().copySelected()
+        return
+      }
+
+      if (isMeta && (e.key === 'v' || e.key === 'V')) {
+        if (editable) return
+        e.preventDefault()
+        const editor = useEditorStore.getState()
+        if (editor.previewPosition) {
+          editor.pasteAtPosition(editor.previewPosition)
+        }
+        return
+      }
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedObjectId) {
+        if (editable) return
+        if (e.key === 'Backspace') e.preventDefault()
         removeObject(selectedObjectId)
       }
     }
@@ -156,6 +196,11 @@ export default function TrackEditorDock() {
 
         {/* Track Management */}
         <TrackManagement />
+
+        <div style={styles.divider} />
+
+        {/* Race Direction */}
+        <RaceDirectionControl />
 
         {/* Spacer */}
         <div style={styles.spacer} />

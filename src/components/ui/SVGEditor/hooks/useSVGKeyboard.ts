@@ -40,29 +40,7 @@ export function useSVGKeyboard() {
       const editor = useEditorStore.getState()
       const isMeta = e.metaKey || e.ctrlKey
 
-      if (isMeta && e.shiftKey && e.key === 'z') {
-        e.preventDefault()
-        editor.redo()
-        return
-      }
-
-      if (isMeta && e.key === 'z') {
-        e.preventDefault()
-        editor.undo()
-        return
-      }
-
-      if (isMeta && e.key === 'c') {
-        e.preventDefault()
-        editor.copySelected()
-        return
-      }
-
-      if (isMeta && e.key === 'v') {
-        e.preventDefault()
-        if (editor.previewPosition) {
-          editor.pasteAtPosition(editor.previewPosition)
-        }
+      if (isMeta && (e.key === 'z' || e.key === 'c' || e.key === 'v')) {
         return
       }
 

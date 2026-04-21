@@ -1,5 +1,6 @@
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
+import { useTrackPathStore } from '../../../stores/useTrackPathStore'
 import { generateCurbsForRoads } from '../../../utils/autoCurbGenerator'
 
 const styles: Record<string, React.CSSProperties> = {
@@ -29,6 +30,10 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(34, 197, 94, 0.15)',
     color: '#4ade80',
   },
+  buttonDisabled: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
+  },
   badge: {
     background: '#22c55e',
     color: '#000',
@@ -48,6 +53,11 @@ export default function GenerationTools() {
   const selectedRoadIds = useEditorStore(s => s.selectedRoadIds)
   const setAutoCurbMode = useEditorStore(s => s.setAutoCurbMode)
   const clearRoadSelection = useEditorStore(s => s.clearRoadSelection)
+  const paths = useTrackPathStore(s => s.paths)
+  const importFromPlacedObjects = useTrackPathStore(s => s.importFromPlacedObjects)
+
+  const hasRoads = placedObjects.some(o => o.type === 'road')
+  const hasActivePath = paths.length > 0
 
   const handleToggleAutoCurbMode = () => {
     if (autoCurbMode) clearRoadSelection()
@@ -62,6 +72,11 @@ export default function GenerationTools() {
       clearRoadSelection()
       setAutoCurbMode(false)
     }
+  }
+
+  const handleConvertToPath = () => {
+    if (!hasRoads || hasActivePath) return
+    importFromPlacedObjects()
   }
 
   return (
@@ -107,6 +122,38 @@ export default function GenerationTools() {
           Generate
         </button>
       )}
+
+      {/* Convert Roads To Editable Path */}
+      <button
+        style={{
+          ...styles.button,
+          ...(!hasRoads || hasActivePath ? styles.buttonDisabled : {}),
+        }}
+        onClick={handleConvertToPath}
+        disabled={!hasRoads || hasActivePath}
+        title={
+          hasActivePath
+            ? 'Editable path already exists'
+            : hasRoads
+              ? 'Convert road segments into a continuous editable path'
+              : 'No roads to convert'
+        }
+      >
+        <svg
+          width='14'
+          height='14'
+          viewBox='0 0 24 24'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='2'
+        >
+          <path d='M3 18 C 8 6, 16 6, 21 18' />
+          <circle cx='3' cy='18' r='2' fill='currentColor' />
+          <circle cx='21' cy='18' r='2' fill='currentColor' />
+          <circle cx='12' cy='9' r='2' />
+        </svg>
+        Convert to Path
+      </button>
     </div>
   )
 }

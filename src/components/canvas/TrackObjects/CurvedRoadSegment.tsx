@@ -4,7 +4,7 @@ import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
-import { smoothstep } from '../../../utils/roadGeometry'
+import { smootherstep } from '../../../utils/roadGeometry'
 import { useRoadSurfaces } from './hooks/useRoadSurfaces'
 import { useTemperatureRegistration } from './hooks/useTemperatureRegistration'
 import { EdgeLines } from './components/EdgeLines'
@@ -87,30 +87,27 @@ export default function CurvedRoadSegment({
     )
     const points = curve.getPoints(segmentCount)
 
-    const BLEND_SEGMENTS = 3
-
     const hasStartSnap = !!(startLeftEdge && startRightEdge)
     const hasEndSnap = !!(endLeftEdge && endRightEdge)
-    const hasFullSnap = hasStartSnap && hasEndSnap
 
     let startLeftOffset: Vector3 | null = null
     let startRightOffset: Vector3 | null = null
     let endLeftOffset: Vector3 | null = null
     let endRightOffset: Vector3 | null = null
 
-    if (hasFullSnap) {
+    if (hasStartSnap) {
       const startTangent = new Vector3().subVectors(control, start).normalize()
       const startPerp = new Vector3(-startTangent.z, 0, startTangent.x)
       const naturalLeftAtStart = new Vector3().copy(points[0]).addScaledVector(startPerp, halfWidth)
       const naturalRightAtStart = new Vector3().copy(points[0]).addScaledVector(startPerp, -halfWidth)
-
+      startLeftOffset = new Vector3(startLeftEdge![0], 0, startLeftEdge![2]).sub(naturalLeftAtStart)
+      startRightOffset = new Vector3(startRightEdge![0], 0, startRightEdge![2]).sub(naturalRightAtStart)
+    }
+    if (hasEndSnap) {
       const endTangent = new Vector3().subVectors(end, control).normalize()
       const endPerp = new Vector3(-endTangent.z, 0, endTangent.x)
       const naturalLeftAtEnd = new Vector3().copy(points[points.length - 1]).addScaledVector(endPerp, halfWidth)
       const naturalRightAtEnd = new Vector3().copy(points[points.length - 1]).addScaledVector(endPerp, -halfWidth)
-
-      startLeftOffset = new Vector3(startLeftEdge![0], 0, startLeftEdge![2]).sub(naturalLeftAtStart)
-      startRightOffset = new Vector3(startRightEdge![0], 0, startRightEdge![2]).sub(naturalRightAtStart)
       endLeftOffset = new Vector3(endLeftEdge![0], 0, endLeftEdge![2]).sub(naturalLeftAtEnd)
       endRightOffset = new Vector3(endRightEdge![0], 0, endRightEdge![2]).sub(naturalRightAtEnd)
     }
@@ -137,32 +134,35 @@ export default function CurvedRoadSegment({
       let leftPoint: Vector3
       let rightPoint: Vector3
 
-      if (hasFullSnap) {
-        const leftOff = new Vector3().lerpVectors(startLeftOffset!, endLeftOffset!, t)
-        const rightOff = new Vector3().lerpVectors(startRightOffset!, endRightOffset!, t)
-        leftPoint = new Vector3().addVectors(naturalLeft, leftOff)
-        rightPoint = new Vector3().addVectors(naturalRight, rightOff)
-      } else if (i === 0 && hasStartSnap) {
-        leftPoint = new Vector3(startLeftEdge![0], 0, startLeftEdge![2])
-        rightPoint = new Vector3(startRightEdge![0], 0, startRightEdge![2])
+      if (i === 0 && hasStartSnap) {
+        leftPoint = new Vector3(startLeftEdge![0], naturalLeft.y, startLeftEdge![2])
+        rightPoint = new Vector3(startRightEdge![0], naturalRight.y, startRightEdge![2])
       } else if (i === points.length - 1 && hasEndSnap) {
-        leftPoint = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
-        rightPoint = new Vector3(endRightEdge![0], 0, endRightEdge![2])
-      } else if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
-        const blend = smoothstep(i / (BLEND_SEGMENTS + 1))
-        const sLeft = new Vector3(startLeftEdge![0], 0, startLeftEdge![2])
-        const sRight = new Vector3(startRightEdge![0], 0, startRightEdge![2])
-        leftPoint = new Vector3().lerpVectors(sLeft, naturalLeft, blend)
-        rightPoint = new Vector3().lerpVectors(sRight, naturalRight, blend)
-      } else if (i < points.length - 1 && i >= points.length - 1 - BLEND_SEGMENTS && hasEndSnap) {
-        const blend = smoothstep((points.length - 1 - i) / (BLEND_SEGMENTS + 1))
-        const eLeft = new Vector3(endLeftEdge![0], 0, endLeftEdge![2])
-        const eRight = new Vector3(endRightEdge![0], 0, endRightEdge![2])
-        leftPoint = new Vector3().lerpVectors(eLeft, naturalLeft, blend)
-        rightPoint = new Vector3().lerpVectors(eRight, naturalRight, blend)
+        leftPoint = new Vector3(endLeftEdge![0], naturalLeft.y, endLeftEdge![2])
+        rightPoint = new Vector3(endRightEdge![0], naturalRight.y, endRightEdge![2])
       } else {
-        leftPoint = naturalLeft
-        rightPoint = naturalRight
+        const startInfluence = hasStartSnap ? smootherstep(1 - t) : 0
+        const endInfluence = hasEndSnap ? smootherstep(t) : 0
+
+        const leftOffX =
+          (startLeftOffset ? startLeftOffset.x * startInfluence : 0) +
+          (endLeftOffset ? endLeftOffset.x * endInfluence : 0)
+        const leftOffZ =
+          (startLeftOffset ? startLeftOffset.z * startInfluence : 0) +
+          (endLeftOffset ? endLeftOffset.z * endInfluence : 0)
+        const rightOffX =
+          (startRightOffset ? startRightOffset.x * startInfluence : 0) +
+          (endRightOffset ? endRightOffset.x * endInfluence : 0)
+        const rightOffZ =
+          (startRightOffset ? startRightOffset.z * startInfluence : 0) +
+          (endRightOffset ? endRightOffset.z * endInfluence : 0)
+
+        leftPoint = new Vector3(naturalLeft.x + leftOffX, naturalLeft.y, naturalLeft.z + leftOffZ)
+        rightPoint = new Vector3(
+          naturalRight.x + rightOffX,
+          naturalRight.y,
+          naturalRight.z + rightOffZ,
+        )
       }
 
       const bankingOffset = Math.sin(bankRadians) * halfWidth

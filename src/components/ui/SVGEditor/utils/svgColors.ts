@@ -66,6 +66,13 @@ const CHECKPOINT_STYLE: SVGStyle = {
   strokeDasharray: '2 1',
 }
 
+const CORNER_STYLE: SVGStyle = {
+  stroke: '#ffcc33',
+  strokeWidth: 0.25,
+  fill: '#ffcc33',
+  opacity: 1,
+}
+
 const CONE_STYLE: SVGStyle = {
   stroke: '#ff6b00',
   strokeWidth: 0.15,
@@ -116,6 +123,8 @@ export function getObjectStyle(type: ObjectType, trackMode?: TrackMode): SVGStyl
       return WALL_FENCE_STYLE
     case 'checkpoint':
       return CHECKPOINT_STYLE
+    case 'corner':
+      return CORNER_STYLE
     case 'cone':
       return CONE_STYLE
     case 'pitbox':

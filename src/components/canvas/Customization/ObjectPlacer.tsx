@@ -92,6 +92,7 @@ export default function ObjectPlacer() {
   const groundPlane = useRef(new Plane(new Vector3(0, 1, 0), 0))
   const overlapFrameCounter = useRef(0)
   const barrierCheckCounter = useRef(0)
+  const pointerOverCanvas = useRef(false)
 
   // Track pointer position
   const handlePointerMove = useCallback(
@@ -100,9 +101,14 @@ export default function ObjectPlacer() {
       const rect = gl.domElement.getBoundingClientRect()
       pointer.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
       pointer.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+      pointerOverCanvas.current = true
     },
     [gl, terrainEditMode],
   )
+
+  const handlePointerLeave = useCallback(() => {
+    pointerOverCanvas.current = false
+  }, [])
 
   // Handle click for placement (not used for curbs which use pointer down/up)
   const handleClick = useCallback(
@@ -160,6 +166,7 @@ export default function ObjectPlacer() {
               setStartSnapBanking(null)
             }
             startDrag(clickPos, snapEdges)
+            setPreviewPosition(clickPos)
           } else if (placementState === 'dragging') {
             // Second click - set control point (no snapping for control point)
             setControlPoint([intersectPoint.x, 0, intersectPoint.z])
@@ -194,6 +201,7 @@ export default function ObjectPlacer() {
               setStartSnapBanking(null)
             }
             startDrag(clickPos, snapEdges)
+            setPreviewPosition(clickPos)
           } else if (placementState === 'dragging') {
             if (dragStartPoint) {
               const dx = clickPos[0] - dragStartPoint[0]
@@ -481,6 +489,7 @@ export default function ObjectPlacer() {
   useEffect(() => {
     const canvas = gl.domElement
     canvas.addEventListener('pointermove', handlePointerMove)
+    canvas.addEventListener('pointerleave', handlePointerLeave)
     canvas.addEventListener('click', handleClick)
     canvas.addEventListener('click', handlePartialDeleteClick)
     canvas.addEventListener('dblclick', handleDblClick)
@@ -490,6 +499,7 @@ export default function ObjectPlacer() {
 
     return () => {
       canvas.removeEventListener('pointermove', handlePointerMove)
+      canvas.removeEventListener('pointerleave', handlePointerLeave)
       canvas.removeEventListener('click', handleClick)
       canvas.removeEventListener('click', handlePartialDeleteClick)
       canvas.removeEventListener('dblclick', handleDblClick)
@@ -500,6 +510,7 @@ export default function ObjectPlacer() {
   }, [
     gl,
     handlePointerMove,
+    handlePointerLeave,
     handleClick,
     handlePartialDeleteClick,
     handleDblClick,
@@ -511,6 +522,7 @@ export default function ObjectPlacer() {
   // Update preview position each frame
   useFrame(() => {
     if (terrainEditMode) return
+    if (!pointerOverCanvas.current) return
 
     raycaster.current.setFromCamera(pointer.current, camera)
     const intersectPoint = new Vector3()

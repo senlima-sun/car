@@ -58,9 +58,16 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
   placedObjects: [],
 
   addObject: (obj: PlacedObject) => {
-    set(state => ({
-      placedObjects: [...state.placedObjects, obj],
-    }))
+    set(state => {
+      let nextObj = obj
+      if (obj.type === 'corner' && obj.cornerNumber == null) {
+        const maxCorner = state.placedObjects
+          .filter(o => o.type === 'corner')
+          .reduce((m, o) => Math.max(m, o.cornerNumber ?? 0), 0)
+        nextObj = { ...obj, cornerNumber: maxCorner + 1 }
+      }
+      return { placedObjects: [...state.placedObjects, nextObj] }
+    })
     setTimeout(() => get().saveToStorage(), 0)
   },
 

@@ -2,6 +2,7 @@ export type ObjectType =
   | 'cone'
   | 'ramp'
   | 'checkpoint'
+  | 'corner'
   | 'barrier'
   | 'road'
   | 'curb'
@@ -42,6 +43,7 @@ export interface PlacedObject {
   curbType?: CurbType
   rippleHeight?: number
   adImageUrl?: string
+  cornerNumber?: number
 }
 
 export type PlacementState =

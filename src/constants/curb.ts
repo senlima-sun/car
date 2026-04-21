@@ -38,7 +38,10 @@ export const CURB_PHYSICS_PER_TYPE: Record<
   flat: { grip: 0.98, drag: 1.02, stability: 0.98 },
 }
 
+export const CURB_UNDER_TUCK = 0.06
+
 export const APEX_PROFILE = [
+  { x: -CURB_UNDER_TUCK, y: -0.002 },
   { x: 0, y: 0 },
   { x: 0.1, y: 0.015 },
   { x: 0.2, y: 0.03 },
@@ -48,6 +51,7 @@ export const APEX_PROFILE = [
 ]
 
 export const EXIT_PROFILE = [
+  { x: -CURB_UNDER_TUCK, y: -0.002 },
   { x: 0, y: 0 },
   { x: 0.1, y: 0.02 },
   { x: 0.3, y: 0.06 },
@@ -57,6 +61,7 @@ export const EXIT_PROFILE = [
 ]
 
 export const FLAT_PROFILE = [
+  { x: -CURB_UNDER_TUCK, y: -0.002 },
   { x: 0, y: 0 },
   { x: 0.2, y: 0.001 },
   { x: 0.4, y: 0.002 },

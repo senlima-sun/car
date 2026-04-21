@@ -114,7 +114,11 @@ export default function SVGEditor() {
 
   const didFit = useRef(false)
   useEffect(() => {
-    if (didFit.current || placedObjects.length === 0) return
+    if (didFit.current) return
+    if (placedObjects.length === 0) {
+      didFit.current = true
+      return
+    }
     didFit.current = true
 
     let minX = Infinity

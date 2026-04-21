@@ -66,7 +66,11 @@ interface CurbGeometryResult {
   collisionIndices: Uint32Array
 }
 
-function createCurbGeometry(length: number, curbType: CurbType): CurbGeometryResult {
+function createCurbGeometry(
+  length: number,
+  curbType: CurbType,
+  sampleYOffset?: (zLocal: number, rowIndex: number) => number,
+): CurbGeometryResult {
   const vertices: number[] = []
   const uvs: number[] = []
   const indices: number[] = []
@@ -85,14 +89,16 @@ function createCurbGeometry(length: number, curbType: CurbType): CurbGeometryRes
         return arr
       })()
 
-  for (const z of zRows) {
+  for (let r = 0; r < zRows.length; r++) {
+    const z = zRows[r]
     const sawMod = isExit ? getSawtoothHeight(z) : 1.0
     const vCoord = z + halfLength
+    const yOffset = sampleYOffset ? sampleYOffset(z, r) : 0
 
     for (let j = 0; j < profilePoints; j++) {
       const p = profile[j]
       const h = isExit ? p.y * sawMod : p.y
-      vertices.push(p.x - CURB_WIDTH / 2, h, z)
+      vertices.push(p.x - CURB_WIDTH / 2, h + yOffset, z)
       uvs.push(p.x / CURB_WIDTH, vCoord)
     }
   }
@@ -147,13 +153,28 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
     if (length === 0) return null
 
     const rot = Math.atan2(dx, dz)
+    const midY = (startPos[1] + endPos[1]) / 2
     const mid: [number, number, number] = [
       (startPos[0] + endPos[0]) / 2,
-      (startPos[1] + endPos[1]) / 2,
+      midY,
       (startPos[2] + endPos[2]) / 2,
     ]
 
-    const { geometry, collisionVertices, collisionIndices } = createCurbGeometry(length, curbType)
+    const startT = curb.startT
+    const endT = curb.endT
+    const edgeSide = curb.edgeSide
+    const sampleYOffset = (zLocal: number) => {
+      const u = (zLocal + length / 2) / length
+      const globalT = startT + (endT - startT) * u
+      const edgePos = getRoadEdgePositionAt(parentRoad, edgeSide, globalT)
+      return edgePos[1] - midY
+    }
+
+    const { geometry, collisionVertices, collisionIndices } = createCurbGeometry(
+      length,
+      curbType,
+      sampleYOffset,
+    )
 
     return { geometry, collisionVertices, collisionIndices, rotation: rot, midpoint: mid, curbLength: length }
   }, [curb, parentRoad, curbType])

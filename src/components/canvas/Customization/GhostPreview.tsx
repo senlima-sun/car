@@ -26,6 +26,7 @@ import {
   Cone,
   Ramp,
   Checkpoint,
+  CornerMarker,
   Barrier,
   RoadSegment,
   CurvedRoadSegment,
@@ -757,10 +758,6 @@ export default function GhostPreview({
           {renderSnapIndicators()}
           {renderSnapGuides()}
           {renderOverlapWarning()}
-          <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
-            <sphereGeometry args={[0.5, 16, 16]} />
-            <meshStandardMaterial color='#00ff00' transparent opacity={0.8} />
-          </mesh>
           <ControlPointGuideLine start={dragStartPoint} end={previewPosition} />
           <mesh position={[previewPosition[0], 0.1, previewPosition[2]]}>
             <sphereGeometry args={[0.4, 16, 16]} />
@@ -845,10 +842,6 @@ export default function GhostPreview({
           {renderSnapIndicators()}
           {renderSnapGuides()}
           {renderOverlapWarning()}
-          <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
-            <sphereGeometry args={[0.5, 16, 16]} />
-            <meshStandardMaterial color='#00ff00' transparent opacity={0.8} />
-          </mesh>
           <mesh position={[effectiveControlPoint[0], 0.1, effectiveControlPoint[2]]}>
             <sphereGeometry args={[0.4, 16, 16]} />
             <meshStandardMaterial color='#ffff00' transparent opacity={0.8} />
@@ -899,10 +892,6 @@ export default function GhostPreview({
         {renderSnapIndicators()}
         {renderSnapGuides()}
         {renderOverlapWarning()}
-        <mesh position={[dragStartPoint[0], 0.1, dragStartPoint[2]]}>
-          <sphereGeometry args={[0.5, 16, 16]} />
-          <meshStandardMaterial color='#00ff00' transparent opacity={0.8} />
-        </mesh>
         {selectedObjectType === 'barrier' ? (
           <>
             <Barrier
@@ -970,6 +959,8 @@ export default function GhostPreview({
       return <Cone {...commonProps} />
     case 'ramp':
       return <Ramp {...commonProps} />
+    case 'corner':
+      return <CornerMarker {...commonProps} cornerNumber={0} />
     case 'checkpoint': {
       if (checkpointRoadEdge) {
         return (

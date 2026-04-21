@@ -2,7 +2,7 @@ import { memo } from 'react'
 import type { PlacedObject, RoadEdgeResult } from '@/types/trackObjects'
 import { isLinearObject, isPolygonObject } from '@/types/trackObjects'
 import { worldToSVG } from '../hooks/useSVGCoordinates'
-import { getObjectStyle, GHOST_VALID_COLOR } from '../utils/svgColors'
+import { getObjectStyle } from '../utils/svgColors'
 import { getStrokeWidth } from '../utils/svgPathBuilder'
 
 interface SVGGhostPreviewProps {
@@ -183,11 +183,7 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
     } as PlacedObject)
 
     if (placementState === 'selecting') {
-      return (
-        <g style={{ pointerEvents: 'none' }}>
-          <circle cx={px} cy={py} r={markerR} fill="none" stroke={GHOST_VALID_COLOR} strokeWidth={strokeW} opacity={0.5} />
-        </g>
-      )
+      return null
     }
 
     if (placementState === 'dragging' && dragStartPoint) {
@@ -195,7 +191,6 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
 
       return (
         <g style={{ pointerEvents: 'none' }}>
-          <circle cx={sx} cy={sy} r={markerR} fill="none" stroke="#00ff00" strokeWidth={strokeW} />
           <line
             x1={sx}
             y1={sy}
@@ -206,7 +201,7 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
             strokeLinecap="round"
             opacity={0.5}
           />
-          <circle cx={px} cy={py} r={markerR * 0.7} fill="none" stroke="#ffaa00" strokeWidth={strokeW} />
+          <circle cx={sx} cy={sy} r={1.2 / zoom} fill="#ffffff" opacity={0.9} />
         </g>
       )
     }
@@ -219,8 +214,6 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
 
       return (
         <g style={{ pointerEvents: 'none' }}>
-          <circle cx={sx} cy={sy} r={markerR} fill="none" stroke="#00ff00" strokeWidth={strokeW} />
-          <circle cx={cx} cy={cy} r={markerR * 0.6} fill="none" stroke="#ffff00" strokeWidth={strokeW} />
           <line x1={sx} y1={sy} x2={cx} y2={cy} stroke="#ffff00" strokeWidth={0.5 / zoom} opacity={0.4} />
           <line x1={cx} y1={cy} x2={px} y2={py} stroke="#ffff00" strokeWidth={0.5 / zoom} opacity={0.4} />
           <path
@@ -231,7 +224,8 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
             strokeLinecap="round"
             opacity={0.5}
           />
-          <circle cx={px} cy={py} r={markerR * 0.7} fill="none" stroke="#ffaa00" strokeWidth={strokeW} />
+          <circle cx={sx} cy={sy} r={1.2 / zoom} fill="#ffffff" opacity={0.9} />
+          <circle cx={cx} cy={cy} r={1.2 / zoom} fill="#ffff00" opacity={0.9} />
         </g>
       )
     }

@@ -1,7 +1,8 @@
 import { useMemo, useCallback, useEffect } from 'react'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { Vector3, Quaternion } from 'three'
-import { OBJECT_CONFIGS, GHOST_OPACITY } from '../../../constants/trackObjects'
+import { Billboard, Text } from '@react-three/drei'
+import { OBJECT_CONFIGS, GHOST_OPACITY, getSectorColor } from '../../../constants/trackObjects'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { useCustomizationStore } from '@/stores/useCustomizationStore'
 import { useCarStore } from '../../../stores/useCarStore'
@@ -17,6 +18,7 @@ interface CheckpointProps {
   checkpointId?: string
   checkpointType?: CheckpointType
   checkpointOrder?: number
+  flowDirection?: 'forward' | 'backward' | null
 }
 
 const config = OBJECT_CONFIGS.checkpoint
@@ -32,6 +34,7 @@ export default function Checkpoint({
   checkpointId: _checkpointId,
   checkpointType = 'start-finish',
   checkpointOrder = 0,
+  flowDirection = null,
 }: CheckpointProps) {
   const isSector = checkpointType === 'sector'
 
@@ -136,9 +139,18 @@ export default function Checkpoint({
   const mesh = (
     <group position={finalPosition} rotation={[0, finalRotation, 0]}>
       {isSector ? (
-        <SectorLine length={length} isGhost={isGhost} />
+        <>
+          <SectorLine length={length} order={checkpointOrder} isGhost={isGhost} />
+          <SectorMarkers length={length} order={checkpointOrder} isGhost={isGhost} />
+        </>
       ) : (
-        <CheckeredStripe length={length} isGhost={isGhost} />
+        <>
+          <CheckeredStripe length={length} isGhost={isGhost} />
+          <StartFinishPylons length={length} isGhost={isGhost} />
+          {flowDirection && (
+            <RaceDirectionMarker flowDirection={flowDirection} isGhost={isGhost} />
+          )}
+        </>
       )}
     </group>
   )
@@ -199,40 +211,227 @@ function CheckeredStripe({ length, isGhost }: { length: number; isGhost: boolean
   )
 }
 
-function SectorLine({ length, isGhost }: { length: number; isGhost: boolean }) {
-  const lineWidth = 0.6
-  const cellSize = lineWidth / 2
-  const cols = 2
-  const rows = Math.max(2, Math.round(length / cellSize))
-  const actualCellDepth = length / rows
+function RaceDirectionMarker({
+  flowDirection,
+  isGhost,
+}: {
+  flowDirection: 'forward' | 'backward'
+  isGhost: boolean
+}) {
+  const color = '#ffe55c'
+  const sign = flowDirection === 'forward' ? 1 : -1
+  const lineLength = 30
+  const lineWidth = 0.4
+  const headSize = 1.6
+
+  return (
+    <group position={[0, 0.04, 0]}>
+      <mesh
+        position={[0, 0, (sign * lineLength) / 2]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        <planeGeometry args={[lineWidth, lineLength]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={isGhost ? GHOST_OPACITY * 0.6 : 0.78}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh
+        position={[0, 0.01, sign * lineLength]}
+        rotation={[-Math.PI / 2, 0, sign > 0 ? 0 : Math.PI]}
+      >
+        <coneGeometry args={[headSize * 0.55, headSize, 3]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={isGhost ? GHOST_OPACITY * 0.7 : 0.92}
+          depthWrite={false}
+        />
+      </mesh>
+      <Billboard position={[0, 3.0, sign * (lineLength * 0.55)]}>
+        <mesh position={[0, 0, -0.01]}>
+          <planeGeometry args={[4.6, 1.6]} />
+          <meshBasicMaterial
+            color="#0a0a12"
+            transparent
+            opacity={isGhost ? GHOST_OPACITY * 0.7 : 0.88}
+          />
+        </mesh>
+        <Text
+          fontSize={1.0}
+          color={color}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.06}
+          outlineColor="#000000"
+        >
+          {flowDirection === 'forward' ? 'RACE →' : '← RACE'}
+        </Text>
+      </Billboard>
+    </group>
+  )
+}
+
+function StartFinishPylons({ length, isGhost }: { length: number; isGhost: boolean }) {
+  const pylonHeight = 4.2
+  const pylonRadius = 0.16
+  const halfLen = length / 2 + 0.6
+  const color = '#ffffff'
 
   return (
     <group>
-      {Array.from({ length: rows }).map((_, row) =>
-        Array.from({ length: cols }).map((_, col) => {
-          const isWhite = (row + col) % 2 === 0
-          const x = -lineWidth / 2 + cellSize * col + cellSize / 2
-          const z = -length / 2 + actualCellDepth * row + actualCellDepth / 2
-          return (
-            <mesh
-              key={`${row}-${col}`}
-              position={[x, 0, z]}
-              rotation={[-Math.PI / 2, 0, 0]}
-            >
-              <planeGeometry args={[cellSize, actualCellDepth]} />
-              <meshStandardMaterial
-                color={isWhite ? '#ffffff' : '#111111'}
-                transparent={isGhost}
-                opacity={isGhost ? GHOST_OPACITY : 1}
-                depthWrite={!isGhost}
-                polygonOffset
-                polygonOffsetFactor={-1}
-                polygonOffsetUnits={-1}
-              />
-            </mesh>
-          )
-        }),
-      )}
+      {[halfLen, -halfLen].map(z => (
+        <group key={z} position={[0, 0, z]}>
+          <mesh position={[0, pylonHeight / 2, 0]} castShadow={!isGhost}>
+            <cylinderGeometry args={[pylonRadius, pylonRadius * 1.3, pylonHeight, 10]} />
+            <meshStandardMaterial
+              color={color}
+              emissive={color}
+              emissiveIntensity={0.3}
+              transparent={isGhost}
+              opacity={isGhost ? GHOST_OPACITY : 1}
+            />
+          </mesh>
+          <mesh position={[0, pylonHeight + 0.25, 0]}>
+            <sphereGeometry args={[0.28, 14, 10]} />
+            <meshStandardMaterial
+              color="#ff2233"
+              emissive="#ff2233"
+              emissiveIntensity={1.6}
+              transparent={isGhost}
+              opacity={isGhost ? GHOST_OPACITY : 1}
+            />
+          </mesh>
+        </group>
+      ))}
+      <Billboard position={[0, pylonHeight + 1.8, 0]}>
+        <mesh position={[0, 0, -0.01]}>
+          <planeGeometry args={[5.2, 2.0]} />
+          <meshBasicMaterial
+            color="#0a0a12"
+            transparent
+            opacity={isGhost ? GHOST_OPACITY * 0.7 : 0.92}
+          />
+        </mesh>
+        <Text
+          fontSize={1.35}
+          color="#ffffff"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.08}
+          outlineColor="#000000"
+        >
+          START / FINISH
+        </Text>
+      </Billboard>
+    </group>
+  )
+}
+
+function SectorMarkers({
+  length,
+  order,
+  isGhost,
+}: {
+  length: number
+  order: number
+  isGhost: boolean
+}) {
+  const color = getSectorColor(order)
+  const postHeight = 1.5
+  const postRadius = 0.06
+  const halfLen = length / 2 + 0.3
+  const label = `S${order || ''}`
+
+  return (
+    <group>
+      {[halfLen, -halfLen].map(z => (
+        <mesh key={z} position={[0, postHeight / 2, z]} castShadow={!isGhost}>
+          <cylinderGeometry args={[postRadius, postRadius, postHeight, 6]} />
+          <meshStandardMaterial
+            color={color}
+            emissive={color}
+            emissiveIntensity={0.5}
+            transparent={isGhost}
+            opacity={isGhost ? GHOST_OPACITY * 0.9 : 0.9}
+          />
+        </mesh>
+      ))}
+      <mesh position={[0, postHeight + 0.05, halfLen]}>
+        <sphereGeometry args={[0.12, 10, 8]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={1.0}
+          transparent={isGhost}
+          opacity={isGhost ? GHOST_OPACITY : 1}
+        />
+      </mesh>
+      <Billboard position={[0, postHeight + 1.1, halfLen]}>
+        <mesh position={[0, 0, -0.01]}>
+          <planeGeometry args={[2.8, 1.5]} />
+          <meshBasicMaterial
+            color="#0a0a12"
+            transparent
+            opacity={isGhost ? GHOST_OPACITY * 0.7 : 0.88}
+          />
+        </mesh>
+        <Text
+          fontSize={1.0}
+          color={color}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.06}
+          outlineColor="#000000"
+        >
+          {label}
+        </Text>
+      </Billboard>
+    </group>
+  )
+}
+
+function SectorLine({
+  length,
+  order,
+  isGhost,
+}: {
+  length: number
+  order: number
+  isGhost: boolean
+}) {
+  const color = getSectorColor(order)
+  const lineWidth = 0.35
+  const dashLen = 1.2
+  const gapLen = 0.8
+  const stride = dashLen + gapLen
+  const dashCount = Math.max(1, Math.floor(length / stride))
+  const totalDashSpan = dashCount * stride - gapLen
+  const startZ = -totalDashSpan / 2
+
+  return (
+    <group>
+      {Array.from({ length: dashCount }).map((_, i) => {
+        const z = startZ + i * stride + dashLen / 2
+        return (
+          <mesh key={i} position={[0, 0, z]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[lineWidth, dashLen]} />
+            <meshStandardMaterial
+              color={color}
+              emissive={color}
+              emissiveIntensity={0.4}
+              transparent
+              opacity={isGhost ? GHOST_OPACITY * 0.8 : 0.85}
+              depthWrite={!isGhost}
+              polygonOffset
+              polygonOffsetFactor={-1}
+              polygonOffsetUnits={-1}
+            />
+          </mesh>
+        )
+      })}
     </group>
   )
 }

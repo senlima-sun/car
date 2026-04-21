@@ -10,6 +10,11 @@ import { getOutwardTangent } from './roadSnapping'
 
 export const smoothstep = (t: number): number => t * t * (3 - 2 * t)
 
+export const smootherstep = (t: number): number => {
+  const x = t < 0 ? 0 : t > 1 ? 1 : t
+  return x * x * x * (x * (x * 6 - 15) + 10)
+}
+
 const SNAP_THRESHOLD = 5
 import { TRACK_WIDTH, WALL_WIDTH, ROAD_HALF_WIDTH } from '../constants/dimensions'
 import { OBJECT_CONFIGS } from '../constants/trackObjects'

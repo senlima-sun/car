@@ -43,6 +43,7 @@ const objectIcons: Record<ObjectType, string> = {
   cone: '#ff6b00',
   ramp: '#666666',
   checkpoint: '#00ff00',
+  corner: '#ffcc33',
   barrier: '#888888',
   wall: '#8a8a8a',
   wall_fence: '#8a8a6a',

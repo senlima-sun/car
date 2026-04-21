@@ -47,6 +47,16 @@ export const OBJECT_CONFIGS: Record<ObjectType, ObjectConfig> = {
     friction: 0,
     restitution: 0,
   },
+  corner: {
+    type: 'corner',
+    label: 'Corner',
+    description: 'Numbered turn marker (T1, T2, …)',
+    isLinear: false,
+    defaultSize: { width: 0.6, height: 2.2, depth: 0.6 },
+    color: '#ffcc33',
+    friction: 0,
+    restitution: 0,
+  },
   barrier: {
     type: 'barrier',
     label: 'Barrier',
@@ -133,6 +143,7 @@ export const OBJECT_TYPES: ObjectType[] = [
   'cone',
   'ramp',
   'checkpoint',
+  'corner',
   'barrier',
   'wall',
   'wall_fence',
@@ -162,3 +173,10 @@ export const GHOST_COLOR_INVALID = TRACK_OBJECT.ghostInvalid
 // Placement settings
 export const MIN_SEGMENT_LENGTH = 2 // Minimum length for linear objects
 export const SNAP_ANGLE = Math.PI / 8 // 22.5 degrees for rotation snapping
+
+export const SECTOR_COLORS = ['#00ff88', '#00ccff', '#ffaa00', '#ff4488'] as const
+
+export function getSectorColor(order: number | undefined): string {
+  const idx = Math.max(0, (order ?? 1) - 1) % SECTOR_COLORS.length
+  return SECTOR_COLORS[idx]
+}

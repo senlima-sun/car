@@ -4,7 +4,7 @@ import { RigidBody, CuboidCollider, TrimeshCollider } from '@react-three/rapier'
 import { OBJECT_CONFIGS } from '../../../constants/trackObjects'
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
-import { smoothstep } from '../../../utils/roadGeometry'
+import { smootherstep } from '../../../utils/roadGeometry'
 import { useRoadSurfaces } from './hooks/useRoadSurfaces'
 import { useTemperatureRegistration } from './hooks/useTemperatureRegistration'
 import { EdgeLines } from './components/EdgeLines'
@@ -27,7 +27,6 @@ interface RoadSegmentProps {
 }
 
 const config = OBJECT_CONFIGS.road
-const BLEND_SEGMENTS = 3
 
 export default function RoadSegment({
   position,
@@ -176,7 +175,23 @@ export default function RoadSegment({
     const rightEdgeIndices: number[] = []
     const edgeWidth = 0.2
 
-    const hasFullSnap = hasStartSnap && hasEndSnap
+    const naturalLeftAtStartX = startPoint[0] + perpX * halfWidth
+    const naturalLeftAtStartZ = startPoint[2] + perpZ * halfWidth
+    const naturalRightAtStartX = startPoint[0] - perpX * halfWidth
+    const naturalRightAtStartZ = startPoint[2] - perpZ * halfWidth
+    const naturalLeftAtEndX = endPoint[0] + perpX * halfWidth
+    const naturalLeftAtEndZ = endPoint[2] + perpZ * halfWidth
+    const naturalRightAtEndX = endPoint[0] - perpX * halfWidth
+    const naturalRightAtEndZ = endPoint[2] - perpZ * halfWidth
+
+    const startLeftOffX = hasStartSnap ? startLeftEdge![0] - naturalLeftAtStartX : 0
+    const startLeftOffZ = hasStartSnap ? startLeftEdge![2] - naturalLeftAtStartZ : 0
+    const startRightOffX = hasStartSnap ? startRightEdge![0] - naturalRightAtStartX : 0
+    const startRightOffZ = hasStartSnap ? startRightEdge![2] - naturalRightAtStartZ : 0
+    const endLeftOffX = hasEndSnap ? endLeftEdge![0] - naturalLeftAtEndX : 0
+    const endLeftOffZ = hasEndSnap ? endLeftEdge![2] - naturalLeftAtEndZ : 0
+    const endRightOffX = hasEndSnap ? endRightEdge![0] - naturalRightAtEndX : 0
+    const endRightOffZ = hasEndSnap ? endRightEdge![2] - naturalRightAtEndZ : 0
 
     for (let i = 0; i <= segmentCount; i++) {
       const t = i / segmentCount
@@ -185,14 +200,17 @@ export default function RoadSegment({
       const cx = startPoint[0] + dx * t
       const cz = startPoint[2] + dz * t
 
-      let leftX: number, leftZ: number, rightX: number, rightZ: number
+      const naturalLeftX = cx + perpX * halfWidth
+      const naturalLeftZ = cz + perpZ * halfWidth
+      const naturalRightX = cx - perpX * halfWidth
+      const naturalRightZ = cz - perpZ * halfWidth
 
-      if (hasFullSnap) {
-        leftX = startLeftEdge![0] + (endLeftEdge![0] - startLeftEdge![0]) * t
-        leftZ = startLeftEdge![2] + (endLeftEdge![2] - startLeftEdge![2]) * t
-        rightX = startRightEdge![0] + (endRightEdge![0] - startRightEdge![0]) * t
-        rightZ = startRightEdge![2] + (endRightEdge![2] - startRightEdge![2]) * t
-      } else if (i === 0 && hasStartSnap) {
+      let leftX: number
+      let leftZ: number
+      let rightX: number
+      let rightZ: number
+
+      if (i === 0 && hasStartSnap) {
         leftX = startLeftEdge![0]
         leftZ = startLeftEdge![2]
         rightX = startRightEdge![0]
@@ -203,29 +221,13 @@ export default function RoadSegment({
         rightX = endRightEdge![0]
         rightZ = endRightEdge![2]
       } else {
-        const naturalLeftX = cx + perpX * halfWidth
-        const naturalLeftZ = cz + perpZ * halfWidth
-        const naturalRightX = cx - perpX * halfWidth
-        const naturalRightZ = cz - perpZ * halfWidth
+        const startInfluence = hasStartSnap ? smootherstep(1 - t) : 0
+        const endInfluence = hasEndSnap ? smootherstep(t) : 0
 
-        if (i > 0 && i <= BLEND_SEGMENTS && hasStartSnap) {
-          const blend = smoothstep(i / (BLEND_SEGMENTS + 1))
-          leftX = startLeftEdge![0] + (naturalLeftX - startLeftEdge![0]) * blend
-          leftZ = startLeftEdge![2] + (naturalLeftZ - startLeftEdge![2]) * blend
-          rightX = startRightEdge![0] + (naturalRightX - startRightEdge![0]) * blend
-          rightZ = startRightEdge![2] + (naturalRightZ - startRightEdge![2]) * blend
-        } else if (i < segmentCount && i >= segmentCount - BLEND_SEGMENTS && hasEndSnap) {
-          const blend = smoothstep((segmentCount - i) / (BLEND_SEGMENTS + 1))
-          leftX = endLeftEdge![0] + (naturalLeftX - endLeftEdge![0]) * blend
-          leftZ = endLeftEdge![2] + (naturalLeftZ - endLeftEdge![2]) * blend
-          rightX = endRightEdge![0] + (naturalRightX - endRightEdge![0]) * blend
-          rightZ = endRightEdge![2] + (naturalRightZ - endRightEdge![2]) * blend
-        } else {
-          leftX = naturalLeftX
-          leftZ = naturalLeftZ
-          rightX = naturalRightX
-          rightZ = naturalRightZ
-        }
+        leftX = naturalLeftX + startLeftOffX * startInfluence + endLeftOffX * endInfluence
+        leftZ = naturalLeftZ + startLeftOffZ * startInfluence + endLeftOffZ * endInfluence
+        rightX = naturalRightX + startRightOffX * startInfluence + endRightOffX * endInfluence
+        rightZ = naturalRightZ + startRightOffZ * startInfluence + endRightOffZ * endInfluence
       }
 
       for (let k = 0; k <= CROSS_SEGS; k++) {

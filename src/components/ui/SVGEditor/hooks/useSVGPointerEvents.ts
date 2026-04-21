@@ -208,6 +208,7 @@ export function useSVGPointerEvents(): PointerEventHandlers {
           editor.setConnectedTangent(null)
           editor.startDrag(clickPos)
         }
+        editor.setPreviewPosition(clickPos)
         return
       }
 
