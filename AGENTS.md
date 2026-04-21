@@ -14,13 +14,14 @@ A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM
 
 ## Commands
 
-- `bun run dev` - Start dev server (port 3000) with WASM hot-reload. Builds WASM first, then runs Vite + WASM file watcher concurrently.
+- `bun run dev` - Start dev server (port 3000) with WASM hot-reload. Builds WASM first, then runs `Bun.serve` (HMR + React Fast Refresh) and the WASM file watcher concurrently.
 - `bun run build` - Build WASM + production bundle
 - `bun run build:wasm` - Compile Rust physics to WASM (debug)
 - `bun run build:wasm:release` - Optimized WASM with LTO
 - `bun run test:wasm` - Run Rust unit tests (`cargo test` in physics-engine/)
 - `bun test` - Run TypeScript tests (single file: `bun test src/utils/foo.test.ts`)
-- `bun run dev:wasm` - Watch Rust files and rebuild WASM on change (without Vite)
+- `bun run dev:wasm` - Watch Rust files and rebuild WASM on change (standalone)
+- `bun run preview` - Static-serve the built `dist/` output (port 4173)
 - `bun run format` - Format with Prettier
 - `bun run compress:glb` - Optimize GLTF model (WebP textures + Draco compression)
 
@@ -33,7 +34,7 @@ A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM
 - **Rust/WASM** - Custom physics engine (`physics-engine/`) for all vehicle dynamics
 - **Zustand** - State management (~30 stores in `src/stores/`)
 - **Tailwind CSS v4** - UI styling
-- **Vite 7** - Build tooling
+- **Bun** - Runtime, bundler (`Bun.build`), dev server (`Bun.serve` + HMR), package manager, test runner
 
 ### Physics Data Flow (Critical Path)
 
@@ -141,7 +142,7 @@ Root 3D scene: Ground (grass with vertex displacement shader) → PlacedObjectsR
 
 ### Path Aliases
 
-`@/*` → `src/*` (configured in `tsconfig.json` and `vite.config.ts`)
+`@/*` → `src/*` (configured in `tsconfig.json`; Bun's bundler reads tsconfig paths natively)
 
 ### Quality Standards
 

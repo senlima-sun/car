@@ -4,8 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun run build/dev.ts",
-    "dev:bun": "bun --hot build/dev-bun.ts",
+    "dev": "bun --hot build/dev.ts",
     "dev:wasm": "bun run build/watch-wasm.ts",
     "build": "bun run build/build.ts",
     "preview": "bunx --bun serve -p 4173 dist",
@@ -35,16 +34,13 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.18",
     "@types/bun": "latest",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.182.0",
-    "@vitejs/plugin-react": "^5.1.4",
     "bun-plugin-tailwind": "^0.1.2",
     "dotenv": "^17.3.1",
     "prettier": "^3.7.4",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "typescript": "^5.9.3"
   }
 }

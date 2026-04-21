@@ -13,15 +13,7 @@ const WASM_DIST_DIR = join(DIST_DIR, 'src/wasm/pkg')
 async function runWasmBuild(): Promise<void> {
   console.log('[Build] Compiling WASM (release)...')
   const proc = spawn({
-    cmd: [
-      'wasm-pack',
-      'build',
-      '--target',
-      'web',
-      '--out-dir',
-      '../src/wasm/pkg',
-      '--release',
-    ],
+    cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../src/wasm/pkg', '--release'],
     cwd: join(ROOT_DIR, 'physics-engine'),
     stdout: 'inherit',
     stderr: 'inherit',
@@ -59,7 +51,9 @@ async function bundleApp(): Promise<void> {
   }
   for (const out of result.outputs) {
     const kb = (out.size / 1024).toFixed(2)
-    console.log(`  ${out.kind.padEnd(10)} ${kb.padStart(10)} KB  ${out.path.replace(ROOT_DIR + '/', '')}`)
+    console.log(
+      `  ${out.kind.padEnd(10)} ${kb.padStart(10)} KB  ${out.path.replace(ROOT_DIR + '/', '')}`,
+    )
   }
 }
 
