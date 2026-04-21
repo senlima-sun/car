@@ -44,7 +44,12 @@ export function sampleCenterline(
   return samples
 }
 
-export function pointOnRoad(px: number, pz: number, road: PlacedObject, halfWidth: number): boolean {
+export function pointOnRoad(
+  px: number,
+  pz: number,
+  road: PlacedObject,
+  halfWidth: number,
+): boolean {
   if (!road.startPoint || !road.endPoint) return false
 
   if (isCurveMode(road.trackMode) && road.controlPoint) {

@@ -41,10 +41,8 @@ export function cubicBezierCurvature(
 ): number {
   const d1 = evaluateCubicBezierDerivative(P0, P1, P2, P3, t)
   const t1 = 1 - t
-  const d2x =
-    6 * t1 * (P2[0] - 2 * P1[0] + P0[0]) + 6 * t * (P3[0] - 2 * P2[0] + P1[0])
-  const d2y =
-    6 * t1 * (P2[1] - 2 * P1[1] + P0[1]) + 6 * t * (P3[1] - 2 * P2[1] + P1[1])
+  const d2x = 6 * t1 * (P2[0] - 2 * P1[0] + P0[0]) + 6 * t * (P3[0] - 2 * P2[0] + P1[0])
+  const d2y = 6 * t1 * (P2[1] - 2 * P1[1] + P0[1]) + 6 * t * (P3[1] - 2 * P2[1] + P1[1])
 
   const cross = d1[0] * d2y - d1[1] * d2x
   const speed = Math.sqrt(d1[0] * d1[0] + d1[1] * d1[1])
@@ -210,9 +208,12 @@ export function evaluateSplineAt(
   return { position, tangent, elevation, width }
 }
 
-export function perpendicularAtPoint(
-  tangent: [number, number],
-): { leftX: number; leftY: number; rightX: number; rightY: number } {
+export function perpendicularAtPoint(tangent: [number, number]): {
+  leftX: number
+  leftY: number
+  rightX: number
+  rightY: number
+} {
   const len = Math.sqrt(tangent[0] * tangent[0] + tangent[1] * tangent[1])
   if (len < 1e-10) return { leftX: 0, leftY: 1, rightX: 0, rightY: -1 }
 

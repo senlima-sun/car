@@ -75,8 +75,13 @@ export default function ErsIndicator() {
       />
 
       <div className='flex flex-col items-center gap-1 pl-1'>
-        <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Battery</span>
-        <div className='relative h-14 w-5 overflow-hidden border border-white/15 bg-white/5' style={{ borderRadius: 2 }}>
+        <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+          Battery
+        </span>
+        <div
+          className='relative h-14 w-5 overflow-hidden border border-white/15 bg-white/5'
+          style={{ borderRadius: 2 }}
+        >
           <div
             className='absolute inset-x-0 bottom-0 transition-[height,background-color] duration-300'
             style={{
@@ -112,7 +117,10 @@ export default function ErsIndicator() {
         >
           {flowGlyph}
         </span>
-        <span className='font-mono text-[10px] font-semibold tabular-nums' style={{ color: flowColor }}>
+        <span
+          className='font-mono text-[10px] font-semibold tabular-nums'
+          style={{ color: flowColor }}
+        >
           {Math.abs(Math.round(powerFlow))}
           <span className='text-white/35'>kW</span>
         </span>
@@ -121,7 +129,9 @@ export default function ErsIndicator() {
       <div className='w-px self-stretch bg-white/10' />
 
       <div className='flex flex-col items-center gap-1'>
-        <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Regen</span>
+        <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+          Regen
+        </span>
         <span
           className='font-mono text-[11px] font-bold tabular-nums'
           style={{ color: harvestInfo.color }}

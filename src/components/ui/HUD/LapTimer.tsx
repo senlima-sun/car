@@ -139,7 +139,10 @@ export default function LapTimer() {
         </div>
 
         {totalSectors > 0 && (
-          <div className='mt-2 grid gap-1' style={{ gridTemplateColumns: `repeat(${totalSectors}, minmax(0, 1fr))` }}>
+          <div
+            className='mt-2 grid gap-1'
+            style={{ gridTemplateColumns: `repeat(${totalSectors}, minmax(0, 1fr))` }}
+          >
             {Array.from({ length: totalSectors }, (_, i) => {
               const sectorNum = i + 1
               const tone = sectorTone(sectorNum, sectorTimes, bestSectorTimes)

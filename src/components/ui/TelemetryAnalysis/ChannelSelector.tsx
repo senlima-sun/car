@@ -42,9 +42,7 @@ export default function ChannelSelector({ selected, onChange }: ChannelSelectorP
             key={ch}
             onClick={() => toggle(ch)}
             className={`px-2 py-0.5 rounded text-xs font-mono transition-colors ${
-              active
-                ? 'bg-white/20 text-white'
-                : 'bg-white/5 text-white/40 hover:bg-white/10'
+              active ? 'bg-white/20 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'
             }`}
           >
             {meta.name}

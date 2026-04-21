@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSessionStore } from '@/stores/useSessionStore'
 
-type LightPhase =
-  | { kind: 'idle' }
-  | { kind: 'lighting'; lit: number }
-  | { kind: 'go' }
+type LightPhase = { kind: 'idle' } | { kind: 'lighting'; lit: number } | { kind: 'go' }
 
 const LIGHT_INTERVAL_MS = 1000
 const HOLD_MIN_MS = 500
@@ -40,10 +37,7 @@ export default function CountdownOverlay() {
         timeoutRef.current = window.setTimeout(() => {
           setState({ kind: 'go' })
           startSession()
-          timeoutRef.current = window.setTimeout(
-            () => setState({ kind: 'idle' }),
-            900,
-          )
+          timeoutRef.current = window.setTimeout(() => setState({ kind: 'idle' }), 900)
         }, holdMs)
       }
     }

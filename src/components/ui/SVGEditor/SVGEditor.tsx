@@ -281,7 +281,7 @@ export default function SVGEditor() {
           : 'default'
 
   return (
-    <div className="absolute inset-0 pointer-events-auto z-10" style={{ cursor }}>
+    <div className='absolute inset-0 pointer-events-auto z-10' style={{ cursor }}>
       <SVGViewport
         ref={svgRef}
         viewBox={getViewBox()}
@@ -356,11 +356,7 @@ export default function SVGEditor() {
         <SVGValidationOverlay placedObjects={placedObjects} zoom={viewport.zoom} />
 
         {trackPaths.length > 0 && (
-          <SVGTrackPathLayer
-            paths={trackPaths}
-            activePathId={activePathId}
-            zoom={viewport.zoom}
-          />
+          <SVGTrackPathLayer paths={trackPaths} activePathId={activePathId} zoom={viewport.zoom} />
         )}
 
         <SVGRoadHandles zoom={viewport.zoom} screenToWorld={screenToWorld} />

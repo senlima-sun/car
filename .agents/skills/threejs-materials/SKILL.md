@@ -8,16 +8,16 @@ description: Three.js materials - PBR, basic, phong, shader materials, material 
 ## Quick Start
 
 ```javascript
-import * as THREE from "three";
+import * as THREE from 'three'
 
 // PBR material (recommended for realistic rendering)
 const material = new THREE.MeshStandardMaterial({
   color: 0x00ff00,
   roughness: 0.5,
   metalness: 0.5,
-});
+})
 
-const mesh = new THREE.Mesh(geometry, material);
+const mesh = new THREE.Mesh(geometry, material)
 ```
 
 ## Material Types Overview
@@ -51,7 +51,7 @@ const material = new THREE.MeshBasicMaterial({
   envMap: envTexture, // Reflection texture
   reflectivity: 1, // Env map intensity
   fog: true, // Affected by scene fog
-});
+})
 ```
 
 ## MeshLambertMaterial
@@ -67,7 +67,7 @@ const material = new THREE.MeshLambertMaterial({
   emissiveMap: emissiveTexture,
   envMap: envTexture,
   reflectivity: 0.5,
-});
+})
 ```
 
 ## MeshPhongMaterial
@@ -89,7 +89,7 @@ const material = new THREE.MeshPhongMaterial({
   bumpScale: 1,
   displacementMap: dispTexture,
   displacementScale: 1,
-});
+})
 ```
 
 ## MeshStandardMaterial (PBR)
@@ -127,10 +127,10 @@ const material = new THREE.MeshStandardMaterial({
   flatShading: false,
   wireframe: false,
   fog: true,
-});
+})
 
 // Note: aoMap requires second UV channel
-geometry.setAttribute("uv2", geometry.attributes.uv);
+geometry.setAttribute('uv2', geometry.attributes.uv)
 ```
 
 ## MeshPhysicalMaterial (Advanced PBR)
@@ -184,7 +184,7 @@ const material = new THREE.MeshPhysicalMaterial({
   specularColor: new THREE.Color(0xffffff),
   specularIntensityMap: specIntTexture,
   specularColorMap: specColorTexture,
-});
+})
 ```
 
 ### Glass Material Example
@@ -198,7 +198,7 @@ const glass = new THREE.MeshPhysicalMaterial({
   thickness: 0.5,
   ior: 1.5,
   envMapIntensity: 1,
-});
+})
 ```
 
 ### Car Paint Example
@@ -210,7 +210,7 @@ const carPaint = new THREE.MeshPhysicalMaterial({
   roughness: 0.5,
   clearcoat: 1,
   clearcoatRoughness: 0.1,
-});
+})
 ```
 
 ## MeshToonMaterial
@@ -221,14 +221,14 @@ Cel-shaded cartoon look.
 const material = new THREE.MeshToonMaterial({
   color: 0x00ff00,
   gradientMap: gradientTexture, // Optional: custom shading gradient
-});
+})
 
 // Create step gradient texture
-const colors = new Uint8Array([0, 128, 255]);
-const gradientMap = new THREE.DataTexture(colors, 3, 1, THREE.RedFormat);
-gradientMap.minFilter = THREE.NearestFilter;
-gradientMap.magFilter = THREE.NearestFilter;
-gradientMap.needsUpdate = true;
+const colors = new Uint8Array([0, 128, 255])
+const gradientMap = new THREE.DataTexture(colors, 3, 1, THREE.RedFormat)
+gradientMap.minFilter = THREE.NearestFilter
+gradientMap.magFilter = THREE.NearestFilter
+gradientMap.needsUpdate = true
 ```
 
 ## MeshNormalMaterial
@@ -239,7 +239,7 @@ Visualize surface normals. Useful for debugging.
 const material = new THREE.MeshNormalMaterial({
   flatShading: false,
   wireframe: false,
-});
+})
 ```
 
 ## MeshDepthMaterial
@@ -249,7 +249,7 @@ Render depth values. Used for shadow maps, DOF effects.
 ```javascript
 const material = new THREE.MeshDepthMaterial({
   depthPacking: THREE.RGBADepthPacking,
-});
+})
 ```
 
 ## PointsMaterial
@@ -266,9 +266,9 @@ const material = new THREE.PointsMaterial({
   transparent: true,
   alphaTest: 0.5, // Discard pixels below threshold
   vertexColors: true, // Use per-vertex colors
-});
+})
 
-const points = new THREE.Points(geometry, material);
+const points = new THREE.Points(geometry, material)
 ```
 
 ## LineBasicMaterial & LineDashedMaterial
@@ -278,9 +278,9 @@ const points = new THREE.Points(geometry, material);
 const lineMaterial = new THREE.LineBasicMaterial({
   color: 0xffffff,
   linewidth: 1, // Note: >1 only works on some systems
-  linecap: "round",
-  linejoin: "round",
-});
+  linecap: 'round',
+  linejoin: 'round',
+})
 
 // Dashed lines
 const dashedMaterial = new THREE.LineDashedMaterial({
@@ -288,11 +288,11 @@ const dashedMaterial = new THREE.LineDashedMaterial({
   dashSize: 0.5,
   gapSize: 0.25,
   scale: 1,
-});
+})
 
 // Required for dashed lines
-const line = new THREE.Line(geometry, dashedMaterial);
-line.computeLineDistances();
+const line = new THREE.Line(geometry, dashedMaterial)
+line.computeLineDistances()
 ```
 
 ## ShaderMaterial
@@ -330,10 +330,10 @@ const material = new THREE.ShaderMaterial({
   `,
   transparent: true,
   side: THREE.DoubleSide,
-});
+})
 
 // Update uniform in animation loop
-material.uniforms.time.value = clock.getElapsedTime();
+material.uniforms.time.value = clock.getElapsedTime()
 ```
 
 ### Built-in Uniforms (auto-provided)
@@ -380,7 +380,7 @@ const material = new THREE.RawShaderMaterial({
       gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
     }
   `,
-});
+})
 ```
 
 ## Common Material Properties
@@ -389,42 +389,42 @@ All materials share these base properties:
 
 ```javascript
 // Visibility
-material.visible = true;
-material.transparent = false;
-material.opacity = 1.0;
-material.alphaTest = 0; // Discard pixels with alpha < value
+material.visible = true
+material.transparent = false
+material.opacity = 1.0
+material.alphaTest = 0 // Discard pixels with alpha < value
 
 // Rendering
-material.side = THREE.FrontSide; // FrontSide, BackSide, DoubleSide
-material.depthTest = true;
-material.depthWrite = true;
-material.colorWrite = true;
+material.side = THREE.FrontSide // FrontSide, BackSide, DoubleSide
+material.depthTest = true
+material.depthWrite = true
+material.colorWrite = true
 
 // Blending
-material.blending = THREE.NormalBlending;
+material.blending = THREE.NormalBlending
 // NormalBlending, AdditiveBlending, SubtractiveBlending, MultiplyBlending, CustomBlending
 
 // Stencil
-material.stencilWrite = false;
-material.stencilFunc = THREE.AlwaysStencilFunc;
-material.stencilRef = 0;
-material.stencilMask = 0xff;
+material.stencilWrite = false
+material.stencilFunc = THREE.AlwaysStencilFunc
+material.stencilRef = 0
+material.stencilMask = 0xff
 
 // Polygon offset (z-fighting fix)
-material.polygonOffset = false;
-material.polygonOffsetFactor = 0;
-material.polygonOffsetUnits = 0;
+material.polygonOffset = false
+material.polygonOffsetFactor = 0
+material.polygonOffsetUnits = 0
 
 // Misc
-material.dithering = false;
-material.toneMapped = true;
+material.dithering = false
+material.toneMapped = true
 ```
 
 ## Multiple Materials
 
 ```javascript
 // Assign different materials to geometry groups
-const geometry = new THREE.BoxGeometry(1, 1, 1);
+const geometry = new THREE.BoxGeometry(1, 1, 1)
 const materials = [
   new THREE.MeshBasicMaterial({ color: 0xff0000 }), // right
   new THREE.MeshBasicMaterial({ color: 0x00ff00 }), // left
@@ -432,56 +432,56 @@ const materials = [
   new THREE.MeshBasicMaterial({ color: 0xffff00 }), // bottom
   new THREE.MeshBasicMaterial({ color: 0xff00ff }), // front
   new THREE.MeshBasicMaterial({ color: 0x00ffff }), // back
-];
-const mesh = new THREE.Mesh(geometry, materials);
+]
+const mesh = new THREE.Mesh(geometry, materials)
 
 // Custom groups
-geometry.clearGroups();
-geometry.addGroup(0, 6, 0); // start, count, materialIndex
-geometry.addGroup(6, 6, 1);
+geometry.clearGroups()
+geometry.addGroup(0, 6, 0) // start, count, materialIndex
+geometry.addGroup(6, 6, 1)
 ```
 
 ## Environment Maps
 
 ```javascript
 // Load cube texture
-const cubeLoader = new THREE.CubeTextureLoader();
+const cubeLoader = new THREE.CubeTextureLoader()
 const envMap = cubeLoader.load([
-  "px.jpg",
-  "nx.jpg", // positive/negative X
-  "py.jpg",
-  "ny.jpg", // positive/negative Y
-  "pz.jpg",
-  "nz.jpg", // positive/negative Z
-]);
+  'px.jpg',
+  'nx.jpg', // positive/negative X
+  'py.jpg',
+  'ny.jpg', // positive/negative Y
+  'pz.jpg',
+  'nz.jpg', // positive/negative Z
+])
 
 // Apply to material
-material.envMap = envMap;
-material.envMapIntensity = 1;
+material.envMap = envMap
+material.envMapIntensity = 1
 
 // Or set as scene environment (affects all PBR materials)
-scene.environment = envMap;
+scene.environment = envMap
 
 // HDR environment (recommended)
-import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
-const rgbeLoader = new RGBELoader();
-rgbeLoader.load("environment.hdr", (texture) => {
-  texture.mapping = THREE.EquirectangularReflectionMapping;
-  scene.environment = texture;
-  scene.background = texture;
-});
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
+const rgbeLoader = new RGBELoader()
+rgbeLoader.load('environment.hdr', texture => {
+  texture.mapping = THREE.EquirectangularReflectionMapping
+  scene.environment = texture
+  scene.background = texture
+})
 ```
 
 ## Material Cloning and Modification
 
 ```javascript
 // Clone material
-const clone = material.clone();
-clone.color.set(0x00ff00);
+const clone = material.clone()
+clone.color.set(0x00ff00)
 
 // Modify at runtime
-material.color.set(0xff0000);
-material.needsUpdate = true; // Only needed for some changes
+material.color.set(0xff0000)
+material.needsUpdate = true // Only needed for some changes
 
 // When needsUpdate is required:
 // - Changing flat shading
@@ -500,17 +500,17 @@ material.needsUpdate = true; // Only needed for some changes
 
 ```javascript
 // Material pooling
-const materialCache = new Map();
+const materialCache = new Map()
 function getMaterial(color) {
-  const key = color.toString(16);
+  const key = color.toString(16)
   if (!materialCache.has(key)) {
-    materialCache.set(key, new THREE.MeshStandardMaterial({ color }));
+    materialCache.set(key, new THREE.MeshStandardMaterial({ color }))
   }
-  return materialCache.get(key);
+  return materialCache.get(key)
 }
 
 // Dispose when done
-material.dispose();
+material.dispose()
 ```
 
 ## See Also

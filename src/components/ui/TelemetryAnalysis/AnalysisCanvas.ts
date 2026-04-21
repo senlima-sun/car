@@ -71,7 +71,20 @@ export function drawStripChart(
     ctx.textAlign = 'left'
     ctx.fillText(`${meta.name} (${meta.unit})`, sx + 4 * dpr, ry + 12 * dpr)
 
-    drawChannelLine(ctx, data, frameCount, ch, xCh, viewport, sx, ry + 16 * dpr, sw, rh - 20 * dpr, dpr, COLORS[ci % COLORS.length])
+    drawChannelLine(
+      ctx,
+      data,
+      frameCount,
+      ch,
+      xCh,
+      viewport,
+      sx,
+      ry + 16 * dpr,
+      sw,
+      rh - 20 * dpr,
+      dpr,
+      COLORS[ci % COLORS.length],
+    )
 
     if (comparisonData && comparisonFrameCount > 0) {
       drawChannelLine(

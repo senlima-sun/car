@@ -31,21 +31,21 @@ export const SVGRoadLayer = memo(function SVGRoadLayer({
             {isSelected && (
               <path
                 d={d}
-                fill="none"
+                fill='none'
                 stroke={SELECTION_COLOR}
                 strokeWidth={strokeWidth + 2 / zoom}
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                strokeLinecap='round'
+                strokeLinejoin='round'
                 opacity={0.6}
               />
             )}
             <path
               d={d}
-              fill="none"
+              fill='none'
               stroke={style.stroke}
               strokeWidth={strokeWidth}
               strokeLinecap={style.strokeLinecap}
-              strokeLinejoin="round"
+              strokeLinejoin='round'
               opacity={style.opacity}
             />
           </g>

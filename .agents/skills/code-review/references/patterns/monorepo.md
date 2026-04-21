@@ -10,14 +10,14 @@
 
 ```typescript
 // GOOD: Workspace import
-import { ApiError } from "@athreei/shared/errors"
-import { UserSchema } from "@athreei/shared/schemas"
+import { ApiError } from '@athreei/shared/errors'
+import { UserSchema } from '@athreei/shared/schemas'
 
 // BAD: Relative cross-package import
-import { ApiError } from "../../../packages/shared/src/errors"
+import { ApiError } from '../../../packages/shared/src/errors'
 
 // BAD: Importing from app in package
-import { config } from "@athreei/platform/config" // packages can't depend on apps
+import { config } from '@athreei/platform/config' // packages can't depend on apps
 ```
 
 ## Package Boundaries
@@ -53,10 +53,10 @@ export interface User {
 }
 
 // packages/shared/src/index.ts
-export type { User } from "./types/user"
+export type { User } from './types/user'
 
 // apps/api/src/routes/users.ts
-import type { User } from "@athreei/shared"
+import type { User } from '@athreei/shared'
 ```
 
 ## Build Order

@@ -58,9 +58,8 @@ export function useCarStateSync() {
       )
     }
 
-    const ersData = output.ers && typeof output.ers.battery_charge === 'number'
-      ? output.ers
-      : getErsState()
+    const ersData =
+      output.ers && typeof output.ers.battery_charge === 'number' ? output.ers : getErsState()
     syncErsState(ersData)
   }
 

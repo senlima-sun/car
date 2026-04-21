@@ -34,7 +34,7 @@ export default function CornerMarker({
       <mesh position={[0, POST_HEIGHT + 0.18, 0]}>
         <sphereGeometry args={[0.22, 14, 10]} />
         <meshStandardMaterial
-          color="#ffffff"
+          color='#ffffff'
           emissive={MARKER_COLOR}
           emissiveIntensity={1.4}
           transparent={isGhost}
@@ -45,7 +45,7 @@ export default function CornerMarker({
         <mesh position={[0, 0, -0.01]}>
           <planeGeometry args={[1.8, 0.95]} />
           <meshBasicMaterial
-            color="#0a0a12"
+            color='#0a0a12'
             transparent
             opacity={isGhost ? GHOST_OPACITY * 0.7 : 0.88}
           />
@@ -53,10 +53,10 @@ export default function CornerMarker({
         <Text
           fontSize={0.65}
           color={MARKER_COLOR}
-          anchorX="center"
-          anchorY="middle"
+          anchorX='center'
+          anchorY='middle'
           outlineWidth={0.045}
-          outlineColor="#000000"
+          outlineColor='#000000'
         >
           {label}
         </Text>

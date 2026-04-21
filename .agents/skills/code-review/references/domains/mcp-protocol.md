@@ -16,28 +16,28 @@ The Model Context Protocol defines how AI clients communicate with tool servers.
 ```typescript
 // GOOD: Well-defined tool
 server.tool({
-  name: "create_issue",
-  description: "Create a new issue in the project tracker",
+  name: 'create_issue',
+  description: 'Create a new issue in the project tracker',
   inputSchema: {
-    type: "object",
+    type: 'object',
     properties: {
       title: {
-        type: "string",
-        description: "Issue title (required)",
+        type: 'string',
+        description: 'Issue title (required)',
       },
       body: {
-        type: "string",
-        description: "Issue description in markdown",
+        type: 'string',
+        description: 'Issue description in markdown',
       },
       labels: {
-        type: "array",
-        items: { type: "string" },
-        description: "Labels to apply",
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Labels to apply',
       },
     },
-    required: ["title"],
+    required: ['title'],
   },
-  handler: async (params) => {
+  handler: async params => {
     // Implementation
   },
 })
@@ -60,8 +60,8 @@ function namespaceTool(serverName: string, toolName: string): string {
 }
 
 function parseNamespacedTool(name: string): { server: string; tool: string } {
-  const [server, ...rest] = name.split("__")
-  return { server, tool: rest.join("__") }
+  const [server, ...rest] = name.split('__')
+  return { server, tool: rest.join('__') }
 }
 ```
 
@@ -73,7 +73,7 @@ function parseNamespacedTool(name: string): { server: string; tool: string } {
 
 ```typescript
 // Gateway transport selection
-type Transport = "stdio" | "sse" | "http"
+type Transport = 'stdio' | 'sse' | 'http'
 
 // CLI flag: --transport sse
 // Default: stdio for local, http for cloud
@@ -96,7 +96,7 @@ const ErrorCodes = {
 }
 
 // GOOD: Structured error
-throw new McpError(ErrorCodes.InvalidParams, "Missing required field: title")
+throw new McpError(ErrorCodes.InvalidParams, 'Missing required field: title')
 ```
 
 ## Resource Handling
@@ -107,9 +107,9 @@ throw new McpError(ErrorCodes.InvalidParams, "Missing required field: title")
 
 ```typescript
 server.resource({
-  uri: "config://app/settings",
-  name: "Application Settings",
-  mimeType: "application/json",
+  uri: 'config://app/settings',
+  name: 'Application Settings',
+  mimeType: 'application/json',
   handler: async () => {
     return JSON.stringify(settings)
   },
@@ -124,12 +124,12 @@ server.resource({
 
 ```typescript
 server.prompt({
-  name: "summarize_file",
+  name: 'summarize_file',
   description: "Generate a summary of a file's contents",
   arguments: [
     {
-      name: "path",
-      description: "Path to the file to summarize",
+      name: 'path',
+      description: 'Path to the file to summarize',
       required: true,
     },
   ],
@@ -138,9 +138,9 @@ server.prompt({
     return {
       messages: [
         {
-          role: "user",
+          role: 'user',
           content: {
-            type: "text",
+            type: 'text',
             text: `Please summarize this file:\n\n${content}`,
           },
         },

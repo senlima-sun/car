@@ -98,19 +98,16 @@ export default function TrackValidationPanel() {
     [setCameraTarget],
   )
 
-  const handleFix = useCallback(
-    (result: ValidationResult) => {
-      if (!result.relatedObjectIds) return
-      const store = useCustomizationStore.getState()
-      for (const id of result.relatedObjectIds) {
-        store.removeObject(id)
-      }
-      const objects = useCustomizationStore.getState().placedObjects
-      const graph = useTrackGraphStore.getState().graph
-      setReport(validateTrack(objects, graph))
-    },
-    [],
-  )
+  const handleFix = useCallback((result: ValidationResult) => {
+    if (!result.relatedObjectIds) return
+    const store = useCustomizationStore.getState()
+    for (const id of result.relatedObjectIds) {
+      store.removeObject(id)
+    }
+    const objects = useCustomizationStore.getState().placedObjects
+    const graph = useTrackGraphStore.getState().graph
+    setReport(validateTrack(objects, graph))
+  }, [])
 
   return (
     <div style={styles.container}>

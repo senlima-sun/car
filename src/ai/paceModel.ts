@@ -36,7 +36,8 @@ export function samplePace(
   const consistencyJitter = (1 - profile.consistency) * 0.08
   const jitter = 1 + (Math.random() - 0.5) * consistencyJitter
 
-  const target = wp.targetSpeedMs * skillFactor * aggressionFactor * tireFactor * tireGripMultiplier * jitter
+  const target =
+    wp.targetSpeedMs * skillFactor * aggressionFactor * tireFactor * tireGripMultiplier * jitter
 
   let throttle = 0
   let brake = 0

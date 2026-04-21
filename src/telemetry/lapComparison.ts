@@ -27,11 +27,7 @@ export function computeLapDelta(
   return { distances, timeDelta, frameCount: baseFrameCount }
 }
 
-function interpolateAtDistance(
-  data: Float32Array,
-  frameCount: number,
-  targetDist: number,
-): number {
+function interpolateAtDistance(data: Float32Array, frameCount: number, targetDist: number): number {
   if (frameCount === 0) return 0
 
   let lo = 0

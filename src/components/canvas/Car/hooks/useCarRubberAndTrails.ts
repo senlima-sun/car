@@ -102,7 +102,12 @@ export function useCarRubberAndTrails({ physics }: RubberAndTrailsOptions) {
     }
 
     const { compoundMult, wetness } = physics.updateRubberFrame(
-      pos.x, pos.z, output.speed_kmh / 3.6, dt, wheelPositions, wheelIntensities,
+      pos.x,
+      pos.z,
+      output.speed_kmh / 3.6,
+      dt,
+      wheelPositions,
+      wheelIntensities,
     )
 
     const wetnessFactor = 1 - wetness * 0.7

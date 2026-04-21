@@ -26,7 +26,9 @@ export default function WrongWayIndicator() {
           />
         </svg>
         <div className='flex flex-col leading-none'>
-          <span className='text-[10px] font-bold uppercase tracking-[0.42em] text-[#ffb4b4]'>Warning</span>
+          <span className='text-[10px] font-bold uppercase tracking-[0.42em] text-[#ffb4b4]'>
+            Warning
+          </span>
           <span className='mt-1 font-sans text-[28px] font-bold uppercase tracking-[0.28em] text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.7)]'>
             Wrong Way
           </span>

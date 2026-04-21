@@ -12,17 +12,17 @@
 ```typescript
 // GOOD: Well-defined schema
 export const users = pgTable(
-  "users",
+  'users',
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    email: varchar("email", { length: 255 }).notNull().unique(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    organizationId: uuid("organization_id").references(() => organizations.id),
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: varchar('email', { length: 255 }).notNull().unique(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    organizationId: uuid('organization_id').references(() => organizations.id),
   },
-  (table) => ({
-    emailIdx: index("users_email_idx").on(table.email),
-    orgIdx: index("users_org_idx").on(table.organizationId),
-  })
+  table => ({
+    emailIdx: index('users_email_idx').on(table.email),
+    orgIdx: index('users_org_idx').on(table.organizationId),
+  }),
 )
 
 export type User = typeof users.$inferSelect
@@ -35,17 +35,17 @@ athreei supports both PostgreSQL and SQLite. Use the correct imports:
 
 ```typescript
 // GOOD: Auto-detect database type
-import { getDb, getSchema } from "@athreei/db"
+import { getDb, getSchema } from '@athreei/db'
 const db = getDb()
 const { users } = getSchema()
 
 // GOOD: Explicit type when needed
-import { getPgDb, getSqliteDb } from "@athreei/db"
+import { getPgDb, getSqliteDb } from '@athreei/db'
 const pgDb = getPgDb() // Throws if not PG
 const sqliteDb = getSqliteDb() // Throws if not SQLite
 
 // BAD: Direct import without abstraction
-import { db } from "drizzle-orm/postgres-js"
+import { db } from 'drizzle-orm/postgres-js'
 ```
 
 ## Query Patterns
@@ -97,11 +97,8 @@ const users = await db.query.users.findMany({
 })
 
 // GOOD: Batch query
-const userIds = users.map((u) => u.id)
-const allPosts = await db
-  .select()
-  .from(posts)
-  .where(inArray(posts.userId, userIds))
+const userIds = users.map(u => u.id)
+const allPosts = await db.select().from(posts).where(inArray(posts.userId, userIds))
 ```
 
 ## Transactions
@@ -112,12 +109,12 @@ const allPosts = await db
 
 ```typescript
 // GOOD: Transaction for atomic operations
-await db.transaction(async (tx) => {
+await db.transaction(async tx => {
   const [org] = await tx.insert(organizations).values({ name }).returning()
   await tx.insert(memberships).values({
     organizationId: org.id,
     userId: currentUser.id,
-    role: "owner",
+    role: 'owner',
   })
 })
 ```

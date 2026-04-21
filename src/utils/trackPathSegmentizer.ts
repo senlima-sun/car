@@ -113,10 +113,8 @@ function quadraticApproxError(
     const cubicPt = evaluateCubicBezier(P0, P1, P2, P3, t)
 
     const t1 = 1 - t
-    const qx =
-      t1 * t1 * approx.start[0] + 2 * t1 * t * approx.control[0] + t * t * approx.end[0]
-    const qy =
-      t1 * t1 * approx.start[1] + 2 * t1 * t * approx.control[1] + t * t * approx.end[1]
+    const qx = t1 * t1 * approx.start[0] + 2 * t1 * t * approx.control[0] + t * t * approx.end[0]
+    const qy = t1 * t1 * approx.start[1] + 2 * t1 * t * approx.control[1] + t * t * approx.end[1]
 
     const err = Math.sqrt((cubicPt[0] - qx) ** 2 + (cubicPt[1] - qy) ** 2)
     if (err > maxError) maxError = err
@@ -225,13 +223,21 @@ function extractCubicSubcurve(
 
   const first = splitCubicBezier(P0, P1, P2, P3, t1)
   const remapped = t0 / t1
-  const second = splitCubicBezier(first.left.P0, first.left.P1, first.left.P2, first.left.P3, remapped)
+  const second = splitCubicBezier(
+    first.left.P0,
+    first.left.P1,
+    first.left.P2,
+    first.left.P3,
+    remapped,
+  )
   return second.right
 }
 
-function convertSliceToQuadratic(
-  slice: SegmentSlice,
-): { start: [number, number]; end: [number, number]; control?: [number, number] } {
+function convertSliceToQuadratic(slice: SegmentSlice): {
+  start: [number, number]
+  end: [number, number]
+  control?: [number, number]
+} {
   if (slice.isStraight) {
     return { start: slice.P0, end: slice.P3 }
   }

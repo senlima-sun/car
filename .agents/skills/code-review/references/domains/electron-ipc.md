@@ -8,14 +8,13 @@
 
 ```typescript
 // preload.ts - GOOD: Explicit, typed API
-contextBridge.exposeInMainWorld("api", {
-  getConfig: (key: string) => ipcRenderer.invoke("config:get", key),
-  setConfig: (key: string, value: unknown) =>
-    ipcRenderer.invoke("config:set", key, value),
+contextBridge.exposeInMainWorld('api', {
+  getConfig: (key: string) => ipcRenderer.invoke('config:get', key),
+  setConfig: (key: string, value: unknown) => ipcRenderer.invoke('config:set', key, value),
 })
 
 // preload.ts - BAD: Raw API exposure
-contextBridge.exposeInMainWorld("api", {
+contextBridge.exposeInMainWorld('api', {
   invoke: ipcRenderer.invoke, // Allows arbitrary IPC!
   send: ipcRenderer.send, // Allows arbitrary IPC!
 })
@@ -25,10 +24,10 @@ contextBridge.exposeInMainWorld("api", {
 
 ```typescript
 // main.ts - Send to specific window
-mainWindow.webContents.send("update-available", version)
+mainWindow.webContents.send('update-available', version)
 
 // renderer.ts - Listen via preload bridge
-window.api.onUpdateAvailable((version) => showUpdateUI(version))
+window.api.onUpdateAvailable(version => showUpdateUI(version))
 ```
 
 ## Preload Script Rules
@@ -51,14 +50,14 @@ export interface ElectronAPI {
   }
 }
 
-contextBridge.exposeInMainWorld("electron", {
+contextBridge.exposeInMainWorld('electron', {
   config: {
-    get: (key) => ipcRenderer.invoke("config:get", key),
-    set: (key, value) => ipcRenderer.invoke("config:set", key, value),
+    get: key => ipcRenderer.invoke('config:get', key),
+    set: (key, value) => ipcRenderer.invoke('config:set', key, value),
   },
   app: {
-    getVersion: () => ipcRenderer.invoke("app:version"),
-    quit: () => ipcRenderer.send("app:quit"),
+    getVersion: () => ipcRenderer.invoke('app:version'),
+    quit: () => ipcRenderer.send('app:quit'),
   },
 } satisfies ElectronAPI)
 ```
@@ -73,24 +72,24 @@ contextBridge.exposeInMainWorld("electron", {
 
 ```typescript
 // GOOD: Validate everything
-ipcMain.handle("file:read", async (event, filePath: unknown) => {
+ipcMain.handle('file:read', async (event, filePath: unknown) => {
   // 1. Validate sender
   if (!isFromTrustedRenderer(event)) {
-    throw new Error("Unauthorized sender")
+    throw new Error('Unauthorized sender')
   }
 
   // 2. Validate type
-  if (typeof filePath !== "string") {
-    throw new Error("filePath must be string")
+  if (typeof filePath !== 'string') {
+    throw new Error('filePath must be string')
   }
 
   // 3. Validate value (path traversal prevention)
   const resolved = path.resolve(SAFE_BASE_DIR, filePath)
   if (!resolved.startsWith(SAFE_BASE_DIR)) {
-    throw new Error("Path traversal detected")
+    throw new Error('Path traversal detected')
   }
 
-  return fs.readFile(resolved, "utf-8")
+  return fs.readFile(resolved, 'utf-8')
 })
 ```
 
@@ -105,13 +104,13 @@ Objects sent via IPC use Structured Clone Algorithm:
 
 ```typescript
 // BAD: Won't serialize
-ipcRenderer.send("data", {
+ipcRenderer.send('data', {
   element: document.body, // DOM object
   callback: () => {}, // Function
 })
 
 // GOOD: Plain data only
-ipcRenderer.send("data", {
+ipcRenderer.send('data', {
   html: document.body.innerHTML,
   timestamp: Date.now(),
 })

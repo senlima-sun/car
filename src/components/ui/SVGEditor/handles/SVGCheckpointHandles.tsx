@@ -85,33 +85,33 @@ export const SVGCheckpointHandles = memo(function SVGCheckpointHandles({
         cx={sx}
         cy={sy}
         r={r}
-        fill="#00ff00"
+        fill='#00ff00'
         fillOpacity={0.3}
-        stroke="#00ff00"
+        stroke='#00ff00'
         strokeWidth={strokeW}
-        cursor="grab"
+        cursor='grab'
         onPointerDown={e => handlePointerDown('start', e)}
       />
       <circle
         cx={ex}
         cy={ey}
         r={r}
-        fill="#ff4444"
+        fill='#ff4444'
         fillOpacity={0.3}
-        stroke="#ff4444"
+        stroke='#ff4444'
         strokeWidth={strokeW}
-        cursor="grab"
+        cursor='grab'
         onPointerDown={e => handlePointerDown('end', e)}
       />
       <circle
         cx={cx}
         cy={cy}
         r={r * 0.8}
-        fill="#ff8800"
+        fill='#ff8800'
         fillOpacity={0.3}
-        stroke="#ff8800"
+        stroke='#ff8800'
         strokeWidth={strokeW}
-        cursor="grab"
+        cursor='grab'
         onPointerDown={e => handlePointerDown('center', e)}
       />
     </g>

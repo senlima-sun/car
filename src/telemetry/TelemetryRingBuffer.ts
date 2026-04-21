@@ -55,24 +55,11 @@ export class TelemetryRingBuffer {
     const data = new Float32Array(frameCount * TELEMETRY_STRIDE)
 
     if (endIdx >= startIdx) {
-      data.set(
-        this.buffer.subarray(
-          startIdx * TELEMETRY_STRIDE,
-          endIdx * TELEMETRY_STRIDE,
-        ),
-      )
+      data.set(this.buffer.subarray(startIdx * TELEMETRY_STRIDE, endIdx * TELEMETRY_STRIDE))
     } else {
       const tailLen = this.capacity - startIdx
-      data.set(
-        this.buffer.subarray(
-          startIdx * TELEMETRY_STRIDE,
-          this.capacity * TELEMETRY_STRIDE,
-        ),
-      )
-      data.set(
-        this.buffer.subarray(0, endIdx * TELEMETRY_STRIDE),
-        tailLen * TELEMETRY_STRIDE,
-      )
+      data.set(this.buffer.subarray(startIdx * TELEMETRY_STRIDE, this.capacity * TELEMETRY_STRIDE))
+      data.set(this.buffer.subarray(0, endIdx * TELEMETRY_STRIDE), tailLen * TELEMETRY_STRIDE)
     }
 
     return {
@@ -106,10 +93,7 @@ export class TelemetryRingBuffer {
 
     for (let i = 0; i < n; i++) {
       const srcOff = readIdx * TELEMETRY_STRIDE
-      result.set(
-        this.buffer.subarray(srcOff, srcOff + TELEMETRY_STRIDE),
-        i * TELEMETRY_STRIDE,
-      )
+      result.set(this.buffer.subarray(srcOff, srcOff + TELEMETRY_STRIDE), i * TELEMETRY_STRIDE)
       readIdx = (readIdx + 1) % this.capacity
     }
 

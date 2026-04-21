@@ -19,7 +19,7 @@ export const SVGViewport = forwardRef<SVGSVGElement, SVGViewportProps>(function 
     <svg
       ref={ref}
       viewBox={viewBox}
-      className="w-full h-full block select-none"
+      className='w-full h-full block select-none'
       style={{ background: BACKGROUND_COLOR }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

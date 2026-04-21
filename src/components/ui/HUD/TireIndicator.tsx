@@ -26,7 +26,9 @@ function WheelCell({
   const color = wearColor(wear)
   return (
     <div className='flex flex-col items-center gap-1'>
-      <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>{label}</span>
+      <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+        {label}
+      </span>
       <div
         className='relative flex h-12 w-7 flex-col justify-end overflow-hidden bg-white/5'
         style={{ border: `1.5px solid ${compoundColor}`, borderRadius: 2 }}
@@ -36,10 +38,7 @@ function WheelCell({
           style={{ height: `${remaining}%`, background: color }}
         />
       </div>
-      <span
-        className='font-mono text-[10px] font-semibold tabular-nums'
-        style={{ color }}
-      >
+      <span className='font-mono text-[10px] font-semibold tabular-nums' style={{ color }}>
         {Math.round(remaining)}
       </span>
     </div>
@@ -92,7 +91,9 @@ export default function TireIndicator() {
           </span>
         </div>
         <div className='flex items-baseline gap-1'>
-          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Grip</span>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+            Grip
+          </span>
           <span
             className='font-mono text-[12px] font-semibold tabular-nums'
             style={{ color: gripColor(gripPercent) }}
@@ -118,7 +119,9 @@ export default function TireIndicator() {
 
       <div className='border-t border-white/10 px-3 py-2'>
         <div className='mb-1 flex items-baseline justify-between'>
-          <span className='text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>Avg Life</span>
+          <span className='text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>
+            Avg Life
+          </span>
           <span
             className='font-mono text-[11px] font-semibold tabular-nums'
             style={{ color: wearColor(averageWear) }}

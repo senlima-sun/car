@@ -57,20 +57,17 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
         partialDeleteState.startPosition[0],
         partialDeleteState.startPosition[2],
       )
-      const [ex, ey] = worldToSVG(
-        partialDeletePreviewPosition[0],
-        partialDeletePreviewPosition[2],
-      )
+      const [ex, ey] = worldToSVG(partialDeletePreviewPosition[0], partialDeletePreviewPosition[2])
       return (
         <g style={{ pointerEvents: 'none' }}>
-          <circle cx={sx} cy={sy} r={markerR} fill="none" stroke="#ff0000" strokeWidth={strokeW} />
-          <circle cx={ex} cy={ey} r={markerR} fill="none" stroke="#ff4444" strokeWidth={strokeW} />
+          <circle cx={sx} cy={sy} r={markerR} fill='none' stroke='#ff0000' strokeWidth={strokeW} />
+          <circle cx={ex} cy={ey} r={markerR} fill='none' stroke='#ff4444' strokeWidth={strokeW} />
           <line
             x1={sx}
             y1={sy}
             x2={ex}
             y2={ey}
-            stroke="#ff0000"
+            stroke='#ff0000'
             strokeWidth={strokeW}
             strokeDasharray={`${2 / zoom} ${1 / zoom}`}
             opacity={0.6}
@@ -82,14 +79,7 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
       const [px, py] = worldToSVG(previewPosition[0], previewPosition[2])
       return (
         <g style={{ pointerEvents: 'none' }}>
-          <circle
-            cx={px}
-            cy={py}
-            r={markerR}
-            fill="none"
-            stroke="#ff6600"
-            strokeWidth={strokeW}
-          />
+          <circle cx={px} cy={py} r={markerR} fill='none' stroke='#ff6600' strokeWidth={strokeW} />
         </g>
       )
     }
@@ -110,17 +100,21 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
     })
     pathParts.push(`L ${px} ${py}`)
 
-    const fillParts = [...polygonPoints.map((p, i) => {
-      const [x, y] = worldToSVG(p[0], p[2])
-      return i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`
-    }), `L ${px} ${py}`, 'Z']
+    const fillParts = [
+      ...polygonPoints.map((p, i) => {
+        const [x, y] = worldToSVG(p[0], p[2])
+        return i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`
+      }),
+      `L ${px} ${py}`,
+      'Z',
+    ]
 
     return (
       <g style={{ pointerEvents: 'none' }}>
         <path d={fillParts.join(' ')} fill={style.fill} opacity={0.15} />
         <path
           d={pathParts.join(' ')}
-          fill="none"
+          fill='none'
           stroke={style.stroke}
           strokeWidth={strokeW}
           strokeDasharray={`${3 / zoom} ${1.5 / zoom}`}
@@ -138,7 +132,7 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
             />
           )
         })}
-        <circle cx={px} cy={py} r={1.5 / zoom} fill="#ffaa00" opacity={0.8} />
+        <circle cx={px} cy={py} r={1.5 / zoom} fill='#ffaa00' opacity={0.8} />
       </g>
     )
   }
@@ -149,10 +143,7 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
     curbDragState &&
     curbPreviewEndPosition
   ) {
-    const [sx, sy] = worldToSVG(
-      curbDragState.startPosition[0],
-      curbDragState.startPosition[2],
-    )
+    const [sx, sy] = worldToSVG(curbDragState.startPosition[0], curbDragState.startPosition[2])
     const [ex, ey] = worldToSVG(curbPreviewEndPosition[0], curbPreviewEndPosition[2])
     const color = selectedObjectType === 'curb' ? '#ff0000' : '#ff8800'
 
@@ -165,7 +156,7 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
           y2={ey}
           stroke={color}
           strokeWidth={selectedObjectType === 'curb' ? 1.5 : 2}
-          strokeLinecap="round"
+          strokeLinecap='round'
           opacity={0.7}
         />
         <circle cx={sx} cy={sy} r={1.5 / zoom} fill={color} opacity={0.8} />
@@ -198,10 +189,10 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
             y2={py}
             stroke={style.stroke}
             strokeWidth={sw}
-            strokeLinecap="round"
+            strokeLinecap='round'
             opacity={0.5}
           />
-          <circle cx={sx} cy={sy} r={1.2 / zoom} fill="#ffffff" opacity={0.9} />
+          <circle cx={sx} cy={sy} r={1.2 / zoom} fill='#ffffff' opacity={0.9} />
         </g>
       )
     }
@@ -214,18 +205,34 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
 
       return (
         <g style={{ pointerEvents: 'none' }}>
-          <line x1={sx} y1={sy} x2={cx} y2={cy} stroke="#ffff00" strokeWidth={0.5 / zoom} opacity={0.4} />
-          <line x1={cx} y1={cy} x2={px} y2={py} stroke="#ffff00" strokeWidth={0.5 / zoom} opacity={0.4} />
+          <line
+            x1={sx}
+            y1={sy}
+            x2={cx}
+            y2={cy}
+            stroke='#ffff00'
+            strokeWidth={0.5 / zoom}
+            opacity={0.4}
+          />
+          <line
+            x1={cx}
+            y1={cy}
+            x2={px}
+            y2={py}
+            stroke='#ffff00'
+            strokeWidth={0.5 / zoom}
+            opacity={0.4}
+          />
           <path
             d={d}
-            fill="none"
+            fill='none'
             stroke={style.stroke}
             strokeWidth={sw}
-            strokeLinecap="round"
+            strokeLinecap='round'
             opacity={0.5}
           />
-          <circle cx={sx} cy={sy} r={1.2 / zoom} fill="#ffffff" opacity={0.9} />
-          <circle cx={cx} cy={cy} r={1.2 / zoom} fill="#ffff00" opacity={0.9} />
+          <circle cx={sx} cy={sy} r={1.2 / zoom} fill='#ffffff' opacity={0.9} />
+          <circle cx={cx} cy={cy} r={1.2 / zoom} fill='#ffff00' opacity={0.9} />
         </g>
       )
     }
@@ -245,7 +252,7 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
             y1={ly}
             x2={rx}
             y2={ry}
-            stroke="#00ff00"
+            stroke='#00ff00'
             strokeWidth={0.3}
             strokeDasharray={`${2 / zoom} ${1 / zoom}`}
             opacity={0.6}
@@ -256,7 +263,15 @@ export const SVGGhostPreview = memo(function SVGGhostPreview({
     const [px, py] = worldToSVG(previewPosition[0], previewPosition[2])
     return (
       <g style={{ pointerEvents: 'none' }}>
-        <circle cx={px} cy={py} r={markerR} fill="none" stroke="#ff8800" strokeWidth={strokeW} opacity={0.5} />
+        <circle
+          cx={px}
+          cy={py}
+          r={markerR}
+          fill='none'
+          stroke='#ff8800'
+          strokeWidth={strokeW}
+          opacity={0.5}
+        />
       </g>
     )
   }

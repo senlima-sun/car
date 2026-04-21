@@ -1,6 +1,10 @@
 import { memo } from 'react'
 import type { TrackPath } from '@/types/trackPath'
-import { getSplineSegment, getSplineSegmentCount, evaluateCubicBezier } from '@/utils/trackPathInterpolation'
+import {
+  getSplineSegment,
+  getSplineSegmentCount,
+  evaluateCubicBezier,
+} from '@/utils/trackPathInterpolation'
 import { worldToSVG } from '../hooks/useSVGCoordinates'
 
 interface SVGTrackPathLayerProps {
@@ -95,17 +99,17 @@ export const SVGTrackPathLayer = memo(function SVGTrackPathLayer({
           <g key={path.id} data-path-id={path.id}>
             <path
               d={centerD}
-              fill="none"
+              fill='none'
               stroke={color}
               strokeWidth={path.width}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeLinecap='round'
+              strokeLinejoin='round'
               opacity={0.15}
             />
 
             <path
               d={centerD}
-              fill="none"
+              fill='none'
               stroke={color}
               strokeWidth={0.5 / zoom}
               strokeDasharray={`${4 / zoom} ${2 / zoom}`}
@@ -114,14 +118,14 @@ export const SVGTrackPathLayer = memo(function SVGTrackPathLayer({
 
             <path
               d={leftD}
-              fill="none"
+              fill='none'
               stroke={color}
               strokeWidth={0.5 / zoom}
               opacity={isActive ? 0.6 : 0.3}
             />
             <path
               d={rightD}
-              fill="none"
+              fill='none'
               stroke={color}
               strokeWidth={0.5 / zoom}
               opacity={isActive ? 0.6 : 0.3}

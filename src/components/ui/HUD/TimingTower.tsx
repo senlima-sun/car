@@ -80,9 +80,7 @@ export default function TimingTower() {
                   borderTop: idx === 0 ? 'none' : '1px solid rgba(255,255,255,0.04)',
                 }}
               >
-                {highlight && (
-                  <div className='absolute left-0 top-0 h-full w-[2px] bg-[#ffcc00]' />
-                )}
+                {highlight && <div className='absolute left-0 top-0 h-full w-[2px] bg-[#ffcc00]' />}
                 <span
                   className='flex h-5 w-5 shrink-0 items-center justify-center font-mono text-[11px] font-bold tabular-nums text-white'
                   style={{

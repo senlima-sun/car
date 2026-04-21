@@ -23,7 +23,10 @@ export default function FPSCounter() {
           clipPath: 'polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px)',
         }}
       >
-        <span className='h-1.5 w-1.5 rounded-full' style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
+        <span
+          className='h-1.5 w-1.5 rounded-full'
+          style={{ background: color, boxShadow: `0 0 6px ${color}` }}
+        />
         <span className='font-mono text-[11px] font-semibold tabular-nums text-white'>{fps}</span>
         <span className='text-[8px] font-bold uppercase tracking-[0.32em] text-white/45'>fps</span>
       </div>

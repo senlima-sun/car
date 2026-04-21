@@ -79,10 +79,7 @@ function findFrameByDistance(lap: LapTrace, dist: number[], target: number): num
   return Math.max(0, Math.min(lap.frames.length - 1, lo))
 }
 
-function classifyReason(
-  current: LapTrace['frames'],
-  reference: LapTrace['frames'],
-): LossReason {
+function classifyReason(current: LapTrace['frames'], reference: LapTrace['frames']): LossReason {
   const avg = (frames: LapTrace['frames'], sel: (f: LapTrace['frames'][0]) => number) =>
     frames.reduce((s, f) => s + sel(f), 0) / Math.max(1, frames.length)
 

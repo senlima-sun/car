@@ -1,8 +1,4 @@
-export type ViolationKind =
-  | 'track_limits'
-  | 'pit_speeding'
-  | 'jump_start'
-  | 'wrong_way'
+export type ViolationKind = 'track_limits' | 'pit_speeding' | 'jump_start' | 'wrong_way'
 
 export interface Violation {
   id: string

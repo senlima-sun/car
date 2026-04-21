@@ -892,7 +892,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     }
 
-    if ((newObject.type === 'barrier' || isWallType(newObject.type)) && newObject.startPoint && newObject.endPoint) {
+    if (
+      (newObject.type === 'barrier' || isWallType(newObject.type)) &&
+      newObject.startPoint &&
+      newObject.endPoint
+    ) {
       const roads = useCustomizationStore.getState().placedObjects.filter(o => o.type === 'road')
       const onRoad = findBarriersOnRoad([newObject], roads)
       if (onRoad.length > 0) {

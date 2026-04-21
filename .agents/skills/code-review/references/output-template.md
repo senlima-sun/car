@@ -66,7 +66,7 @@
 
 - **[users.ts:45]** SQL injection via string interpolation
   - **Why**: User input directly interpolated into query allows arbitrary SQL execution
-  - **Fix**: Use parameterized query: `sql\`SELECT * FROM users WHERE id = ${id}\``
+  - **Fix**: Use parameterized query: `sql\`SELECT \* FROM users WHERE id = ${id}\``
 
 ### Errors (should fix)
 

@@ -176,7 +176,14 @@ export default function CurbSegment({ curb, parentRoad, isGhost = false }: CurbS
       sampleYOffset,
     )
 
-    return { geometry, collisionVertices, collisionIndices, rotation: rot, midpoint: mid, curbLength: length }
+    return {
+      geometry,
+      collisionVertices,
+      collisionIndices,
+      rotation: rot,
+      midpoint: mid,
+      curbLength: length,
+    }
   }, [curb, parentRoad, curbType])
 
   const handleEnter = useCallback(() => {

@@ -147,9 +147,7 @@ export default function Checkpoint({
         <>
           <CheckeredStripe length={length} isGhost={isGhost} />
           <StartFinishPylons length={length} isGhost={isGhost} />
-          {flowDirection && (
-            <RaceDirectionMarker flowDirection={flowDirection} isGhost={isGhost} />
-          )}
+          {flowDirection && <RaceDirectionMarker flowDirection={flowDirection} isGhost={isGhost} />}
         </>
       )}
     </group>
@@ -188,11 +186,7 @@ function CheckeredStripe({ length, isGhost }: { length: number; isGhost: boolean
           const x = -STRIPE_WIDTH / 2 + cellSize * col + cellSize / 2
           const z = -length / 2 + actualCellDepth * row + actualCellDepth / 2
           return (
-            <mesh
-              key={`${row}-${col}`}
-              position={[x, 0, z]}
-              rotation={[-Math.PI / 2, 0, 0]}
-            >
+            <mesh key={`${row}-${col}`} position={[x, 0, z]} rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[cellSize, actualCellDepth]} />
               <meshStandardMaterial
                 color={isWhite ? '#ffffff' : '#111111'}
@@ -226,10 +220,7 @@ function RaceDirectionMarker({
 
   return (
     <group position={[0, 0.04, 0]}>
-      <mesh
-        position={[0, 0, (sign * lineLength) / 2]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      >
+      <mesh position={[0, 0, (sign * lineLength) / 2]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[lineWidth, lineLength]} />
         <meshBasicMaterial
           color={color}
@@ -254,7 +245,7 @@ function RaceDirectionMarker({
         <mesh position={[0, 0, -0.01]}>
           <planeGeometry args={[4.6, 1.6]} />
           <meshBasicMaterial
-            color="#0a0a12"
+            color='#0a0a12'
             transparent
             opacity={isGhost ? GHOST_OPACITY * 0.7 : 0.88}
           />
@@ -262,10 +253,10 @@ function RaceDirectionMarker({
         <Text
           fontSize={1.0}
           color={color}
-          anchorX="center"
-          anchorY="middle"
+          anchorX='center'
+          anchorY='middle'
           outlineWidth={0.06}
-          outlineColor="#000000"
+          outlineColor='#000000'
         >
           {flowDirection === 'forward' ? 'RACE →' : '← RACE'}
         </Text>
@@ -297,8 +288,8 @@ function StartFinishPylons({ length, isGhost }: { length: number; isGhost: boole
           <mesh position={[0, pylonHeight + 0.25, 0]}>
             <sphereGeometry args={[0.28, 14, 10]} />
             <meshStandardMaterial
-              color="#ff2233"
-              emissive="#ff2233"
+              color='#ff2233'
+              emissive='#ff2233'
               emissiveIntensity={1.6}
               transparent={isGhost}
               opacity={isGhost ? GHOST_OPACITY : 1}
@@ -310,18 +301,18 @@ function StartFinishPylons({ length, isGhost }: { length: number; isGhost: boole
         <mesh position={[0, 0, -0.01]}>
           <planeGeometry args={[5.2, 2.0]} />
           <meshBasicMaterial
-            color="#0a0a12"
+            color='#0a0a12'
             transparent
             opacity={isGhost ? GHOST_OPACITY * 0.7 : 0.92}
           />
         </mesh>
         <Text
           fontSize={1.35}
-          color="#ffffff"
-          anchorX="center"
-          anchorY="middle"
+          color='#ffffff'
+          anchorX='center'
+          anchorY='middle'
           outlineWidth={0.08}
-          outlineColor="#000000"
+          outlineColor='#000000'
         >
           START / FINISH
         </Text>
@@ -373,7 +364,7 @@ function SectorMarkers({
         <mesh position={[0, 0, -0.01]}>
           <planeGeometry args={[2.8, 1.5]} />
           <meshBasicMaterial
-            color="#0a0a12"
+            color='#0a0a12'
             transparent
             opacity={isGhost ? GHOST_OPACITY * 0.7 : 0.88}
           />
@@ -381,10 +372,10 @@ function SectorMarkers({
         <Text
           fontSize={1.0}
           color={color}
-          anchorX="center"
-          anchorY="middle"
+          anchorX='center'
+          anchorY='middle'
           outlineWidth={0.06}
-          outlineColor="#000000"
+          outlineColor='#000000'
         >
           {label}
         </Text>

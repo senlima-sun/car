@@ -204,15 +204,19 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
   const r = 3 / zoom
   const strokeW = 1 / zoom
 
-  const midWorldX = hasCurve && road.controlPoint
-    ? (road.startPoint[0] + 2 * road.controlPoint[0] + road.endPoint[0]) / 4
-    : (road.startPoint[0] + road.endPoint[0]) / 2
-  const midWorldZ = hasCurve && road.controlPoint
-    ? (road.startPoint[2] + 2 * road.controlPoint[2] + road.endPoint[2]) / 4
-    : (road.startPoint[2] + road.endPoint[2]) / 2
+  const midWorldX =
+    hasCurve && road.controlPoint
+      ? (road.startPoint[0] + 2 * road.controlPoint[0] + road.endPoint[0]) / 4
+      : (road.startPoint[0] + road.endPoint[0]) / 2
+  const midWorldZ =
+    hasCurve && road.controlPoint
+      ? (road.startPoint[2] + 2 * road.controlPoint[2] + road.endPoint[2]) / 4
+      : (road.startPoint[2] + road.endPoint[2]) / 2
   const [mx, my] = worldToSVG(midWorldX, midWorldZ)
 
-  const snapIndicator = snapTarget ? worldToSVG(snapTarget.position[0], snapTarget.position[2]) : null
+  const snapIndicator = snapTarget
+    ? worldToSVG(snapTarget.position[0], snapTarget.position[2])
+    : null
 
   return (
     <g>
@@ -222,8 +226,8 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
             cx={snapIndicator[0]}
             cy={snapIndicator[1]}
             r={r * 1.8}
-            fill="none"
-            stroke="#00ffff"
+            fill='none'
+            stroke='#00ffff'
             strokeWidth={strokeW * 1.5}
             opacity={0.9}
           />
@@ -231,8 +235,8 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
             cx={snapIndicator[0]}
             cy={snapIndicator[1]}
             r={r * 2.6}
-            fill="none"
-            stroke="#00ffff"
+            fill='none'
+            stroke='#00ffff'
             strokeWidth={strokeW * 0.6}
             opacity={0.4}
           />
@@ -242,22 +246,22 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
         cx={sx}
         cy={sy}
         r={r}
-        fill="#00ff00"
+        fill='#00ff00'
         fillOpacity={0.3}
-        stroke="#00ff00"
+        stroke='#00ff00'
         strokeWidth={strokeW}
-        cursor="grab"
+        cursor='grab'
         onPointerDown={e => handlePointerDown('start', e)}
       />
       <circle
         cx={ex}
         cy={ey}
         r={r}
-        fill="#ff4444"
+        fill='#ff4444'
         fillOpacity={0.3}
-        stroke="#ff4444"
+        stroke='#ff4444'
         strokeWidth={strokeW}
-        cursor="grab"
+        cursor='grab'
         onPointerDown={e => handlePointerDown('end', e)}
       />
       {!hasCurve && (
@@ -265,52 +269,54 @@ export const SVGRoadHandles = memo(function SVGRoadHandles({
           cx={mx}
           cy={my}
           r={r * 0.6}
-          fill="#cc66ff"
+          fill='#cc66ff'
           fillOpacity={0.3}
-          stroke="#cc66ff"
+          stroke='#cc66ff'
           strokeWidth={strokeW}
-          cursor="grab"
+          cursor='grab'
           onPointerDown={e => handlePointerDown('midpoint', e)}
         />
       )}
-      {hasCurve && road.controlPoint && (() => {
-        const [cpx, cpy] = worldToSVG(road.controlPoint[0], road.controlPoint[2])
-        return (
-          <>
-            <line
-              x1={sx}
-              y1={sy}
-              x2={cpx}
-              y2={cpy}
-              stroke="#ffff00"
-              strokeWidth={0.5 / zoom}
-              opacity={0.4}
-              style={{ pointerEvents: 'none' }}
-            />
-            <line
-              x1={cpx}
-              y1={cpy}
-              x2={ex}
-              y2={ey}
-              stroke="#ffff00"
-              strokeWidth={0.5 / zoom}
-              opacity={0.4}
-              style={{ pointerEvents: 'none' }}
-            />
-            <circle
-              cx={cpx}
-              cy={cpy}
-              r={r * 0.7}
-              fill="#ffff00"
-              fillOpacity={0.3}
-              stroke="#ffff00"
-              strokeWidth={strokeW}
-              cursor="grab"
-              onPointerDown={e => handlePointerDown('control', e)}
-            />
-          </>
-        )
-      })()}
+      {hasCurve &&
+        road.controlPoint &&
+        (() => {
+          const [cpx, cpy] = worldToSVG(road.controlPoint[0], road.controlPoint[2])
+          return (
+            <>
+              <line
+                x1={sx}
+                y1={sy}
+                x2={cpx}
+                y2={cpy}
+                stroke='#ffff00'
+                strokeWidth={0.5 / zoom}
+                opacity={0.4}
+                style={{ pointerEvents: 'none' }}
+              />
+              <line
+                x1={cpx}
+                y1={cpy}
+                x2={ex}
+                y2={ey}
+                stroke='#ffff00'
+                strokeWidth={0.5 / zoom}
+                opacity={0.4}
+                style={{ pointerEvents: 'none' }}
+              />
+              <circle
+                cx={cpx}
+                cy={cpy}
+                r={r * 0.7}
+                fill='#ffff00'
+                fillOpacity={0.3}
+                stroke='#ffff00'
+                strokeWidth={strokeW}
+                cursor='grab'
+                onPointerDown={e => handlePointerDown('control', e)}
+              />
+            </>
+          )
+        })()}
     </g>
   )
 })

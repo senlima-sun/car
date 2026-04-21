@@ -210,10 +210,7 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
           chassis.setTranslation({ x: pos.x, y: pos.y + penetration * 0.5, z: pos.z }, true)
           const freshLinvel = chassis.linvel()
           if (freshLinvel.y < -2) {
-            chassis.setLinvel(
-              { x: freshLinvel.x, y: freshLinvel.y * 0.5, z: freshLinvel.z },
-              true,
-            )
+            chassis.setLinvel({ x: freshLinvel.x, y: freshLinvel.y * 0.5, z: freshLinvel.z }, true)
           }
         }
       }
@@ -230,10 +227,7 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
           )
           const freshLinvel = chassis.linvel()
           if (freshLinvel.y < -1) {
-            chassis.setLinvel(
-              { x: freshLinvel.x, y: freshLinvel.y * 0.7, z: freshLinvel.z },
-              true,
-            )
+            chassis.setLinvel({ x: freshLinvel.x, y: freshLinvel.y * 0.7, z: freshLinvel.z }, true)
           }
         }
       }

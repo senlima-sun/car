@@ -15,10 +15,12 @@ interface FrontWingAnimatorProps {
 }
 
 export function FrontWingAnimator({ flapRefs }: FrontWingAnimatorProps) {
-  const baseQuaternions = useRef<{ middle: THREE.Quaternion | null; top: THREE.Quaternion | null }>({
-    middle: null,
-    top: null,
-  })
+  const baseQuaternions = useRef<{ middle: THREE.Quaternion | null; top: THREE.Quaternion | null }>(
+    {
+      middle: null,
+      top: null,
+    },
+  )
 
   useEffect(() => {
     baseQuaternions.current = {

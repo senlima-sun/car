@@ -10,8 +10,7 @@ function ersBarColor(charge: number): string {
   return '#ef4444'
 }
 
-const BROADCAST_CLIP =
-  'polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%, 0 14px)'
+const BROADCAST_CLIP = 'polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%, 0 14px)'
 
 export default function PitStopUI() {
   const isPitStopActive = usePitStore(s => s.isPitStopActive)
@@ -150,7 +149,9 @@ export default function PitStopUI() {
                   onClick={() => selectTire(compound)}
                   style={{
                     borderColor: isSelected ? cfg.color : 'rgba(255,255,255,0.1)',
-                    boxShadow: isSelected ? `0 0 0 1px ${cfg.color}80, 0 0 18px ${cfg.color}40` : 'none',
+                    boxShadow: isSelected
+                      ? `0 0 0 1px ${cfg.color}80, 0 0 18px ${cfg.color}40`
+                      : 'none',
                     clipPath: 'polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px)',
                   }}
                 >

@@ -14,13 +14,13 @@ athreei uses Better Auth for authentication. Key patterns:
 
 ```typescript
 // packages/auth/src/server.ts
-import { betterAuth } from "better-auth"
-import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { betterAuth } from 'better-auth'
+import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 
 export function createAuth(db: Database) {
   return betterAuth({
     database: drizzleAdapter(db, {
-      provider: "pg", // or "sqlite"
+      provider: 'pg', // or "sqlite"
     }),
     emailAndPassword: {
       enabled: true,
@@ -35,7 +35,7 @@ export function createAuth(db: Database) {
 
 // apps/api/src/index.ts
 const auth = createAuth(db)
-app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw))
+app.on(['GET', 'POST'], '/api/auth/*', c => auth.handler(c.req.raw))
 ```
 
 ## Client Setup
@@ -46,7 +46,7 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw))
 
 ```typescript
 // packages/auth/src/client.ts
-import { createAuthClient } from "better-auth/react"
+import { createAuthClient } from 'better-auth/react'
 
 export const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -73,7 +73,7 @@ export async function getCurrentUser() {
 
 // BAD: Trust client-provided user data
 export async function getUser(req: Request) {
-  const userId = req.headers.get("x-user-id") // Client can fake this!
+  const userId = req.headers.get('x-user-id') // Client can fake this!
   return db.query.users.findFirst({ where: eq(users.id, userId) })
 }
 ```
@@ -86,12 +86,12 @@ export async function getUser(req: Request) {
 
 ```typescript
 // Middleware (first line of defense)
-app.use("/api/protected/*", async (c, next) => {
+app.use('/api/protected/*', async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers })
   if (!session) {
-    return c.json({ error: "Unauthorized" }, 401)
+    return c.json({ error: 'Unauthorized' }, 401)
   }
-  c.set("session", session)
+  c.set('session', session)
   await next()
 })
 
@@ -99,7 +99,7 @@ app.use("/api/protected/*", async (c, next) => {
 export async function getUserOrganizations(userId: string) {
   const session = await getCurrentUser()
   if (session?.id !== userId) {
-    throw new Error("Unauthorized")
+    throw new Error('Unauthorized')
   }
   // ... fetch data
 }
@@ -133,7 +133,7 @@ export async function getOrgData(orgId: string) {
     where: and(eq(memberships.orgId, orgId), eq(memberships.userId, user.id)),
   })
   if (!membership) {
-    throw new Error("Not a member of this organization")
+    throw new Error('Not a member of this organization')
   }
   // ... fetch org data
 }

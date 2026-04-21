@@ -42,11 +42,7 @@ export default function TerrainGround({ simplified }: TerrainGroundProps) {
         worldSize={worldSize}
         version={version}
       />
-      <TerrainPhysics
-        resolution={resolution}
-        worldSize={worldSize}
-        version={physicsVersion}
-      />
+      <TerrainPhysics resolution={resolution} worldSize={worldSize} version={physicsVersion} />
       <OuterGround />
     </>
   )

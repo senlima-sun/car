@@ -87,9 +87,7 @@ export default function WallFence({
     if (!adTexture || isGhost) return null
 
     const img = adTexture.image as { width?: number; height?: number } | undefined
-    const aspectRatio = img?.width && img?.height
-      ? img.width / img.height
-      : 1
+    const aspectRatio = img?.width && img?.height ? img.width / img.height : 1
 
     const planeHeight = WALL_HEIGHT * 0.8
     const planeWidth = planeHeight * aspectRatio
@@ -211,10 +209,7 @@ export default function WallFence({
       </mesh>
 
       {/* Wire mesh panel (semi-transparent) */}
-      <mesh
-        position={[0, WALL_HEIGHT + FENCE_HEIGHT / 2, 0]}
-        rotation={[0, Math.PI / 2, 0]}
-      >
+      <mesh position={[0, WALL_HEIGHT + FENCE_HEIGHT / 2, 0]} rotation={[0, Math.PI / 2, 0]}>
         <planeGeometry args={[length, FENCE_HEIGHT]} />
         <meshStandardMaterial
           color={TRACK_OBJECT.wallFence}

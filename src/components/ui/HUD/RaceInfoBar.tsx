@@ -10,8 +10,7 @@ function formatLapTime(ms: number | null): string {
   return `${minutes}:${seconds.toFixed(3).padStart(6, '0')}`
 }
 
-const BROADCAST_CLIP =
-  'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)'
+const BROADCAST_CLIP = 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)'
 
 export default function RaceInfoBar() {
   const config = useSessionStore(s => s.config)

@@ -115,11 +115,7 @@ export default function TrackEditorDock() {
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null): boolean => {
       if (!(target instanceof HTMLElement)) return false
-      return (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      )
+      return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {

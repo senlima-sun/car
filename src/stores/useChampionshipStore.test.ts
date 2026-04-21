@@ -28,12 +28,9 @@ describe('useChampionshipStore', () => {
   })
 
   test('recordResult awards points', () => {
-    useChampionshipStore.getState().startChampionship(
-      'Test',
-      2026,
-      [{ trackId: 'silverstone', lapLimit: 3 }],
-      drivers,
-    )
+    useChampionshipStore
+      .getState()
+      .startChampionship('Test', 2026, [{ trackId: 'silverstone', lapLimit: 3 }], drivers)
     useChampionshipStore.getState().recordResult(0, [
       { driverName: 'Player', teamId: 'red', position: 1 },
       { driverName: 'Rival', teamId: 'blue', position: 2 },

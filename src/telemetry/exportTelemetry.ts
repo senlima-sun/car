@@ -4,10 +4,7 @@ import type { TelemetryLap } from './TelemetryRingBuffer'
 
 const ALL_CHANNELS = Object.keys(CHANNEL_META).map(Number) as ChannelId[]
 
-export function exportCSV(
-  lap: TelemetryLap,
-  downsampleFactor = 1,
-): string {
+export function exportCSV(lap: TelemetryLap, downsampleFactor = 1): string {
   const headers = ALL_CHANNELS.map(ch => CHANNEL_META[ch].name)
   const lines = [headers.join(',')]
 

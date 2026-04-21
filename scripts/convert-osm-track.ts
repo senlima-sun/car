@@ -553,7 +553,11 @@ function generateRoadSegments(points: Point2D[], config: CircuitConfig): PlacedO
 
     if (seg.subPoints.length >= 3) {
       const midIdx = Math.floor(seg.subPoints.length / 2)
-      const curvature = computeCurvature(seg.subPoints[0], seg.subPoints[midIdx], seg.subPoints[seg.subPoints.length - 1])
+      const curvature = computeCurvature(
+        seg.subPoints[0],
+        seg.subPoints[midIdx],
+        seg.subPoints[seg.subPoints.length - 1],
+      )
 
       if (curvature > CURVATURE_THRESHOLD) {
         isCurve = true
@@ -694,7 +698,10 @@ function generateCheckpoints(roads: PlacedObject[], config: CircuitConfig): Plac
 // Barrier Generation (at track edges on straights)
 // ============================================================================
 
-function generateBarriers(roads: PlacedObject[], checkpointRoadIndices: Set<number>): PlacedObject[] {
+function generateBarriers(
+  roads: PlacedObject[],
+  checkpointRoadIndices: Set<number>,
+): PlacedObject[] {
   const barriers: PlacedObject[] = []
   let barrierId = 0
 

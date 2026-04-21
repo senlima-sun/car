@@ -28,7 +28,7 @@ export const SVGSurfacePatchLayer = memo(function SVGSurfacePatchLayer({
             {isSelected && (
               <path
                 d={d}
-                fill="none"
+                fill='none'
                 stroke={SELECTION_COLOR}
                 strokeWidth={1 / zoom}
                 opacity={0.6}

@@ -119,10 +119,20 @@ function CheckpointTypeSelector() {
 
   return (
     <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginLeft: 4 }}>
-      {([
-        { type: 'start-finish' as CheckpointType, label: 'Start/Finish', activeColor: '#00ff00', activeBg: 'rgba(0, 255, 0, 0.15)' },
-        { type: 'sector' as CheckpointType, label: 'Sector', activeColor: '#3b82f6', activeBg: 'rgba(59, 130, 246, 0.15)' },
-      ]).map(({ type, label, activeColor, activeBg }) => (
+      {[
+        {
+          type: 'start-finish' as CheckpointType,
+          label: 'Start/Finish',
+          activeColor: '#00ff00',
+          activeBg: 'rgba(0, 255, 0, 0.15)',
+        },
+        {
+          type: 'sector' as CheckpointType,
+          label: 'Sector',
+          activeColor: '#3b82f6',
+          activeBg: 'rgba(59, 130, 246, 0.15)',
+        },
+      ].map(({ type, label, activeColor, activeBg }) => (
         <button
           key={type}
           style={{

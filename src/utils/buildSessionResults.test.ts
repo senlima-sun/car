@@ -8,8 +8,21 @@ describe('buildSessionResults', () => {
     const config = createSessionConfig('race', { trackId: 'monza', testingMode: true })
     const events: SessionEvent[] = [
       { id: '1', type: 'session_started', at: 10 },
-      { id: '2', type: 'sector_completed', at: 20, sectorNumber: 1, sectorTime: 30000, delta: null },
-      { id: '3', type: 'track_limits_violation', at: 30, violationCount: 2, totalViolationTime: 800 },
+      {
+        id: '2',
+        type: 'sector_completed',
+        at: 20,
+        sectorNumber: 1,
+        sectorTime: 30000,
+        delta: null,
+      },
+      {
+        id: '3',
+        type: 'track_limits_violation',
+        at: 30,
+        violationCount: 2,
+        totalViolationTime: 800,
+      },
       { id: '4', type: 'pit_penalty_applied', at: 40, penaltySeconds: 3, totalPenaltySeconds: 6 },
       { id: '5', type: 'lap_invalidated', at: 50, reason: 'wrong-way' },
     ]

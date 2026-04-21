@@ -409,10 +409,7 @@ export default function ObjectPlacer() {
               }
               const newStart = rotateAroundCenter(obj.startPoint)
               const newEnd = rotateAroundCenter(obj.endPoint)
-              const newRotation = Math.atan2(
-                newEnd[0] - newStart[0],
-                newEnd[2] - newStart[2],
-              )
+              const newRotation = Math.atan2(newEnd[0] - newStart[0], newEnd[2] - newStart[2])
               customStore.updateObject(obj.id, {
                 startPoint: newStart,
                 endPoint: newEnd,

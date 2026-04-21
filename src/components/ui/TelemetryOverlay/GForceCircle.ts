@@ -73,11 +73,7 @@ export function drawGForceCircle(
     ctx.fillStyle = 'rgba(255,255,255,0.4)'
     ctx.font = `${9 * dpr}px monospace`
     ctx.textAlign = 'center'
-    ctx.fillText(
-      `${curLat.toFixed(1)} / ${curLon.toFixed(1)} G`,
-      cx,
-      sy + ss - 2 * dpr,
-    )
+    ctx.fillText(`${curLat.toFixed(1)} / ${curLon.toFixed(1)} G`, cx, sy + ss - 2 * dpr)
   }
 
   ctx.fillStyle = 'rgba(255,255,255,0.4)'

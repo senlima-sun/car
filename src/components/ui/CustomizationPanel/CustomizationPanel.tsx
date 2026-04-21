@@ -553,12 +553,10 @@ export default function CustomizationPanel() {
               <button
                 style={{
                   ...styles.actionButton,
-                  background:
-                    sectorIndex >= sectorCheckpoints.length - 1 ? '#333' : '#3b82f6',
+                  background: sectorIndex >= sectorCheckpoints.length - 1 ? '#333' : '#3b82f6',
                   color: sectorIndex >= sectorCheckpoints.length - 1 ? '#666' : '#fff',
                   flex: 1,
-                  cursor:
-                    sectorIndex >= sectorCheckpoints.length - 1 ? 'not-allowed' : 'pointer',
+                  cursor: sectorIndex >= sectorCheckpoints.length - 1 ? 'not-allowed' : 'pointer',
                   opacity: sectorIndex >= sectorCheckpoints.length - 1 ? 0.5 : 1,
                 }}
                 disabled={sectorIndex >= sectorCheckpoints.length - 1}
@@ -650,9 +648,7 @@ export default function CustomizationPanel() {
               ? 'Only one start/finish line allowed. Replaces existing.'
               : `Sector ${placedObjects.filter(o => o.type === 'checkpoint' && o.checkpointType === 'sector').length + 1} — placed in order along track.`}
           </div>
-          <div style={styles.placementHint}>
-            Click on a road to place checkpoint across it
-          </div>
+          <div style={styles.placementHint}>Click on a road to place checkpoint across it</div>
         </div>
       )}
 

@@ -112,7 +112,7 @@ export const SVGCheckpointLayer = memo(function SVGCheckpointLayer({
             {isSelected && (
               <path
                 d={d}
-                fill="none"
+                fill='none'
                 stroke={SELECTION_COLOR}
                 strokeWidth={1 / zoom}
                 opacity={0.6}
@@ -122,34 +122,34 @@ export const SVGCheckpointLayer = memo(function SVGCheckpointLayer({
               <g style={{ pointerEvents: 'none' }}>
                 <path
                   d={raceGuide.path}
-                  fill="none"
-                  stroke="#000000"
+                  fill='none'
+                  stroke='#000000'
                   strokeWidth={2.2 / zoom}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                   opacity={0.45}
                 />
                 <path
                   d={raceGuide.path}
-                  fill="none"
-                  stroke="#ffe55c"
+                  fill='none'
+                  stroke='#ffe55c'
                   strokeWidth={1.3 / zoom}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
                   opacity={0.95}
                 />
                 <text
                   x={raceGuide.labelX}
                   y={raceGuide.labelY}
-                  fill="#ffe55c"
+                  fill='#ffe55c'
                   fontSize={2.4 / zoom}
                   fontWeight={700}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
+                  textAnchor='middle'
+                  dominantBaseline='middle'
                   transform={`rotate(${raceGuide.labelAngle} ${raceGuide.labelX} ${raceGuide.labelY})`}
-                  stroke="#000000"
+                  stroke='#000000'
                   strokeWidth={0.4 / zoom}
-                  paintOrder="stroke"
+                  paintOrder='stroke'
                 >
                   RACE
                 </text>
@@ -158,20 +158,20 @@ export const SVGCheckpointLayer = memo(function SVGCheckpointLayer({
             {!isStartFinish && (
               <path
                 d={d}
-                fill="none"
+                fill='none'
                 stroke={strokeColor}
                 strokeWidth={sectorStrokeWidth * 3}
-                strokeLinecap="round"
+                strokeLinecap='round'
                 opacity={0.1}
               />
             )}
             <path
               d={d}
-              fill="none"
+              fill='none'
               stroke={strokeColor}
               strokeWidth={isStartFinish ? sfStrokeWidth : sectorStrokeWidth}
               strokeDasharray={isStartFinish ? undefined : `${1.4 / zoom} ${0.9 / zoom}`}
-              strokeLinecap="round"
+              strokeLinecap='round'
               opacity={isStartFinish ? 1 : 0.9}
             />
             <rect
@@ -181,7 +181,7 @@ export const SVGCheckpointLayer = memo(function SVGCheckpointLayer({
               height={badgeH}
               rx={badgeR}
               ry={badgeR}
-              fill="#0a0a12"
+              fill='#0a0a12'
               stroke={strokeColor}
               strokeWidth={(isStartFinish ? 0.7 : 0.45) / zoom}
               opacity={0.94}
@@ -193,8 +193,8 @@ export const SVGCheckpointLayer = memo(function SVGCheckpointLayer({
               fill={strokeColor}
               fontSize={fontSize}
               fontWeight={isStartFinish ? 800 : 700}
-              textAnchor="middle"
-              dominantBaseline="middle"
+              textAnchor='middle'
+              dominantBaseline='middle'
               style={{ pointerEvents: 'none' }}
             >
               {labelText}

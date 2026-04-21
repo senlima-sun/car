@@ -1,10 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { useThree } from '@react-three/fiber'
-import {
-  setPointerLocked,
-  resetLookState,
-  handleLookMouseMove,
-} from '@/input/cameraLookState'
+import { setPointerLocked, resetLookState, handleLookMouseMove } from '@/input/cameraLookState'
 
 export function usePointerLock() {
   const gl = useThree(s => s.gl)

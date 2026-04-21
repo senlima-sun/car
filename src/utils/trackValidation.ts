@@ -67,9 +67,7 @@ export function findBarriersOnRoad(
   barriers: PlacedObject[],
   roads: PlacedObject[],
 ): BarrierOnRoadResult[] {
-  const candidateRoads = roads.filter(
-    r => r.type === 'road' && r.startPoint && r.endPoint,
-  )
+  const candidateRoads = roads.filter(r => r.type === 'road' && r.startPoint && r.endPoint)
   if (candidateRoads.length === 0) return []
 
   const halfWidth = TRACK_WIDTH / 2
@@ -79,12 +77,7 @@ export function findBarriersOnRoad(
     if (barrier.type !== 'barrier' && !isWallType(barrier.type)) continue
     if (!barrier.startPoint || !barrier.endPoint) continue
 
-    const samples = sampleCenterline(
-      barrier.startPoint,
-      barrier.endPoint,
-      barrier.controlPoint,
-      12,
-    )
+    const samples = sampleCenterline(barrier.startPoint, barrier.endPoint, barrier.controlPoint, 12)
 
     let onRoadCount = 0
     for (const sample of samples) {

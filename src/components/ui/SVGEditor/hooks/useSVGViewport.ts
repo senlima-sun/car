@@ -168,7 +168,16 @@ export function useSVGViewport(svgRef: RefObject<SVGSVGElement | null>) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.code === 'Space') spaceHeld.current = true
 
-      const wasd = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
+      const wasd = [
+        'KeyW',
+        'KeyA',
+        'KeyS',
+        'KeyD',
+        'ArrowUp',
+        'ArrowDown',
+        'ArrowLeft',
+        'ArrowRight',
+      ]
       if (wasd.includes(e.code)) {
         e.preventDefault()
         keysHeld.current.add(e.code)

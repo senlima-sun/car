@@ -335,8 +335,8 @@ export default function TrackMinimap() {
 
       const tipX = compassCx + Math.cos(northAngle) * (compassR - 3)
       const tipY = compassCy + Math.sin(northAngle) * (compassR - 3)
-      const leftAngle = northAngle + (2.6)
-      const rightAngle = northAngle - (2.6)
+      const leftAngle = northAngle + 2.6
+      const rightAngle = northAngle - 2.6
       const baseR = compassR * 0.5
       ctx.beginPath()
       ctx.moveTo(tipX, tipY)

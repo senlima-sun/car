@@ -24,8 +24,7 @@ export default function TelemetryAnalysis() {
   if (!analysisOpen) return null
 
   const selectedLap = selectedLapIndex !== null ? completedLaps[selectedLapIndex] : null
-  const comparisonLap =
-    comparisonLapIndex !== null ? completedLaps[comparisonLapIndex] : null
+  const comparisonLap = comparisonLapIndex !== null ? completedLaps[comparisonLapIndex] : null
 
   return (
     <div className='absolute inset-0 bg-black/90 z-[100] flex flex-col pointer-events-auto'>

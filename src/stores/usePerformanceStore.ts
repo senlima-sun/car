@@ -33,7 +33,7 @@ interface PerformanceActions {
   sampleFrame: (delta: number) => void
 }
 
-export const usePerformanceStore = create<PerformanceState & PerformanceActions>((set) => {
+export const usePerformanceStore = create<PerformanceState & PerformanceActions>(set => {
   const frameTimes: number[] = []
   let frameIdx = 0
   let filled = false

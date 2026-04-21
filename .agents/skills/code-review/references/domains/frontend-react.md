@@ -36,16 +36,16 @@ useEffect(() => {
 
   fetch(url, { signal: controller.signal })
     .then(setData)
-    .catch((e) => {
-      if (e.name !== "AbortError") throw e
+    .catch(e => {
+      if (e.name !== 'AbortError') throw e
     })
 
   const handler = () => setSize(window.innerWidth)
-  window.addEventListener("resize", handler)
+  window.addEventListener('resize', handler)
 
   return () => {
     controller.abort()
-    window.removeEventListener("resize", handler)
+    window.removeEventListener('resize', handler)
   }
 }, [url])
 ```

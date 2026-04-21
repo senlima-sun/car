@@ -9,7 +9,12 @@ describe('RulesEngine', () => {
   })
 
   test('third track_limits violation invalidates the lap', () => {
-    const base = { kind: 'track_limits' as const, at: 0, lapNumber: 1, severity: 'warning' as const }
+    const base = {
+      kind: 'track_limits' as const,
+      at: 0,
+      lapNumber: 1,
+      severity: 'warning' as const,
+    }
     engine.observe({ ...base, id: 'a' })
     engine.observe({ ...base, id: 'b' })
     const third = engine.observe({ ...base, id: 'c' })
@@ -49,10 +54,7 @@ describe('RulesEngine', () => {
   })
 
   test('observeSessionEvent ignores unrelated events', () => {
-    const result = engine.observeSessionEvent(
-      { id: 'sess', type: 'session_started', at: 0 },
-      null,
-    )
+    const result = engine.observeSessionEvent({ id: 'sess', type: 'session_started', at: 0 }, null)
     expect(result).toBeNull()
   })
 })

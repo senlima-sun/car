@@ -125,10 +125,7 @@ export function useCarPhysicsStep({
 
     const wdf = syncResult.world_downforce
     if (wdf && (wdf[0] !== 0 || wdf[1] !== 0 || wdf[2] !== 0)) {
-      chassis.applyImpulse(
-        { x: wdf[0] * dt, y: wdf[1] * dt, z: wdf[2] * dt },
-        true,
-      )
+      chassis.applyImpulse({ x: wdf[0] * dt, y: wdf[1] * dt, z: wdf[2] * dt }, true)
     }
 
     suspensionOutputRef.current = suspensionStep(dt)

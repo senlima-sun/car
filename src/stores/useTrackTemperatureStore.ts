@@ -73,7 +73,7 @@ export function computeTrackBounds(placedObjects: PlacedObject[]): WorldBounds {
   }
 }
 
-export const useTrackTemperatureStore = create<TrackTemperatureState>((set) => ({
+export const useTrackTemperatureStore = create<TrackTemperatureState>(set => ({
   dataTexture: null,
   worldBounds: { minX: -250, maxX: 250, minZ: -250, maxZ: 250 },
   gridSize: GRID_SIZE,

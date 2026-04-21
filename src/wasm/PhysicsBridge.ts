@@ -1097,7 +1097,12 @@ export function updateRubberFrame(
 ): RubberFrameResult {
   const result = new Float32Array(
     getPhysicsEngine().update_rubber_frame(
-      carX, carZ, speedMs, delta, wheelPositions, wheelIntensities,
+      carX,
+      carZ,
+      speedMs,
+      delta,
+      wheelPositions,
+      wheelIntensities,
     ),
   )
   return { compoundMult: result[0], wetness: result[1] }

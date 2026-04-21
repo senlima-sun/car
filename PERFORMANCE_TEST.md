@@ -15,11 +15,11 @@ console.log(metrics)
 
 Three canonical scenarios:
 
-| id                  | label              | duration | description                                                         |
-| ------------------- | ------------------ | -------- | ------------------------------------------------------------------- |
-| `static_car`        | Static Car         | 5s       | Idle at pit exit. Baseline for render churn.                        |
-| `single_car_hotlap` | Single-Car Hot Lap | 20s      | Full throttle around a reference track.                             |
-| `twenty_car_grid`   | 20-Car Grid        | 20s      | AI + player on reference track. Becomes meaningful after phase 4.   |
+| id                  | label              | duration | description                                                       |
+| ------------------- | ------------------ | -------- | ----------------------------------------------------------------- |
+| `static_car`        | Static Car         | 5s       | Idle at pit exit. Baseline for render churn.                      |
+| `single_car_hotlap` | Single-Car Hot Lap | 20s      | Full throttle around a reference track.                           |
+| `twenty_car_grid`   | 20-Car Grid        | 20s      | AI + player on reference track. Becomes meaningful after phase 4. |
 
 Metrics blob fields: `averageFrameMs`, `averageFps`, `onePercentLowFps`,
 `pointOnePercentLowFps`, `frameVarianceMs2`, `wasmCallsPerFrame`,
@@ -45,9 +45,9 @@ revision log.
 
 ### Revision log
 
-| date       | change                                        | notes                 |
-| ---------- | --------------------------------------------- | --------------------- |
-| 2026-04-19 | scenario harness + baseline template landed   | phase 1.1–1.2 of perf |
+| date       | change                                      | notes                 |
+| ---------- | ------------------------------------------- | --------------------- |
+| 2026-04-19 | scenario harness + baseline template landed | phase 1.1–1.2 of perf |
 
 ## Test Environment
 

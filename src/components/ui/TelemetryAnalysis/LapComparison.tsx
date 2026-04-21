@@ -36,7 +36,8 @@ export default function LapComparison({ baseLap, comparisonLap, width }: LapComp
         <span className='text-blue-400'>Base: {formatTime(baseLap.lapTime)}</span>
         <span className='text-orange-400'>Compare: {formatTime(comparisonLap.lapTime)}</span>
         <span className={timeDiff < 0 ? 'text-green-400' : 'text-red-400'}>
-          {sign}{(timeDiff / 1000).toFixed(3)}s
+          {sign}
+          {(timeDiff / 1000).toFixed(3)}s
         </span>
       </div>
       <DeltaChart delta={delta} width={width} height={120} />

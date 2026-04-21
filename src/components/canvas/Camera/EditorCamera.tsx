@@ -101,8 +101,12 @@ export default function EditorCamera() {
 
     if (points.length === 0) return
 
-    let cx = 0, cz = 0
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
+    let cx = 0,
+      cz = 0
+    let minX = Infinity,
+      maxX = -Infinity,
+      minZ = Infinity,
+      maxZ = -Infinity
     for (const p of points) {
       cx += p[0]
       cz += p[2]

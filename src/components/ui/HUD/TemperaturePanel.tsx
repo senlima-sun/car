@@ -27,7 +27,9 @@ function TireCell({
 
   return (
     <div className='flex flex-col items-center gap-1'>
-      <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>{label}</span>
+      <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+        {label}
+      </span>
       <div
         className='flex h-10 w-5 flex-col overflow-hidden border'
         style={{
@@ -36,14 +38,8 @@ function TireCell({
           borderRadius: 2,
         }}
       >
-        <div
-          className='flex-1 transition-colors'
-          style={{ background: celsiusToColor(outerC) }}
-        />
-        <div
-          className='flex-1 transition-colors'
-          style={{ background: celsiusToColor(innerC) }}
-        />
+        <div className='flex-1 transition-colors' style={{ background: celsiusToColor(outerC) }} />
+        <div className='flex-1 transition-colors' style={{ background: celsiusToColor(innerC) }} />
       </div>
       <span className='font-mono text-[9px] font-semibold tabular-nums text-white/85'>{tempC}</span>
     </div>
@@ -81,7 +77,9 @@ export default function TemperaturePanel() {
 
       <div className='px-3 py-2'>
         <div className='mb-1 flex items-baseline justify-between'>
-          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Engine</span>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+            Engine
+          </span>
           {powerLoss > 0 ? (
             <span className='font-mono text-[9px] font-bold tabular-nums text-[#ef4444]'>
               −{powerLoss}% PWR
@@ -93,7 +91,10 @@ export default function TemperaturePanel() {
         <div className='h-1 overflow-hidden bg-white/10'>
           <div
             className='h-full transition-[width,background-color] duration-200'
-            style={{ width: `${Math.min(100, engine.temperature * 100)}%`, background: engineColor }}
+            style={{
+              width: `${Math.min(100, engine.temperature * 100)}%`,
+              background: engineColor,
+            }}
           />
         </div>
 

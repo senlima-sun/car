@@ -14,10 +14,12 @@ session: <session-identifier>
 <Brief background — why this work exists, key constraints, related systems>
 
 **Scope**:
+
 - In: <what's included>
 - Out: <what's explicitly excluded>
 
 **Dependencies**:
+
 - <External systems, packages, other plans this depends on>
 
 ## Phases
@@ -59,10 +61,10 @@ session: <session-identifier>
 
 ## Unknowns
 
-| ID  | Category      | Impact | Description          | Status   | Resolution |
-| --- | ------------- | ------ | -------------------- | -------- | ---------- |
-| U1  | clarification | medium | <what's unclear>     | open     |            |
-| U2  | risk          | high   | <potential issue>    | resolved | <how>      |
+| ID  | Category      | Impact | Description       | Status   | Resolution |
+| --- | ------------- | ------ | ----------------- | -------- | ---------- |
+| U1  | clarification | medium | <what's unclear>  | open     |            |
+| U2  | risk          | high   | <potential issue> | resolved | <how>      |
 
 ## Decisions
 

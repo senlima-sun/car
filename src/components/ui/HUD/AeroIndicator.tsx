@@ -46,7 +46,9 @@ export default function AeroIndicator() {
 
       <div className='mt-1 flex items-stretch gap-2 pl-1'>
         <div className='flex flex-col'>
-          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/40'>Drag</span>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/40'>
+            Drag
+          </span>
           <span
             className='font-mono text-[11px] font-semibold tabular-nums'
             style={{ color: dragMultiplier > 1 ? '#f59e0b' : '#22c55e' }}

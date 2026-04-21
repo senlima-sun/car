@@ -71,8 +71,7 @@ export default function GearIndicator() {
             className='h-full transition-[width,background-color]'
             style={{
               width: `${rpmPercent * 100}%`,
-              background:
-                redline ? '#ef4444' : rpmPercent > 0.8 ? '#f97316' : '#22c55e',
+              background: redline ? '#ef4444' : rpmPercent > 0.8 ? '#f97316' : '#22c55e',
             }}
           />
         </div>

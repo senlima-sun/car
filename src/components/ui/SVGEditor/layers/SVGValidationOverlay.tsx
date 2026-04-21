@@ -41,10 +41,16 @@ export const SVGValidationOverlay = memo(function SVGValidationOverlay({
         const checkDist = (a: [number, number, number], b: [number, number, number]) =>
           Math.sqrt((a[0] - b[0]) ** 2 + (a[2] - b[2]) ** 2) < threshold
 
-        if (checkDist(road.startPoint, other.startPoint) || checkDist(road.startPoint, other.endPoint)) {
+        if (
+          checkDist(road.startPoint, other.startPoint) ||
+          checkDist(road.startPoint, other.endPoint)
+        ) {
           startConnected = true
         }
-        if (checkDist(road.endPoint, other.startPoint) || checkDist(road.endPoint, other.endPoint)) {
+        if (
+          checkDist(road.endPoint, other.startPoint) ||
+          checkDist(road.endPoint, other.endPoint)
+        ) {
           endConnected = true
         }
       }
@@ -86,7 +92,7 @@ export const SVGValidationOverlay = memo(function SVGValidationOverlay({
               cx={mx}
               cy={my}
               r={r}
-              fill="none"
+              fill='none'
               stroke={color}
               strokeWidth={strokeW}
               opacity={0.7}
@@ -114,7 +120,7 @@ export const SVGValidationOverlay = memo(function SVGValidationOverlay({
               y={my + r + fontSize}
               fill={color}
               fontSize={fontSize}
-              textAnchor="middle"
+              textAnchor='middle'
               opacity={0.7}
             >
               {marker.message}

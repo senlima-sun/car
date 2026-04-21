@@ -51,7 +51,16 @@ function createPool(
     maxLifetimes[i] = lifeMin + Math.random() * (lifeMax - lifeMin)
   }
 
-  return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active, activeCount: 0 }
+  return {
+    positions,
+    velocities,
+    sizes,
+    opacities,
+    lifetimes,
+    maxLifetimes,
+    active,
+    activeCount: 0,
+  }
 }
 
 interface TireSmokeProps {

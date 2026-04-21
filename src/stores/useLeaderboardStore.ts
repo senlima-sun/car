@@ -34,8 +34,7 @@ export const useLeaderboardStore = create<LeaderboardState>()(
         set({ entries: [...get().entries, full] })
       },
 
-      clearTrack: trackId =>
-        set({ entries: get().entries.filter(e => e.trackId !== trackId) }),
+      clearTrack: trackId => set({ entries: get().entries.filter(e => e.trackId !== trackId) }),
 
       clearAll: () => set({ entries: [] }),
 

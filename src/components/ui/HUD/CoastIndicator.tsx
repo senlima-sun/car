@@ -52,7 +52,9 @@ export default function CoastIndicator() {
             {statusGlyph}
           </span>
           <div className='flex flex-col'>
-            <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Auto</span>
+            <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+              Auto
+            </span>
             <span
               className='font-mono text-[12px] font-semibold tabular-nums'
               style={{ color: accent }}

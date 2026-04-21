@@ -120,12 +120,18 @@ function CarPaintSection() {
               if (selectedPart === 'all') {
                 store().applyPreset(preset)
               } else {
-                store().setPartColor(selectedPart, preset.colors[selectedPart] ?? preset.colors.body ?? '#0a1128')
+                store().setPartColor(
+                  selectedPart,
+                  preset.colors[selectedPart] ?? preset.colors.body ?? '#0a1128',
+                )
               }
             }}
             style={{
               ...styles.swatch,
-              backgroundColor: selectedPart === 'all' ? preset.colors.body : (preset.colors[selectedPart] ?? preset.colors.body ?? '#0a1128'),
+              backgroundColor:
+                selectedPart === 'all'
+                  ? preset.colors.body
+                  : (preset.colors[selectedPart] ?? preset.colors.body ?? '#0a1128'),
             }}
           />
         ))}

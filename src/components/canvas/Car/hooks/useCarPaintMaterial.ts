@@ -43,62 +43,59 @@ export function useCarPaintMaterial() {
   const uniformsRef = useRef(createCarPaintUniforms())
   const partMaterialsRef = useRef<Map<CarPartId, THREE.MeshStandardMaterial[]>>(new Map())
 
-  const applyCarPaint = useCallback(
-    (material: THREE.MeshStandardMaterial, meshName: string) => {
-      const partId = getPartIdForMesh(meshName)
+  const applyCarPaint = useCallback((material: THREE.MeshStandardMaterial, meshName: string) => {
+    const partId = getPartIdForMesh(meshName)
 
-      material.roughness = 0.35
-      material.metalness = 0.4
-      material.envMapIntensity = 1.2
+    material.roughness = 0.35
+    material.metalness = 0.4
+    material.envMapIntensity = 1.2
 
-      if (partId) {
-        material.color.set(paintState.partColors[partId] ?? '#0a1128')
-        const list = partMaterialsRef.current.get(partId) ?? []
-        list.push(material)
-        partMaterialsRef.current.set(partId, list)
-      }
+    if (partId) {
+      material.color.set(paintState.partColors[partId] ?? '#0a1128')
+      const list = partMaterialsRef.current.get(partId) ?? []
+      list.push(material)
+      partMaterialsRef.current.set(partId, list)
+    }
 
-      material.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
-        const u = uniformsRef.current
-        shader.uniforms.uRainIntensity = u.uRainIntensity
-        shader.uniforms.uFlakeScale = u.uFlakeScale
-        shader.uniforms.uFlakeIntensity = u.uFlakeIntensity
-        shader.uniforms.uClearcoatStrength = u.uClearcoatStrength
-        shader.uniforms.uColorDepthFactor = u.uColorDepthFactor
-        shader.uniforms.uCameraDistance = u.uCameraDistance
+    material.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
+      const u = uniformsRef.current
+      shader.uniforms.uRainIntensity = u.uRainIntensity
+      shader.uniforms.uFlakeScale = u.uFlakeScale
+      shader.uniforms.uFlakeIntensity = u.uFlakeIntensity
+      shader.uniforms.uClearcoatStrength = u.uClearcoatStrength
+      shader.uniforms.uColorDepthFactor = u.uColorDepthFactor
+      shader.uniforms.uCameraDistance = u.uCameraDistance
 
-        shader.vertexShader = shader.vertexShader.replace(
-          '#include <common>',
-          `#include <common>\n${CAR_PAINT_VERTEX_INJECT}`,
-        )
-        shader.vertexShader = shader.vertexShader.replace(
-          '#include <worldpos_vertex>',
-          `#include <worldpos_vertex>\n${CAR_PAINT_VERTEX_WORLDPOS_INJECT}`,
-        )
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <common>',
+        `#include <common>\n${CAR_PAINT_VERTEX_INJECT}`,
+      )
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <worldpos_vertex>',
+        `#include <worldpos_vertex>\n${CAR_PAINT_VERTEX_WORLDPOS_INJECT}`,
+      )
 
-        shader.fragmentShader = shader.fragmentShader.replace(
-          '#include <common>',
-          `#include <common>\n${CAR_PAINT_FRAGMENT_INJECT}`,
-        )
-        shader.fragmentShader = shader.fragmentShader.replace(
-          '#include <color_fragment>',
-          `#include <color_fragment>\n${CAR_PAINT_COLOR_INJECT}`,
-        )
-        shader.fragmentShader = shader.fragmentShader.replace(
-          '#include <roughnessmap_fragment>',
-          `#include <roughnessmap_fragment>\n${CAR_PAINT_ROUGHNESS_INJECT}`,
-        )
-        shader.fragmentShader = shader.fragmentShader.replace(
-          '#include <metalnessmap_fragment>',
-          `#include <metalnessmap_fragment>\n${CAR_PAINT_METALNESS_INJECT}`,
-        )
-      }
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <common>',
+        `#include <common>\n${CAR_PAINT_FRAGMENT_INJECT}`,
+      )
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>\n${CAR_PAINT_COLOR_INJECT}`,
+      )
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>\n${CAR_PAINT_ROUGHNESS_INJECT}`,
+      )
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <metalnessmap_fragment>',
+        `#include <metalnessmap_fragment>\n${CAR_PAINT_METALNESS_INJECT}`,
+      )
+    }
 
-      material.customProgramCacheKey = () => 'car-paint-pbr'
-      material.needsUpdate = true
-    },
-    [],
-  )
+    material.customProgramCacheKey = () => 'car-paint-pbr'
+    material.needsUpdate = true
+  }, [])
 
   const updateUniforms = useCallback((cameraDistance: number) => {
     const u = uniformsRef.current

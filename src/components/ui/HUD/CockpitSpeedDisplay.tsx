@@ -12,7 +12,9 @@ export default function CockpitSpeedDisplay() {
   return (
     <div
       className='absolute bottom-8 left-1/2 -translate-x-1/2 border border-white/10 bg-gradient-to-b from-black/80 to-black/60 px-6 py-3 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.5)] pointer-events-none'
-      style={{ clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)' }}
+      style={{
+        clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
+      }}
     >
       <div className='flex items-baseline gap-1.5'>
         <span
@@ -21,7 +23,9 @@ export default function CockpitSpeedDisplay() {
         >
           {displaySpeed}
         </span>
-        <span className='text-[10px] font-bold uppercase tracking-[0.32em] text-white/55'>km/h</span>
+        <span className='text-[10px] font-bold uppercase tracking-[0.32em] text-white/55'>
+          km/h
+        </span>
       </div>
     </div>
   )

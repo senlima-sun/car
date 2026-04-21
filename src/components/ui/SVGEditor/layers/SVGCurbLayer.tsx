@@ -8,10 +8,7 @@ interface SVGCurbLayerProps {
   roadsById: Map<string, PlacedObject>
 }
 
-export const SVGCurbLayer = memo(function SVGCurbLayer({
-  curbs,
-  roadsById,
-}: SVGCurbLayerProps) {
+export const SVGCurbLayer = memo(function SVGCurbLayer({ curbs, roadsById }: SVGCurbLayerProps) {
   const style = getObjectStyle('curb')
 
   return (
@@ -28,11 +25,11 @@ export const SVGCurbLayer = memo(function SVGCurbLayer({
             key={curb.id}
             data-object-id={curb.id}
             d={d}
-            fill="none"
+            fill='none'
             stroke={style.stroke}
             strokeWidth={style.strokeWidth}
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            strokeLinecap='round'
+            strokeLinejoin='round'
           />
         )
       })}

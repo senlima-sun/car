@@ -101,27 +101,24 @@ export default function PlacedObjectsRenderer({
     [selectObject, toggleRoadSelection, toggleMultiSelect],
   )
 
-  const handlePointerOver = useCallback(
-    (e: ThreeEvent<PointerEvent>) => {
-      let target = e.object as THREE.Object3D | null
-      let objectType: string | undefined
-      while (target) {
-        if (target.userData.trackObjectId) {
-          objectType = target.userData.trackObjectType
-          break
-        }
-        target = target.parent
+  const handlePointerOver = useCallback((e: ThreeEvent<PointerEvent>) => {
+    let target = e.object as THREE.Object3D | null
+    let objectType: string | undefined
+    while (target) {
+      if (target.userData.trackObjectId) {
+        objectType = target.userData.trackObjectType
+        break
       }
-      if (!objectType) return
+      target = target.parent
+    }
+    if (!objectType) return
 
-      const { deleteMode: dm, autoCurbMode: acm } = stateRef.current
-      if (dm || (acm && objectType === 'road') || objectType === 'checkpoint') {
-        e.stopPropagation()
-        document.body.style.cursor = 'pointer'
-      }
-    },
-    [],
-  )
+    const { deleteMode: dm, autoCurbMode: acm } = stateRef.current
+    if (dm || (acm && objectType === 'road') || objectType === 'checkpoint') {
+      e.stopPropagation()
+      document.body.style.cursor = 'pointer'
+    }
+  }, [])
 
   const handlePointerOut = useCallback(() => {
     document.body.style.cursor = 'auto'

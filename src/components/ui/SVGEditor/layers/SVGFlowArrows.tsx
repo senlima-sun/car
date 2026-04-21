@@ -15,17 +15,17 @@ export const SVGFlowArrows = memo(function SVGFlowArrows({ roads, zoom }: SVGFlo
     <g>
       <defs>
         <marker
-          id="flow-arrow"
+          id='flow-arrow'
           markerWidth={arrowSize * 3}
           markerHeight={arrowSize * 3}
           refX={arrowSize * 1.5}
           refY={arrowSize * 1.5}
-          orient="auto"
-          markerUnits="userSpaceOnUse"
+          orient='auto'
+          markerUnits='userSpaceOnUse'
         >
           <polygon
             points={`0,0 ${arrowSize * 3},${arrowSize * 1.5} 0,${arrowSize * 3}`}
-            fill="rgba(255,255,255,0.3)"
+            fill='rgba(255,255,255,0.3)'
           />
         </marker>
       </defs>
@@ -45,9 +45,9 @@ export const SVGFlowArrows = memo(function SVGFlowArrows({ roads, zoom }: SVGFlo
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke="rgba(255,255,255,0.3)"
+            stroke='rgba(255,255,255,0.3)'
             strokeWidth={0.5 / zoom}
-            markerEnd="url(#flow-arrow)"
+            markerEnd='url(#flow-arrow)'
             style={{ pointerEvents: 'none' }}
           />
         )

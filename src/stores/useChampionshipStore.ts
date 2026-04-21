@@ -16,7 +16,10 @@ interface ChampionshipStore {
     calendar: Array<{ trackId: string; lapLimit: number }>,
     drivers: Array<{ driverName: string; teamId: string }>,
   ) => void
-  recordResult: (roundIndex: number, results: Array<{ driverName: string; teamId: string; position: number }>) => void
+  recordResult: (
+    roundIndex: number,
+    results: Array<{ driverName: string; teamId: string; position: number }>,
+  ) => void
   advanceRound: () => void
   clear: () => void
 }
@@ -122,10 +125,7 @@ export const useChampionshipStore = create<ChampionshipStore>()(
         set({
           championship: {
             ...state,
-            currentRoundIndex: Math.min(
-              state.currentRoundIndex + 1,
-              state.calendar.length - 1,
-            ),
+            currentRoundIndex: Math.min(state.currentRoundIndex + 1, state.calendar.length - 1),
           },
         })
       },

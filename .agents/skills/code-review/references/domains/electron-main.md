@@ -15,7 +15,7 @@
 // GOOD: Secure defaults
 new BrowserWindow({
   webPreferences: {
-    preload: path.join(__dirname, "preload.js"),
+    preload: path.join(__dirname, 'preload.js'),
     contextIsolation: true,
     sandbox: true,
     nodeIntegration: false,
@@ -41,19 +41,19 @@ new BrowserWindow({
 
 ```typescript
 // GOOD: Validate sender and arguments
-ipcMain.handle("read-config", async (event, key: unknown) => {
+ipcMain.handle('read-config', async (event, key: unknown) => {
   const url = new URL(event.senderFrame.url)
-  if (url.protocol !== "file:" && url.origin !== TRUSTED_ORIGIN) {
-    throw new Error("Unauthorized")
+  if (url.protocol !== 'file:' && url.origin !== TRUSTED_ORIGIN) {
+    throw new Error('Unauthorized')
   }
-  if (typeof key !== "string" || !ALLOWED_KEYS.includes(key)) {
-    throw new Error("Invalid key")
+  if (typeof key !== 'string' || !ALLOWED_KEYS.includes(key)) {
+    throw new Error('Invalid key')
   }
   return config.get(key)
 })
 
 // BAD: No validation
-ipcMain.handle("read-file", async (_, path) => {
+ipcMain.handle('read-file', async (_, path) => {
   return fs.readFile(path) // Arbitrary file read!
 })
 ```
@@ -68,11 +68,11 @@ ipcMain.handle("read-file", async (_, path) => {
 // GOOD: Validate URL
 function openExternal(url: string) {
   const parsed = new URL(url)
-  if (!["https:", "mailto:"].includes(parsed.protocol)) {
-    throw new Error("Invalid protocol")
+  if (!['https:', 'mailto:'].includes(parsed.protocol)) {
+    throw new Error('Invalid protocol')
   }
   if (!ALLOWED_HOSTS.includes(parsed.host)) {
-    throw new Error("Untrusted host")
+    throw new Error('Untrusted host')
   }
   shell.openExternal(url)
 }

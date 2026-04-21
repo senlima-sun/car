@@ -92,8 +92,13 @@ export default function RacePanel() {
   const rearBias = 100 - frontBias
   const eb = engineBrakeMeta(engineBraking)
 
-  const ersFlow = ersIsDeploying && ersIsHarvesting ? '⇅' : ersIsDeploying ? '▲' : ersIsHarvesting ? '▼' : '·'
-  const ersFlowColor = ersIsDeploying ? '#22c55e' : ersIsHarvesting ? '#60a5fa' : 'rgba(255,255,255,0.35)'
+  const ersFlow =
+    ersIsDeploying && ersIsHarvesting ? '⇅' : ersIsDeploying ? '▲' : ersIsHarvesting ? '▼' : '·'
+  const ersFlowColor = ersIsDeploying
+    ? '#22c55e'
+    : ersIsHarvesting
+      ? '#60a5fa'
+      : 'rgba(255,255,255,0.35)'
 
   const gearColor = gear === -1 ? '#ff9f43' : rpmPercent > 0.95 ? '#ff2929' : '#ffffff'
 
@@ -116,15 +121,17 @@ export default function RacePanel() {
       <div
         className='mt-1 flex items-stretch gap-0 border border-white/10 bg-gradient-to-b from-black/85 via-black/75 to-black/85 backdrop-blur-md shadow-[0_18px_60px_rgba(0,0,0,0.55)]'
         style={{
-          clipPath:
-            'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px)',
+          clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px)',
         }}
       >
         {/* LEFT : Aero + ERS */}
         <div className='flex items-center gap-4 px-4 py-2.5'>
           <Cell label='Aero'>
             <div className='flex items-baseline gap-1.5'>
-              <span className='font-mono text-base font-semibold tabular-nums' style={{ color: aero.color }}>
+              <span
+                className='font-mono text-base font-semibold tabular-nums'
+                style={{ color: aero.color }}
+              >
                 {aero.label}
               </span>
             </div>
@@ -184,7 +191,8 @@ export default function RacePanel() {
           <div
             className='relative flex h-16 w-14 items-center justify-center border border-white/15 bg-black/60'
             style={{
-              clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
+              clipPath:
+                'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
               background:
                 gear === -1
                   ? 'linear-gradient(to bottom, rgba(255,159,67,0.14), rgba(0,0,0,0.6))'
@@ -195,7 +203,10 @@ export default function RacePanel() {
               className='font-mono text-[42px] font-bold leading-none tabular-nums'
               style={{
                 color: gearColor,
-                textShadow: rpmPercent > 0.9 ? '0 0 12px rgba(255,41,41,0.7)' : '0 0 10px rgba(255,255,255,0.12)',
+                textShadow:
+                  rpmPercent > 0.9
+                    ? '0 0 12px rgba(255,41,41,0.7)'
+                    : '0 0 10px rgba(255,255,255,0.12)',
               }}
             >
               {displayGear}
@@ -246,7 +257,9 @@ export default function RacePanel() {
                   >
                     {Math.round(tireLife)}
                   </span>
-                  <span className='text-[8px] uppercase tracking-[0.28em] text-white/35'>%life</span>
+                  <span className='text-[8px] uppercase tracking-[0.28em] text-white/35'>
+                    %life
+                  </span>
                 </div>
                 <div className='h-1 w-[56px] overflow-hidden rounded-[1px] bg-white/10'>
                   <div
@@ -284,7 +297,9 @@ export default function RacePanel() {
 function Cell({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className='flex flex-col items-start gap-1'>
-      <span className='text-[8px] font-semibold uppercase tracking-[0.32em] text-white/40'>{label}</span>
+      <span className='text-[8px] font-semibold uppercase tracking-[0.32em] text-white/40'>
+        {label}
+      </span>
       {children}
     </div>
   )

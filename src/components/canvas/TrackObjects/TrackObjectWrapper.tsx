@@ -82,12 +82,7 @@ function TrackObjectWrapper({
       )
       break
     case 'corner':
-      component = (
-        <CornerMarker
-          {...commonProps}
-          cornerNumber={object.cornerNumber ?? 1}
-        />
-      )
+      component = <CornerMarker {...commonProps} cornerNumber={object.cornerNumber ?? 1} />
       break
     case 'barrier':
       if (isCurveMode(object.trackMode) && object.controlPoint) {

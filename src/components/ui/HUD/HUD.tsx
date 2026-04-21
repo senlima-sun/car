@@ -24,7 +24,11 @@ import {
   isSessionShellStatus,
   useGameStore,
 } from '@/stores/useGameStore'
-import { isRunningSessionPhase, isSetupSessionPhase, useSessionStore } from '@/stores/useSessionStore'
+import {
+  isRunningSessionPhase,
+  isSetupSessionPhase,
+  useSessionStore,
+} from '@/stores/useSessionStore'
 import { usePitStore } from '@/stores/usePitStore'
 import { TrackEditorDock } from '../TrackEditorDock'
 import { TrackSelector } from '../TrackSelector'
@@ -97,7 +101,8 @@ export default function HUD() {
               background: isTestingMode
                 ? 'linear-gradient(to bottom, rgba(60,10,10,0.82), rgba(10,10,10,0.9))'
                 : 'linear-gradient(to bottom, rgba(10,50,20,0.82), rgba(10,10,10,0.9))',
-              clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px)',
+              clipPath:
+                'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px)',
             }}
           >
             <span
@@ -172,7 +177,8 @@ export default function HUD() {
               <div
                 className='border border-[#ffcc00]/60 bg-black/75 px-6 py-2.5 backdrop-blur-md shadow-[0_14px_40px_rgba(0,0,0,0.5)]'
                 style={{
-                  clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
+                  clipPath:
+                    'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
                 }}
               >
                 <span className='font-sans text-[12px] font-bold uppercase tracking-[0.32em] text-[#ffcc00]'>

@@ -20,29 +20,19 @@ export const SVGGrid = memo(function SVGGrid({ zoom }: SVGGridProps) {
   return (
     <g>
       <defs>
-        <pattern
-          id="grid-minor"
-          width={minor}
-          height={minor}
-          patternUnits="userSpaceOnUse"
-        >
+        <pattern id='grid-minor' width={minor} height={minor} patternUnits='userSpaceOnUse'>
           <path
             d={`M ${minor} 0 L 0 0 0 ${minor}`}
-            fill="none"
+            fill='none'
             stroke={GRID_COLOR_MINOR}
             strokeWidth={0.5 / zoom}
           />
         </pattern>
-        <pattern
-          id="grid-major"
-          width={major}
-          height={major}
-          patternUnits="userSpaceOnUse"
-        >
-          <rect width={major} height={major} fill="url(#grid-minor)" />
+        <pattern id='grid-major' width={major} height={major} patternUnits='userSpaceOnUse'>
+          <rect width={major} height={major} fill='url(#grid-minor)' />
           <path
             d={`M ${major} 0 L 0 0 0 ${major}`}
-            fill="none"
+            fill='none'
             stroke={GRID_COLOR_MAJOR}
             strokeWidth={1 / zoom}
           />
@@ -54,7 +44,7 @@ export const SVGGrid = memo(function SVGGrid({ zoom }: SVGGridProps) {
         y={-extent}
         width={extent * 2}
         height={extent * 2}
-        fill="url(#grid-major)"
+        fill='url(#grid-major)'
       />
 
       <line

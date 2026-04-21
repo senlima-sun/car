@@ -79,7 +79,9 @@ export default function SessionSetup() {
             </span>
             <select
               value={config.trackId ?? ''}
-              onChange={event => configureSession({ kind: config.kind, trackId: event.target.value })}
+              onChange={event =>
+                configureSession({ kind: config.kind, trackId: event.target.value })
+              }
               className='w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-red-300/40'
             >
               {PRESET_TRACKS.map(track => (

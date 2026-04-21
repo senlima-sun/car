@@ -99,15 +99,23 @@ export default function CurvedRoadSegment({
       const startTangent = new Vector3().subVectors(control, start).normalize()
       const startPerp = new Vector3(-startTangent.z, 0, startTangent.x)
       const naturalLeftAtStart = new Vector3().copy(points[0]).addScaledVector(startPerp, halfWidth)
-      const naturalRightAtStart = new Vector3().copy(points[0]).addScaledVector(startPerp, -halfWidth)
+      const naturalRightAtStart = new Vector3()
+        .copy(points[0])
+        .addScaledVector(startPerp, -halfWidth)
       startLeftOffset = new Vector3(startLeftEdge![0], 0, startLeftEdge![2]).sub(naturalLeftAtStart)
-      startRightOffset = new Vector3(startRightEdge![0], 0, startRightEdge![2]).sub(naturalRightAtStart)
+      startRightOffset = new Vector3(startRightEdge![0], 0, startRightEdge![2]).sub(
+        naturalRightAtStart,
+      )
     }
     if (hasEndSnap) {
       const endTangent = new Vector3().subVectors(end, control).normalize()
       const endPerp = new Vector3(-endTangent.z, 0, endTangent.x)
-      const naturalLeftAtEnd = new Vector3().copy(points[points.length - 1]).addScaledVector(endPerp, halfWidth)
-      const naturalRightAtEnd = new Vector3().copy(points[points.length - 1]).addScaledVector(endPerp, -halfWidth)
+      const naturalLeftAtEnd = new Vector3()
+        .copy(points[points.length - 1])
+        .addScaledVector(endPerp, halfWidth)
+      const naturalRightAtEnd = new Vector3()
+        .copy(points[points.length - 1])
+        .addScaledVector(endPerp, -halfWidth)
       endLeftOffset = new Vector3(endLeftEdge![0], 0, endLeftEdge![2]).sub(naturalLeftAtEnd)
       endRightOffset = new Vector3(endRightEdge![0], 0, endRightEdge![2]).sub(naturalRightAtEnd)
     }
@@ -188,11 +196,7 @@ export default function CurvedRoadSegment({
       const p = points[i]
       const t = i / (points.length - 1)
 
-      const { leftPoint, rightPoint, leftY, rightY, perpendicular } = computeEdgePoints(
-        i,
-        p,
-        t,
-      )
+      const { leftPoint, rightPoint, leftY, rightY, perpendicular } = computeEdgePoints(i, p, t)
 
       for (let k = 0; k <= CROSS_SEGS; k++) {
         const tW = k / CROSS_SEGS

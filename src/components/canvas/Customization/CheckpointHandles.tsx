@@ -146,11 +146,7 @@ export default function CheckpointHandles() {
 
   const start = selectedCheckpoint.startPoint
   const end = selectedCheckpoint.endPoint
-  const center: [number, number, number] = [
-    (start[0] + end[0]) / 2,
-    0.3,
-    (start[2] + end[2]) / 2,
-  ]
+  const center: [number, number, number] = [(start[0] + end[0]) / 2, 0.3, (start[2] + end[2]) / 2]
 
   const sectorLabel =
     selectedCheckpoint.checkpointType === 'sector'

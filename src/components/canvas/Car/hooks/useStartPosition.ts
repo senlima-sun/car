@@ -6,9 +6,10 @@ export interface StartTransform {
   startRotation: [number, number, number]
 }
 
-function perpendicularDirection(
-  obj: { startPoint: [number, number, number]; endPoint: [number, number, number] },
-): [number, number] | null {
+function perpendicularDirection(obj: {
+  startPoint: [number, number, number]
+  endPoint: [number, number, number]
+}): [number, number] | null {
   const dx = obj.endPoint[0] - obj.startPoint[0]
   const dz = obj.endPoint[2] - obj.startPoint[2]
   const perpX = -dz
@@ -49,7 +50,9 @@ export function useStartPosition(): StartTransform {
 
     if (startFinish?.startPoint && startFinish?.endPoint) {
       const elev = ((startFinish.startPoint[1] ?? 0) + (startFinish.endPoint[1] ?? 0)) / 2
-      const perp = perpendicularDirection(startFinish as { startPoint: [number, number, number]; endPoint: [number, number, number] })
+      const perp = perpendicularDirection(
+        startFinish as { startPoint: [number, number, number]; endPoint: [number, number, number] },
+      )
 
       if (perp && sectors.length > 0) {
         const toSector0X = sectors[0].position[0] - startFinish.position[0]
@@ -67,18 +70,20 @@ export function useStartPosition(): StartTransform {
     if (sectors.length > 0 && sectors[0].startPoint && sectors[0].endPoint) {
       const s = sectors[0]
       const elev = ((s.startPoint![1] ?? 0) + (s.endPoint![1] ?? 0)) / 2
-      const perp = perpendicularDirection(s as { startPoint: [number, number, number]; endPoint: [number, number, number] })
+      const perp = perpendicularDirection(
+        s as { startPoint: [number, number, number]; endPoint: [number, number, number] },
+      )
       if (perp) {
         return spawnBehind(s.position, perp[0], perp[1], elev)
       }
     }
 
-    const road = placedObjects.find(
-      obj => obj.type === 'road' && obj.startPoint && obj.endPoint,
-    )
+    const road = placedObjects.find(obj => obj.type === 'road' && obj.startPoint && obj.endPoint)
     if (road?.startPoint && road?.endPoint) {
       const elev = ((road.startPoint[1] ?? 0) + (road.endPoint[1] ?? 0)) / 2
-      const perp = perpendicularDirection(road as { startPoint: [number, number, number]; endPoint: [number, number, number] })
+      const perp = perpendicularDirection(
+        road as { startPoint: [number, number, number]; endPoint: [number, number, number] },
+      )
       if (perp) {
         return spawnBehind(road.position, perp[0], perp[1], elev)
       }

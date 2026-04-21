@@ -40,7 +40,9 @@ export default function AquaplaningIndicator() {
           <div className='mt-1 flex items-center justify-center gap-3 font-mono text-[11px] tabular-nums text-white/85'>
             <span>
               <span className='text-white/45'>Grip </span>
-              <span className='font-bold text-[#ef4444]'>−{Math.round(thermalShockPenalty * 100)}%</span>
+              <span className='font-bold text-[#ef4444]'>
+                −{Math.round(thermalShockPenalty * 100)}%
+              </span>
             </span>
             <span className='h-3 w-px bg-white/20' />
             <span>

@@ -112,7 +112,9 @@ export default function WallHandles() {
       if (!raycaster.ray.intersectPlane(GROUND_PLANE, intersection)) return
 
       const worldPos: [number, number, number] = [intersection.x, 0, intersection.z]
-      const obj = useCustomizationStore.getState().placedObjects.find(o => o.id === dragState.wallId)
+      const obj = useCustomizationStore
+        .getState()
+        .placedObjects.find(o => o.id === dragState.wallId)
       if (!obj) return
 
       let newStart: [number, number, number]
@@ -206,11 +208,7 @@ export default function WallHandles() {
 
   const start = selectedWall.startPoint
   const end = selectedWall.endPoint
-  const center: [number, number, number] = [
-    (start[0] + end[0]) / 2,
-    0.3,
-    (start[2] + end[2]) / 2,
-  ]
+  const center: [number, number, number] = [(start[0] + end[0]) / 2, 0.3, (start[2] + end[2]) / 2]
 
   const label = selectedWall.type === 'wall_fence' ? 'WF' : 'W'
 

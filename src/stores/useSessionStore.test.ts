@@ -30,9 +30,7 @@ describe('useSessionStore', () => {
   })
 
   it('records typed session events', () => {
-    const event = useSessionStore
-      .getState()
-      .recordEvent({ type: 'session_started', at: 1000 })
+    const event = useSessionStore.getState().recordEvent({ type: 'session_started', at: 1000 })
 
     const state = useSessionStore.getState()
     expect(state.events).toHaveLength(1)
@@ -83,7 +81,12 @@ describe('useSessionStore', () => {
     useSessionStore.getState().startQuickSession('qualifying', { testingMode: true })
     useSessionStore
       .getState()
-      .recordEvent({ type: 'track_limits_violation', at: 100, violationCount: 1, totalViolationTime: 500 })
+      .recordEvent({
+        type: 'track_limits_violation',
+        at: 100,
+        violationCount: 1,
+        totalViolationTime: 500,
+      })
     useLapTimeStore.setState({
       bestLapTime: 91234,
       lastLapTime: 92500,

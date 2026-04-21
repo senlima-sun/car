@@ -94,7 +94,9 @@ export default function StatsPanel() {
 
       <div className='flex min-w-[90px] flex-col justify-center gap-1'>
         <div className='flex items-baseline justify-between'>
-          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>Tire</span>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
+            Tire
+          </span>
           <span
             className='font-mono text-[10px] font-semibold tabular-nums'
             style={{ color: tireTone }}
@@ -114,7 +116,9 @@ export default function StatsPanel() {
 
       <div className='flex items-center gap-2'>
         <div className='flex flex-col items-center'>
-          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/40'>Eng</span>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/40'>
+            Eng
+          </span>
           <span
             className='font-mono text-[11px] font-semibold tabular-nums'
             style={{ color: tempColor(engine.temperature) }}
@@ -123,7 +127,9 @@ export default function StatsPanel() {
           </span>
         </div>
         <div className='flex flex-col items-center'>
-          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/40'>Tire</span>
+          <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/40'>
+            Tire
+          </span>
           <span
             className='font-mono text-[11px] font-semibold tabular-nums'
             style={{ color: tempColor(avgTireTemp, true) }}

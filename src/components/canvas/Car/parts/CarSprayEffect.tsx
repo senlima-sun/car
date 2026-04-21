@@ -114,7 +114,16 @@ export default function CarSprayEffect({ carStateRef }: CarSprayEffectProps) {
       maxLifetimes[i] = 0.4 + Math.random() * 0.4
     }
 
-    return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active, activeCount: 0 }
+    return {
+      positions,
+      velocities,
+      sizes,
+      opacities,
+      lifetimes,
+      maxLifetimes,
+      active,
+      activeCount: 0,
+    }
   }, [])
 
   const mistData = useMemo((): ParticleData => {
@@ -133,7 +142,16 @@ export default function CarSprayEffect({ carStateRef }: CarSprayEffectProps) {
       maxLifetimes[i] = 0.8 + Math.random() * 0.8 // Lives longer
     }
 
-    return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active, activeCount: 0 }
+    return {
+      positions,
+      velocities,
+      sizes,
+      opacities,
+      lifetimes,
+      maxLifetimes,
+      active,
+      activeCount: 0,
+    }
   }, [])
 
   const dropletData = useMemo((): ParticleData => {
@@ -152,7 +170,16 @@ export default function CarSprayEffect({ carStateRef }: CarSprayEffectProps) {
       maxLifetimes[i] = 0.3 + Math.random() * 0.3 // Short lived
     }
 
-    return { positions, velocities, sizes, opacities, lifetimes, maxLifetimes, active, activeCount: 0 }
+    return {
+      positions,
+      velocities,
+      sizes,
+      opacities,
+      lifetimes,
+      maxLifetimes,
+      active,
+      activeCount: 0,
+    }
   }, [])
 
   // Create geometries

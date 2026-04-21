@@ -34,10 +34,10 @@ export default function Page() {
 - [ ] Use Zod for schema validation
 
 ```typescript
-"use server"
+'use server'
 
-import { z } from "zod"
-import { getCurrentUser } from "@/lib/auth"
+import { z } from 'zod'
+import { getCurrentUser } from '@/lib/auth'
 
 const UpdateSchema = z.object({
   id: z.string().uuid(),
@@ -52,7 +52,7 @@ export async function updatePost(input: unknown) {
   const user = await getCurrentUser()
   const post = await getPost(id)
   if (post.authorId !== user.id) {
-    throw new Error("Unauthorized")
+    throw new Error('Unauthorized')
   }
 
   // 3. Perform action
@@ -69,7 +69,7 @@ export async function updatePost(input: unknown) {
 
 ```typescript
 // lib/data/posts.ts
-import "server-only"
+import 'server-only'
 
 export async function getPostForUser(id: string) {
   const user = await getCurrentUser()
@@ -97,13 +97,10 @@ export async function getPostForUser(id: string) {
 
 ```typescript
 // app/api/posts/[id]/route.ts
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const user = await getCurrentUser()
   if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 })
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const body = await request.json()

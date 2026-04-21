@@ -27,7 +27,7 @@ AI Apps (Claude, ChatGPT, Cursor)
 
 ```typescript
 // GOOD: Namespace handling
-const NAMESPACE_SEPARATOR = "__"
+const NAMESPACE_SEPARATOR = '__'
 
 function namespaceTool(server: string, tool: string): string {
   return `${server}${NAMESPACE_SEPARATOR}${tool}`
@@ -38,7 +38,7 @@ function parseNamespace(namespacedTool: string): {
   tool: string
 } {
   const idx = namespacedTool.indexOf(NAMESPACE_SEPARATOR)
-  if (idx === -1) throw new Error("Invalid namespaced tool")
+  if (idx === -1) throw new Error('Invalid namespaced tool')
   return {
     server: namespacedTool.slice(0, idx),
     tool: namespacedTool.slice(idx + NAMESPACE_SEPARATOR.length),
@@ -58,7 +58,7 @@ function parseNamespace(namespacedTool: string): {
 
 ```typescript
 // Transport selection
-type GatewayTransport = "stdio" | "sse" | "http"
+type GatewayTransport = 'stdio' | 'sse' | 'http'
 
 // CLI: athreei gateway --transport sse
 // Env: ATHREEI_TRANSPORT=sse
@@ -85,9 +85,7 @@ class ServerPool {
   }
 
   async shutdown(): Promise<void> {
-    await Promise.all(
-      [...this.servers.values()].map((s) => s.close())
-    )
+    await Promise.all([...this.servers.values()].map(s => s.close()))
     this.servers.clear()
   }
 }
@@ -101,18 +99,12 @@ class ServerPool {
 
 ```typescript
 // GOOD: Route with error handling
-async function handleToolCall(
-  namespacedTool: string,
-  params: unknown
-): Promise<ToolResult> {
+async function handleToolCall(namespacedTool: string, params: unknown): Promise<ToolResult> {
   const { server, tool } = parseNamespace(namespacedTool)
 
   const mcpServer = await serverPool.getServer(server)
   if (!mcpServer) {
-    throw new McpError(
-      ErrorCodes.MethodNotFound,
-      `Server not found: ${server}`
-    )
+    throw new McpError(ErrorCodes.MethodNotFound, `Server not found: ${server}`)
   }
 
   return mcpServer.callTool(tool, params)
@@ -149,7 +141,7 @@ interface Trace {
 ```typescript
 // Config structure
 interface GatewayConfig {
-  mode: "local" | "cloud"
+  mode: 'local' | 'cloud'
   servers: ServerConfig[]
 }
 

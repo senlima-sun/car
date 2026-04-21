@@ -82,9 +82,7 @@ export default function Wall({
     if (!adTexture || isGhost) return null
 
     const img = adTexture.image as { width?: number; height?: number } | undefined
-    const aspectRatio = img?.width && img?.height
-      ? img.width / img.height
-      : 1
+    const aspectRatio = img?.width && img?.height ? img.width / img.height : 1
 
     const planeHeight = WALL_HEIGHT * 0.8
     const planeWidth = planeHeight * aspectRatio
@@ -142,11 +140,7 @@ export default function Wall({
             rotation={[0, Math.PI / 2, 0]}
           >
             <planeGeometry args={[length, WALL_HEIGHT * 0.8]} />
-            <meshStandardMaterial
-              color='#7a7a7a'
-              roughness={0.95}
-              depthWrite
-            />
+            <meshStandardMaterial color='#7a7a7a' roughness={0.95} depthWrite />
           </mesh>
         )
       )}
