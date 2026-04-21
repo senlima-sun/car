@@ -177,9 +177,16 @@ export default function TrackSelector() {
   const loadPresetTrack = useTrackStore(s => s.loadPresetTrack)
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
   const getActiveTrack = useTrackStore(s => s.getActiveTrack)
+  const loadLibrary = useTrackStore(s => s.loadLibrary)
 
   const activeTrack = getActiveTrack()
   const tracks = trackLibrary.tracks
+
+  useEffect(() => {
+    if (trackLibrary.tracks.length === 0) {
+      loadLibrary()
+    }
+  }, [loadLibrary, trackLibrary.tracks.length])
 
   // Close menu when clicking outside
   useEffect(() => {
