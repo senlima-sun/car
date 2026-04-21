@@ -3,6 +3,7 @@ import { useCarStore } from '../../../../stores/useCarStore'
 import { useLapTimeStore } from '../../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../../stores/usePitStore'
 import { getLogger } from '../../../../debug/ActionLogger'
+import { IS_DEV } from '../../../../utils/isDev'
 import { WHEEL_RADIUS as DIM_WHEEL_RADIUS } from '../../../../constants/dimensions'
 
 export function useCarTelemetryLogging() {
@@ -19,7 +20,7 @@ export function useCarTelemetryLogging() {
   const prevGripRef = useRef(1)
 
   const update = (output: any, pos: any, rot: any, steer: number, dt: number) => {
-    const logger = import.meta.env.DEV ? getLogger() : null
+    const logger = IS_DEV ? getLogger() : null
 
     if (logger) {
       const speedDelta = Math.abs(output.speed_kmh - prevSpeedRef.current)

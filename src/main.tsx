@@ -1,12 +1,13 @@
 import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles.css'
+import { IS_DEV } from './utils/isDev'
 
-if (import.meta.env.DEV) {
+if (IS_DEV) {
   import('./debug').then(({ initDevTools }) => initDevTools())
 }
 
-if ('serviceWorker' in navigator && !import.meta.env.DEV) {
+if ('serviceWorker' in navigator && !IS_DEV) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
   })

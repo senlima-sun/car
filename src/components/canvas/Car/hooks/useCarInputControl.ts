@@ -9,6 +9,7 @@ import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { useLapTimeStore } from '../../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../../stores/usePitStore'
 import { getLogger } from '../../../../debug/ActionLogger'
+import { IS_DEV } from '../../../../utils/isDev'
 
 type PhysicsContext = ReturnType<typeof import('../../../../wasm').usePhysics>
 
@@ -73,7 +74,7 @@ export function useCarInputControl({ physics }: CarInputOptions) {
   const lastPitStopToggle = useRef(0)
 
   const handleInputs = (elapsedTime: number, keys: Keys) => {
-    const logger = import.meta.env.DEV ? getLogger() : null
+    const logger = IS_DEV ? getLogger() : null
 
     if (keys.camera && elapsedTime - lastCameraToggle.current > 0.3) {
       toggleCameraMode()

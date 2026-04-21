@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun run build/dev.ts",
+    "dev:bun": "bun --hot build/dev-bun.ts",
     "dev:wasm": "bun run build/watch-wasm.ts",
     "build": "bun run build:wasm && vite build",
     "preview": "vite preview",
@@ -40,6 +41,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.182.0",
     "@vitejs/plugin-react": "^5.1.4",
+    "bun-plugin-tailwind": "^0.1.2",
     "dotenv": "^17.3.1",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",

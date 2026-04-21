@@ -2,6 +2,7 @@ import { createLogger } from './ActionLogger'
 import { watchStore } from './storeLogger'
 import { registerAllStores } from './registerStores'
 import type { StoreApi } from 'zustand'
+import { IS_DEV } from '../utils/isDev'
 
 export { getLogger, createLogger } from './ActionLogger'
 export { watchStore, unwatchAll } from './storeLogger'
@@ -36,7 +37,7 @@ function getStoreSnapshots(): Record<string, Record<string, unknown>> {
 }
 
 export function initDevTools(): void {
-  if (!import.meta.env.DEV) return
+  if (!IS_DEV) return
 
   const logger = createLogger({ maxEntries: 2000 })
 
