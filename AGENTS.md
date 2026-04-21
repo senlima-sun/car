@@ -137,7 +137,6 @@ Root 3D scene: Ground (grass with vertex displacement shader) → PlacedObjectsR
 
 - Car model: `public/models/f1_2026.glb` (Draco-compressed GLTF)
 - Wheels: `GltfWheelAnimator.tsx` (rotation + suspension linkage animation)
-- Livery: UV-mapped textures, `/api/save-livery` endpoint (Vite plugin in `vite.config.ts`)
 - Textures: `public/textures/`, load via `useTexture` from drei
 
 ### Path Aliases
