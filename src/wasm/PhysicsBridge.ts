@@ -397,7 +397,7 @@ export async function initPhysicsEngine(): Promise<void> {
 
   initializing = (async () => {
     try {
-      await init()
+      await init({ module_or_path: '/src/wasm/pkg/car_physics_engine_bg.wasm' })
       engine = new PhysicsEngine()
       initialized = true
       console.log('[PhysicsBridge] WASM physics engine initialized')
