@@ -14,6 +14,43 @@ const generateId = (): string => {
   return `track_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 }
 
+const cloneObjects = (objects: PlacedObject[]): PlacedObject[] => structuredClone(objects)
+
+const presetObjectsEqual = (a: PlacedObject[], b: PlacedObject[]): boolean =>
+  JSON.stringify(a) === JSON.stringify(b)
+
+const getTrackCenter = (objects: PlacedObject[]): [number, number, number] | null => {
+  let minX = Infinity
+  let maxX = -Infinity
+  let minZ = Infinity
+  let maxZ = -Infinity
+  let hasPoint = false
+
+  const addPoint = (x: number, z: number) => {
+    minX = Math.min(minX, x)
+    maxX = Math.max(maxX, x)
+    minZ = Math.min(minZ, z)
+    maxZ = Math.max(maxZ, z)
+    hasPoint = true
+  }
+
+  for (const object of objects) {
+    if (object.type === 'track_ribbon' && object.ribbonPoints) {
+      for (const point of object.ribbonPoints) {
+        addPoint(point.x, point.z)
+      }
+      continue
+    }
+
+    if (object.startPoint) addPoint(object.startPoint[0], object.startPoint[2])
+    if (object.endPoint) addPoint(object.endPoint[0], object.endPoint[2])
+    if (object.position) addPoint(object.position[0], object.position[2])
+  }
+
+  if (!hasPoint) return null
+  return [(minX + maxX) / 2, 0, (minZ + maxZ) / 2]
+}
+
 interface TrackState {
   trackLibrary: TrackLibrary
   isLoading: boolean
@@ -142,6 +179,10 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     if (!track) return
 
     useCustomizationStore.getState().setPlacedObjects(track.objects)
+    const center = getTrackCenter(track.objects)
+    if (center) {
+      useEditorStore.getState().setCameraTarget(center)
+    }
 
     if (track.heightmap && track.heightmap.length > 0) {
       useTerrainStore.getState().loadHeightmap(track.heightmap)
@@ -169,13 +210,28 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       get().saveCurrentTrack()
     }
 
+    const existing = state.trackLibrary.tracks.find(t => t.presetId === presetId)
+    if (existing && presetObjectsEqual(existing.objects, preset.objects)) {
+      get().loadTrack(existing.id)
+      return
+    }
+    if (existing) {
+      set(s => ({
+        trackLibrary: {
+          ...s.trackLibrary,
+          tracks: s.trackLibrary.tracks.filter(t => t.id !== existing.id),
+        },
+      }))
+    }
+
     const newTrack: SavedTrack = {
       id: generateId(),
       name: preset.name,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       objectCount: preset.objects.length,
-      objects: [...preset.objects],
+      objects: cloneObjects(preset.objects),
+      presetId,
     }
 
     set(state => ({
@@ -188,27 +244,9 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     }))
 
     useCustomizationStore.getState().setPlacedObjects(newTrack.objects)
-
-    const roads = newTrack.objects.filter(o => o.type === 'road' && o.startPoint)
-    if (roads.length > 0) {
-      let sumX = 0,
-        sumZ = 0,
-        count = 0
-      for (const r of roads) {
-        if (r.startPoint) {
-          sumX += r.startPoint[0]
-          sumZ += r.startPoint[2]
-          count++
-        }
-        if (r.endPoint) {
-          sumX += r.endPoint[0]
-          sumZ += r.endPoint[2]
-          count++
-        }
-      }
-      if (count > 0) {
-        useEditorStore.getState().setCameraTarget([sumX / count, 0, sumZ / count])
-      }
+    const center = getTrackCenter(newTrack.objects)
+    if (center) {
+      useEditorStore.getState().setCameraTarget(center)
     }
 
     get().saveLibrary()
@@ -311,6 +349,20 @@ export const useTrackStore = create<TrackState>((set, get) => ({
           }
           library.tracks.unshift(defaultTrack)
         }
+
+        library.tracks = library.tracks.map(t => {
+          if (!t.presetId) return t
+          const preset = PRESET_TRACKS.find(p => p.id === t.presetId)
+          if (!preset) return t
+          if (presetObjectsEqual(t.objects, preset.objects)) return t
+          return {
+            ...t,
+            name: preset.name,
+            updatedAt: Date.now(),
+            objectCount: preset.objects.length,
+            objects: cloneObjects(preset.objects),
+          }
+        })
 
         set({ trackLibrary: library, isLoading: false })
 
