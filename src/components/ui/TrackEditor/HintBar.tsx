@@ -17,42 +17,35 @@ export default function HintBar() {
   const tool = useTrackEditorStore(s => s.tool)
   const pen = useTrackEditorStore(s => s.pen)
   const selected = useTrackEditorStore(s => s.selected)
-  const selectedAnchors = useTrackEditorStore(s => s.selectedAnchors)
   const selectedPitBoxAreaId = useTrackEditorStore(s => s.selectedPitBoxAreaId)
 
   const content = (() => {
     if (tool === 'pen') {
       if (pen.activePathId) {
         return {
-          label: 'Drawing Path',
-          hint: 'Click to extend, drag to set curve handles, click the first anchor to close, Enter or Esc to finish.',
+          label: 'Click to add, drag to curve, Enter to finish.',
           shortcuts: [
-            { key: 'Click', label: 'Add anchor' },
-            { key: 'Drag', label: 'Curve handle' },
+            { key: 'Click', label: 'Add' },
+            { key: 'Drag', label: 'Curve' },
             { key: 'Enter', label: 'Finish' },
-            { key: 'Space', label: 'Pan' },
           ],
         }
       }
       if (pen.startRef) {
         return {
-          label: 'Branch From Anchor',
-          hint: 'Click another anchor to connect immediately, or click a path segment to insert and branch cleanly.',
+          label: 'Click an anchor or segment to branch.',
           shortcuts: [
             { key: 'Click', label: 'Connect' },
-            { key: 'P', label: 'Stay in pen' },
-            { key: 'V', label: 'Switch select' },
+            { key: 'V', label: 'Select' },
             { key: 'Space', label: 'Pan' },
           ],
         }
       }
       return {
-        label: 'Start Drawing',
-        hint: 'Click to begin a new path, then drag during placement when you want bezier curvature on the anchor.',
+        label: 'Click to start a path.',
         shortcuts: [
-          { key: 'Click', label: 'Start path' },
-          { key: 'Drag', label: 'Curve anchor' },
-          { key: 'V', label: 'Select' },
+          { key: 'Click', label: 'Start' },
+          { key: 'Drag', label: 'Curve' },
           { key: '⌘Z', label: 'Undo' },
         ],
       }
@@ -61,35 +54,29 @@ export default function HintBar() {
     if (tool === 'select') {
       if (selectedPitBoxAreaId) {
         return {
-          label: 'Pit Area Selected',
-          hint: 'Drag the box to move it, drag the top handle to rotate it, and use Delete to remove it.',
+          label: 'Drag to move or rotate pit area.',
           shortcuts: [
             { key: 'Drag', label: 'Move' },
-            { key: 'Drag ring', label: 'Rotate' },
             { key: 'Delete', label: 'Remove' },
             { key: 'P', label: 'Pen' },
           ],
         }
       }
-      if (selected || selectedAnchors.length > 0) {
+      if (selected) {
         return {
-          label: 'Anchor Editing',
-          hint: 'Drag anchors to reshape the line, drag handles to tune curvature, Alt-click an anchor to toggle its handle mode.',
+          label: 'Drag anchor, Alt-click to toggle handle mode.',
           shortcuts: [
-            { key: 'Drag', label: 'Move anchor' },
-            { key: 'Alt+Click', label: 'Toggle mode' },
+            { key: 'Drag', label: 'Move' },
+            { key: 'Alt+Click', label: 'Toggle' },
             { key: 'Delete', label: 'Remove' },
-            { key: '⌘Z', label: 'Undo' },
           ],
         }
       }
       return {
-        label: 'Selection',
-        hint: 'Select anchors or pit areas to edit geometry, then switch back to pen when you want to continue layout work.',
+        label: 'Select anchors or pit areas.',
         shortcuts: [
           { key: 'Click', label: 'Select' },
           { key: 'P', label: 'Pen' },
-          { key: 'Delete', label: 'Remove' },
           { key: 'Space', label: 'Pan' },
         ],
       }
@@ -97,57 +84,46 @@ export default function HintBar() {
 
     if (tool === 'start-finish') {
       return {
-        label: TOOL_LABEL[tool],
-        hint: 'Click a path segment to place the lap trigger. Placing another one replaces the previous start / finish line.',
+        label: 'Click a segment to place start / finish.',
         shortcuts: [
-          { key: 'Click', label: 'Place line' },
+          { key: 'Click', label: 'Place' },
           { key: 'V', label: 'Select' },
           { key: 'P', label: 'Pen' },
-          { key: 'Space', label: 'Pan' },
         ],
       }
     }
 
     if (tool === 'sector') {
       return {
-        label: TOOL_LABEL[tool],
-        hint: 'Click along the ribbon to drop timing sectors in order. They are exported in the sequence you place them.',
+        label: 'Click a segment to add sector timing.',
         shortcuts: [
-          { key: 'Click', label: 'Add sector' },
+          { key: 'Click', label: 'Add' },
           { key: 'V', label: 'Select' },
           { key: 'P', label: 'Pen' },
-          { key: '⌘Z', label: 'Undo' },
         ],
       }
     }
 
     return {
-      label: TOOL_LABEL[tool],
-      hint: 'Click anywhere to drop a pit service area, then switch to Select when you need to move or rotate it.',
+      label: 'Click to place a pit area.',
       shortcuts: [
-        { key: 'Click', label: 'Drop area' },
+        { key: 'Click', label: 'Place' },
         { key: 'V', label: 'Adjust' },
         { key: 'Delete', label: 'Remove' },
-        { key: 'Space', label: 'Pan' },
       ],
     }
   })()
 
   return (
-    <div className='pointer-events-none absolute bottom-4 left-1/2 z-20 w-[min(72rem,calc(100%-2rem))] -translate-x-1/2'>
-      <div className='rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,20,28,0.92),rgba(8,10,16,0.86))] px-4 py-3 shadow-[0_20px_70px_rgba(0,0,0,0.42)] backdrop-blur-xl'>
-        <div className='flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between'>
-          <div className='min-w-0'>
-            <div className='text-[10px] font-semibold uppercase tracking-[0.32em] text-white/42'>
-              {content.label}
-            </div>
-            <div className='mt-1 text-sm text-white/78'>{content.hint}</div>
-          </div>
-          <div className='flex flex-wrap gap-2'>
-            {content.shortcuts.map(shortcut => (
-              <ShortcutChip key={`${shortcut.key}-${shortcut.label}`} shortcut={shortcut} />
-            ))}
-          </div>
+    <div className='pointer-events-none absolute bottom-4 left-1/2 z-20 w-[min(56rem,calc(100%-2rem))] -translate-x-1/2'>
+      <div className='flex flex-col gap-2 rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,20,28,0.92),rgba(8,10,16,0.86))] px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.36)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between'>
+        <div className='min-w-0 text-sm text-white/76'>
+          <span className='text-white/46'>{TOOL_LABEL[tool]}:</span> <span>{content.label}</span>
+        </div>
+        <div className='flex flex-wrap gap-2'>
+          {content.shortcuts.map(shortcut => (
+            <ShortcutChip key={`${shortcut.key}-${shortcut.label}`} shortcut={shortcut} />
+          ))}
         </div>
       </div>
     </div>
@@ -156,8 +132,8 @@ export default function HintBar() {
 
 function ShortcutChip({ shortcut }: { shortcut: ShortcutHint }) {
   return (
-    <div className='inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs text-white/74'>
-      <kbd className='rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/56'>
+    <div className='inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-white/72'>
+      <kbd className='rounded-lg border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/56'>
         {shortcut.key}
       </kbd>
       <span>{shortcut.label}</span>
