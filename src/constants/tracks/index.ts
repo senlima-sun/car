@@ -1,31 +1,21 @@
-import type { PlacedObject } from '@/stores/useCustomizationStore'
-import silverstoneData from './silverstone.json'
-import suzukaData from './suzuka.json'
-import monzaData from './monza.json'
-import shanghaiData from './shanghai.json'
-import { normalizePresetTrackObjects } from '@/components/ui/TrackEditor/import/trackObjectsToEditor'
+import silverstoneSource from './sources/silverstone.json'
+import suzukaSource from './sources/suzuka.json'
+import monzaSource from './sources/monza.json'
+import shanghaiSource from './sources/shanghai.json'
+import {
+  buildRuntimePresetTrack,
+  type EditorTrackSource,
+  type RuntimePresetTrack,
+} from '@/utils/editorTrackSource'
 
-export interface PresetTrack {
-  id: string
-  name: string
-  trackLength: number
-  turns: number
-  objects: PlacedObject[]
-}
-
-export function normalizePresetTrack(track: PresetTrack): PresetTrack {
-  return {
-    ...track,
-    objects: normalizePresetTrackObjects(track.objects),
-  }
-}
+export type PresetTrack = RuntimePresetTrack
 
 export const PRESET_TRACKS: PresetTrack[] = [
-  silverstoneData as PresetTrack,
-  suzukaData as PresetTrack,
-  monzaData as PresetTrack,
-  shanghaiData as PresetTrack,
-].map(normalizePresetTrack)
+  silverstoneSource as EditorTrackSource,
+  suzukaSource as EditorTrackSource,
+  monzaSource as EditorTrackSource,
+  shanghaiSource as EditorTrackSource,
+].map(buildRuntimePresetTrack)
 
 export function getPresetTrack(id: string): PresetTrack | undefined {
   return PRESET_TRACKS.find(t => t.id === id)
