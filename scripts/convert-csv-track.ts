@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 
+import { buildEditorTrackSourceFromPolyline } from '../src/utils/editorTrackSourceFromPolyline'
+
 interface Point2D {
   x: number
   z: number
@@ -992,63 +994,26 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
   const subdivided = subdivideIfNeeded(simplified, MAX_SEGMENT_LENGTH)
   console.log(`  Subdivided: ${simplified.length} -> ${subdivided.length} points`)
 
-  const roads = generateRoadSegments(subdivided, config)
-  console.log(`  Generated ${roads.length} road segments`)
-
-  const curveCount = roads.filter(r => r.trackMode === 'curve').length
-  const straightCount = roads.filter(r => r.trackMode === 'straight').length
-  console.log(`    Curves: ${curveCount}, Straights: ${straightCount}`)
-
-  const curbs = generateCurbs(roads)
-  const insideCurbs = curbs.filter((c: any) => {
-    const road = roads.find(r => r.id === c.parentRoadId)
-    if (!road) return false
-    const dir = detectTurnDirection(road)
-    if (!dir) return false
-    return c.edgeSide === dir
-  })
-  const onStraights = curbs.filter((c: any) => {
-    const road = roads.find(r => r.id === c.parentRoadId)
-    return road?.trackMode === 'straight'
-  })
-  console.log(
-    `  Generated ${curbs.length} curbs (${insideCurbs.length} inside, ${curbs.length - insideCurbs.length - onStraights.length} outside, ${onStraights.length} transition)`,
-  )
-
-  const checkpoints = generateCheckpoints(roads, config)
-  console.log(`  Generated ${checkpoints.length} checkpoints`)
-
-  // const barriers = generateBarriers(roads)
-  // const curvedBarriers = barriers.filter(b => b.trackMode === 'curve').length
-  // const straightBarriers = barriers.filter(b => b.trackMode === 'straight').length
-  // console.log(`  Generated ${barriers.length} barriers (${curvedBarriers} curved, ${straightBarriers} straight)`)
-  console.log(`  Barriers: DISABLED`)
-
-  const allObjects: PlacedObject[] = [...roads, ...curbs, ...checkpoints]
-  console.log(`  Total objects: ${allObjects.length}`)
-
   let totalLength = 0
   let maxSegLen = 0
-  for (const road of roads) {
-    if (road.startPoint && road.endPoint) {
-      const dx = road.endPoint[0] - road.startPoint[0]
-      const dz = road.endPoint[2] - road.startPoint[2]
-      const len = Math.sqrt(dx * dx + dz * dz)
-      totalLength += len
-      maxSegLen = Math.max(maxSegLen, len)
-    }
+  for (let i = 1; i < subdivided.length; i++) {
+    const len = dist2D(subdivided[i - 1]!, subdivided[i]!)
+    totalLength += len
+    maxSegLen = Math.max(maxSegLen, len)
   }
 
-  const output = {
-    name: config.displayName,
+  const source = buildEditorTrackSourceFromPolyline({
     id: `f1_${config.name}`,
+    name: config.displayName,
     trackLength: Math.round(totalLength),
     turns: config.turns ?? config.sectorSplits.length + 1,
-    objects: allObjects,
-  }
+    points: subdivided.map(point => ({ x: point.x, z: point.z })),
+    sectorSplits: config.sectorSplits,
+    startFinishFraction: config.startFinishFraction,
+  })
 
-  const outPath = `src/constants/tracks/${config.name}.json`
-  await Bun.write(outPath, JSON.stringify(output, null, 2))
+  const outPath = `src/constants/tracks/sources/${config.name}.json`
+  await Bun.write(outPath, JSON.stringify(source, null, 2))
   console.log(`\n  Written to ${outPath}`)
   console.log(`  Track length: ~${Math.round(totalLength)}m`)
   console.log(`  Max segment length: ${maxSegLen.toFixed(1)}m`)
@@ -1065,41 +1030,22 @@ async function convertCsvCircuit(circuitName: string): Promise<void> {
   }
   console.log(`  Bounding box: ${Math.round(maxX - minX)}m x ${Math.round(maxZ - minZ)}m`)
 
-  for (const cp of checkpoints) {
-    if (!cp.startPoint || !cp.endPoint) {
-      console.error(`  ERROR: Checkpoint ${cp.id} missing startPoint/endPoint!`)
-    } else {
-      console.log(
-        `  Checkpoint ${cp.id}: startPoint=[${cp.startPoint.map(v => Math.round(v)).join(',')}] endPoint=[${cp.endPoint.map(v => Math.round(v)).join(',')}]`,
-      )
-    }
+  for (const cp of source.checkpoints) {
+    console.log(
+      `  Checkpoint ${cp.id}: segment=${cp.segmentIndex} t=${cp.t.toFixed(4)} kind=${cp.kind}`,
+    )
   }
 
-  let maxGap = 0
-  for (let i = 1; i < roads.length; i++) {
-    const prev = roads[i - 1]
-    const curr = roads[i]
-    if (prev.endPoint && curr.startPoint) {
-      const dx = curr.startPoint[0] - prev.endPoint[0]
-      const dz = curr.startPoint[2] - prev.endPoint[2]
-      const gap = Math.sqrt(dx * dx + dz * dz)
-      maxGap = Math.max(maxGap, gap)
-    }
+  const firstPath = source.paths[0]
+  if (firstPath) {
+    console.log(`  Anchors: ${firstPath.anchors.length}, closed=${firstPath.closed}`)
   }
-  console.log(`  Max road centerline gap: ${maxGap.toFixed(2)}m`)
-
-  const { maxEdgeGap, gapCount } = verifyEdgeGaps(roads)
-  console.log(`  Max edge gap: ${maxEdgeGap.toFixed(4)}m (${gapCount} edges >0.1m)`)
-
-  // const { allOutside, badCount } = verifyBarrierPositions(barriers, roads)
-  // console.log(`  Barriers outside road: ${allOutside ? 'ALL OK' : `${badCount} within 3m of centerline (expected at crossovers/hairpins)`}`)
 
   const first = subdivided[0]
   const last = subdivided[subdivided.length - 1]
   const closureGap = dist2D(first, last)
   console.log(`  Closure gap: ${closureGap.toFixed(2)}m`)
 
-  if (maxEdgeGap > 0.1) console.warn(`  WARNING: Edge gaps detected (${maxEdgeGap.toFixed(2)}m)`)
   if (maxSegLen > 50)
     console.warn(`  WARNING: Max segment length ${maxSegLen.toFixed(1)}m exceeds 50m`)
 }

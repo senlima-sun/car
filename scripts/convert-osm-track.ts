@@ -4,12 +4,14 @@
  *
  * Fetches F1 circuit data from OpenStreetMap Overpass API,
  * converts GPS coordinates to game world coordinates,
- * and outputs PlacedObject[] JSON compatible with the track editor.
+ * and outputs editor-native source JSON for built-in presets.
  *
  * Usage: bun run scripts/convert-osm-track.ts <circuit-name>
  *   e.g. bun run scripts/convert-osm-track.ts silverstone
  *        bun run scripts/convert-osm-track.ts suzuka
  */
+
+import { buildEditorTrackSourceFromPolyline } from '../src/utils/editorTrackSourceFromPolyline'
 
 // ============================================================================
 // Types
@@ -816,61 +818,30 @@ async function convertCircuit(circuitName: string): Promise<void> {
   const simplified = douglasPeucker(worldPoints, SIMPLIFY_TOLERANCE)
   console.log(`  ✂️  Simplified: ${worldPoints.length} → ${simplified.length} points`)
 
-  // 6. Generate road segments
-  const roads = generateRoadSegments(simplified, config)
-  console.log(`  🛣️  Generated ${roads.length} road segments`)
-
-  // 7. Generate curbs
-  const curbs = generateCurbs(roads)
-  console.log(`  🟥 Generated ${curbs.length} curbs`)
-
-  // 8. Generate checkpoints
-  const checkpoints = generateCheckpoints(roads, config)
-  console.log(`  🏁 Generated ${checkpoints.length} checkpoints`)
-
-  // 9. Generate barriers (skip near checkpoint road indices)
-  const totalRoads = roads.length
-  const cpRoadIndices = new Set<number>()
-  const cpCoreIndices = [
-    Math.floor(config.startFinishFraction * totalRoads),
-    ...config.sectorSplits.map(s => Math.floor(s * totalRoads)),
-  ]
-  for (const idx of cpCoreIndices) {
-    for (let offset = -1; offset <= 1; offset++) {
-      const j = idx + offset
-      if (j >= 0 && j < totalRoads) cpRoadIndices.add(j)
-    }
-  }
-  const barriers = generateBarriers(roads, cpRoadIndices)
-  console.log(`  🧱 Generated ${barriers.length} barriers`)
-
-  // 10. Combine all objects
-  const allObjects: PlacedObject[] = [...roads, ...curbs, ...checkpoints, ...barriers]
-  console.log(`  📦 Total objects: ${allObjects.length}`)
-
-  // 11. Compute track stats
   let totalLength = 0
-  for (const road of roads) {
-    if (road.startPoint && road.endPoint) {
-      const dx = road.endPoint[0] - road.startPoint[0]
-      const dz = road.endPoint[2] - road.startPoint[2]
-      totalLength += Math.sqrt(dx * dx + dz * dz)
-    }
+  for (let i = 1; i < simplified.length; i++) {
+    const dx = simplified[i]!.x - simplified[i - 1]!.x
+    const dz = simplified[i]!.z - simplified[i - 1]!.z
+    totalLength += Math.sqrt(dx * dx + dz * dz)
   }
 
-  // 12. Write output
-  const output = {
-    name: config.displayName,
+  const source = buildEditorTrackSourceFromPolyline({
     id: `f1_${config.name}`,
+    name: config.displayName,
     trackLength: Math.round(totalLength),
     turns: config.turns ?? config.sectorSplits.length + 1,
-    objects: allObjects,
-  }
+    points: simplified.map(point => ({ x: point.x, z: point.z })),
+    sectorSplits: config.sectorSplits,
+    startFinishFraction: config.startFinishFraction,
+  })
 
-  const outPath = `src/constants/tracks/${config.name}.json`
-  await Bun.write(outPath, JSON.stringify(output, null, 2))
+  const outPath = `src/constants/tracks/sources/${config.name}.json`
+  await Bun.write(outPath, JSON.stringify(source, null, 2))
   console.log(`\n  ✅ Written to ${outPath}`)
   console.log(`  📏 Track length: ~${Math.round(totalLength)}m`)
+  console.log(
+    `  🧭 Source path anchors: ${source.paths[0]?.anchors.length ?? 0}, checkpoints: ${source.checkpoints.length}`,
+  )
 
   // Bounding box
   let minX = Infinity,
