@@ -39,13 +39,9 @@ interface ErsStoreState {
   semiAutoConfig: SemiAutoConfig
   coastIndicatorVisible: boolean
 
-  // Actions
-  setMode: (mode: ErsMode) => void
-  cycleMode: () => void
   activateOvertake: () => void
   syncFromPhysics: (state: ErsState) => void
 
-  // Semi-Auto actions
   setSemiAutoPreset: (preset: SemiAutoPreset) => void
   cycleSemiAutoPreset: () => void
   setLapMode: (enabled: boolean) => void
@@ -53,9 +49,6 @@ interface ErsStoreState {
   toggleCoastIndicator: () => void
 }
 
-// SemiAuto is now the default-only mode (no cycling needed)
-
-// Preset cycle order
 const PRESET_CYCLE: SemiAutoPreset[] = ['Balanced', 'Aggressive', 'Conservative']
 
 export const useErsStore = create<ErsStoreState>((set, get) => ({
@@ -68,7 +61,6 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
   harvestSource: 'None',
   overtakeAvailable: false,
 
-  // Semi-Auto state
   semiAuto: {
     coast_recommended: false,
     coast_benefit: 0,
@@ -85,15 +77,6 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
     expertMode: false,
   },
   coastIndicatorVisible: true,
-
-  setMode: (mode: ErsMode) => {
-    set({ mode })
-  },
-
-  cycleMode: () => {
-    // SemiAuto is the only mode - cycle presets instead
-    get().cycleSemiAutoPreset()
-  },
 
   activateOvertake: () => {
     const { overtakeAvailable } = get()
@@ -112,12 +95,10 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
       superClipActive: state.super_clip_active,
       harvestSource: state.harvest_source,
       overtakeAvailable: state.overtake_available,
-      // Sync Semi-Auto state
       semiAuto: state.semi_auto ?? get().semiAuto,
     })
   },
 
-  // Semi-Auto actions
   setSemiAutoPreset: (preset: SemiAutoPreset) => {
     const config = PRESET_CONFIGS[preset]
     set(state => ({

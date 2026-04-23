@@ -26,7 +26,7 @@ export interface CarSetup {
   tireCompound: TireCompound
   /** Default aero mode */
   aeroMode: AeroMode
-  /** Default ERS deployment preset */
+  /** Default ERS mode */
   ersMode: ErsMode
 }
 
@@ -43,5 +43,5 @@ export const DEFAULT_SETUP: CarSetup = {
   rideHeightRearMm: 50,
   tireCompound: TireCompound.Medium,
   aeroMode: 'Corner',
-  ersMode: 'Balanced',
+  ersMode: 'SemiAuto',
 }

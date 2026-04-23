@@ -71,6 +71,10 @@ describe('getModeAbbreviation', () => {
     expect(getModeAbbreviation('Overtake')).toBe('OVT')
   })
 
+  test('returns AUTO for SemiAuto mode', () => {
+    expect(getModeAbbreviation('SemiAuto')).toBe('AUTO')
+  })
+
   test('returns BAL for unknown mode', () => {
     expect(getModeAbbreviation('Unknown')).toBe('BAL')
   })
@@ -105,6 +109,10 @@ describe('getModeColor', () => {
 
   test('returns orange for Overtake mode', () => {
     expect(getModeColor('Overtake')).toBe('#f97316')
+  })
+
+  test('returns purple for SemiAuto mode', () => {
+    expect(getModeColor('SemiAuto')).toBe('#b388ff')
   })
 
   test('returns white for unknown mode', () => {

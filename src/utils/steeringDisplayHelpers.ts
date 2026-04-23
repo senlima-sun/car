@@ -25,6 +25,8 @@ export function getModeAbbreviation(mode: string): string {
       return 'HRV'
     case 'Overtake':
       return 'OVT'
+    case 'SemiAuto':
+      return 'AUTO'
     default:
       return 'BAL'
   }
@@ -44,6 +46,8 @@ export function getModeColor(mode: string): string {
       return ERS_MODE.harvest
     case 'Overtake':
       return ERS_MODE.overtake
+    case 'SemiAuto':
+      return '#b388ff'
     default:
       return ERS_MODE.balanced
   }

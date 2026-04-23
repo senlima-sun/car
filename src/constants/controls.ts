@@ -52,7 +52,7 @@ export const CONTROLS: ControlDefinition[] = [
   { id: 'handbrake', displayName: 'Handbrake', keys: ['Space'], category: 'movement' },
 
   // Driving Systems
-  { id: 'ersPreset', displayName: 'ERS Preset', keys: ['G'], category: 'drivingSystems' },
+  { id: 'ersPreset', displayName: 'ERS Auto Preset', keys: ['G'], category: 'drivingSystems' },
   {
     id: 'overtake',
     displayName: 'Overtake',

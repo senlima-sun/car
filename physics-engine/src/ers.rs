@@ -7,7 +7,6 @@ use crate::types::{
 // ============================================================================
 
 const BATTERY_CAPACITY_KJ: f32 = 4000.0; // 4 MJ = 4000 kJ
-// 2026 regulation: per-lap ERS recovery cap is 8.5 MJ (8500 kJ).
 pub const LAP_RECOVERY_CAP_MJ: f32 = 8.5;
 
 // Deployment scheduler thresholds (pacing regulates deploy under throttle)
@@ -27,6 +26,7 @@ const MAX_DEPLOY_POWER_KW: f32 = 350.0; // 2026: 350kW max deployment
 const MAX_HARVEST_POWER_KW: f32 = 350.0; // 2026: 350kW max brake harvest
 const MAX_COAST_POWER_KW: f32 = 200.0;
 const MAX_SUPER_CLIP_POWER_KW: f32 = 150.0; // 2026: Super clipping (was 50, now significant)
+const SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW: f32 = 25.0;
 
 // Mode multipliers (deploy / harvest / coast / super_clip)
 // Harvest mode: maximum recovery, no deploy
@@ -356,6 +356,19 @@ impl ErsPhysicsState {
         let mut super_clip_active = false;
         let mut harvest_source = HarvestSource::None;
         let mut force_boost = 0.0;
+        let deploy_schedule = if is_accelerating && !is_braking {
+            compute_deployment_schedule(
+                speed_ms,
+                throttle,
+                self.current.mode,
+                self.current.lap_deployed_mj,
+                self.overtake_override,
+            )
+        } else {
+            0.0
+        };
+        let anticipated_deploy_power =
+            MAX_DEPLOY_POWER_KW * effective_deploy_mult * deploy_schedule;
 
         // ========================================================================
         // HARVESTING (multiple sources can contribute)
@@ -414,19 +427,30 @@ impl ErsPhysicsState {
                 .clamp(0.0, 1.0);
 
             if clip_intensity > 0.05 && !self.current.lap_recovery_cap_reached {
-                let clip_power = MAX_SUPER_CLIP_POWER_KW * clip_mult * clip_intensity;
+                let base_clip_power = MAX_SUPER_CLIP_POWER_KW * clip_mult * clip_intensity;
+                let clip_power = if self.current.mode == ErsMode::SemiAuto
+                    && !self.overtake_override
+                    && !self.semi_auto_config.expert_mode
+                {
+                    let clip_cap =
+                        (anticipated_deploy_power - SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW).max(0.0);
+                    base_clip_power.min(clip_cap)
+                } else {
+                    base_clip_power
+                };
 
-                let energy_harvested = clip_power * SUPER_CLIP_EFFICIENCY * dt;
-                let battery_change = energy_harvested / BATTERY_CAPACITY_KJ;
-                self.current.battery_charge =
-                    (self.current.battery_charge + battery_change).min(1.0);
-                self.accumulate_recovered(energy_harvested);
+                if clip_power > 1.0 {
+                    let energy_harvested = clip_power * SUPER_CLIP_EFFICIENCY * dt;
+                    let battery_change = energy_harvested / BATTERY_CAPACITY_KJ;
+                    self.current.battery_charge =
+                        (self.current.battery_charge + battery_change).min(1.0);
+                    self.accumulate_recovered(energy_harvested);
 
-                // Super clip reduces net power flow (harvesting while deploying)
-                power_flow_kw += -clip_power;
-                is_harvesting = true;
-                super_clip_active = true;
-                harvest_source = HarvestSource::SuperClip;
+                    power_flow_kw += -clip_power;
+                    is_harvesting = true;
+                    super_clip_active = true;
+                    harvest_source = HarvestSource::SuperClip;
+                }
             }
         }
 
@@ -435,15 +459,7 @@ impl ErsPhysicsState {
         // ========================================================================
 
         if is_accelerating && !is_braking && self.current.battery_charge > 0.0 {
-            let schedule = compute_deployment_schedule(
-                speed_ms,
-                throttle,
-                self.current.mode,
-                self.current.lap_deployed_mj,
-                self.overtake_override,
-            );
-
-            let deploy_power = MAX_DEPLOY_POWER_KW * effective_deploy_mult * schedule;
+            let deploy_power = anticipated_deploy_power;
 
             if deploy_power > 1.0 {
                 let energy_deployed = deploy_power * dt;
@@ -458,8 +474,7 @@ impl ErsPhysicsState {
                     let reference_speed = 40.0;
                     let effective_speed = speed_ms.clamp(reference_speed, 90.0);
 
-                    force_boost =
-                        (deploy_power * 1000.0 / effective_speed) * DEPLOY_EFFICIENCY;
+                    force_boost = (deploy_power * 1000.0 / effective_speed) * DEPLOY_EFFICIENCY;
 
                     power_flow_kw += deploy_power; // Net power (deploy - clip)
                     is_deploying = true;
@@ -862,5 +877,35 @@ mod tests {
             "Balanced should preserve a useful reserve after 10s; got {:.2}",
             state.current.battery_charge,
         );
+    }
+
+    #[test]
+    fn test_semi_auto_low_battery_full_throttle_still_drains() {
+        let mut state = ErsPhysicsState::new();
+        state.set_mode(ErsMode::SemiAuto);
+        state.set_semi_auto_preset(SemiAutoPreset::Aggressive);
+        state.set_battery_charge(0.1);
+
+        let initial_charge = state.current.battery_charge;
+
+        for _ in 0..120 {
+            state.update(1.0 / 60.0, true, false, 70.0, 1.0);
+        }
+
+        assert!(state.current.battery_charge < initial_charge);
+        assert!(state.current.power_flow > 0.0);
+    }
+
+    #[test]
+    fn test_semi_auto_super_clip_never_exceeds_deploy() {
+        let mut state = ErsPhysicsState::new();
+        state.set_mode(ErsMode::SemiAuto);
+        state.set_semi_auto_preset(SemiAutoPreset::Conservative);
+        state.set_battery_charge(0.4);
+
+        state.update(1.0 / 60.0, true, false, 70.0, 1.0);
+
+        assert!(state.current.is_deploying);
+        assert!(state.current.power_flow >= SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW);
     }
 }
