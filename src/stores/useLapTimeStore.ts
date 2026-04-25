@@ -6,7 +6,7 @@ const MAX_LAP_SAMPLES = 3000
 const SAMPLE_INTERVAL_MS = 200
 
 const MAX_GHOST_SAMPLES = 12000
-const GHOST_SAMPLE_INTERVAL_MS = 1000 / 60
+const GHOST_SAMPLE_INTERVAL_MS = 50
 
 interface SectorSplit {
   sectorNumber: number

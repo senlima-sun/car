@@ -22,6 +22,8 @@ use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
 
 const TRACK_WEATHER_UPDATE_INTERVAL: f32 = 1.0 / 30.0;
+const TERRAIN_QUERY_INTERVAL_STEPS: u32 = 6;
+const TERRAIN_QUERY_DISTANCE_M: f32 = 0.85;
 
 /// Main physics engine that orchestrates all physics systems
 #[derive(Debug)]
@@ -45,6 +47,7 @@ pub struct PhysicsEngine {
     terrain_step_counter: u32,
     cached_terrain_results: Option<[TerrainQueryResult; 4]>,
     cached_wheel_positions: Option<[[f32; 2]; 4]>,
+    cached_center_terrain_height: f32,
     track_weather_accumulator: f32,
 }
 
@@ -76,6 +79,7 @@ impl PhysicsEngine {
             terrain_step_counter: 0,
             cached_terrain_results: None,
             cached_wheel_positions: None,
+            cached_center_terrain_height: 0.0,
             track_weather_accumulator: 0.0,
         }
     }
@@ -538,6 +542,7 @@ impl PhysicsEngine {
         self.terrain_step_counter = 0;
         self.cached_terrain_results = None;
         self.cached_wheel_positions = None;
+        self.cached_center_terrain_height = 0.0;
     }
 
     pub fn set_terrain_cell(&mut self, x: f32, z: f32, height: f32, material: TerrainMaterial) {
@@ -574,6 +579,7 @@ impl PhysicsEngine {
         self.terrain_step_counter = 0;
         self.cached_terrain_results = None;
         self.cached_wheel_positions = None;
+        self.cached_center_terrain_height = 0.0;
     }
 
     // ========================================================================
@@ -675,15 +681,17 @@ impl PhysicsEngine {
             .track_temperature
             .check_aquaplaning_per_wheel(&wheel_xz, speed_ms);
 
-        let movement_requires_query = self.wheel_cache_stale(&wheel_xz, 0.25);
+        let movement_requires_query = self.wheel_cache_stale(&wheel_xz, TERRAIN_QUERY_DISTANCE_M);
         let terrain_results = if let Some(ref mut terrain) = self.terrain {
-            let should_query = self.terrain_step_counter % 2 == 0
+            let should_query = self.terrain_step_counter % TERRAIN_QUERY_INTERVAL_STEPS == 0
                 || self.cached_terrain_results.is_none()
                 || movement_requires_query;
             let results = if should_query {
                 let queried = terrain.query_wheels(&wheel_xz, &self.prev_wheel_terrain);
                 self.cached_terrain_results = Some(queried);
                 self.cached_wheel_positions = Some(wheel_xz);
+                self.cached_center_terrain_height =
+                    terrain.query_point(car_position[0], car_position[2]).height;
                 queried
             } else {
                 self.cached_terrain_results
@@ -993,9 +1001,11 @@ impl PhysicsEngine {
                     * half_wheelbase;
                 output.angular_velocity[0] += pitch_moment / inertia_factor;
 
-                let center_height = terrain.query_point(car_position[0], car_position[2]).height;
-                let bottoming =
-                    check_bottoming_out_from_height(center_height, car_position[1], fwd_speed);
+                let bottoming = check_bottoming_out_from_height(
+                    self.cached_center_terrain_height,
+                    car_position[1],
+                    fwd_speed,
+                );
                 output.bottoming_out = bottoming;
 
                 if output.bottoming_out.is_contact {

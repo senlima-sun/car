@@ -5,6 +5,7 @@ import { usePitStore } from '../../../stores/usePitStore'
 import { useGhostCarStore } from '../../../stores/useGhostCarStore'
 
 const GHOST_POLL_INTERVAL = 100
+const TIMER_UPDATE_INTERVAL = 50
 
 function sectorTone(
   sectorNum: number,
@@ -56,8 +57,13 @@ export default function LapTimer() {
   useEffect(() => {
     if (!isActive || !isRecording || currentLapStart === null) return
     let animationId: number
+    let lastUpdate = 0
     const update = () => {
-      updateCurrentTime()
+      const now = performance.now()
+      if (now - lastUpdate >= TIMER_UPDATE_INTERVAL) {
+        updateCurrentTime()
+        lastUpdate = now
+      }
       animationId = requestAnimationFrame(update)
     }
     animationId = requestAnimationFrame(update)
