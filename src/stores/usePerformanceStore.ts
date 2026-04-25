@@ -33,6 +33,13 @@ const TIER_MULTIPLIERS: Record<QualityTier, number> = {
   low: 0.3,
 }
 
+const TIER_TRAIL_POINTS_PER_WHEEL: Record<QualityTier, number> = {
+  ultra: 240,
+  high: 180,
+  medium: 100,
+  low: 50,
+}
+
 const FRAME_SAMPLE_SIZE = 60
 
 interface PerformanceState {
@@ -92,7 +99,7 @@ export const usePerformanceStore = create<PerformanceState & PerformanceActions>
   return {
     tier: 'ultra',
     particleMultiplier: 1.2,
-    trailPointsPerWheel: 720,
+    trailPointsPerWheel: TIER_TRAIL_POINTS_PER_WHEEL.ultra,
     avgFps: 120,
     minFrameTime: 0,
     maxFrameTime: 0,
@@ -136,13 +143,10 @@ export const usePerformanceStore = create<PerformanceState & PerformanceActions>
       }
 
       const multiplier = TIER_MULTIPLIERS[tier]
-      const trailPoints =
-        tier === 'ultra' ? 720 : tier === 'high' ? 600 : tier === 'medium' ? 400 : 200
-
       set({
         tier,
         particleMultiplier: multiplier,
-        trailPointsPerWheel: trailPoints,
+        trailPointsPerWheel: TIER_TRAIL_POINTS_PER_WHEEL[tier],
         avgFps: Math.round(fps),
         minFrameTime: min * 1000,
         maxFrameTime: max * 1000,

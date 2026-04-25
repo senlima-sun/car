@@ -36,8 +36,21 @@ interface TireTrailStore {
     width: number,
     isWet: boolean,
   ) => void
+  addPoints: (points: TireTrailPoint[], count: number) => void
   tick: (dt: number, rainIntensity: number, temperature: number) => void
   clear: () => void
+}
+
+export interface TireTrailPoint {
+  wheel: number
+  x: number
+  z: number
+  y: number
+  dirX: number
+  dirZ: number
+  intensity: number
+  width: number
+  isWet: boolean
 }
 
 export const useTireTrailStore = create<TireTrailStore>((set, get) => ({
@@ -75,6 +88,36 @@ export const useTireTrailStore = create<TireTrailStore>((set, get) => ({
     if (s.counts[wheel] < MAX_POINTS_PER_WHEEL) {
       s.counts[wheel]++
     }
+    set({ version: s.version + 1 })
+  },
+
+  addPoints(points, count) {
+    if (count <= 0) return
+    const s = get()
+    const cappedCount = Math.min(count, points.length)
+
+    for (let i = 0; i < cappedCount; i++) {
+      const point = points[i]
+      const base = point.wheel * MAX_POINTS_PER_WHEEL
+      const head = s.heads[point.wheel]
+      const idx = base + head
+
+      s.xs[idx] = point.x
+      s.zs[idx] = point.z
+      s.ys[idx] = point.y
+      s.dirXs[idx] = point.dirX
+      s.dirZs[idx] = point.dirZ
+      s.intensities[idx] = point.intensity
+      s.ages[idx] = 0
+      s.widths[idx] = point.width
+      s.wet[idx] = point.isWet ? 1 : 0
+
+      s.heads[point.wheel] = (head + 1) % MAX_POINTS_PER_WHEEL
+      if (s.counts[point.wheel] < MAX_POINTS_PER_WHEEL) {
+        s.counts[point.wheel]++
+      }
+    }
+
     set({ version: s.version + 1 })
   },
 
