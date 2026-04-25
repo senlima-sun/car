@@ -2,12 +2,12 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
-import { useTrackTemperatureStore } from '../../../stores/useTrackTemperatureStore'
 import { usePhysicsOptional } from '../../../wasm'
 
 const MAX_PUDDLES = 150
 const MAX_ICE_PATCHES = 100
 const WATER_DEPTH_THRESHOLD = 0.2
+const SURFACE_EFFECT_BOUNDS = { minX: -250, maxX: 250, minZ: -250, maxZ: 250 }
 
 let _surfaceCellCache: Float32Array | null = null
 let _surfaceCellFrame = -1
@@ -121,7 +121,6 @@ function IcePatches() {
   const dummyRef = useRef(new THREE.Object3D())
   const temperature = useEnvironmentStore(s => s.temperature)
   const physics = usePhysicsOptional()
-  const worldBounds = useTrackTemperatureStore(s => s.worldBounds)
   const frameCounter = useRef(0)
 
   const isCold = temperature < 0
@@ -176,6 +175,7 @@ function IcePatches() {
     if (!isCold) return []
 
     const positions: { pos: [number, number, number]; scale: number; rotation: number }[] = []
+    const worldBounds = SURFACE_EFFECT_BOUNDS
 
     const seededRandom = (seed: number) => {
       const x = Math.sin(seed * 12.9898) * 43758.5453
@@ -191,7 +191,7 @@ function IcePatches() {
     }
 
     return positions
-  }, [isCold, worldBounds])
+  }, [isCold])
 
   if (!isCold) return null
 

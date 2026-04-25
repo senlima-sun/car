@@ -37,8 +37,6 @@ export {
   isOnRoad,
   isOffTrack,
   getSurfaceModifiers,
-  initTrackTemperature,
-  getTrackTextureData,
   getTrackCellCount,
   updateCarDriving,
   // Road temperature API
@@ -46,8 +44,6 @@ export {
   setRoadRegion,
   // Water depth
   getWaterDepth,
-  // Track texture dirty check + active surface cells
-  isTrackTextureDirty,
   getActiveSurfaceCells,
   getDebugState,
   createDefaultInput,
@@ -106,7 +102,6 @@ export type {
   SurfaceFrictionBreakdown,
   WeatherModifiers,
   SurfaceModifiers,
-  TrackBounds,
   AmbientConditions,
   WindState,
   WindModifiers,

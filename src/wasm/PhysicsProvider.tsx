@@ -38,8 +38,6 @@ import {
   isOnRoad,
   isOffTrack,
   getSurfaceModifiers,
-  initTrackTemperature,
-  getTrackTextureData,
   getTrackCellCount,
   updateCarDriving,
   // Road temperature API
@@ -47,8 +45,6 @@ import {
   setRoadRegion,
   // Water depth
   getWaterDepth,
-  // Track texture dirty check + active surface cells
-  isTrackTextureDirty,
   getActiveSurfaceCells,
   // Rubber deposit / tire marks API
   updateRubberDeposits,
@@ -102,7 +98,6 @@ import {
   WeatherModifiers,
   AmbientConditions,
   SurfaceModifiers,
-  TrackBounds,
   PerWheelWear,
   StepAndSyncOutput,
   RubberFrameResult,
@@ -122,7 +117,6 @@ export type {
   WeatherModifiers,
   AmbientConditions,
   SurfaceModifiers,
-  TrackBounds,
   PerWheelWear,
   StepAndSyncOutput,
   RubberFrameResult,
@@ -167,8 +161,6 @@ interface PhysicsContextValue {
   isOnRoad: typeof isOnRoad
   isOffTrack: typeof isOffTrack
   getSurfaceModifiers: typeof getSurfaceModifiers
-  initTrackTemperature: typeof initTrackTemperature
-  getTrackTextureData: typeof getTrackTextureData
   getTrackCellCount: typeof getTrackCellCount
   updateCarDriving: typeof updateCarDriving
   // Road temperature API
@@ -176,8 +168,6 @@ interface PhysicsContextValue {
   setRoadRegion: typeof setRoadRegion
   // Water depth
   getWaterDepth: typeof getWaterDepth
-  // Track texture dirty check + active surface cells
-  isTrackTextureDirty: typeof isTrackTextureDirty
   getActiveSurfaceCells: typeof getActiveSurfaceCells
   // Rubber deposit / tire marks API
   updateRubberDeposits: typeof updateRubberDeposits
@@ -299,14 +289,11 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       isOnRoad,
       isOffTrack,
       getSurfaceModifiers,
-      initTrackTemperature,
-      getTrackTextureData,
       getTrackCellCount,
       updateCarDriving,
       setRoadCell,
       setRoadRegion,
       getWaterDepth,
-      isTrackTextureDirty,
       getActiveSurfaceCells,
       updateRubberDeposits,
       getTrackWetness,

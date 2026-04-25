@@ -21,6 +21,8 @@ use crate::types::{
 use crate::utils::{Quat, Vec3};
 use crate::weather::WeatherState;
 
+const TRACK_WEATHER_UPDATE_INTERVAL: f32 = 1.0 / 30.0;
+
 /// Main physics engine that orchestrates all physics systems
 #[derive(Debug)]
 pub struct PhysicsEngine {
@@ -43,6 +45,7 @@ pub struct PhysicsEngine {
     terrain_step_counter: u32,
     cached_terrain_results: Option<[TerrainQueryResult; 4]>,
     cached_wheel_positions: Option<[[f32; 2]; 4]>,
+    track_weather_accumulator: f32,
 }
 
 impl Default for PhysicsEngine {
@@ -73,6 +76,7 @@ impl PhysicsEngine {
             terrain_step_counter: 0,
             cached_terrain_results: None,
             cached_wheel_positions: None,
+            track_weather_accumulator: 0.0,
         }
     }
 
@@ -613,14 +617,18 @@ impl PhysicsEngine {
         // Get wind modifiers based on car heading and speed
         let wind_modifiers = self.wind.calculate_modifiers(car_heading, speed_ms);
 
-        // Update track temperature with ambient conditions and wind cooling
         self.track_temperature.update_time(dt);
+        self.track_weather_accumulator += dt;
         let ambient = self.weather.get_ambient_conditions();
-        self.track_temperature.update_weather_with_ambient(
-            &ambient,
-            wind_modifiers.cooling_multiplier,
-            dt,
-        );
+        if self.track_weather_accumulator >= TRACK_WEATHER_UPDATE_INTERVAL {
+            let weather_dt = self.track_weather_accumulator.min(0.25);
+            self.track_weather_accumulator = 0.0;
+            self.track_temperature.update_weather_with_ambient(
+                &ambient,
+                wind_modifiers.cooling_multiplier,
+                weather_dt,
+            );
+        }
 
         // Get modifiers
         let weather_modifiers = self.weather.get_modifiers();

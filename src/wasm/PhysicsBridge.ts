@@ -102,13 +102,6 @@ export interface WeatherModifiers {
   max_speed_multiplier: number
 }
 
-export interface TrackBounds {
-  min_x: number
-  max_x: number
-  min_z: number
-  max_z: number
-}
-
 export interface SurfaceModifiers {
   grip_multiplier: number
   speed_multiplier: number
@@ -730,20 +723,6 @@ export function getSurfaceModifiers(): SurfaceModifiers {
 }
 
 /**
- * Initialize track temperature grid
- */
-export function initTrackTemperature(cellSize: number, bounds: TrackBounds): void {
-  getPhysicsEngine().init_track_temperature(cellSize, bounds)
-}
-
-/**
- * Get track temperature texture data (RGBA bytes)
- */
-export function getTrackTextureData(): Uint8Array {
-  return getPhysicsEngine().get_track_texture_data()
-}
-
-/**
  * Get number of active track temperature cells
  */
 export function getTrackCellCount(): number {
@@ -1043,14 +1022,6 @@ export function updateRubberDeposits(
     wheelIntensities instanceof Float32Array ? wheelIntensities : new Float32Array(wheelIntensities)
 
   getPhysicsEngine().update_rubber_deposits(posArray, intArray, delta)
-}
-
-/**
- * Check if track temperature texture needs update
- * Avoids expensive getTrackTextureData() call when nothing changed
- */
-export function isTrackTextureDirty(): boolean {
-  return getPhysicsEngine().is_track_texture_dirty()
 }
 
 /**

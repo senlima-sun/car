@@ -2,7 +2,6 @@ import { useRef } from 'react'
 import { useGameStore } from '../../../../stores/useGameStore'
 import { useSessionStore } from '../../../../stores/useSessionStore'
 import { useThermalViewStore } from '../../../../stores/useThermalViewStore'
-import { useHeatmapStore } from '../../../../stores/useHeatmapStore'
 import { useWindViewStore } from '../../../../stores/useWindViewStore'
 import { useErsStore } from '../../../../stores/useErsStore'
 import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
@@ -47,7 +46,6 @@ export function useCarInputControl({ physics }: CarInputOptions) {
   const isTestingMode = useSessionStore(state => state.config?.testingMode ?? false)
 
   const toggleThermalView = useThermalViewStore(state => state.toggle)
-  const toggleHeatmap = useHeatmapStore(state => state.toggleHeatmap)
   const toggleWindView = useWindViewStore(state => state.toggle)
 
   const activateOvertake = useErsStore(state => state.activateOvertake)
@@ -89,7 +87,6 @@ export function useCarInputControl({ physics }: CarInputOptions) {
     }
 
     if (isTestingMode && keys.heatmap && elapsedTime - lastHeatmapToggle.current > 0.3) {
-      toggleHeatmap()
       toggleThermalView()
       toggleWindView()
       lastHeatmapToggle.current = elapsedTime
@@ -98,7 +95,7 @@ export function useCarInputControl({ physics }: CarInputOptions) {
         'input.key.heatmap',
         'useCarInputControl',
         { key: 'H' },
-        { action: 'toggleHeatmap' },
+        { action: 'toggleDebugViews' },
       )
     }
 
