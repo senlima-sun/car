@@ -16,13 +16,6 @@ const GRAVEL_COLORS = [
   new THREE.Color('#b8a88a'),
 ]
 
-const GRASS_COLORS = [
-  new THREE.Color('#4a6b3a'),
-  new THREE.Color('#5a4530'),
-  new THREE.Color('#3a5a2a'),
-  new THREE.Color('#6b5a3a'),
-]
-
 interface Particle {
   active: boolean
   life: number
@@ -44,6 +37,7 @@ export default function SurfaceParticles() {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const particles = useRef<Particle[]>([])
   const spawnAccum = useRef(0)
+  const activeCountRef = useRef(0)
 
   const geometry = useMemo(() => new THREE.BoxGeometry(0.04, 0.04, 0.04), [])
   const material = useMemo(() => new THREE.MeshBasicMaterial({ toneMapped: false }), [])
@@ -69,6 +63,15 @@ export default function SurfaceParticles() {
     if (!mesh) return
 
     const dt = Math.min(delta, 0.05)
+    const surface = useSurfaceStore.getState().currentSurface
+    const isGravel = surface === 'gravel'
+
+    if (!isGravel && activeCountRef.current === 0) {
+      mesh.count = 0
+      spawnAccum.current = 0
+      return
+    }
+
     const perfTier = usePerformanceStore.getState().tier
     const maxParticles = Math.floor(
       BASE_MAX_PARTICLES *
@@ -80,16 +83,13 @@ export default function SurfaceParticles() {
               ? 0.6
               : 0.3),
     )
-    const surface = useSurfaceStore.getState().currentSurface
     const speed = useCarStore.getState().speed
     const position = useCarStore.getState().position
     const rotation = useCarStore.getState().rotation
 
-    const isOffRoad = surface === 'grass' || surface === 'gravel'
-    const isGravel = surface === 'gravel'
-    const colors = isGravel ? GRAVEL_COLORS : GRASS_COLORS
+    const colors = GRAVEL_COLORS
 
-    if (isOffRoad && speed > MIN_SPEED_KMH && position) {
+    if (isGravel && speed > MIN_SPEED_KMH && position) {
       const speedFactor = Math.min((speed - MIN_SPEED_KMH) / 80, 1.0)
       const baseSpawnRate = 15 + speedFactor * 50
       const spawnRate = baseSpawnRate * (maxParticles / BASE_MAX_PARTICLES)
@@ -120,15 +120,13 @@ export default function SurfaceParticles() {
 
         const backDir = -Math.sin(yaw)
         const backDirZ = -Math.cos(yaw)
-        const ejectSpeed = isGravel ? 1.5 + speedFactor * 4.0 : 0.8 + speedFactor * 2.0
+        const ejectSpeed = 1.5 + speedFactor * 4.0
 
         p.vx = backDir * ejectSpeed * (0.5 + Math.random()) + (Math.random() - 0.5) * 2
-        p.vy = isGravel
-          ? 2.0 + Math.random() * 3.0 * speedFactor
-          : 0.5 + Math.random() * 1.5 * speedFactor
+        p.vy = 2.0 + Math.random() * 3.0 * speedFactor
         p.vz = backDirZ * ejectSpeed * (0.5 + Math.random()) + (Math.random() - 0.5) * 2
 
-        p.scale = isGravel ? 0.5 + Math.random() * 1.5 : 0.3 + Math.random() * 0.8
+        p.scale = 0.5 + Math.random() * 1.5
 
         p.colorIndex = Math.floor(Math.random() * colors.length)
       }
@@ -184,6 +182,7 @@ export default function SurfaceParticles() {
       visibleCount++
     }
 
+    activeCountRef.current = visibleCount
     mesh.instanceMatrix.needsUpdate = true
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     mesh.count = BASE_MAX_PARTICLES

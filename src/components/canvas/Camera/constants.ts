@@ -11,7 +11,7 @@ export const SURFACE_SHAKE_INTENSITY: Record<string, number> = {
   curb: 0.008,
   pitroad: 0,
   gravel: 0.022,
-  grass: 0.006,
+  grass: 0,
 }
 
 export const SURFACE_SHAKE_ROTATION: Record<string, number> = {
@@ -19,7 +19,7 @@ export const SURFACE_SHAKE_ROTATION: Record<string, number> = {
   curb: 0.002,
   pitroad: 0,
   gravel: 0.008,
-  grass: 0.002,
+  grass: 0,
 }
 
 export const SURFACE_SHAKE_FREQ: Record<string, number> = {
@@ -27,5 +27,5 @@ export const SURFACE_SHAKE_FREQ: Record<string, number> = {
   curb: 1.0,
   pitroad: 0,
   gravel: 1.2,
-  grass: 0.7,
+  grass: 0,
 }
