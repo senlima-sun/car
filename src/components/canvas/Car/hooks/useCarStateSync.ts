@@ -17,17 +17,23 @@ export function useCarStateSync() {
   const syncBrakeState = useBrakeStore(state => state.syncFromPhysics)
   const syncWindState = useWindStore(state => state.syncFromPhysics)
   const slowSyncCounter = useRef(0)
+  const uiSyncCounter = useRef(0)
 
   const syncAll = (output: any, syncResult: any, windSyncNeeded: boolean) => {
-    syncAeroState(syncResult.aero_state)
-    syncBrakeState(syncResult.brake_state)
+    const count = uiSyncCounter.current++
+    const uiSync = count % 2 === 0
+
+    if (uiSync) {
+      syncAeroState(syncResult.aero_state)
+      syncBrakeState(syncResult.brake_state)
+    }
 
     if (windSyncNeeded) {
       syncWindState(syncResult.wind_state)
     }
 
     slowSyncCounter.current++
-    const slowSync = slowSyncCounter.current % 3 === 0
+    const slowSync = slowSyncCounter.current % 6 === 0
 
     if (slowSync && output.tire_wear) {
       syncAllTire(
@@ -58,9 +64,11 @@ export function useCarStateSync() {
       )
     }
 
-    const ersData =
-      output.ers && typeof output.ers.battery_charge === 'number' ? output.ers : getErsState()
-    syncErsState(ersData)
+    if (uiSync) {
+      const ersData =
+        output.ers && typeof output.ers.battery_charge === 'number' ? output.ers : getErsState()
+      syncErsState(ersData)
+    }
   }
 
   return { syncAll }

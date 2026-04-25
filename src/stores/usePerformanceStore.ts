@@ -2,11 +2,29 @@ import { create } from 'zustand'
 
 export type QualityTier = 'ultra' | 'high' | 'medium' | 'low'
 
-const TIER_THRESHOLDS = {
-  ultra: 100,
-  high: 60,
-  medium: 40,
-} as const
+const TIER_UPGRADE_THRESHOLDS: Record<QualityTier, number> = {
+  ultra: Infinity,
+  high: 112,
+  medium: 70,
+  low: 48,
+}
+
+const TIER_DOWNGRADE_THRESHOLDS: Record<QualityTier, number> = {
+  ultra: 92,
+  high: 52,
+  medium: 34,
+  low: 0,
+}
+
+const TIER_ONE_PERCENT_LOW_THRESHOLDS: Record<QualityTier, number> = {
+  ultra: 94,
+  high: 54,
+  medium: 36,
+  low: 0,
+}
+
+const TIER_ORDER: QualityTier[] = ['low', 'medium', 'high', 'ultra']
+const TIER_CHANGE_COOLDOWN_SAMPLES = 8
 
 const TIER_MULTIPLIERS: Record<QualityTier, number> = {
   ultra: 1.2,
@@ -33,10 +51,43 @@ interface PerformanceActions {
   sampleFrame: (delta: number) => void
 }
 
+export function resolveQualityTier(
+  currentTier: QualityTier,
+  fps: number,
+  onePercentLowFps: number,
+  samplesSinceTierChange: number,
+): QualityTier {
+  const currentIndex = TIER_ORDER.indexOf(currentTier)
+
+  if (
+    currentIndex > 0 &&
+    (fps < TIER_DOWNGRADE_THRESHOLDS[currentTier] ||
+      onePercentLowFps < TIER_ONE_PERCENT_LOW_THRESHOLDS[currentTier])
+  ) {
+    return TIER_ORDER[currentIndex - 1]
+  }
+
+  if (samplesSinceTierChange < TIER_CHANGE_COOLDOWN_SAMPLES) return currentTier
+
+  if (currentIndex < TIER_ORDER.length - 1) {
+    const nextTier = TIER_ORDER[currentIndex + 1]
+    if (
+      fps >= TIER_UPGRADE_THRESHOLDS[currentTier] &&
+      onePercentLowFps >= TIER_ONE_PERCENT_LOW_THRESHOLDS[nextTier]
+    ) {
+      return nextTier
+    }
+  }
+
+  return currentTier
+}
+
 export const usePerformanceStore = create<PerformanceState & PerformanceActions>(set => {
   const frameTimes: number[] = []
   let frameIdx = 0
   let filled = false
+  let currentTier: QualityTier = 'ultra'
+  let samplesSinceTierChange = TIER_CHANGE_COOLDOWN_SAMPLES
 
   return {
     tier: 'ultra',
@@ -77,11 +128,12 @@ export const usePerformanceStore = create<PerformanceState & PerformanceActions>
       const onePercentLow = worstFrame > 0 ? 1 / worstFrame : 0
       const pointOnePercentLow = onePercentLow
 
-      let tier: QualityTier
-      if (fps >= TIER_THRESHOLDS.ultra) tier = 'ultra'
-      else if (fps >= TIER_THRESHOLDS.high) tier = 'high'
-      else if (fps >= TIER_THRESHOLDS.medium) tier = 'medium'
-      else tier = 'low'
+      samplesSinceTierChange++
+      const tier = resolveQualityTier(currentTier, fps, onePercentLow, samplesSinceTierChange)
+      if (tier !== currentTier) {
+        currentTier = tier
+        samplesSinceTierChange = 0
+      }
 
       const multiplier = TIER_MULTIPLIERS[tier]
       const trailPoints =

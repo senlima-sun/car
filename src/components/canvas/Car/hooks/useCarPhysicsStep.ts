@@ -31,6 +31,11 @@ export function useCarPhysicsStep({
   const surfaceNormalRef = useRef<[number, number, number]>([0, 1, 0])
   const validationCounter = useRef(0)
   const windSyncCounter = useRef(0)
+  const syncedCurbRef = useRef<string | null>(null)
+  const syncedErsModeRef = useRef<string | null>(null)
+  const syncedAeroModeRef = useRef<string | null>(null)
+  const syncedOvertakeRef = useRef<boolean | null>(null)
+  const brakeAppliedRef = useRef(false)
 
   const step = (dt: number, input: CarInput) => {
     const chassis = chassisRef.current
@@ -77,20 +82,37 @@ export function useCarPhysicsStep({
     }
 
     const { isOnCurb, curbSide, curbType } = getCurbState()
-    physics.setOnCurb(isOnCurb, curbSide || undefined, curbType || undefined)
-    physics.setErsOvertakeAvailable(useSessionStore.getState().config?.testingMode ?? false)
+    const curbKey = `${isOnCurb ? 1 : 0}:${curbSide ?? ''}:${curbType ?? ''}`
+    if (curbKey !== syncedCurbRef.current) {
+      physics.setOnCurb(isOnCurb, curbSide || undefined, curbType || undefined)
+      syncedCurbRef.current = curbKey
+    }
+
+    const overtakeAvailable = useSessionStore.getState().config?.testingMode ?? false
+    if (overtakeAvailable !== syncedOvertakeRef.current) {
+      physics.setErsOvertakeAvailable(overtakeAvailable)
+      syncedOvertakeRef.current = overtakeAvailable
+    }
 
     const ersState = useErsStore.getState()
-    physics.setErsMode(ersState.mode)
+    if (ersState.mode !== syncedErsModeRef.current) {
+      physics.setErsMode(ersState.mode)
+      syncedErsModeRef.current = ersState.mode
+    }
 
     const aeroState = useActiveAeroStore.getState()
-    if (!aeroState.autoMode) {
+    if (!aeroState.autoMode && aeroState.mode !== syncedAeroModeRef.current) {
       physics.setAeroMode(aeroState.mode)
+      syncedAeroModeRef.current = aeroState.mode
+    } else if (aeroState.autoMode) {
+      syncedAeroModeRef.current = null
     }
 
-    if (input.brake || (input.brake_analog ?? 0) > 0.05) {
+    const brakeApplied = input.brake || (input.brake_analog ?? 0) > 0.05
+    if (brakeApplied && !brakeAppliedRef.current) {
       physics.disableDrsOnBrake()
     }
+    brakeAppliedRef.current = brakeApplied
 
     const syncResult = physics.stepAndSync(
       dt,
