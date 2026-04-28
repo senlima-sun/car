@@ -1,121 +1,46 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 
-interface ToolSectionProps {
+interface Props {
+  isOpen: boolean
+  onToggle: () => void
+  popoverContent: ReactNode
   children: ReactNode
-  popoverContent?: ReactNode
-  isOpen?: boolean
-  onToggle?: () => void
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  popover: {
-    position: 'absolute',
-    bottom: 'calc(100% + 12px)',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: 'rgba(20, 20, 25, 0.95)',
-    borderRadius: 8,
-    padding: 12,
-    minWidth: 200,
-    boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.4)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    zIndex: 200,
-  },
-  arrow: {
-    position: 'absolute',
-    bottom: -6,
-    left: '50%',
-    transform: 'translateX(-50%) rotate(45deg)',
-    width: 12,
-    height: 12,
-    background: 'rgba(20, 20, 25, 0.95)',
-    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-  },
+const containerStyle: React.CSSProperties = {
+  position: 'relative',
+  display: 'inline-flex',
 }
 
-export default function ToolSection({
-  children,
-  popoverContent,
-  isOpen: controlledIsOpen,
-  onToggle,
-}: ToolSectionProps) {
-  const [internalOpen, setInternalOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  // Use controlled or internal state
-  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalOpen
-
-  // Close on click outside
-  useEffect(() => {
-    if (!isOpen) return
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        if (onToggle) {
-          onToggle()
-        } else {
-          setInternalOpen(false)
-        }
-      }
-    }
-
-    // Delay adding listener to prevent immediate close
-    const timer = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside)
-    }, 0)
-
-    return () => {
-      clearTimeout(timer)
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen, onToggle])
-
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (onToggle) {
-          onToggle()
-        } else {
-          setInternalOpen(false)
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onToggle])
-
-  return (
-    <div ref={containerRef} style={styles.container}>
-      {children}
-      {isOpen && popoverContent && (
-        <div style={styles.popover}>
-          <div style={styles.arrow} />
-          {popoverContent}
-        </div>
-      )}
-    </div>
-  )
+const popoverStyle: React.CSSProperties = {
+  position: 'absolute',
+  bottom: 'calc(100% + 8px)',
+  left: 0,
+  minWidth: 240,
+  padding: 12,
+  borderRadius: 8,
+  background: 'rgba(15, 15, 15, 0.95)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+  color: '#fff',
+  fontSize: 11,
+  zIndex: 50,
 }
 
-// Reusable popover header style
-export const popoverStyles = {
+export const popoverStyles: Record<string, React.CSSProperties> = {
   title: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold' as const,
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    color: 'rgba(255, 255, 255, 0.7)',
     marginBottom: 10,
-    paddingBottom: 8,
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+  hint: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: 8,
+    lineHeight: 1.4,
   },
   row: {
     display: 'flex',
@@ -124,40 +49,33 @@ export const popoverStyles = {
     padding: '6px 0',
   },
   label: {
-    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 11,
-  },
-  hint: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 10,
-    marginTop: 8,
-    lineHeight: 1.4,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   toggle: {
-    width: 36,
-    height: 18,
-    borderRadius: 9,
-    position: 'relative' as const,
-    cursor: 'pointer',
-    transition: 'background 0.2s ease',
+    width: 28,
+    height: 16,
+    borderRadius: 8,
+    background: 'rgba(255, 255, 255, 0.15)',
+    position: 'relative',
+    transition: 'background 0.15s ease',
   },
   toggleKnob: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    background: '#fff',
-    position: 'absolute' as const,
+    position: 'absolute',
     top: 2,
-    transition: 'left 0.2s ease',
+    width: 12,
+    height: 12,
+    borderRadius: '50%',
+    background: '#fff',
+    transition: 'left 0.15s ease',
   },
-  button: {
-    width: '100%',
-    padding: '8px 12px',
-    border: 'none',
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontSize: 11,
-    fontWeight: 'bold' as const,
-    transition: 'all 0.2s ease',
-  },
+}
+
+export default function ToolSection({ isOpen, onToggle: _onToggle, popoverContent, children }: Props) {
+  return (
+    <div style={containerStyle}>
+      {children}
+      {isOpen && <div style={popoverStyle}>{popoverContent}</div>}
+    </div>
+  )
 }
