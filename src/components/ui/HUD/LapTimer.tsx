@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../stores/usePitStore'
 import { useGhostCarStore } from '../../../stores/useGhostCarStore'
+import { HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
 
-const GHOST_POLL_INTERVAL = 100
 const TIMER_UPDATE_INTERVAL = 50
 
 function sectorTone(
@@ -37,38 +37,32 @@ export default function LapTimer() {
   const isActive = useLapTimeStore(s => s.isActive)
   const isRecording = useLapTimeStore(s => s.isRecording)
   const currentLapStart = useLapTimeStore(s => s.currentLapStart)
-  const currentLapTime = useLapTimeStore(s => s.currentLapTime)
   const lastLapTime = useLapTimeStore(s => s.lastLapTime)
   const bestLapTime = useLapTimeStore(s => s.bestLapTime)
-  const updateCurrentTime = useLapTimeStore(s => s.updateCurrentTime)
   const totalSectors = useLapTimeStore(s => s.totalSectors)
   const sectorTimes = useLapTimeStore(s => s.sectorTimes)
   const bestSectorTimes = useLapTimeStore(s => s.bestSectorTimes)
   const pitPenalty = usePitStore(s => s.pitLaneSpeedingPenalty)
-  const [ghostTimeDelta, setGhostDelta] = useState<number | null>(null)
+  const ghostTimeDelta = useGhostCarStore(s => s.ghostTimeDelta)
+  const [displayLapTime, setDisplayLapTime] = useState(0)
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setGhostDelta(useGhostCarStore.getState().ghostTimeDelta)
-    }, GHOST_POLL_INTERVAL)
-    return () => clearInterval(id)
-  }, [])
-
-  useEffect(() => {
-    if (!isActive || !isRecording || currentLapStart === null) return
+    if (!isActive || !isRecording || currentLapStart === null) {
+      setDisplayLapTime(0)
+      return
+    }
     let animationId: number
     let lastUpdate = 0
-    const update = () => {
-      const now = performance.now()
+    const update = (now: number) => {
       if (now - lastUpdate >= TIMER_UPDATE_INTERVAL) {
-        updateCurrentTime()
+        setDisplayLapTime(now - currentLapStart)
         lastUpdate = now
       }
       animationId = requestAnimationFrame(update)
     }
     animationId = requestAnimationFrame(update)
     return () => cancelAnimationFrame(animationId)
-  }, [isActive, isRecording, currentLapStart, updateCurrentTime])
+  }, [isActive, isRecording, currentLapStart])
 
   if (!isActive || !isRecording) return null
 
@@ -77,13 +71,8 @@ export default function LapTimer() {
   const ghostColor = ghostAhead ? '#22c55e' : '#ef4444'
 
   return (
-    <div className='absolute top-[72px] left-1/2 -translate-x-1/2 z-20 pointer-events-none select-none'>
-      <div
-        className='border border-white/10 bg-gradient-to-b from-black/85 to-black/70 px-4 py-2 backdrop-blur-md shadow-[0_14px_40px_rgba(0,0,0,0.5)]'
-        style={{
-          clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
-        }}
-      >
+    <div className='absolute top-[76px] left-1/2 -translate-x-1/2 z-20 pointer-events-none select-none'>
+      <HudPanel accent='#00e5ff' contentClassName='px-4 py-2'>
         <div className='flex items-center gap-5'>
           <Column label='Current' accent='#00e5ff'>
             {hasStarted ? (
@@ -91,7 +80,7 @@ export default function LapTimer() {
                 className='font-mono text-[18px] font-semibold leading-none tabular-nums text-white'
                 style={{ textShadow: '0 0 14px rgba(0,229,255,0.35)' }}
               >
-                {formatTime(currentLapTime)}
+                {formatTime(displayLapTime)}
               </span>
             ) : (
               <span className='font-sans text-[11px] italic text-white/45'>Cross checkpoint</span>
@@ -157,7 +146,7 @@ export default function LapTimer() {
               return (
                 <div
                   key={sectorNum}
-                  className='relative overflow-hidden border-white/10 px-2 py-1'
+                  className='relative overflow-hidden border border-white/8 px-2 py-1'
                   style={{
                     background: isEmpty ? 'rgba(255,255,255,0.03)' : tone.tint,
                     borderLeft: `2px solid ${tone.bar}`,
@@ -183,7 +172,7 @@ export default function LapTimer() {
             })}
           </div>
         )}
-      </div>
+      </HudPanel>
     </div>
   )
 }
@@ -199,10 +188,7 @@ function Column({
 }) {
   return (
     <div className='flex flex-col items-start gap-1'>
-      <span
-        className='text-[8px] font-bold uppercase tracking-[0.32em]'
-        style={{ color: accent ?? 'rgba(255,255,255,0.42)' }}
-      >
+      <span className={HUD_LABEL_CLASS} style={{ color: accent ?? 'rgba(255,255,255,0.42)' }}>
         {label}
       </span>
       {children}
@@ -211,5 +197,5 @@ function Column({
 }
 
 function Divider() {
-  return <div className='h-7 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent' />
+  return <div className={`h-7 ${HUD_DIVIDER_CLASS}`} />
 }
