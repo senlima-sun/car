@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEditorStore } from '@/stores/useEditorStore'
+import { useTerrainBrushStore } from '@/stores/useTerrainBrushStore'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 
 const BRUSH_COLORS: Record<string, string> = {
@@ -15,7 +16,7 @@ const SEGMENTS = 64
 
 export default function TerrainBrushIndicator() {
   const meshRef = useRef<THREE.Mesh>(null)
-  const terrainBrushType = useEditorStore(s => s.terrainBrushType)
+  const terrainBrushType = useTerrainBrushStore(s => s.terrainBrushType)
   const terrainEditMode = useEditorStore(s => s.terrainEditMode)
 
   const geometry = useMemo(() => {
@@ -48,14 +49,14 @@ export default function TerrainBrushIndicator() {
       return
     }
 
-    const radius = useEditorStore.getState().terrainBrushRadius
+    const radius = useTerrainBrushStore.getState().terrainBrushRadius
     const y = useTerrainStore.getState().getHeightAt(previewPos[0], previewPos[2])
 
     meshRef.current.position.set(previewPos[0], y + 0.15, previewPos[2])
     meshRef.current.scale.setScalar(radius)
     meshRef.current.visible = true
 
-    const brushType = useEditorStore.getState().terrainBrushType
+    const brushType = useTerrainBrushStore.getState().terrainBrushType
     const color = BRUSH_COLORS[brushType] || '#ffffff'
     ;(meshRef.current.material as THREE.MeshBasicMaterial).color.set(color)
   })

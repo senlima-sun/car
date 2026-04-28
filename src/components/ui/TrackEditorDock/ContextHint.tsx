@@ -1,4 +1,5 @@
 import { useEditorStore } from '../../../stores/useEditorStore'
+import { useElevationEditStore } from '../../../stores/useElevationEditStore'
 import { isLinearObject, isCurveMode } from '../../../types/trackObjects'
 
 const baseContainer: React.CSSProperties = {
@@ -40,10 +41,10 @@ export default function ContextHint({ showSecondaryBar }: ContextHintProps) {
   const selectedRoadIds = useEditorStore(s => s.selectedRoadIds)
   const selectedObjectId = useEditorStore(s => s.selectedObjectId)
   const elevationEditMode = useEditorStore(s => s.elevationEditMode)
-  const elevationTool = useEditorStore(s => s.elevationTool)
-  const elevationDragState = useEditorStore(s => s.elevationDragState)
-  const slopeAnchor = useEditorStore(s => s.slopeAnchor)
-  const smoothSelectedRoadIds = useEditorStore(s => s.smoothSelectedRoadIds)
+  const elevationTool = useElevationEditStore(s => s.elevationTool)
+  const elevationDragState = useElevationEditStore(s => s.elevationDragState)
+  const slopeAnchor = useElevationEditStore(s => s.slopeAnchor)
+  const smoothSelectedRoadIds = useElevationEditStore(s => s.smoothSelectedRoadIds)
 
   // Determine hint based on current state
   const getHint = (): { step?: string; text: string } | null => {
