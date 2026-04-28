@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Billboard, Text } from '@react-three/drei'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
-import { useEditorStore } from '../../../stores/useEditorStore'
+import { useElevationEditStore } from '../../../stores/useElevationEditStore'
 import {
   getElevationControlPoints,
   getConnectedEndpoints,
@@ -99,17 +99,17 @@ function ElevationHandle({
 
 export default function ElevationHandles() {
   const placedObjects = useCustomizationStore(s => s.placedObjects)
-  const elevationDragState = useEditorStore(s => s.elevationDragState)
-  const startElevationDrag = useEditorStore(s => s.startElevationDrag)
-  const updateElevationDrag = useEditorStore(s => s.updateElevationDrag)
-  const confirmElevationDrag = useEditorStore(s => s.confirmElevationDrag)
-  const cancelElevationDrag = useEditorStore(s => s.cancelElevationDrag)
-  const elevationTool = useEditorStore(s => s.elevationTool)
-  const targetLevelHeight = useEditorStore(s => s.targetLevelHeight)
-  const slopeAnchor = useEditorStore(s => s.slopeAnchor)
-  const setSlopeAnchor = useEditorStore(s => s.setSlopeAnchor)
-  const smoothSelectedRoadIds = useEditorStore(s => s.smoothSelectedRoadIds)
-  const toggleSmoothRoadSelection = useEditorStore(s => s.toggleSmoothRoadSelection)
+  const elevationDragState = useElevationEditStore(s => s.elevationDragState)
+  const startElevationDrag = useElevationEditStore(s => s.startElevationDrag)
+  const updateElevationDrag = useElevationEditStore(s => s.updateElevationDrag)
+  const confirmElevationDrag = useElevationEditStore(s => s.confirmElevationDrag)
+  const cancelElevationDrag = useElevationEditStore(s => s.cancelElevationDrag)
+  const elevationTool = useElevationEditStore(s => s.elevationTool)
+  const targetLevelHeight = useElevationEditStore(s => s.targetLevelHeight)
+  const slopeAnchor = useElevationEditStore(s => s.slopeAnchor)
+  const setSlopeAnchor = useElevationEditStore(s => s.setSlopeAnchor)
+  const smoothSelectedRoadIds = useElevationEditStore(s => s.smoothSelectedRoadIds)
+  const toggleSmoothRoadSelection = useElevationEditStore(s => s.toggleSmoothRoadSelection)
 
   const controlPoints = useMemo(() => getElevationControlPoints(placedObjects), [placedObjects])
 
@@ -270,7 +270,7 @@ export default function ElevationHandles() {
       if (!isDraggingRef.current) return
       updateElevationDrag(e.clientY)
 
-      const state = useEditorStore.getState()
+      const state = useElevationEditStore.getState()
       if (!state.elevationDragState) return
       const { roadId, endpoint, currentHeight, connectedEndpoints } = state.elevationDragState
       const customStore = useCustomizationStore.getState()

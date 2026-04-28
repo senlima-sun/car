@@ -7,9 +7,6 @@ import {
   type PartialDeleteState,
   type PlacedObject,
   type CheckpointType,
-  type ElevationDragState,
-  type ElevationTool,
-  type SlopeAnchor,
   isLinearObject,
   isCurveMode,
   isPitRoad,
@@ -32,8 +29,18 @@ import { alignCheckpointToRoad } from '../utils/checkpointAlignment'
 import { PIT_ROAD_WIDTH, PIT_BOX_WIDTH } from '../constants/trackObjects'
 import { editorCommandStack } from '../utils/commandStack'
 import { useCustomizationStore } from './useCustomizationStore'
+import { useElevationEditStore } from './useElevationEditStore'
 
 export type { SnapSettings }
+
+export type EditorMode =
+  | 'idle'
+  | 'place'
+  | 'delete'
+  | 'partialDelete'
+  | 'autoCurb'
+  | 'elevation'
+  | 'terrain'
 
 const ROTATION_STEP = Math.PI / 8
 
@@ -42,6 +49,7 @@ const generateId = (): string => {
 }
 
 interface EditorState {
+  editorMode: EditorMode
   placementState: PlacementState
   selectedObjectType: ObjectType | null
   trackMode: TrackMode
@@ -80,26 +88,12 @@ interface EditorState {
   cameraTarget: [number, number, number] | null
   isObliqueView: boolean
   elevationEditMode: boolean
-  elevationTool: ElevationTool
-  elevationDragState: ElevationDragState | null
-  targetLevelHeight: number
-  slopeAnchor: SlopeAnchor | null
-  smoothSelectedRoadIds: string[]
-  propagateToNeighbors: boolean
   terrainEditMode: boolean
-  terrainBrushType: import('../utils/terrainBrush').TerrainBrushType
-  terrainBrushRadius: number
-  terrainBrushStrength: number
-  terrainFlattenTarget: number
-  setTerrainEditMode: (enabled: boolean) => void
-  setTerrainBrushType: (type: import('../utils/terrainBrush').TerrainBrushType) => void
-  setTerrainBrushRadius: (radius: number) => void
-  setTerrainBrushStrength: (strength: number) => void
-  setTerrainFlattenTarget: (target: number) => void
   overlapResult: OverlapResult | null
   polygonPoints: Array<[number, number, number]>
   checkpointDragState: CheckpointDragState | null
 
+  setEditorMode: (mode: EditorMode) => void
   startCheckpointDrag: (
     id: string,
     handle: 'start' | 'end' | 'center',
@@ -116,23 +110,8 @@ interface EditorState {
   undoLastPolygonPoint: () => void
   closePolygon: () => void
   cancelPolygon: () => void
-  setPropagateToNeighbors: (enabled: boolean) => void
   setElevationEditMode: (enabled: boolean) => void
-  setElevationTool: (tool: ElevationTool) => void
-  startElevationDrag: (
-    roadId: string,
-    endpoint: 'start' | 'end',
-    currentHeight: number,
-    screenY: number,
-    connectedEndpoints: import('../types/trackObjects').ElevationControlPoint[],
-  ) => void
-  updateElevationDrag: (screenY: number) => void
-  confirmElevationDrag: () => void
-  cancelElevationDrag: () => void
-  setTargetLevelHeight: (h: number) => void
-  setSlopeAnchor: (anchor: SlopeAnchor | null) => void
-  toggleSmoothRoadSelection: (roadId: string) => void
-  clearSmoothSelection: () => void
+  setTerrainEditMode: (enabled: boolean) => void
   setSymmetricCurve: (enabled: boolean) => void
   setObliqueView: (v: boolean) => void
   undo: () => void
@@ -198,7 +177,17 @@ interface EditorState {
   setCameraTarget: (pos: [number, number, number] | null) => void
 }
 
+const IDLE_MODE_FIELDS = {
+  editorMode: 'idle' as EditorMode,
+  deleteMode: false,
+  partialDeleteMode: false,
+  autoCurbMode: false,
+  elevationEditMode: false,
+  terrainEditMode: false,
+}
+
 export const useEditorStore = create<EditorState>((set, get) => ({
+  editorMode: 'idle',
   placementState: 'idle',
   selectedObjectType: null,
   trackMode: 'straight',
@@ -237,30 +226,82 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   cameraTarget: null,
   isObliqueView: false,
   elevationEditMode: false,
-  elevationTool: 'raise' as ElevationTool,
-  elevationDragState: null,
-  targetLevelHeight: 0,
-  slopeAnchor: null,
-  smoothSelectedRoadIds: [],
-  propagateToNeighbors: false,
   terrainEditMode: false,
-  terrainBrushType: 'raise' as import('../utils/terrainBrush').TerrainBrushType,
-  terrainBrushRadius: 15,
-  terrainBrushStrength: 1.0,
-  terrainFlattenTarget: 0,
-  setTerrainEditMode: (enabled: boolean) =>
-    set({
-      terrainEditMode: enabled,
-      ...(enabled ? { elevationEditMode: false } : {}),
-    }),
-  setTerrainBrushType: (type: import('../utils/terrainBrush').TerrainBrushType) =>
-    set({ terrainBrushType: type }),
-  setTerrainBrushRadius: (radius: number) => set({ terrainBrushRadius: radius }),
-  setTerrainBrushStrength: (strength: number) => set({ terrainBrushStrength: strength }),
-  setTerrainFlattenTarget: (target: number) => set({ terrainFlattenTarget: target }),
   overlapResult: null,
   polygonPoints: [],
   checkpointDragState: null,
+
+  setEditorMode: mode => {
+    switch (mode) {
+      case 'idle':
+        set({
+          ...IDLE_MODE_FIELDS,
+          selectedObjectType: null,
+          placementState: 'idle' as PlacementState,
+          selectedRoadIds: [],
+        })
+        break
+      case 'place':
+        set({
+          ...IDLE_MODE_FIELDS,
+          editorMode: 'place',
+          placementState: 'selecting' as PlacementState,
+        })
+        break
+      case 'delete':
+        set({
+          ...IDLE_MODE_FIELDS,
+          editorMode: 'delete',
+          deleteMode: true,
+          selectedObjectType: null,
+          selectedRoadIds: [],
+          placementState: 'idle' as PlacementState,
+        })
+        break
+      case 'partialDelete':
+        set({
+          ...IDLE_MODE_FIELDS,
+          editorMode: 'partialDelete',
+          partialDeleteMode: true,
+          selectedObjectType: null,
+          selectedRoadIds: [],
+          placementState: 'idle' as PlacementState,
+          partialDeleteState: null,
+          partialDeletePreviewT: null,
+          partialDeletePreviewPosition: null,
+        })
+        break
+      case 'autoCurb':
+        set({
+          ...IDLE_MODE_FIELDS,
+          editorMode: 'autoCurb',
+          autoCurbMode: true,
+          selectedObjectType: null,
+          placementState: 'idle' as PlacementState,
+        })
+        break
+      case 'elevation': {
+        useElevationEditStore.getState().clearSmoothSelection()
+        useElevationEditStore.setState({ slopeAnchor: null, elevationDragState: null })
+        set({
+          ...IDLE_MODE_FIELDS,
+          editorMode: 'elevation',
+          elevationEditMode: true,
+          selectedObjectType: null,
+          selectedRoadIds: [],
+          placementState: 'idle' as PlacementState,
+        })
+        break
+      }
+      case 'terrain':
+        set({
+          ...IDLE_MODE_FIELDS,
+          editorMode: 'terrain',
+          terrainEditMode: true,
+        })
+        break
+    }
+  },
 
   startCheckpointDrag: (id, handle, startPoint, endPoint) =>
     set({
@@ -543,135 +584,33 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   setOverlapResult: result => set({ overlapResult: result }),
-  setPropagateToNeighbors: enabled => set({ propagateToNeighbors: enabled }),
 
   setElevationEditMode: enabled => {
     if (enabled) {
-      set({
-        elevationEditMode: true,
-        terrainEditMode: false,
-        deleteMode: false,
-        partialDeleteMode: false,
-        autoCurbMode: false,
-        selectedObjectType: null,
-        selectedObjectId: null,
-        placementState: 'idle' as PlacementState,
-        slopeAnchor: null,
-        smoothSelectedRoadIds: [],
-      })
+      get().setEditorMode('elevation')
     } else {
-      set({
-        elevationEditMode: false,
+      useElevationEditStore.setState({
         elevationDragState: null,
         slopeAnchor: null,
         smoothSelectedRoadIds: [],
       })
+      set({
+        editorMode: 'idle',
+        elevationEditMode: false,
+      })
     }
   },
 
-  setElevationTool: tool =>
-    set({
-      elevationTool: tool,
-      elevationDragState: null,
-      slopeAnchor: null,
-      smoothSelectedRoadIds: [],
-    }),
-
-  startElevationDrag: (roadId, endpoint, currentHeight, screenY, connectedEndpoints) =>
-    set({
-      elevationDragState: {
-        roadId,
-        endpoint,
-        initialHeight: currentHeight,
-        currentHeight,
-        screenStartY: screenY,
-        connectedEndpoints,
-      },
-    }),
-
-  updateElevationDrag: screenY => {
-    const state = get()
-    if (!state.elevationDragState) return
-    const deltaHeight = (state.elevationDragState.screenStartY - screenY) * 0.05
-    const rawHeight = state.elevationDragState.initialHeight + deltaHeight
-    const snapped = Math.round(rawHeight / 0.25) * 0.25
-    const clamped = Math.max(0, Math.min(20, snapped))
-    set({
-      elevationDragState: {
-        ...state.elevationDragState,
-        currentHeight: clamped,
-      },
-    })
+  setTerrainEditMode: enabled => {
+    if (enabled) {
+      get().setEditorMode('terrain')
+    } else {
+      set({
+        editorMode: 'idle',
+        terrainEditMode: false,
+      })
+    }
   },
-
-  confirmElevationDrag: () => {
-    const state = get()
-    if (!state.elevationDragState) return
-    const { roadId, endpoint, initialHeight, currentHeight, connectedEndpoints } =
-      state.elevationDragState
-    if (initialHeight === currentHeight) {
-      set({ elevationDragState: null })
-      return
-    }
-
-    const elevProp = endpoint === 'start' ? 'startElevation' : 'endElevation'
-
-    const allUpdates: { id: string; prop: string; before: number; after: number }[] = []
-    allUpdates.push({ id: roadId, prop: elevProp, before: initialHeight, after: currentHeight })
-
-    for (const cp of connectedEndpoints) {
-      if (cp.roadId === roadId && cp.endpoint === endpoint) continue
-      const cpProp = cp.endpoint === 'start' ? 'startElevation' : 'endElevation'
-      allUpdates.push({ id: cp.roadId, prop: cpProp, before: cp.elevation, after: currentHeight })
-    }
-
-    const command: EditorCommand = {
-      execute: () => {
-        const store = useCustomizationStore.getState()
-        for (const u of allUpdates) {
-          store.updateObject(u.id, { [u.prop]: u.after })
-        }
-      },
-      undo: () => {
-        const store = useCustomizationStore.getState()
-        for (const u of allUpdates) {
-          store.updateObject(u.id, { [u.prop]: u.before })
-        }
-      },
-      description: `Adjust elevation`,
-    }
-    editorCommandStack.push(command)
-
-    set({ elevationDragState: null })
-  },
-
-  cancelElevationDrag: () => {
-    const state = get()
-    if (!state.elevationDragState) return
-    const { roadId, endpoint, initialHeight, connectedEndpoints } = state.elevationDragState
-    const customStore = useCustomizationStore.getState()
-    const elevProp = endpoint === 'start' ? 'startElevation' : 'endElevation'
-    customStore.updateObject(roadId, { [elevProp]: initialHeight })
-    for (const cp of connectedEndpoints) {
-      if (cp.roadId === roadId && cp.endpoint === endpoint) continue
-      const cpProp = cp.endpoint === 'start' ? 'startElevation' : 'endElevation'
-      customStore.updateObject(cp.roadId, { [cpProp]: cp.elevation })
-    }
-    set({ elevationDragState: null })
-  },
-
-  setTargetLevelHeight: h => set({ targetLevelHeight: h }),
-
-  setSlopeAnchor: anchor => set({ slopeAnchor: anchor }),
-
-  toggleSmoothRoadSelection: roadId =>
-    set(state => ({
-      smoothSelectedRoadIds: state.smoothSelectedRoadIds.includes(roadId)
-        ? state.smoothSelectedRoadIds.filter(id => id !== roadId)
-        : [...state.smoothSelectedRoadIds, roadId],
-    })),
-
-  clearSmoothSelection: () => set({ smoothSelectedRoadIds: [] }),
 
   setSymmetricCurve: enabled => set({ symmetricCurve: enabled }),
 
@@ -718,12 +657,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         endSnapBanking: null,
         connectedTangent: null,
         snappedAngle: null,
+        ...IDLE_MODE_FIELDS,
+        editorMode: 'place',
         deleteMode: false,
         partialDeleteMode: false,
         elevationEditMode: false,
         terrainEditMode: false,
         autoCurbMode: false,
         selectedRoadIds: [],
+      })
+      useElevationEditStore.setState({
         elevationDragState: null,
         slopeAnchor: null,
         smoothSelectedRoadIds: [],
@@ -747,24 +690,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       snappedAngle: null,
     }),
 
-  setDeleteMode: enabled =>
-    set({
-      deleteMode: enabled,
-      selectedObjectId: enabled ? get().selectedObjectId : null,
-      ...(enabled
-        ? {
-            partialDeleteMode: false,
-            elevationEditMode: false,
-            autoCurbMode: false,
-            selectedObjectType: null,
-            selectedRoadIds: [],
-            placementState: 'idle' as PlacementState,
-            elevationDragState: null,
-            slopeAnchor: null,
-            smoothSelectedRoadIds: [],
-          }
-        : {}),
-    }),
+  setDeleteMode: enabled => {
+    if (enabled) {
+      get().setEditorMode('delete')
+      set({ selectedObjectId: get().selectedObjectId })
+    } else {
+      set({
+        editorMode: 'idle',
+        deleteMode: false,
+      })
+    }
+  },
 
   setPreviewPosition: pos => set({ previewPosition: pos }),
 
@@ -1144,26 +1080,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       curbPreviewEndPosition: null,
     }),
 
-  setPartialDeleteMode: enabled =>
-    set({
-      partialDeleteMode: enabled,
-      partialDeleteState: null,
-      partialDeletePreviewT: null,
-      partialDeletePreviewPosition: null,
-      ...(enabled
-        ? {
-            selectedObjectType: null,
-            deleteMode: false,
-            elevationEditMode: false,
-            autoCurbMode: false,
-            selectedRoadIds: [],
-            placementState: 'idle' as PlacementState,
-            elevationDragState: null,
-            slopeAnchor: null,
-            smoothSelectedRoadIds: [],
-          }
-        : {}),
-    }),
+  setPartialDeleteMode: enabled => {
+    if (enabled) {
+      get().setEditorMode('partialDelete')
+    } else {
+      set({
+        editorMode: 'idle',
+        partialDeleteMode: false,
+        partialDeleteState: null,
+        partialDeletePreviewT: null,
+        partialDeletePreviewPosition: null,
+      })
+    }
+  },
 
   startPartialDelete: (roadId, road, t, position) =>
     set({
@@ -1225,28 +1154,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       partialDeletePreviewPosition: null,
     }),
 
-  setAutoCurbMode: enabled =>
-    set({
-      autoCurbMode: enabled,
-      selectedRoadIds: enabled ? get().selectedRoadIds : [],
-      ...(enabled
-        ? {
-            deleteMode: false,
-            partialDeleteMode: false,
-            elevationEditMode: false,
-            selectedObjectType: null,
-            placementState: 'idle' as PlacementState,
-            elevationDragState: null,
-            slopeAnchor: null,
-            smoothSelectedRoadIds: [],
-          }
-        : {
-            deleteMode: false,
-            partialDeleteMode: false,
-            selectedObjectType: null,
-            placementState: 'idle' as PlacementState,
-          }),
-    }),
+  setAutoCurbMode: enabled => {
+    if (enabled) {
+      get().setEditorMode('autoCurb')
+    } else {
+      set({
+        editorMode: 'idle',
+        autoCurbMode: false,
+        selectedRoadIds: [],
+        selectedObjectType: null,
+        placementState: 'idle' as PlacementState,
+      })
+    }
+  },
 
   toggleRoadSelection: roadId =>
     set(state => ({

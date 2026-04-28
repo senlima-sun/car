@@ -7,6 +7,7 @@ import {
 import { isCurveMode, isPolygonObject, isWallType } from '../../../types/trackObjects'
 import WallPropertiesPanel from './WallPropertiesPanel'
 import { useEditorStore } from '../../../stores/useEditorStore'
+import { useElevationEditStore } from '../../../stores/useElevationEditStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
 import { OBJECT_TYPES } from '../../../constants/trackObjects'
@@ -236,15 +237,15 @@ export default function CustomizationPanel() {
   const setSymmetricCurve = useEditorStore(s => s.setSymmetricCurve)
   const elevationEditMode = useEditorStore(s => s.elevationEditMode)
   const setElevationEditMode = useEditorStore(s => s.setElevationEditMode)
-  const elevationTool = useEditorStore(s => s.elevationTool)
-  const setElevationTool = useEditorStore(s => s.setElevationTool)
-  const targetLevelHeight = useEditorStore(s => s.targetLevelHeight)
-  const setTargetLevelHeight = useEditorStore(s => s.setTargetLevelHeight)
-  const slopeAnchor = useEditorStore(s => s.slopeAnchor)
-  const smoothSelectedRoadIds = useEditorStore(s => s.smoothSelectedRoadIds)
-  const clearSmoothSelection = useEditorStore(s => s.clearSmoothSelection)
-  const propagateToNeighbors = useEditorStore(s => s.propagateToNeighbors)
-  const setPropagateToNeighbors = useEditorStore(s => s.setPropagateToNeighbors)
+  const elevationTool = useElevationEditStore(s => s.elevationTool)
+  const setElevationTool = useElevationEditStore(s => s.setElevationTool)
+  const targetLevelHeight = useElevationEditStore(s => s.targetLevelHeight)
+  const setTargetLevelHeight = useElevationEditStore(s => s.setTargetLevelHeight)
+  const slopeAnchor = useElevationEditStore(s => s.slopeAnchor)
+  const smoothSelectedRoadIds = useElevationEditStore(s => s.smoothSelectedRoadIds)
+  const clearSmoothSelection = useElevationEditStore(s => s.clearSmoothSelection)
+  const propagateToNeighbors = useElevationEditStore(s => s.propagateToNeighbors)
+  const setPropagateToNeighbors = useElevationEditStore(s => s.setPropagateToNeighbors)
   const reorderSectorCheckpoint = useEditorStore(s => s.reorderSectorCheckpoint)
   const deleteSectorCheckpoint = useEditorStore(s => s.deleteSectorCheckpoint)
   const selectObject = useEditorStore(s => s.selectObject)

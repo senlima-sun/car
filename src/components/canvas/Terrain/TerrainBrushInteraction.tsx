@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useEditorStore } from '@/stores/useEditorStore'
+import { useTerrainBrushStore } from '@/stores/useTerrainBrushStore'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 import { computeBrushStroke, type BrushParams } from '@/utils/terrainBrush'
 import { editorCommandStack } from '@/utils/commandStack'
@@ -33,7 +34,7 @@ export default function TerrainBrushInteraction() {
 
   const applyBrush = useCallback((worldX: number, worldZ: number, dt: number) => {
     const { terrainBrushType, terrainBrushRadius, terrainBrushStrength, terrainFlattenTarget } =
-      useEditorStore.getState()
+      useTerrainBrushStore.getState()
     const { heightmap, resolution, worldSize, applyBrushStroke } = useTerrainStore.getState()
 
     const params: BrushParams = {
@@ -103,7 +104,7 @@ export default function TerrainBrushInteraction() {
       if (diff.size === 0) return
 
       const diffCopy = new Map(diff)
-      const brushType = useEditorStore.getState().terrainBrushType
+      const brushType = useTerrainBrushStore.getState().terrainBrushType
 
       const command: EditorCommand = {
         execute: () => {

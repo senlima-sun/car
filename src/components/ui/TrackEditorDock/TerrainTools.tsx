@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useEditorStore } from '../../../stores/useEditorStore'
+import { useTerrainBrushStore } from '../../../stores/useTerrainBrushStore'
 import ToolSection, { popoverStyles } from './ToolSection'
 import type { TerrainBrushType } from '../../../utils/terrainBrush'
 
@@ -77,14 +78,14 @@ export default function TerrainTools() {
 
   const terrainEditMode = useEditorStore(s => s.terrainEditMode)
   const setTerrainEditMode = useEditorStore(s => s.setTerrainEditMode)
-  const terrainBrushType = useEditorStore(s => s.terrainBrushType)
-  const setTerrainBrushType = useEditorStore(s => s.setTerrainBrushType)
-  const terrainBrushRadius = useEditorStore(s => s.terrainBrushRadius)
-  const setTerrainBrushRadius = useEditorStore(s => s.setTerrainBrushRadius)
-  const terrainBrushStrength = useEditorStore(s => s.terrainBrushStrength)
-  const setTerrainBrushStrength = useEditorStore(s => s.setTerrainBrushStrength)
-  const terrainFlattenTarget = useEditorStore(s => s.terrainFlattenTarget)
-  const setTerrainFlattenTarget = useEditorStore(s => s.setTerrainFlattenTarget)
+  const terrainBrushType = useTerrainBrushStore(s => s.terrainBrushType)
+  const setTerrainBrushType = useTerrainBrushStore(s => s.setBrushType)
+  const terrainBrushRadius = useTerrainBrushStore(s => s.terrainBrushRadius)
+  const setTerrainBrushRadius = useTerrainBrushStore(s => s.setBrushRadius)
+  const terrainBrushStrength = useTerrainBrushStore(s => s.terrainBrushStrength)
+  const setTerrainBrushStrength = useTerrainBrushStore(s => s.setBrushStrength)
+  const terrainFlattenTarget = useTerrainBrushStore(s => s.terrainFlattenTarget)
+  const setTerrainFlattenTarget = useTerrainBrushStore(s => s.setFlattenTarget)
 
   return (
     <div style={styles.container}>
