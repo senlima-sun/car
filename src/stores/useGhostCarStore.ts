@@ -56,8 +56,6 @@ export const useGhostCarStore = create<GhostCarState>()((set, get) => ({
   },
 
   setGhostFrameState: (pos, delta) => {
-    const state = get()
-    state.ghostPosition = pos
-    state.ghostTimeDelta = delta
+    set({ ghostPosition: pos, ghostTimeDelta: delta })
   },
 }))
