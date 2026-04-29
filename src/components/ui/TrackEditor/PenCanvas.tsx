@@ -7,6 +7,7 @@ import { dist } from './geometry/point'
 import { screenToWorld, worldToScreen, zoomAt } from './geometry/viewport'
 import { screenPointOf } from './hooks/usePointerWorld'
 import { closestPointOnAnyPath, closestPointOnPath } from './geometry/closestPoint'
+import { buildPreviewSegment } from './helpers/previewSegment'
 import {
   CLOSE_RADIUS_SCREEN,
   DRAG_THRESHOLD_SCREEN,
@@ -721,27 +722,10 @@ export default function PenCanvas() {
 
   const onContextMenu = (e: React.MouseEvent) => e.preventDefault()
 
-  const previewSegment = (() => {
-    if (tool !== 'pen' || !hoverWorld || drag) return null
-    const last = (() => {
-      if (pen.activePathId) {
-        const path = doc.paths.find(p => p.id === pen.activePathId)
-        if (!path || path.anchors.length === 0) return null
-        return resolveAnchor(doc.paths, path.anchors[path.anchors.length - 1]!)
-      }
-      if (!pen.startRef) return null
-      return getAnchor(doc.paths, pen.startRef.pathId, pen.startRef.anchorIndex)
-    })()
-    if (!last) return null
-    const lastS = worldToScreen(viewport, last.point)
-    const hoverS = worldToScreen(viewport, hoverWorld)
-    const hasOut = last.outHandle.x !== last.point.x || last.outHandle.y !== last.point.y
-    if (hasOut) {
-      const c1 = worldToScreen(viewport, last.outHandle)
-      return `M ${lastS.x} ${lastS.y} C ${c1.x} ${c1.y} ${hoverS.x} ${hoverS.y} ${hoverS.x} ${hoverS.y}`
-    }
-    return `M ${lastS.x} ${lastS.y} L ${hoverS.x} ${hoverS.y}`
-  })()
+  const previewSegment =
+    tool === 'pen' && !drag
+      ? buildPreviewSegment({ paths: doc.paths, viewport, pen, hoverWorld })
+      : null
 
   const cursor =
     spaceDown || drag?.kind === 'pan' ? 'grab' : tool === 'pen' ? 'crosshair' : 'default'
