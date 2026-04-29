@@ -22,17 +22,22 @@ export const ASPHALT_VERTEX_DISPLACEMENT = /* glsl */ `
 
 export const ASPHALT_VERTEX_INJECT = /* glsl */ `
 varying vec3 vAsphaltWorldPos;
+varying vec2 vRoadUV;
 `
 
 export const ASPHALT_VERTEX_WORLDPOS_INJECT = /* glsl */ `
 vAsphaltWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+vRoadUV = uv;
 `
 
 export const ASPHALT_FRAGMENT_INJECT = /* glsl */ `
 varying vec3 vAsphaltWorldPos;
+varying vec2 vRoadUV;
 uniform float uRainIntensity;
 uniform float uTemperature;
 uniform float uPitDarken;
+uniform float uRoadWearStrength;
+uniform sampler2D uAsphaltWornMap;
 uniform sampler2D uSkidMarkMap;
 uniform vec4 uSkidMarkBounds;
 ${SIMPLEX_NOISE_GLSL}
@@ -88,6 +93,10 @@ AggregateResult _asphaltAggregate(vec2 worldXZ, float lodFade) {
 export const ASPHALT_COLOR_INJECT = /* glsl */ `
 {
   vec2 wXZ = vAsphaltWorldPos.xz;
+  float roadU = clamp(vRoadUV.x, 0.0, 1.0);
+  float roadV = vRoadUV.y;
+  vec3 texBase = diffuseColor.rgb;
+  vec3 texWorn = texture2D(uAsphaltWornMap, vMapUv).rgb;
 
   float wet = clamp(uRainIntensity, 0.0, 1.0);
   float frost = clamp(smoothstep(5.0, -5.0, uTemperature), 0.0, 1.0);
@@ -117,12 +126,32 @@ export const ASPHALT_COLOR_INJECT = /* glsl */ `
   col += vec3(grainTint) * _aggCache.grainMix;
   col = mix(col, col * 0.55, _aggCache.crevice * _aggCache.grainMix);
 
-  #ifdef HAS_ROAD_UV
-    float roadU = vRoadUV.x;
-    float edgeWear = smoothstep(0.0, 0.15, roadU) * smoothstep(1.0, 0.85, roadU);
-    edgeWear = 1.0 - edgeWear;
-    col = mix(col, col * 1.15 + vec3(0.02), edgeWear * 0.4);
-  #endif
+  float edgeDust = max(1.0 - smoothstep(0.0, 0.18, roadU), smoothstep(0.82, 1.0, roadU));
+  float centerBand = 1.0 - smoothstep(0.06, 0.34, abs(roadU - 0.5));
+  float wheelGroove =
+    smoothstep(0.18, 0.0, abs(roadU - 0.34)) +
+    smoothstep(0.18, 0.0, abs(roadU - 0.66));
+  wheelGroove = clamp(wheelGroove, 0.0, 1.0);
+  float patchiness = _snoise(vec2(roadV * 0.35, roadU * 5.0) + vec2(31.0, 12.0)) * 0.5 + 0.5;
+  float seam = smoothstep(
+    0.48,
+    0.5,
+    abs(fract(roadV * 0.085 + _asphaltValNoise(wXZ * 0.35) * 0.1) - 0.5)
+  );
+  float wearMask = clamp(
+    uRoadWearStrength * (wheelGroove * (0.34 + patchiness * 0.24) + centerBand * 0.08),
+    0.0,
+    0.82
+  );
+
+  vec3 texColor = mix(texBase, texWorn, wearMask);
+  vec3 proceduralTint = mix(vec3(0.84, 0.84, 0.84), col * 1.12, 0.34);
+  col = texColor * proceduralTint;
+
+  col = mix(col, col * 1.14 + vec3(0.026, 0.022, 0.016), edgeDust * (0.18 + n2 * 0.12));
+  col = mix(col, col * 0.8 + vec3(0.008, 0.008, 0.012), wheelGroove * (0.2 + patchiness * 0.26));
+  col = mix(col, col * 0.9 + vec3(0.014), centerBand * 0.15);
+  col = mix(col, col * 0.78, seam * 0.1);
 
   col *= mix(1.0, 0.65, wet);
 
@@ -153,8 +182,15 @@ export const ASPHALT_ROUGHNESS_INJECT = /* glsl */ `
   float wet = clamp(uRainIntensity, 0.0, 1.0);
   float frost = clamp(smoothstep(5.0, -5.0, uTemperature), 0.0, 1.0);
   vec2 wXZ = vAsphaltWorldPos.xz;
+  float roadU = clamp(vRoadUV.x, 0.0, 1.0);
   float rn = _asphaltValNoise(wXZ * 6.0 + vec2(500.0, 600.0));
   float baseRough = 0.78 + rn * 0.14;
+  float edgeDust = max(1.0 - smoothstep(0.0, 0.18, roadU), smoothstep(0.82, 1.0, roadU));
+  float wheelGroove =
+    smoothstep(0.18, 0.0, abs(roadU - 0.34)) +
+    smoothstep(0.18, 0.0, abs(roadU - 0.66));
+  wheelGroove = clamp(wheelGroove, 0.0, 1.0);
+  float puddleMask = smoothstep(0.55, 1.0, wet) * (_asphaltValNoise(wXZ * 1.1 + vec2(13.0, 4.0)));
   if (_aggCacheValid) {
     float grainRough = _aggCache.grainRoughness;
     float creviceRough = mix(grainRough, 0.98, _aggCache.crevice);
@@ -162,7 +198,10 @@ export const ASPHALT_ROUGHNESS_INJECT = /* glsl */ `
   } else {
     roughnessFactor = baseRough;
   }
-  roughnessFactor *= mix(1.0, 0.3, wet);
+  roughnessFactor = mix(roughnessFactor, roughnessFactor + 0.1, edgeDust * 0.35);
+  roughnessFactor = mix(roughnessFactor, roughnessFactor * 0.7, wheelGroove * 0.4);
+  roughnessFactor = mix(roughnessFactor, 0.16, puddleMask * 0.35);
+  roughnessFactor *= mix(1.0, 0.34, wet);
   roughnessFactor *= mix(1.0, 1.15, frost);
 }
 `
@@ -171,8 +210,8 @@ export const ASPHALT_METALNESS_INJECT = /* glsl */ `
 {
   float wet = clamp(uRainIntensity, 0.0, 1.0);
   float frost = clamp(smoothstep(5.0, -5.0, uTemperature), 0.0, 1.0);
-  metalnessFactor = mix(metalnessFactor, 0.6, wet * wet);
-  metalnessFactor = mix(metalnessFactor, 0.4, frost * 0.5);
+  metalnessFactor = mix(metalnessFactor, 0.12, wet * 0.65);
+  metalnessFactor = mix(metalnessFactor, 0.06, frost * 0.35);
 }
 `
 
@@ -186,6 +225,8 @@ export function createAsphaltUniforms(): Record<string, THREE.IUniform> {
     uRainIntensity: { value: 0.0 },
     uTemperature: { value: 25.0 },
     uPitDarken: { value: 1.0 },
+    uRoadWearStrength: { value: 1.0 },
+    uAsphaltWornMap: { value: null },
     uSkidMarkMap: { value: null },
     uSkidMarkBounds: { value: new THREE.Vector4(0, 0, 0, 0) },
   }

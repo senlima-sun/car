@@ -16,7 +16,7 @@ interface ControlsState {
   brakeDecr: boolean
   engineBrake: boolean
   camera: boolean
-  heatmap: boolean
+  windView: boolean
   freeCamera: boolean
   lapTimer: boolean
   pitStop: boolean
@@ -73,7 +73,7 @@ export function useControls(): () => ControlsState {
       brakeDecr: keyboard.brakeDecr || false,
       engineBrake: keyboard.engineBrake || false,
       camera: keyboard.camera || touch.camera,
-      heatmap: keyboard.heatmap || false,
+      windView: keyboard.windView || false,
       freeCamera: keyboard.freeCamera || false,
       lapTimer: keyboard.lapTimer || false,
       pitStop: keyboard.pitStop || false,

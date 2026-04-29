@@ -13,6 +13,7 @@ interface ActiveAeroStoreState {
   toggleMode: () => void
   toggleAuto: () => void
   syncFromPhysics: (state: ActiveAeroState) => void
+  resetForPreview: () => void
 }
 
 export const useActiveAeroStore = create<ActiveAeroStoreState>((set, get) => ({
@@ -33,7 +34,20 @@ export const useActiveAeroStore = create<ActiveAeroStoreState>((set, get) => ({
     set(state => ({ autoMode: !state.autoMode }))
   },
 
+  resetForPreview: () => set({ frontWingAngle: 0, rearWingAngle: 0 }),
+
   syncFromPhysics: (state: ActiveAeroState) => {
+    const prev = get()
+    if (
+      prev.mode === state.mode &&
+      prev.autoMode === state.auto_mode &&
+      Math.abs(prev.frontWingAngle - state.front_wing_angle) < 0.005 &&
+      Math.abs(prev.rearWingAngle - state.rear_wing_angle) < 0.005 &&
+      Math.abs(prev.dragMultiplier - state.drag_multiplier) < 0.005 &&
+      Math.abs(prev.downforceMultiplier - state.downforce_multiplier) < 0.005
+    ) {
+      return
+    }
     set({
       mode: state.mode,
       autoMode: state.auto_mode,

@@ -8,18 +8,22 @@ const MAX_PUDDLES = 150
 const MAX_ICE_PATCHES = 100
 const WATER_DEPTH_THRESHOLD = 0.2
 const SURFACE_EFFECT_BOUNDS = { minX: -250, maxX: 250, minZ: -250, maxZ: 250 }
+const SURFACE_EFFECT_UPDATE_INTERVAL = 0.25
+const SURFACE_CELL_CACHE_MS = 500
 
 let _surfaceCellCache: Float32Array | null = null
-let _surfaceCellFrame = -1
+let _surfaceCellCacheTime = 0
 
 function getCachedSurfaceCells(
   physics: { getActiveSurfaceCells: () => Float32Array } | null,
-  frameCount: number,
+  now: number,
 ): Float32Array | null {
   if (!physics) return null
-  if (frameCount === _surfaceCellFrame && _surfaceCellCache) return _surfaceCellCache
+  if (_surfaceCellCache && now - _surfaceCellCacheTime < SURFACE_CELL_CACHE_MS) {
+    return _surfaceCellCache
+  }
   _surfaceCellCache = physics.getActiveSurfaceCells()
-  _surfaceCellFrame = frameCount
+  _surfaceCellCacheTime = now
   return _surfaceCellCache
 }
 
@@ -29,22 +33,24 @@ function PuddlePatches() {
   const dummyRef = useRef(new THREE.Object3D())
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
   const physics = usePhysicsOptional()
-  const frameCounter = useRef(0)
+  const elapsedRef = useRef(0)
+  const prevCountRef = useRef(0)
 
   const isRaining = rainIntensity > 0.01
 
   const colorArray = useMemo(() => new Float32Array(MAX_PUDDLES * 3), [])
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!meshRef.current) return
 
-    frameCounter.current++
-    if (frameCounter.current % 3 !== 0) return
+    elapsedRef.current += delta
+    if (elapsedRef.current < SURFACE_EFFECT_UPDATE_INTERVAL) return
+    elapsedRef.current = 0
 
     const dummy = dummyRef.current
     let instanceIndex = 0
 
-    for (let i = 0; i < MAX_PUDDLES; i++) {
+    for (let i = 0; i < prevCountRef.current; i++) {
       dummy.position.set(0, -100, 0)
       dummy.scale.setScalar(0)
       dummy.updateMatrix()
@@ -52,7 +58,7 @@ function PuddlePatches() {
     }
 
     if (physics?.initialized) {
-      const cellData = getCachedSurfaceCells(physics, frameCounter.current)
+      const cellData = getCachedSurfaceCells(physics, performance.now())
       if (cellData) {
         const stride = 5
 
@@ -90,6 +96,7 @@ function PuddlePatches() {
 
     meshRef.current.instanceMatrix.needsUpdate = true
     meshRef.current.count = instanceIndex
+    prevCountRef.current = instanceIndex
 
     if (colorRef.current) {
       colorRef.current.needsUpdate = true
@@ -121,20 +128,22 @@ function IcePatches() {
   const dummyRef = useRef(new THREE.Object3D())
   const temperature = useEnvironmentStore(s => s.temperature)
   const physics = usePhysicsOptional()
-  const frameCounter = useRef(0)
+  const elapsedRef = useRef(0)
+  const prevCountRef = useRef(0)
 
   const isCold = temperature < 0
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!meshRef.current || !isCold) return
 
-    frameCounter.current++
-    if (frameCounter.current % 3 !== 0) return
+    elapsedRef.current += delta
+    if (elapsedRef.current < SURFACE_EFFECT_UPDATE_INTERVAL) return
+    elapsedRef.current = 0
 
     const dummy = dummyRef.current
     let instanceIndex = 0
 
-    for (let i = 0; i < MAX_ICE_PATCHES; i++) {
+    for (let i = 0; i < prevCountRef.current; i++) {
       dummy.position.set(0, -100, 0)
       dummy.scale.setScalar(0)
       dummy.updateMatrix()
@@ -142,7 +151,7 @@ function IcePatches() {
     }
 
     if (physics?.initialized) {
-      const cellData = getCachedSurfaceCells(physics, frameCounter.current)
+      const cellData = getCachedSurfaceCells(physics, performance.now())
       if (cellData) {
         const stride = 5
 
@@ -169,6 +178,7 @@ function IcePatches() {
 
     meshRef.current.instanceMatrix.needsUpdate = true
     meshRef.current.count = instanceIndex
+    prevCountRef.current = instanceIndex
   })
 
   const staticIcePositions = useMemo(() => {

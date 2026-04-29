@@ -81,6 +81,17 @@ export default function Checkpoint({
   const finalPosition = midpoint
 
   const travelDirection = useMemo(() => {
+    if (startPoint && endPoint && flowDirection) {
+      const dx = endPoint[0] - startPoint[0]
+      const dz = endPoint[2] - startPoint[2]
+      const perpX = -dz
+      const perpZ = dx
+      const len = Math.sqrt(perpX * perpX + perpZ * perpZ)
+      if (len === 0) return null
+      const sign = flowDirection === 'forward' ? 1 : -1
+      return { x: (perpX / len) * sign, z: (perpZ / len) * sign }
+    }
+
     const objects = useCustomizationStore.getState().placedObjects
     const sf = objects.find(o => o.type === 'checkpoint' && o.checkpointType !== 'sector')
     const sectors = objects
@@ -103,7 +114,7 @@ export default function Checkpoint({
     const dot = normX * toSectorX + normZ * toSectorZ
     const sign = dot >= 0 ? 1 : -1
     return { x: normX * sign, z: normZ * sign }
-  }, [])
+  }, [startPoint, endPoint, flowDirection])
 
   const detectWrongWay = useCallback((): boolean => {
     if (!travelDirection && !useTrackGraphStore.getState().hasFlow) return false

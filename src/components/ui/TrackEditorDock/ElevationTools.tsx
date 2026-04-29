@@ -107,7 +107,7 @@ const TOOL_LABELS: Record<ElevationTool, string> = {
 export default function ElevationTools() {
   const [popoverOpen, setPopoverOpen] = useState(false)
 
-  const elevationEditMode = useEditorStore(s => s.elevationEditMode)
+  const elevationEditMode = useEditorStore(s => s.editorMode === 'elevation')
   const setElevationEditMode = useEditorStore(s => s.setElevationEditMode)
   const elevationTool = useElevationEditStore(s => s.elevationTool)
   const setElevationTool = useElevationEditStore(s => s.setElevationTool)

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 const DEFAULT_RESOLUTION = 256
-const DEFAULT_WORLD_SIZE = 512
+const DEFAULT_WORLD_SIZE = 4000
 const EDGE_MARGIN = 10
 
 interface TerrainState {
@@ -13,7 +13,8 @@ interface TerrainState {
 
   getHeightAt: (worldX: number, worldZ: number) => number
   setHeightAt: (gridX: number, gridZ: number, height: number) => void
-  applyBrushStroke: (changes: Map<number, number>) => void
+  applyBrushStroke: (changes: Map<number, number>, opts?: { deferVersion?: boolean }) => void
+  flushVisualVersion: () => void
   commitPhysics: () => void
   loadHeightmap: (data: number[]) => void
   getHeightsArray: () => number[]
@@ -73,7 +74,7 @@ export const useTerrainStore = create<TerrainState>((set, get) => ({
     set({ version: get().version + 1 })
   },
 
-  applyBrushStroke: (changes: Map<number, number>) => {
+  applyBrushStroke: (changes: Map<number, number>, opts?: { deferVersion?: boolean }) => {
     const { heightmap, resolution } = get()
     for (const [index, height] of changes) {
       if (index >= 0 && index < heightmap.length) {
@@ -81,6 +82,12 @@ export const useTerrainStore = create<TerrainState>((set, get) => ({
       }
     }
     clampEdge(heightmap, resolution)
+    if (!opts?.deferVersion) {
+      set({ version: get().version + 1 })
+    }
+  },
+
+  flushVisualVersion: () => {
     set({ version: get().version + 1 })
   },
 

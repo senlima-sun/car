@@ -4,7 +4,6 @@ import TireIndicator from './TireIndicator'
 import TemperaturePanel from './TemperaturePanel'
 import PitStopUI from './PitStopUI'
 import WeatherControlModal from './WeatherControlModal'
-import AquaplaningIndicator from './AquaplaningIndicator'
 import TrackLimitsIndicator from './TrackLimitsIndicator'
 import WrongWayIndicator from './WrongWayIndicator'
 import PitLaneSpeedIndicator from './PitLaneSpeedIndicator'
@@ -30,14 +29,12 @@ import {
   useSessionStore,
 } from '@/stores/useSessionStore'
 import { usePitStore } from '@/stores/usePitStore'
-import { TrackEditorDock } from '../TrackEditorDock'
-import { TrackSelector } from '../TrackSelector'
 import { MobileControls, MobileSpeedGear } from '../MobileControls'
 import TrackMinimap from '../CustomizationPanel/TrackMinimap'
-import ElevationProfile from '../ElevationProfile/ElevationProfile'
 import { AnimationPreviewPanel } from '../AnimationPreview'
-import { SVGEditor } from '../SVGEditor'
 import { MainMenu } from '../MainMenu'
+import { TrackEditor } from '../TrackEditor'
+import { TrackSwitcher } from '../TrackSwitcher'
 import {
   CountdownOverlay,
   PauseOverlay,
@@ -84,7 +81,7 @@ export default function HUD() {
 
   return (
     <div className='absolute inset-0 pointer-events-none font-sans'>
-      <FPSCounter />
+      {!isCustomizeMode && !isMenuMode && !isPreviewMode && <FPSCounter />}
       {isSessionShell && <SessionRuntimeController />}
       {isSessionShell && <SessionEventBridge />}
       {isRunningSession && <TrackMinimap />}
@@ -123,18 +120,7 @@ export default function HUD() {
       ) : isPreviewMode ? (
         <AnimationPreviewPanel />
       ) : isCustomizeMode ? (
-        <>
-          <SVGEditor />
-          <div className='absolute top-5 left-1/2 -translate-x-1/2 pointer-events-auto z-20'>
-            <TrackSelector />
-          </div>
-          <div className='z-20'>
-            <TrackEditorDock />
-          </div>
-          <div className='z-20'>
-            <ElevationProfile />
-          </div>
-        </>
+        <TrackEditor />
       ) : isSessionShell ? (
         <>
           {isSetupSessionPhase(sessionPhase) && <SessionSetup />}
@@ -154,16 +140,16 @@ export default function HUD() {
 
           {isRunningSession && !isMobile && cameraMode !== 'first-person' && (
             <>
-              <div className='absolute bottom-[112px] left-1/2 -translate-x-1/2'>
+              <div className='absolute bottom-[118px] left-1/2 -translate-x-1/2'>
                 <CoastIndicator />
               </div>
-              <div className='absolute bottom-4 left-1/2 -translate-x-1/2'>
+              <div className='absolute bottom-5 left-1/2 -translate-x-1/2'>
                 <RacePanel />
               </div>
-              <div className='absolute bottom-4 left-4'>
+              <div className='absolute bottom-5 left-5'>
                 <TireIndicator />
               </div>
-              <div className='absolute bottom-4 right-4'>
+              <div className='absolute bottom-5 right-5'>
                 <TemperaturePanel />
               </div>
             </>
@@ -192,11 +178,11 @@ export default function HUD() {
 
           {isRunningSession && isMobile && <MobileControls />}
 
-          {isRunningSession && <AquaplaningIndicator />}
           {isRunningSession && <TrackLimitsIndicator />}
           {isRunningSession && <WrongWayIndicator />}
           {isRunningSession && <PitLaneSpeedIndicator />}
           {isRunningSession && isTestingMode && <PhysicsDebugOverlay />}
+          {isRunningSession && isTestingMode && <TrackSwitcher />}
           {isRunningSession && <TelemetryOverlay />}
           {isRunningSession && <TelemetryAnalysis />}
         </>

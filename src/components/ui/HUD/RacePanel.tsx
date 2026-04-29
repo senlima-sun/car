@@ -1,9 +1,10 @@
 import { useCarStore } from '../../../stores/useCarStore'
 import { useActiveAeroStore } from '../../../stores/useActiveAeroStore'
 import { useErsStore } from '../../../stores/useErsStore'
-import { useTireStore } from '../../../stores/useTireStore'
+import { selectAverageWear, useTireStore } from '../../../stores/useTireStore'
 import { useBrakeStore } from '../../../stores/useBrakeStore'
 import { TIRE_CONFIG, TIRE_WEAR_WARNING, TIRE_WEAR_CRITICAL } from '../../../constants/tires'
+import { HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
 
 const GEAR_LABEL: Record<number, string> = {
   [-1]: 'R',
@@ -74,7 +75,7 @@ export default function RacePanel() {
   const ersIsHarvesting = useErsStore(s => s.isHarvesting)
 
   const currentCompound = useTireStore(s => s.currentCompound)
-  const averageWear = useTireStore(s => s.averageWear)
+  const averageWear = useTireStore(selectAverageWear)
 
   const frontBias = useBrakeStore(s => s.frontBias)
   const engineBraking = useBrakeStore(s => s.engineBraking)
@@ -118,13 +119,7 @@ export default function RacePanel() {
         ))}
       </div>
 
-      <div
-        className='mt-1 flex items-stretch gap-0 border border-white/10 bg-gradient-to-b from-black/85 via-black/75 to-black/85 backdrop-blur-md shadow-[0_18px_60px_rgba(0,0,0,0.55)]'
-        style={{
-          clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px)',
-        }}
-      >
-        {/* LEFT : Aero + ERS */}
+      <HudPanel accent='#00e5ff' className='mt-1' contentClassName='flex items-stretch gap-0'>
         <div className='flex items-center gap-4 px-4 py-2.5'>
           <Cell label='Aero'>
             <div className='flex items-baseline gap-1.5'>
@@ -137,7 +132,7 @@ export default function RacePanel() {
             </div>
           </Cell>
 
-          <div className='h-10 w-px bg-white/10' />
+          <div className={`h-10 ${HUD_DIVIDER_CLASS}`} />
 
           <Cell label='ERS'>
             <div className='flex items-center gap-2'>
@@ -184,9 +179,8 @@ export default function RacePanel() {
           </Cell>
         </div>
 
-        <div className='w-px self-stretch bg-gradient-to-b from-transparent via-white/15 to-transparent' />
+        <div className={HUD_DIVIDER_CLASS} />
 
-        {/* CENTER : Gear + Speed */}
         <div className='flex items-center gap-5 px-6 py-2'>
           <div
             className='relative flex h-16 w-14 items-center justify-center border border-white/15 bg-black/60'
@@ -234,9 +228,8 @@ export default function RacePanel() {
           </div>
         </div>
 
-        <div className='w-px self-stretch bg-gradient-to-b from-transparent via-white/15 to-transparent' />
+        <div className={HUD_DIVIDER_CLASS} />
 
-        {/* RIGHT : Tires + Brake */}
         <div className='flex items-center gap-4 px-4 py-2.5'>
           <Cell label='Tire'>
             <div className='flex items-center gap-2'>
@@ -289,7 +282,7 @@ export default function RacePanel() {
             </div>
           </Cell>
         </div>
-      </div>
+      </HudPanel>
     </div>
   )
 }
@@ -297,9 +290,7 @@ export default function RacePanel() {
 function Cell({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className='flex flex-col items-start gap-1'>
-      <span className='text-[8px] font-semibold uppercase tracking-[0.32em] text-white/40'>
-        {label}
-      </span>
+      <span className={HUD_LABEL_CLASS}>{label}</span>
       {children}
     </div>
   )

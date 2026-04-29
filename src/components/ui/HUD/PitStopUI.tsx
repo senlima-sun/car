@@ -1,5 +1,5 @@
 import { usePitStore } from '../../../stores/usePitStore'
-import { useTireStore } from '../../../stores/useTireStore'
+import { selectAverageWear, useTireStore } from '../../../stores/useTireStore'
 import { useCarStore } from '../../../stores/useCarStore'
 import { TIRE_CONFIG, TIRE_ORDER } from '../../../constants/tires'
 import { getErsBatteryCharge, setErsBatteryCharge } from '../../../wasm/PhysicsBridge'
@@ -23,7 +23,7 @@ export default function PitStopUI() {
   const cancelPitStop = usePitStore(s => s.cancelPitStop)
 
   const currentCompound = useTireStore(s => s.currentCompound)
-  const averageWear = useTireStore(s => s.averageWear)
+  const averageWear = useTireStore(selectAverageWear)
   const setTireCompound = useTireStore(s => s.setTireCompound)
   const resetWear = useTireStore(s => s.resetWear)
 

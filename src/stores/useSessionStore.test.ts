@@ -79,14 +79,12 @@ describe('useSessionStore', () => {
 
   it('builds a finish snapshot from lap state', () => {
     useSessionStore.getState().startQuickSession('qualifying', { testingMode: true })
-    useSessionStore
-      .getState()
-      .recordEvent({
-        type: 'track_limits_violation',
-        at: 100,
-        violationCount: 1,
-        totalViolationTime: 500,
-      })
+    useSessionStore.getState().recordEvent({
+      type: 'track_limits_violation',
+      at: 100,
+      violationCount: 1,
+      totalViolationTime: 500,
+    })
     useLapTimeStore.setState({
       bestLapTime: 91234,
       lastLapTime: 92500,

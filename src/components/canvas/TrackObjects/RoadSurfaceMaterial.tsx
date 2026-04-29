@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react'
 import * as THREE from 'three'
+import { useTexture } from '@react-three/drei'
 import {
   ASPHALT_FRAGMENT_INJECT,
   ASPHALT_VERTEX_INJECT,
@@ -20,6 +21,12 @@ useEnvironmentStore.subscribe(state => {
   weatherState.rainIntensity = state.rainIntensity
   weatherState.temperature = state.temperature
 })
+
+function configureAsphaltTexture(texture: THREE.Texture, repeatX: number, repeatY: number) {
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  texture.repeat.set(repeatX, repeatY)
+}
 
 interface RoadSurfaceMaterialProps {
   isGhost?: boolean
@@ -51,13 +58,37 @@ export default function RoadSurfaceMaterial({
   color,
 }: RoadSurfaceMaterialProps) {
   const matRef = useRef<THREE.MeshStandardMaterial>(null)
+  const [
+    asphaltBaseColorMap,
+    asphaltWornColorMap,
+    asphaltPitColorMap,
+    asphaltNormalMap,
+    asphaltRoughnessMap,
+  ] = useTexture([
+    '/textures/asphalt_base_color.png',
+    '/textures/asphalt_worn_color.png',
+    '/textures/asphalt_pit_color.png',
+    '/textures/asphalt_base_normal.png',
+    '/textures/asphalt_base_roughness.png',
+  ]) as THREE.Texture[]
 
   const uniformsRef = useRef(createAsphaltUniforms())
+
+  asphaltBaseColorMap.colorSpace = THREE.SRGBColorSpace
+  asphaltWornColorMap.colorSpace = THREE.SRGBColorSpace
+  asphaltPitColorMap.colorSpace = THREE.SRGBColorSpace
+  configureAsphaltTexture(asphaltBaseColorMap, 2.2, 7.5)
+  configureAsphaltTexture(asphaltWornColorMap, 2.2, 7.5)
+  configureAsphaltTexture(asphaltPitColorMap, 2.2, 7.5)
+  configureAsphaltTexture(asphaltNormalMap, 2.2, 7.5)
+  configureAsphaltTexture(asphaltRoughnessMap, 2.2, 7.5)
 
   const onBeforeCompile = useCallback((shader: THREE.WebGLProgramParametersWithUniforms) => {
     shader.uniforms.uRainIntensity = uniformsRef.current.uRainIntensity
     shader.uniforms.uTemperature = uniformsRef.current.uTemperature
     shader.uniforms.uPitDarken = uniformsRef.current.uPitDarken
+    shader.uniforms.uRoadWearStrength = uniformsRef.current.uRoadWearStrength
+    shader.uniforms.uAsphaltWornMap = uniformsRef.current.uAsphaltWornMap
     shader.uniforms.uSkidMarkMap = uniformsRef.current.uSkidMarkMap
     shader.uniforms.uSkidMarkBounds = uniformsRef.current.uSkidMarkBounds
 
@@ -103,6 +134,8 @@ export default function RoadSurfaceMaterial({
   uniformsRef.current.uRainIntensity.value = weatherState.rainIntensity
   uniformsRef.current.uTemperature.value = weatherState.temperature
   uniformsRef.current.uPitDarken.value = variant === 'pitroad' ? 0.8 : 1.0
+  uniformsRef.current.uRoadWearStrength.value = variant === 'pitroad' ? 0.0 : 1.0
+  uniformsRef.current.uAsphaltWornMap.value = asphaltWornColorMap
   uniformsRef.current.uSkidMarkMap.value = skidMarkTexture
   if (skidMarkBounds) {
     uniformsRef.current.uSkidMarkBounds.value = skidMarkBounds
@@ -125,13 +158,19 @@ export default function RoadSurfaceMaterial({
   return (
     <meshStandardMaterial
       key={`asphalt-${variant}`}
-      color={color ?? '#4a4a4a'}
+      color={color ?? '#ffffff'}
+      map={variant === 'pitroad' ? asphaltPitColorMap : asphaltBaseColorMap}
       transparent={transparent ?? false}
       opacity={opacity ?? 1}
       depthWrite={depthWrite ?? true}
       side={side}
       roughness={0.85}
       metalness={0.0}
+      normalMap={asphaltNormalMap}
+      normalScale={
+        variant === 'pitroad' ? new THREE.Vector2(0.4, 0.4) : new THREE.Vector2(0.55, 0.55)
+      }
+      roughnessMap={asphaltRoughnessMap}
       polygonOffset={polygonOffset}
       polygonOffsetFactor={polygonOffsetFactor}
       polygonOffsetUnits={polygonOffsetUnits}

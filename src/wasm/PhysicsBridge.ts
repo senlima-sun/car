@@ -162,7 +162,7 @@ export interface WindModifiers {
 
 /** Engine temperature state */
 export interface EngineTemperature {
-  /** Current engine temperature (0.0 = cold/20C, 1.0 = critical/120C) */
+  /** Current engine temperature (0.0 = cold/20C, 1.0 = critical/160C) */
   temperature: number
   /** Is engine in overheating state */
   is_overheating: boolean
@@ -190,6 +190,14 @@ export interface TemperatureOutput {
   tire_temp_grip: [number, number, number, number]
   /** Per-wheel "in optimal window" status */
   tire_in_window: [boolean, boolean, boolean, boolean]
+  /** Per-wheel blowout risk (0.0 = safe, 1.0 = burst) */
+  tire_blowout_risk: [number, number, number, number]
+  /** Per-wheel "tire has burst from heat" latched state */
+  tire_blown: [boolean, boolean, boolean, boolean]
+  /** Engine seize risk (0.0 = healthy, 1.0 = seized) */
+  engine_seize_risk: number
+  /** Engine has catastrophically failed */
+  engine_seized: boolean
 }
 
 // ============================================================================
@@ -1030,6 +1038,7 @@ export function updateRubberDeposits(
  * Only includes cells with waterDepth > 0.1 or ice > 0.1
  */
 export function getActiveSurfaceCells(): Float32Array {
+  recordWasmCall()
   return new Float32Array(getPhysicsEngine().get_active_surface_cells())
 }
 
@@ -1164,17 +1173,17 @@ export function inputFromKeyboard(keys: {
 // ============================================================================
 
 /**
- * Convert normalized engine temp (0-1) to Celsius (20-120C)
+ * Convert normalized engine temp (0-1) to Celsius (20-160C)
  */
 export function engineTempToCelsius(normalized: number): number {
-  return normalized * 100 + 20
+  return normalized * 140 + 20
 }
 
 /**
- * Convert normalized tire temp (0-1) to Celsius (20-150C)
+ * Convert normalized tire temp (0-1) to Celsius (20-180C)
  */
 export function tireTempToCelsius(normalized: number): number {
-  return normalized * 130 + 20
+  return normalized * 160 + 20
 }
 
 /**

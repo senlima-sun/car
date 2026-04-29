@@ -8,6 +8,7 @@ import Checkpoint from './Checkpoint'
 import CornerMarker from './CornerMarker'
 import Barrier from './Barrier'
 import RoadSegment from './RoadSegment'
+import TrackRibbon from './TrackRibbon'
 import CurvedRoadSegment from './CurvedRoadSegment'
 import PitRoadSegment from './PitRoadSegment'
 import CurvedPitRoadSegment from './CurvedPitRoadSegment'
@@ -15,7 +16,9 @@ import CurvedBarrier from './CurvedBarrier'
 import PitBox from './PitBox'
 import CurbSegment from './CurbSegment'
 import CurvedCurbSegment from './CurvedCurbSegment'
+import RibbonCurbSegment from './RibbonCurbSegment'
 import SurfacePatch from './SurfacePatch'
+import PaintedArea from './PaintedArea'
 import Wall from './Wall'
 import WallFence from './WallFence'
 import SelectionHighlight from './SelectionHighlight'
@@ -140,8 +143,22 @@ function TrackObjectWrapper({
         )
       }
       break
+    case 'track_ribbon':
+      if (object.ribbonPoints && object.ribbonPoints.length >= 2) {
+        component = (
+          <TrackRibbon
+            points={object.ribbonPoints}
+            closed={object.ribbonClosed ?? false}
+            width={object.width ?? 12}
+            isGhost={isGhost}
+          />
+        )
+      }
+      break
     case 'curb':
-      if (object.parentRoadId && parentRoad) {
+      if (object.curbCenterline && object.curbCenterline.length >= 2) {
+        component = <RibbonCurbSegment curb={object} isGhost={isGhost || !enablePhysics} />
+      } else if (object.parentRoadId && parentRoad) {
         if (isCurveMode(parentRoad.trackMode) && parentRoad.controlPoint) {
           component = (
             <CurvedCurbSegment
@@ -188,6 +205,19 @@ function TrackObjectWrapper({
           isGhost={isGhost || !enablePhysics}
         />
       )
+      break
+    case 'painted_area':
+      if (object.ribbonPoints && object.ribbonPoints.length >= 2) {
+        component = (
+          <PaintedArea
+            points={object.ribbonPoints}
+            closed={object.ribbonClosed ?? false}
+            width={object.width ?? 3}
+            edgeSide={object.edgeSide}
+            isGhost={isGhost || !enablePhysics}
+          />
+        )
+      }
       break
     default:
       console.warn(`Unknown object type: ${object.type}`)

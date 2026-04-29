@@ -1,27 +1,37 @@
 import { useRef } from 'react'
 import { useTireStore } from '../../../../stores/useTireStore'
 import { useTemperatureStore } from '../../../../stores/useTemperatureStore'
-import { useAquaplaningStore } from '../../../../stores/useAquaplaningStore'
 import { useErsStore } from '../../../../stores/useErsStore'
 import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { useBrakeStore } from '../../../../stores/useBrakeStore'
 import { useWindStore } from '../../../../stores/useWindStore'
 import { getErsState } from '../../../../wasm/PhysicsBridge'
+import { type CarPhysicsOutput, type StepAndSyncOutput } from '../../../../wasm'
+
+const ERS_SYNC_EVERY = 2
+const UI_SYNC_EVERY = 4
+const SLOW_SYNC_EVERY = 6
 
 export function useCarStateSync() {
   const syncAllTire = useTireStore(state => state.syncAllFromWasm)
   const syncTemperature = useTemperatureStore(state => state.syncFromWasm)
-  const syncAllAquaplaning = useAquaplaningStore(state => state.syncAll)
   const syncErsState = useErsStore(state => state.syncFromPhysics)
   const syncAeroState = useActiveAeroStore(state => state.syncFromPhysics)
   const syncBrakeState = useBrakeStore(state => state.syncFromPhysics)
   const syncWindState = useWindStore(state => state.syncFromPhysics)
-  const slowSyncCounter = useRef(0)
-  const uiSyncCounter = useRef(0)
+  const counterRef = useRef(0)
 
-  const syncAll = (output: any, syncResult: any, windSyncNeeded: boolean) => {
-    const count = uiSyncCounter.current++
-    const uiSync = count % 2 === 0
+  const syncAll = (output: CarPhysicsOutput, syncResult: StepAndSyncOutput, windSyncNeeded: boolean) => {
+    const count = counterRef.current++
+    const ersSync = count % ERS_SYNC_EVERY === 0
+    const uiSync = count % UI_SYNC_EVERY === 0
+    const slowSync = count % SLOW_SYNC_EVERY === 0
+
+    if (ersSync) {
+      const ersData =
+        output.ers && typeof output.ers.battery_charge === 'number' ? output.ers : getErsState()
+      syncErsState(ersData)
+    }
 
     if (uiSync) {
       syncAeroState(syncResult.aero_state)
@@ -32,42 +42,24 @@ export function useCarStateSync() {
       syncWindState(syncResult.wind_state)
     }
 
-    slowSyncCounter.current++
-    const slowSync = slowSyncCounter.current % 6 === 0
+    if (slowSync) {
+      if (output.tire_wear) {
+        syncAllTire(
+          {
+            frontLeft: output.tire_wear.front_left * 100,
+            frontRight: output.tire_wear.front_right * 100,
+            rearLeft: output.tire_wear.rear_left * 100,
+            rearRight: output.tire_wear.rear_right * 100,
+          },
+          output.effective_grip,
+          output.grip_breakdown ?? null,
+          output.tire_material ?? null,
+        )
+      }
 
-    if (slowSync && output.tire_wear) {
-      syncAllTire(
-        {
-          frontLeft: output.tire_wear.front_left * 100,
-          frontRight: output.tire_wear.front_right * 100,
-          rearLeft: output.tire_wear.rear_left * 100,
-          rearRight: output.tire_wear.rear_right * 100,
-        },
-        output.effective_grip,
-        output.grip_breakdown ?? null,
-        output.tire_material ?? null,
-      )
-    }
-
-    if (slowSync && output.temperature) {
-      syncTemperature(output.temperature)
-    }
-
-    if (slowSync && output.aquaplaning && output.tire_thermal_shock) {
-      syncAllAquaplaning(
-        output.aquaplaning.is_aquaplaning,
-        output.aquaplaning.intensity,
-        output.aquaplaning.affected_wheels,
-        output.tire_thermal_shock.is_shocked,
-        output.tire_thermal_shock.grip_penalty,
-        output.tire_thermal_shock.recovery_time,
-      )
-    }
-
-    if (uiSync) {
-      const ersData =
-        output.ers && typeof output.ers.battery_charge === 'number' ? output.ers : getErsState()
-      syncErsState(ersData)
+      if (output.temperature) {
+        syncTemperature(output.temperature)
+      }
     }
   }
 

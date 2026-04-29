@@ -15,8 +15,10 @@ export const TRACK_GAUGE = TRACK_GAUGE_FRONT
 export const CG_HEIGHT = 0.35
 
 export const TRACK_WIDTH = 12
+export const TRACK_EDGE_LINE_WIDTH = 0.2
 export const ROAD_THICKNESS = 0.15
 export const CURB_WIDTH = 1.5
+export const PAINTED_WIDTH = 3
 export const BARRIER_HEIGHT = 1.1
 export const CONE_HEIGHT = 0.75
 export const WALL_HEIGHT = 0.8

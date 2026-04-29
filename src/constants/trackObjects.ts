@@ -77,6 +77,16 @@ export const OBJECT_CONFIGS: Record<ObjectType, ObjectConfig> = {
     friction: 1.0,
     restitution: 0,
   },
+  track_ribbon: {
+    type: 'track_ribbon',
+    label: 'Track Ribbon',
+    description: 'Continuous track ribbon',
+    isLinear: false,
+    defaultSize: { width: 12, height: 0.15, depth: 1 },
+    color: TRACK_OBJECT.road,
+    friction: 1.0,
+    restitution: 0,
+  },
   curb: {
     type: 'curb',
     label: 'Curb',
@@ -115,6 +125,16 @@ export const OBJECT_CONFIGS: Record<ObjectType, ObjectConfig> = {
     defaultSize: { width: 10, height: 0.025, depth: 10 },
     color: '#8a7f6d',
     friction: 0.65,
+    restitution: 0,
+  },
+  painted_area: {
+    type: 'painted_area',
+    label: 'Painted',
+    description: 'Painted run-off strip beside the curb (auto-generated per path)',
+    isLinear: false,
+    defaultSize: { width: 3, height: 0.02, depth: 10 },
+    color: '#a8d89c',
+    friction: 0.85,
     restitution: 0,
   },
   wall: {

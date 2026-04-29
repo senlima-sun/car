@@ -408,6 +408,9 @@ pub struct TireConfig {
 impl TireConfig {
     pub fn for_compound(compound: TireCompound) -> Self {
         match compound {
+            // Tire temp windows below are normalized: 0.0 = 20C, 1.0 = 180C.
+            // Pirelli publishes "ideal working range" as bulk carcass temp; surface
+            // temp runs 20-40C hotter. Numbers below match real F1 bulk targets.
             TireCompound::Soft => Self {
                 grip_multiplier: 1.15,
                 degradation_rate: 0.000525,
@@ -415,8 +418,8 @@ impl TireConfig {
                 rain_suitability: 0.3,            // Poor in rain
                 wrong_conditions_penalty: 0.25,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.50, // 85C
-                    max_optimal: 0.70, // 111C
+                    min_optimal: 0.406, // 85C
+                    max_optimal: 0.563, // 110C
                     cold_grip_penalty: 0.75,
                     hot_grip_penalty: 0.85,
                 },
@@ -429,8 +432,8 @@ impl TireConfig {
                 rain_suitability: 0.4,            // Moderate in rain
                 wrong_conditions_penalty: 0.3,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.45, // 78C
-                    max_optimal: 0.75, // 117C
+                    min_optimal: 0.438, // 90C
+                    max_optimal: 0.594, // 115C
                     cold_grip_penalty: 0.80,
                     hot_grip_penalty: 0.88,
                 },
@@ -443,8 +446,8 @@ impl TireConfig {
                 rain_suitability: 0.35,           // Poor in rain
                 wrong_conditions_penalty: 0.35,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.55,       // 91C
-                    max_optimal: 0.85,       // 130C
+                    min_optimal: 0.500,      // 100C
+                    max_optimal: 0.719,      // 135C
                     cold_grip_penalty: 0.70, // Hard tires need more heat
                     hot_grip_penalty: 0.92,
                 },
@@ -457,8 +460,8 @@ impl TireConfig {
                 rain_suitability: 1.0,           // Excellent in rain
                 wrong_conditions_penalty: 0.5,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.25, // 52C (lower operating temp)
-                    max_optimal: 0.50, // 85C
+                    min_optimal: 0.188, // 50C
+                    max_optimal: 0.313, // 70C
                     cold_grip_penalty: 0.90,
                     hot_grip_penalty: 0.70, // Overheats easily
                 },
@@ -471,8 +474,8 @@ impl TireConfig {
                 rain_suitability: 0.8,           // Good in rain
                 wrong_conditions_penalty: 0.7,
                 temp_window: TireTemperatureWindow {
-                    min_optimal: 0.35, // 65C
-                    max_optimal: 0.60, // 98C
+                    min_optimal: 0.250, // 60C
+                    max_optimal: 0.375, // 80C
                     cold_grip_penalty: 0.85,
                     hot_grip_penalty: 0.80,
                 },
@@ -558,10 +561,9 @@ impl TerrainMaterial {
         match self {
             Self::Asphalt
             | Self::Concrete
-            | Self::Painted
             | Self::WornTarmac
-            | Self::FreshTarmac
-            | Self::PaintedLine => SurfaceType::Road,
+            | Self::FreshTarmac => SurfaceType::Road,
+            Self::Painted | Self::PaintedLine => SurfaceType::PaintedArea,
             Self::Grass | Self::Astroturf => SurfaceType::Grass,
             Self::Gravel | Self::Sand => SurfaceType::Gravel,
             Self::WetCurb => SurfaceType::Curb,
@@ -860,6 +862,7 @@ pub enum SurfaceType {
     Curb,
     PitRoad,
     Gravel,
+    PaintedArea,
 }
 
 /// Modifiers applied based on surface type
@@ -946,6 +949,30 @@ impl SurfaceModifiers {
         }
     }
 
+    /// Painted run-off area - lower grip than asphalt, much more dangerous when wet
+    pub fn painted_area() -> Self {
+        Self {
+            grip_multiplier: 0.85,
+            speed_multiplier: 0.95,
+            tire_wear_multiplier: 0.95,
+            drag_multiplier: 1.05,
+            brake_efficiency: 0.85,
+            steer_response: 0.9,
+        }
+    }
+
+    /// Painted run-off area when fully wet - dramatic grip loss
+    pub fn painted_area_wet() -> Self {
+        Self {
+            grip_multiplier: 0.55,
+            speed_multiplier: 0.85,
+            tire_wear_multiplier: 0.9,
+            drag_multiplier: 1.2,
+            brake_efficiency: 0.55,
+            steer_response: 0.7,
+        }
+    }
+
     pub fn for_surface(surface: SurfaceType) -> Self {
         match surface {
             SurfaceType::Grass => Self::grass(),
@@ -953,6 +980,7 @@ impl SurfaceModifiers {
             SurfaceType::Curb => Self::curb(),
             SurfaceType::PitRoad => Self::pitroad(),
             SurfaceType::Gravel => Self::gravel(),
+            SurfaceType::PaintedArea => Self::painted_area(),
         }
     }
 
@@ -1067,9 +1095,9 @@ impl PerWheelTemperature {
 /// Engine temperature state
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct EngineTemperature {
-    /// Current engine temperature (0.0 = cold/20C, 1.0 = critical/120C)
+    /// Current engine temperature (0.0 = cold/20C, 1.0 = critical/160C)
     pub temperature: f32,
-    /// Is engine in overheating state (above 0.85)
+    /// Is engine in overheating state (above ~115C)
     pub is_overheating: bool,
     /// Power reduction due to temperature (1.0 = full power, 0.5 = 50% power)
     pub power_multiplier: f32,
@@ -1078,7 +1106,7 @@ pub struct EngineTemperature {
 impl Default for EngineTemperature {
     fn default() -> Self {
         Self {
-            temperature: 0.3, // Start at ~50C (warm idle)
+            temperature: 0.429, // Start at ~80C (F1 grid warm idle)
             is_overheating: false,
             power_multiplier: 1.0,
         }
@@ -1086,9 +1114,9 @@ impl Default for EngineTemperature {
 }
 
 impl EngineTemperature {
-    /// Convert normalized temp to Celsius (20C - 120C range)
+    /// Convert normalized temp to Celsius (20C - 160C range)
     pub fn to_celsius(&self) -> f32 {
-        self.temperature * 100.0 + 20.0
+        self.temperature * 140.0 + 20.0
     }
 }
 
@@ -1107,10 +1135,10 @@ pub struct TireTemperatureWindow {
 
 impl Default for TireTemperatureWindow {
     fn default() -> Self {
-        // Default to medium compound window
+        // Default to medium compound window (Pirelli C3-class: 90-115C bulk)
         Self {
-            min_optimal: 0.45,
-            max_optimal: 0.75,
+            min_optimal: 0.438,
+            max_optimal: 0.594,
             cold_grip_penalty: 0.80,
             hot_grip_penalty: 0.88,
         }
@@ -1126,6 +1154,16 @@ pub struct TemperatureOutput {
     pub tire_temp_grip: [f32; 4],
     /// Per-wheel "in optimal window" status
     pub tire_in_window: [bool; 4],
+    /// Per-wheel blowout risk (0.0 = safe, 1.0 = burst). Past ~190C
+    /// (norm 1.05) the tire's structural integrity degrades and risk
+    /// accumulates; reaching 1.0 latches `tire_blown[i]`.
+    pub tire_blowout_risk: [f32; 4],
+    /// Per-wheel "tire has burst" latched state.
+    pub tire_blown: [bool; 4],
+    /// Engine seize risk (0.0 = healthy, 1.0 = seized).
+    pub engine_seize_risk: f32,
+    /// Engine has catastrophically failed.
+    pub engine_seized: bool,
 }
 
 // ============================================================================
@@ -1913,6 +1951,31 @@ mod tests {
             curb.grip_multiplier,
             SurfaceModifiers::curb().grip_multiplier,
         );
+
+        let painted = SurfaceModifiers::for_surface(SurfaceType::PaintedArea);
+        assert_approx(
+            painted.grip_multiplier,
+            SurfaceModifiers::painted_area().grip_multiplier,
+        );
+    }
+
+    #[test]
+    fn surface_modifiers_painted_between_road_and_grass() {
+        let painted = SurfaceModifiers::painted_area();
+        let road = SurfaceModifiers::road();
+        let grass = SurfaceModifiers::grass();
+        assert!(painted.grip_multiplier < road.grip_multiplier);
+        assert!(painted.grip_multiplier > grass.grip_multiplier);
+        assert!(painted.brake_efficiency < road.brake_efficiency);
+        assert!(painted.brake_efficiency > grass.brake_efficiency);
+    }
+
+    #[test]
+    fn surface_modifiers_painted_wet_more_slippery_than_dry() {
+        let dry = SurfaceModifiers::painted_area();
+        let wet = SurfaceModifiers::painted_area_wet();
+        assert!(wet.grip_multiplier < dry.grip_multiplier);
+        assert!(wet.brake_efficiency < dry.brake_efficiency);
     }
 
     #[test]
@@ -1945,15 +2008,15 @@ mod tests {
     #[test]
     fn engine_temperature_default_warm_idle() {
         let et = EngineTemperature::default();
-        assert_approx(et.temperature, 0.3);
+        assert_approx(et.temperature, 0.429);
         assert!(!et.is_overheating);
         assert_approx(et.power_multiplier, 1.0);
     }
 
     #[test]
-    fn engine_temperature_to_celsius_default_about_50c() {
+    fn engine_temperature_to_celsius_default_about_80c() {
         let et = EngineTemperature::default();
-        assert_approx(et.to_celsius(), 50.0);
+        assert!((et.to_celsius() - 80.0).abs() < 0.5);
     }
 
     #[test]
@@ -1967,20 +2030,20 @@ mod tests {
     }
 
     #[test]
-    fn engine_temperature_to_celsius_at_one_is_120c() {
+    fn engine_temperature_to_celsius_at_one_is_160c() {
         let et = EngineTemperature {
             temperature: 1.0,
             is_overheating: false,
             power_multiplier: 1.0,
         };
-        assert_approx(et.to_celsius(), 120.0);
+        assert_approx(et.to_celsius(), 160.0);
     }
 
     #[test]
     fn tire_temperature_window_default_medium_compound() {
         let ttw = TireTemperatureWindow::default();
-        assert_approx(ttw.min_optimal, 0.45);
-        assert_approx(ttw.max_optimal, 0.75);
+        assert_approx(ttw.min_optimal, 0.438);
+        assert_approx(ttw.max_optimal, 0.594);
         assert_approx(ttw.cold_grip_penalty, 0.80);
         assert_approx(ttw.hot_grip_penalty, 0.88);
     }

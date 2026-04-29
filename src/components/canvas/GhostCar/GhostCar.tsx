@@ -18,7 +18,6 @@ export default function GhostCar() {
 
   const replayData = useGhostCarStore(s => s.replayData)
   const loadReplayForTrack = useGhostCarStore(s => s.loadReplayForTrack)
-  const saveReplay = useGhostCarStore(s => s.saveReplay)
 
   const isActive = useLapTimeStore(s => s.isActive)
   const isRecording = useLapTimeStore(s => s.isRecording)
@@ -39,28 +38,6 @@ export default function GhostCar() {
     trackerRef.current.reset()
   }, [lapCount])
 
-  useEffect(() => {
-    const cb = (
-      lapTime: number,
-      buffers: {
-        frameCount: number
-        positions: Float32Array
-        rotations: Float32Array
-        steerAngles: Float32Array
-        wheelRotations: Float32Array
-        timestamps: Float32Array
-      },
-    ) => {
-      const trackId = useTrackStore.getState().trackLibrary.activeTrackId
-      if (!trackId) return
-      saveReplay(trackId, lapTime, buffers)
-    }
-    useLapTimeStore.getState().setGhostCallback(cb)
-    return () => {
-      useLapTimeStore.getState().setGhostCallback(null)
-    }
-  }, [saveReplay])
-
   const shouldShow =
     isActive && isRecording && lapCount >= 1 && replayData !== null && currentLapStart !== null
 
@@ -76,7 +53,9 @@ export default function GhostCar() {
     if (!groupRef.current || !shouldShow) return
     const replay = useGhostCarStore.getState().replayData
     if (!replay) return
-    const lapTime = useLapTimeStore.getState().currentLapTime
+    const lapStart = useLapTimeStore.getState().currentLapStart
+    if (lapStart === null) return
+    const lapTime = performance.now() - lapStart
     const state = interpolateGhostState(replay, lapTime)
     if (!state) {
       groupRef.current.visible = false

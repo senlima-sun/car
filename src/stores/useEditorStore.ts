@@ -7,6 +7,7 @@ import {
   type PartialDeleteState,
   type PlacedObject,
   type CheckpointType,
+  type CurbType,
   isLinearObject,
   isCurveMode,
   isPitRoad,
@@ -16,13 +17,6 @@ import type { OverlapResult } from '../utils/trackConnection'
 import { autoTrimOverlap } from '../utils/trackConnection'
 import { findBarriersOnRoad } from '../utils/trackValidation'
 import type { EditorCommand } from '../types/editor'
-
-export interface CheckpointDragState {
-  checkpointId: string
-  handle: 'start' | 'end' | 'center'
-  initialStartPoint: [number, number, number]
-  initialEndPoint: [number, number, number]
-}
 import { SnapSettings, DEFAULT_SNAP_SETTINGS } from '../utils/roadSnapping'
 import { splitRoadAtSegment, getRoadCenterPositionAt } from '../utils/roadGeometry'
 import { alignCheckpointToRoad } from '../utils/checkpointAlignment'
@@ -30,6 +24,8 @@ import { PIT_ROAD_WIDTH, PIT_BOX_WIDTH } from '../constants/trackObjects'
 import { editorCommandStack } from '../utils/commandStack'
 import { useCustomizationStore } from './useCustomizationStore'
 import { useElevationEditStore } from './useElevationEditStore'
+
+export type { CheckpointDragState } from './useCheckpointDragStore'
 
 export type { SnapSettings }
 
@@ -58,17 +54,14 @@ interface EditorState {
   dragStartPoint: [number, number, number] | null
   controlPoint: [number, number, number] | null
   selectedObjectId: string | null
-  deleteMode: boolean
   startSnapEdges: { left: [number, number, number]; right: [number, number, number] } | null
   endSnapEdges: { left: [number, number, number]; right: [number, number, number] } | null
   curbDragState: CurbDragState | null
   curbPreviewEndT: number | null
   curbPreviewEndPosition: [number, number, number] | null
-  partialDeleteMode: boolean
   partialDeleteState: PartialDeleteState | null
   partialDeletePreviewT: number | null
   partialDeletePreviewPosition: [number, number, number] | null
-  autoCurbMode: boolean
   selectedRoadIds: string[]
   snapSettings: SnapSettings
   startSnapElevation: number | null
@@ -87,24 +80,12 @@ interface EditorState {
   clipboard: PlacedObject[]
   cameraTarget: [number, number, number] | null
   isObliqueView: boolean
-  elevationEditMode: boolean
-  terrainEditMode: boolean
   overlapResult: OverlapResult | null
   polygonPoints: Array<[number, number, number]>
-  checkpointDragState: CheckpointDragState | null
+  selectedCurbType: CurbType
 
   setEditorMode: (mode: EditorMode) => void
-  startCheckpointDrag: (
-    id: string,
-    handle: 'start' | 'end' | 'center',
-    startPoint: [number, number, number],
-    endPoint: [number, number, number],
-  ) => void
-  updateCheckpointDrag: (worldPos: [number, number, number]) => void
-  confirmCheckpointDrag: () => void
-  cancelCheckpointDrag: () => void
-  reorderSectorCheckpoint: (id: string, direction: 'up' | 'down') => void
-  deleteSectorCheckpoint: (id: string) => void
+  setSelectedCurbType: (type: CurbType) => void
   setOverlapResult: (result: OverlapResult | null) => void
   addPolygonPoint: (point: [number, number, number]) => void
   undoLastPolygonPoint: () => void
@@ -177,15 +158,6 @@ interface EditorState {
   setCameraTarget: (pos: [number, number, number] | null) => void
 }
 
-const IDLE_MODE_FIELDS = {
-  editorMode: 'idle' as EditorMode,
-  deleteMode: false,
-  partialDeleteMode: false,
-  autoCurbMode: false,
-  elevationEditMode: false,
-  terrainEditMode: false,
-}
-
 export const useEditorStore = create<EditorState>((set, get) => ({
   editorMode: 'idle',
   placementState: 'idle',
@@ -196,17 +168,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   dragStartPoint: null,
   controlPoint: null,
   selectedObjectId: null,
-  deleteMode: false,
   startSnapEdges: null,
   endSnapEdges: null,
   curbDragState: null,
   curbPreviewEndT: null,
   curbPreviewEndPosition: null,
-  partialDeleteMode: false,
   partialDeleteState: null,
   partialDeletePreviewT: null,
   partialDeletePreviewPosition: null,
-  autoCurbMode: false,
+  selectedCurbType: 'apex',
   selectedRoadIds: [],
   snapSettings: DEFAULT_SNAP_SETTINGS,
   startSnapElevation: null,
@@ -225,34 +195,31 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   clipboard: [],
   cameraTarget: null,
   isObliqueView: false,
-  elevationEditMode: false,
-  terrainEditMode: false,
   overlapResult: null,
   polygonPoints: [],
-  checkpointDragState: null,
 
   setEditorMode: mode => {
     switch (mode) {
       case 'idle':
         set({
-          ...IDLE_MODE_FIELDS,
+          editorMode: 'idle',
           selectedObjectType: null,
           placementState: 'idle' as PlacementState,
           selectedRoadIds: [],
+          partialDeleteState: null,
+          partialDeletePreviewT: null,
+          partialDeletePreviewPosition: null,
         })
         break
       case 'place':
         set({
-          ...IDLE_MODE_FIELDS,
           editorMode: 'place',
           placementState: 'selecting' as PlacementState,
         })
         break
       case 'delete':
         set({
-          ...IDLE_MODE_FIELDS,
           editorMode: 'delete',
-          deleteMode: true,
           selectedObjectType: null,
           selectedRoadIds: [],
           placementState: 'idle' as PlacementState,
@@ -260,9 +227,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         break
       case 'partialDelete':
         set({
-          ...IDLE_MODE_FIELDS,
           editorMode: 'partialDelete',
-          partialDeleteMode: true,
           selectedObjectType: null,
           selectedRoadIds: [],
           placementState: 'idle' as PlacementState,
@@ -273,20 +238,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         break
       case 'autoCurb':
         set({
-          ...IDLE_MODE_FIELDS,
           editorMode: 'autoCurb',
-          autoCurbMode: true,
           selectedObjectType: null,
           placementState: 'idle' as PlacementState,
         })
         break
       case 'elevation': {
-        useElevationEditStore.getState().clearSmoothSelection()
-        useElevationEditStore.setState({ slopeAnchor: null, elevationDragState: null })
+        useElevationEditStore.setState({ slopeAnchor: null, elevationDragState: null, smoothSelectedRoadIds: [] })
         set({
-          ...IDLE_MODE_FIELDS,
           editorMode: 'elevation',
-          elevationEditMode: true,
           selectedObjectType: null,
           selectedRoadIds: [],
           placementState: 'idle' as PlacementState,
@@ -295,221 +255,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
       case 'terrain':
         set({
-          ...IDLE_MODE_FIELDS,
           editorMode: 'terrain',
-          terrainEditMode: true,
+          selectedObjectType: null,
+          selectedRoadIds: [],
+          placementState: 'idle' as PlacementState,
         })
         break
     }
-  },
-
-  startCheckpointDrag: (id, handle, startPoint, endPoint) =>
-    set({
-      checkpointDragState: {
-        checkpointId: id,
-        handle,
-        initialStartPoint: startPoint,
-        initialEndPoint: endPoint,
-      },
-    }),
-
-  updateCheckpointDrag: worldPos => {
-    const state = get()
-    const drag = state.checkpointDragState
-    if (!drag) return
-
-    const customStore = useCustomizationStore.getState()
-    const obj = customStore.placedObjects.find(o => o.id === drag.checkpointId)
-    if (!obj) return
-
-    let newStart: [number, number, number]
-    let newEnd: [number, number, number]
-
-    if (drag.handle === 'start') {
-      newStart = worldPos
-      newEnd = obj.endPoint ?? drag.initialEndPoint
-    } else if (drag.handle === 'end') {
-      newStart = obj.startPoint ?? drag.initialStartPoint
-      newEnd = worldPos
-    } else {
-      const curStart = obj.startPoint ?? drag.initialStartPoint
-      const curEnd = obj.endPoint ?? drag.initialEndPoint
-      const cx = (curStart[0] + curEnd[0]) / 2
-      const cz = (curStart[2] + curEnd[2]) / 2
-      const dx = worldPos[0] - cx
-      const dz = worldPos[2] - cz
-      newStart = [curStart[0] + dx, curStart[1], curStart[2] + dz]
-      newEnd = [curEnd[0] + dx, curEnd[1], curEnd[2] + dz]
-    }
-
-    const position: [number, number, number] = [
-      (newStart[0] + newEnd[0]) / 2,
-      0,
-      (newStart[2] + newEnd[2]) / 2,
-    ]
-    const rotation = Math.atan2(newEnd[0] - newStart[0], newEnd[2] - newStart[2])
-
-    customStore.updateObject(drag.checkpointId, {
-      startPoint: newStart,
-      endPoint: newEnd,
-      position,
-      rotation,
-    })
-  },
-
-  confirmCheckpointDrag: () => {
-    const state = get()
-    const drag = state.checkpointDragState
-    if (!drag) return
-
-    const customStore = useCustomizationStore.getState()
-    const obj = customStore.placedObjects.find(o => o.id === drag.checkpointId)
-    if (!obj) {
-      set({ checkpointDragState: null })
-      return
-    }
-
-    const rawStart = obj.startPoint ?? drag.initialStartPoint
-    const rawEnd = obj.endPoint ?? drag.initialEndPoint
-
-    if (
-      rawStart[0] === drag.initialStartPoint[0] &&
-      rawStart[2] === drag.initialStartPoint[2] &&
-      rawEnd[0] === drag.initialEndPoint[0] &&
-      rawEnd[2] === drag.initialEndPoint[2]
-    ) {
-      set({ checkpointDragState: null })
-      return
-    }
-
-    const roads = customStore.placedObjects.filter(o => o.type === 'road')
-    const aligned = alignCheckpointToRoad(rawStart, rawEnd, roads)
-    const afterStart = aligned.startPoint
-    const afterEnd = aligned.endPoint
-
-    const afterPosition: [number, number, number] = [
-      (afterStart[0] + afterEnd[0]) / 2,
-      0,
-      (afterStart[2] + afterEnd[2]) / 2,
-    ]
-    const afterRotation = Math.atan2(afterEnd[0] - afterStart[0], afterEnd[2] - afterStart[2])
-    const beforeStart = drag.initialStartPoint
-    const beforeEnd = drag.initialEndPoint
-    const beforePosition: [number, number, number] = [
-      (beforeStart[0] + beforeEnd[0]) / 2,
-      0,
-      (beforeStart[2] + beforeEnd[2]) / 2,
-    ]
-    const beforeRotation = Math.atan2(beforeEnd[0] - beforeStart[0], beforeEnd[2] - beforeStart[2])
-    const cpId = drag.checkpointId
-
-    const command: EditorCommand = {
-      execute: () => {
-        useCustomizationStore.getState().updateObject(cpId, {
-          startPoint: afterStart,
-          endPoint: afterEnd,
-          position: afterPosition,
-          rotation: afterRotation,
-        })
-      },
-      undo: () => {
-        useCustomizationStore.getState().updateObject(cpId, {
-          startPoint: beforeStart,
-          endPoint: beforeEnd,
-          position: beforePosition,
-          rotation: beforeRotation,
-        })
-      },
-      description: 'Move checkpoint',
-    }
-    editorCommandStack.push(command)
-
-    set({ checkpointDragState: null })
-  },
-
-  cancelCheckpointDrag: () => {
-    const drag = get().checkpointDragState
-    if (!drag) return
-
-    const position: [number, number, number] = [
-      (drag.initialStartPoint[0] + drag.initialEndPoint[0]) / 2,
-      0,
-      (drag.initialStartPoint[2] + drag.initialEndPoint[2]) / 2,
-    ]
-    const rotation = Math.atan2(
-      drag.initialEndPoint[0] - drag.initialStartPoint[0],
-      drag.initialEndPoint[2] - drag.initialStartPoint[2],
-    )
-
-    useCustomizationStore.getState().updateObject(drag.checkpointId, {
-      startPoint: drag.initialStartPoint,
-      endPoint: drag.initialEndPoint,
-      position,
-      rotation,
-    })
-
-    set({ checkpointDragState: null })
-  },
-
-  reorderSectorCheckpoint: (id, direction) => {
-    const customStore = useCustomizationStore.getState()
-    const sectors = customStore.placedObjects
-      .filter(o => o.type === 'checkpoint' && o.checkpointType === 'sector')
-      .sort((a, b) => (a.checkpointOrder ?? 0) - (b.checkpointOrder ?? 0))
-
-    const idx = sectors.findIndex(s => s.id === id)
-    if (idx === -1) return
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
-    if (swapIdx < 0 || swapIdx >= sectors.length) return
-
-    const a = sectors[idx]
-    const b = sectors[swapIdx]
-    const aOrder = a.checkpointOrder ?? idx + 1
-    const bOrder = b.checkpointOrder ?? swapIdx + 1
-
-    const command: EditorCommand = {
-      execute: () => {
-        const store = useCustomizationStore.getState()
-        store.updateObject(a.id, { checkpointOrder: bOrder })
-        store.updateObject(b.id, { checkpointOrder: aOrder })
-      },
-      undo: () => {
-        const store = useCustomizationStore.getState()
-        store.updateObject(a.id, { checkpointOrder: aOrder })
-        store.updateObject(b.id, { checkpointOrder: bOrder })
-      },
-      description: `Reorder sector ${direction}`,
-    }
-    editorCommandStack.push(command)
-  },
-
-  deleteSectorCheckpoint: id => {
-    const customStore = useCustomizationStore.getState()
-    const obj = customStore.placedObjects.find(o => o.id === id)
-    if (!obj || obj.type !== 'checkpoint') return
-
-    const snapshotBefore = customStore.placedObjects
-      .filter(o => o.type === 'checkpoint' && o.checkpointType === 'sector')
-      .map(o => ({ id: o.id, order: o.checkpointOrder ?? 0 }))
-
-    const command: EditorCommand = {
-      execute: () => {
-        const store = useCustomizationStore.getState()
-        store.removeObject(id)
-        store.renumberSectorCheckpoints()
-      },
-      undo: () => {
-        const store = useCustomizationStore.getState()
-        store.addObject(obj)
-        for (const snap of snapshotBefore) {
-          store.updateObject(snap.id, { checkpointOrder: snap.order })
-        }
-      },
-      description: `Delete sector S${obj.checkpointOrder ?? '?'}`,
-    }
-    editorCommandStack.push(command)
-
-    useEditorStore.getState().selectObject(null)
   },
 
   addPolygonPoint: point => {
@@ -589,14 +341,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (enabled) {
       get().setEditorMode('elevation')
     } else {
+      get().setEditorMode('idle')
       useElevationEditStore.setState({
         elevationDragState: null,
         slopeAnchor: null,
         smoothSelectedRoadIds: [],
-      })
-      set({
-        editorMode: 'idle',
-        elevationEditMode: false,
       })
     }
   },
@@ -605,10 +354,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (enabled) {
       get().setEditorMode('terrain')
     } else {
-      set({
-        editorMode: 'idle',
-        terrainEditMode: false,
-      })
+      get().setEditorMode('idle')
     }
   },
 
@@ -657,13 +403,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         endSnapBanking: null,
         connectedTangent: null,
         snappedAngle: null,
-        ...IDLE_MODE_FIELDS,
         editorMode: 'place',
-        deleteMode: false,
-        partialDeleteMode: false,
-        elevationEditMode: false,
-        terrainEditMode: false,
-        autoCurbMode: false,
         selectedRoadIds: [],
       })
       useElevationEditStore.setState({
@@ -695,10 +435,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       get().setEditorMode('delete')
       set({ selectedObjectId: get().selectedObjectId })
     } else {
-      set({
-        editorMode: 'idle',
-        deleteMode: false,
-      })
+      get().setEditorMode('idle')
     }
   },
 
@@ -1084,13 +821,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (enabled) {
       get().setEditorMode('partialDelete')
     } else {
-      set({
-        editorMode: 'idle',
-        partialDeleteMode: false,
-        partialDeleteState: null,
-        partialDeletePreviewT: null,
-        partialDeletePreviewPosition: null,
-      })
+      get().setEditorMode('idle')
     }
   },
 
@@ -1154,17 +885,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       partialDeletePreviewPosition: null,
     }),
 
+  setSelectedCurbType: type => set({ selectedCurbType: type }),
+
   setAutoCurbMode: enabled => {
     if (enabled) {
       get().setEditorMode('autoCurb')
     } else {
-      set({
-        editorMode: 'idle',
-        autoCurbMode: false,
-        selectedRoadIds: [],
-        selectedObjectType: null,
-        placementState: 'idle' as PlacementState,
-      })
+      get().setEditorMode('idle')
     }
   },
 
@@ -1202,10 +929,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const ids = get().multiSelectedIds
     if (ids.length === 0) return
     const customStore = useCustomizationStore.getState()
-    for (const id of ids) {
-      customStore.removeObject(id)
+    const snapshot = ids
+      .map(id => customStore.placedObjects.find(o => o.id === id))
+      .filter(Boolean) as PlacedObject[]
+    if (snapshot.length === 0) return
+    const command: EditorCommand = {
+      execute: () => {
+        const store = useCustomizationStore.getState()
+        for (const obj of snapshot) store.removeObject(obj.id)
+      },
+      undo: () => {
+        const store = useCustomizationStore.getState()
+        for (const obj of snapshot) store.addObject(obj)
+      },
+      description: `Delete ${snapshot.length} object${snapshot.length > 1 ? 's' : ''}`,
     }
     set({ multiSelectedIds: [] })
+    editorCommandStack.push(command)
   },
 
   copySelected: () => {
@@ -1228,8 +968,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { clipboard } = get()
     if (clipboard.length === 0) return
 
-    const customStore = useCustomizationStore.getState()
-
     let cx = 0,
       cz = 0
     for (const obj of clipboard) {
@@ -1242,7 +980,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const dx = pos[0] - cx
     const dz = pos[2] - cz
 
-    for (const obj of clipboard) {
+    const pasted: PlacedObject[] = clipboard.map(obj => {
       const newObj: PlacedObject = {
         ...obj,
         id: generateId(),
@@ -1265,8 +1003,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           newObj.controlPoint[2] + dz,
         ]
       }
-      customStore.addObject(newObj)
+      return newObj
+    })
+
+    const command: EditorCommand = {
+      execute: () => {
+        const store = useCustomizationStore.getState()
+        for (const obj of pasted) store.addObject(obj)
+      },
+      undo: () => {
+        const store = useCustomizationStore.getState()
+        for (const obj of pasted) store.removeObject(obj.id)
+      },
+      description: `Paste ${pasted.length} object${pasted.length > 1 ? 's' : ''}`,
     }
+    editorCommandStack.push(command)
   },
 }))
 

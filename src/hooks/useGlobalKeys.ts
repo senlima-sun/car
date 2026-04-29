@@ -1,5 +1,10 @@
 import { useEffect } from 'react'
-import { isMenuStatus, isSessionShellStatus, useGameStore } from '@/stores/useGameStore'
+import {
+  isCustomizeStatus,
+  isMenuStatus,
+  isSessionShellStatus,
+  useGameStore,
+} from '@/stores/useGameStore'
 import {
   isPausedSessionPhase,
   isRunningSessionPhase,
@@ -74,7 +79,7 @@ export function useGlobalKeys() {
           return
         }
 
-        if (isMenuStatus(game.status)) {
+        if (isMenuStatus(game.status) || isCustomizeStatus(game.status)) {
           return
         }
 

@@ -133,8 +133,7 @@ impl ActiveAeroPhysicsState {
         self.current.drag_multiplier = lerp(CORNER_DRAG_MULT, base_drag, avg_wing_angle);
 
         // Interpolate downforce multiplier: 1.0 (corner) -> base_df (straight/DRS)
-        self.current.downforce_multiplier =
-            lerp(CORNER_DOWNFORCE_MULT, base_df, avg_wing_angle);
+        self.current.downforce_multiplier = lerp(CORNER_DOWNFORCE_MULT, base_df, avg_wing_angle);
 
         self.current
     }

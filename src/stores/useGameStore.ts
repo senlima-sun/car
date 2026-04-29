@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { useCarStore } from './useCarStore'
 import { useActiveAeroStore } from './useActiveAeroStore'
 import { useSessionStore } from './useSessionStore'
+import { setLookSensitivity as syncLookSensitivity } from '@/input/cameraLookState'
 
 export type GameStatus = 'menu' | 'session' | 'customize' | 'preview'
 export type CameraMode = 'third-person' | 'first-person' | 'free'
@@ -89,8 +90,8 @@ export const useGameStore = create<GameState>()(
           status: state.status === 'customize' ? 'session' : 'customize',
         })),
       enterPreviewMode: () => {
-        useActiveAeroStore.setState({ frontWingAngle: 0, rearWingAngle: 0 })
-        useCarStore.getState().updateTelemetry({ steerAngle: 0, wheelRotations: [0, 0, 0, 0] })
+        useActiveAeroStore.getState().resetForPreview()
+        useCarStore.getState().resetForPreview()
         set(state => ({
           previewReturnStatus:
             state.status === 'preview' ? state.previewReturnStatus : state.status,
@@ -98,28 +99,25 @@ export const useGameStore = create<GameState>()(
         }))
       },
       exitPreviewMode: () => {
-        useActiveAeroStore.setState({ frontWingAngle: 0, rearWingAngle: 0 })
-        useCarStore.getState().updateTelemetry({ steerAngle: 0, wheelRotations: [0, 0, 0, 0] })
+        useActiveAeroStore.getState().resetForPreview()
+        useCarStore.getState().resetForPreview()
         set(state => ({ status: state.previewReturnStatus }))
       },
-      togglePreviewMode: () =>
-        set(state => {
-          if (state.status === 'preview') {
-            useActiveAeroStore.setState({ frontWingAngle: 0, rearWingAngle: 0 })
-            useCarStore.getState().updateTelemetry({ steerAngle: 0, wheelRotations: [0, 0, 0, 0] })
-            return { status: state.previewReturnStatus }
-          }
-          useActiveAeroStore.setState({ frontWingAngle: 0, rearWingAngle: 0 })
-          useCarStore.getState().updateTelemetry({ steerAngle: 0, wheelRotations: [0, 0, 0, 0] })
-          return {
-            previewReturnStatus: state.status,
-            status: 'preview',
-          }
-        }),
+      togglePreviewMode: () => {
+        useActiveAeroStore.getState().resetForPreview()
+        useCarStore.getState().resetForPreview()
+        set(state => ({
+          ...(state.status !== 'preview' && { previewReturnStatus: state.status }),
+          status: state.status === 'preview' ? state.previewReturnStatus : 'preview',
+        }))
+      },
       toggleSettings: () => set(state => ({ isSettingsOpen: !state.isSettingsOpen })),
       openSettings: () => set({ isSettingsOpen: true }),
       closeSettings: () => set({ isSettingsOpen: false }),
-      setLookSensitivity: sensitivity => set({ lookSensitivity: sensitivity }),
+      setLookSensitivity: sensitivity => {
+        syncLookSensitivity(sensitivity)
+        set({ lookSensitivity: sensitivity })
+      },
       toggleShowFPS: () => set(state => ({ showFPS: !state.showFPS })),
     }),
     {
@@ -130,6 +128,9 @@ export const useGameStore = create<GameState>()(
         lookSensitivity: state.lookSensitivity,
         showFPS: state.showFPS,
       }),
+      onRehydrateStorage: () => state => {
+        if (state) syncLookSensitivity(state.lookSensitivity)
+      },
     },
   ),
 )

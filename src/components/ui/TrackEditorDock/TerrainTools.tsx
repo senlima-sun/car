@@ -76,7 +76,7 @@ const BRUSH_LABELS: Record<TerrainBrushType, string> = {
 export default function TerrainTools() {
   const [popoverOpen, setPopoverOpen] = useState(false)
 
-  const terrainEditMode = useEditorStore(s => s.terrainEditMode)
+  const terrainEditMode = useEditorStore(s => s.editorMode === 'terrain')
   const setTerrainEditMode = useEditorStore(s => s.setTerrainEditMode)
   const terrainBrushType = useTerrainBrushStore(s => s.terrainBrushType)
   const setTerrainBrushType = useTerrainBrushStore(s => s.setBrushType)

@@ -1,8 +1,9 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useEnvironment, Environment } from '@react-three/drei'
 import { useEnvironmentStore } from '@/stores/useEnvironmentStore'
+import { usePerformanceStore } from '@/stores/usePerformanceStore'
 import { hdriSkyVertex, hdriSkyFragment } from '@/shaders/hdriSky'
 
 const HDRI_PATH = '/textures/hdri/'
@@ -15,6 +16,9 @@ useEnvironment.preload({ files: RAIN_FILE, path: HDRI_PATH })
 useEnvironment.preload({ files: CLOUDY_FILE, path: HDRI_PATH })
 
 type BlendState = { texA: THREE.Texture; texB: THREE.Texture; target: number }
+
+const SKY_ENV_DISABLE_FPS = 75
+const SKY_ENV_ENABLE_FPS = 95
 
 function computeBlendState(
   temperature: number,
@@ -36,12 +40,19 @@ function computeBlendState(
   return { texA: clearTex, texB: clearTex, target: 0 }
 }
 
+export function shouldEnableSkyEnvironment(avgFps: number, currentlyEnabled: boolean): boolean {
+  if (currentlyEnabled) return avgFps >= SKY_ENV_DISABLE_FPS
+  return avgFps >= SKY_ENV_ENABLE_FPS
+}
+
 export default function HdriSky() {
   const clearTex = useEnvironment({ files: CLEAR_FILE, path: HDRI_PATH })
   const rainTex = useEnvironment({ files: RAIN_FILE, path: HDRI_PATH })
   const cloudyTex = useEnvironment({ files: CLOUDY_FILE, path: HDRI_PATH })
+  const avgFps = usePerformanceStore(s => s.avgFps)
 
   const matRef = useRef<THREE.ShaderMaterial>(null)
+  const [environmentEnabled, setEnvironmentEnabled] = useState(true)
 
   const uniforms = useMemo(
     () => ({
@@ -75,6 +86,13 @@ export default function HdriSky() {
     matRef.current.uniforms.uRotation.value += 0.005 * delta
   })
 
+  useEffect(() => {
+    setEnvironmentEnabled(current => {
+      const next = shouldEnableSkyEnvironment(avgFps, current)
+      return next === current ? current : next
+    })
+  }, [avgFps])
+
   const temperature = useEnvironmentStore(s => s.temperature)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
 
@@ -87,7 +105,7 @@ export default function HdriSky() {
   return (
     <>
       <mesh renderOrder={-1} frustumCulled={false}>
-        <sphereGeometry args={[1, 64, 32]} />
+        <sphereGeometry args={[1, 32, 16]} />
         <shaderMaterial
           ref={matRef}
           vertexShader={hdriSkyVertex}
@@ -99,7 +117,7 @@ export default function HdriSky() {
           toneMapped={false}
         />
       </mesh>
-      <Environment map={dominantTex as THREE.Texture} background={false} />
+      {environmentEnabled && <Environment map={dominantTex as THREE.Texture} background={false} />}
     </>
   )
 }

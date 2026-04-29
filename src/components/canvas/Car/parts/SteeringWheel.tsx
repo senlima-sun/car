@@ -4,7 +4,7 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { useSteeringWheelDisplay } from './SteeringWheelDisplay'
 import { useCarStore } from '@/stores/useCarStore'
-import { useSwDisplayStore } from '@/stores/useSwDisplayStore'
+import { getSwDisplay } from '@/stores/useSwDisplayStore'
 
 const MODEL_PATH = '/models/steering-wheel.glb'
 const MAX_RPM = 12500
@@ -41,7 +41,7 @@ export function SteeringWheel({ steerAngle }: SteeringWheelProps) {
 
   const { clonedScene, ledMaterials, displayMesh } = useMemo(() => {
     const cloned = scene.clone(true)
-    const { texture } = useSwDisplayStore.getState()
+    const { texture } = getSwDisplay()
 
     cloned.traverse(child => {
       if (child instanceof THREE.Mesh) {

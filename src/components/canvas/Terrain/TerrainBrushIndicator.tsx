@@ -17,7 +17,7 @@ const SEGMENTS = 64
 export default function TerrainBrushIndicator() {
   const meshRef = useRef<THREE.Mesh>(null)
   const terrainBrushType = useTerrainBrushStore(s => s.terrainBrushType)
-  const terrainEditMode = useEditorStore(s => s.terrainEditMode)
+  const terrainEditMode = useEditorStore(s => s.editorMode === 'terrain')
 
   const geometry = useMemo(() => {
     const geo = new THREE.RingGeometry(0.95, 1.0, SEGMENTS)

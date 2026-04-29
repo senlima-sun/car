@@ -48,10 +48,12 @@ const objectIcons: Record<ObjectType, string> = {
   wall: '#8a8a8a',
   wall_fence: '#8a8a6a',
   road: '#333333',
+  track_ribbon: '#333333',
   curb: '#ff0000',
   pitbox: '#ff6600',
   grass_patch: '#4a8c3f',
   gravel_patch: '#8a7f6d',
+  painted_area: '#a8d89c',
 }
 
 export default function ObjectButton({ type, isSelected, onClick }: ObjectButtonProps) {

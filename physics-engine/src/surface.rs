@@ -82,6 +82,26 @@ impl SurfaceState {
         self.current_surface == SurfaceType::Gravel
     }
 
+    pub fn is_on_painted_area(&self) -> bool {
+        self.current_surface == SurfaceType::PaintedArea
+    }
+
+    /// Apply wetness blending for surfaces sensitive to water (currently painted run-off).
+    /// `wetness` is 0.0 (dry) to 1.0 (saturated).
+    pub fn apply_wetness(&mut self, wetness: f32) {
+        if self.current_surface != SurfaceType::PaintedArea {
+            return;
+        }
+        let t = wetness.clamp(0.0, 1.0);
+        let dry = SurfaceModifiers::painted_area();
+        let wet = SurfaceModifiers::painted_area_wet();
+        let blended = SurfaceModifiers::lerp(&dry, &wet, t);
+        self.target_modifiers = blended;
+        if !self.is_transitioning {
+            self.active_modifiers = blended;
+        }
+    }
+
     pub fn is_transitioning(&self) -> bool {
         self.is_transitioning
     }
@@ -213,6 +233,42 @@ mod tests {
 
         state.update(TRANSITION_DURATION);
         assert!((state.get_transition_progress() - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_painted_area_dry_grip() {
+        let mut state = SurfaceState::new();
+        state.set_surface(SurfaceType::PaintedArea);
+        state.update(TRANSITION_DURATION + 0.01);
+
+        let painted = SurfaceModifiers::painted_area();
+        assert!((state.get_grip_modifier() - painted.grip_multiplier).abs() < 0.01);
+        assert!(state.is_on_painted_area());
+    }
+
+    #[test]
+    fn test_painted_area_wet_grip_drops() {
+        let mut state = SurfaceState::new();
+        state.set_surface(SurfaceType::PaintedArea);
+        state.update(TRANSITION_DURATION + 0.01);
+        let dry_grip = state.get_grip_modifier();
+
+        state.apply_wetness(1.0);
+        assert!(state.get_grip_modifier() < dry_grip);
+
+        let wet = SurfaceModifiers::painted_area_wet();
+        assert!((state.get_grip_modifier() - wet.grip_multiplier).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_apply_wetness_ignored_for_road() {
+        let mut state = SurfaceState::new();
+        state.set_surface(SurfaceType::Road);
+        state.update(TRANSITION_DURATION + 0.01);
+        let road_grip = state.get_grip_modifier();
+
+        state.apply_wetness(1.0);
+        assert!((state.get_grip_modifier() - road_grip).abs() < 0.01);
     }
 
     #[test]

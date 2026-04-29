@@ -81,14 +81,26 @@ float _carPaintFresnel(float NdotV) {
 }
 `
 
+const PAINT_MASK_SNIPPET = /* glsl */ `
+  float paintMask;
+  #ifdef USE_MAP
+    {
+      vec3 _maskTex = texture2D(map, vMapUv).rgb;
+      float _maskLum = dot(_maskTex, vec3(0.299, 0.587, 0.114));
+      paintMask = smoothstep(0.04, 0.12, _maskLum);
+    }
+  #else
+    paintMask = 1.0;
+  #endif
+`
+
 export const CAR_PAINT_COLOR_INJECT = /* glsl */ `
 {
   vec3 cpViewDir = normalize(cameraPosition - vCarPaintWorldPos);
   vec3 cpNormal = normalize(vCarPaintNormal);
   float cpNdotV = max(dot(cpNormal, cpViewDir), 0.001);
 
-  float texLum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-  float paintMask = smoothstep(0.04, 0.12, texLum);
+  ${PAINT_MASK_SNIPPET}
 
   float depthDarken = pow(1.0 - cpNdotV, 3.0);
   diffuseColor.rgb *= 1.0 - uColorDepthFactor * depthDarken * paintMask;
@@ -105,18 +117,17 @@ export const CAR_PAINT_COLOR_INJECT = /* glsl */ `
 
 export const CAR_PAINT_ROUGHNESS_INJECT = /* glsl */ `
 {
-  float cpTexLum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-  float cpPaintMask = smoothstep(0.04, 0.12, cpTexLum);
+  ${PAINT_MASK_SNIPPET}
 
   float carbonRough = 0.55;
-  float baseRough = mix(carbonRough, roughnessFactor, cpPaintMask);
+  float baseRough = mix(carbonRough, roughnessFactor, paintMask);
 
   vec3 cpViewDir2 = normalize(cameraPosition - vCarPaintWorldPos);
   vec3 cpNormal2 = normalize(vCarPaintNormal);
   float cpNdotV2 = max(dot(cpNormal2, cpViewDir2), 0.001);
   float cpFresnel = _carPaintFresnel(cpNdotV2);
 
-  float clearcoatSmooth = cpFresnel * uClearcoatStrength * cpPaintMask;
+  float clearcoatSmooth = cpFresnel * uClearcoatStrength * paintMask;
   baseRough *= 1.0 - clearcoatSmooth * 0.5;
   baseRough *= mix(1.0, 0.35, uRainIntensity);
   roughnessFactor = clamp(baseRough, 0.04, 1.0);
@@ -125,12 +136,11 @@ export const CAR_PAINT_ROUGHNESS_INJECT = /* glsl */ `
 
 export const CAR_PAINT_METALNESS_INJECT = /* glsl */ `
 {
-  float cpTexLum2 = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-  float cpPaintMask2 = smoothstep(0.04, 0.12, cpTexLum2);
+  ${PAINT_MASK_SNIPPET}
 
   float carbonMetal = 0.08;
-  metalnessFactor = mix(carbonMetal, metalnessFactor, cpPaintMask2);
-  metalnessFactor = mix(metalnessFactor, 0.45, uRainIntensity * 0.4 * cpPaintMask2);
+  metalnessFactor = mix(carbonMetal, metalnessFactor, paintMask);
+  metalnessFactor = mix(metalnessFactor, 0.45, uRainIntensity * 0.4 * paintMask);
 }
 `
 

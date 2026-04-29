@@ -12,8 +12,9 @@ interface CarState {
   longitudinalG: number
   skidIntensity: number
 
-  updateTelemetry: (data: Partial<Omit<CarState, 'updateTelemetry' | 'reset'>>) => void
+  updateTelemetry: (data: Partial<Omit<CarState, 'updateTelemetry' | 'reset' | 'resetForPreview'>>) => void
   reset: () => void
+  resetForPreview: () => void
 }
 
 const initialState = {
@@ -32,8 +33,9 @@ const initialState = {
 export const useCarStore = create<CarState>(set => ({
   ...initialState,
 
-  updateTelemetry: data => set(state => ({ ...state, ...data })),
+  updateTelemetry: data => set(data),
   reset: () => set(initialState),
+  resetForPreview: () => set({ steerAngle: 0, wheelRotations: [0, 0, 0, 0] }),
 }))
 
 // Helper to calculate gear from speed (sequential racing gearbox)

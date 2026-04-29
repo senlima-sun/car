@@ -207,6 +207,10 @@ export class TrackSpatialGrid {
       case 'road':
         return this.computeLinearOrCurvedCells(obj)
 
+      case 'track_ribbon':
+      case 'painted_area':
+        return this.computeRibbonCells(obj)
+
       case 'curb':
         if (obj.parentRoadId) {
           const parentKeys = roadCellCache.get(obj.parentRoadId)
@@ -224,6 +228,17 @@ export class TrackSpatialGrid {
       default:
         return [cellKey(worldToCell(obj.position[0]), worldToCell(obj.position[2]))]
     }
+  }
+
+  private computeRibbonCells(obj: PlacedObject): string[] {
+    if (!obj.ribbonPoints || obj.ribbonPoints.length === 0) {
+      return [cellKey(worldToCell(obj.position[0]), worldToCell(obj.position[2]))]
+    }
+    const seen = new Set<string>()
+    for (const p of obj.ribbonPoints) {
+      seen.add(cellKey(worldToCell(p.x), worldToCell(p.z)))
+    }
+    return Array.from(seen)
   }
 
   private computeLinearOrCurvedCells(obj: PlacedObject): string[] {

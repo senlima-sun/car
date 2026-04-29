@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { useLapTimeStore } from './useLapTimeStore'
+import { useEnvironmentStore } from './useEnvironmentStore'
 import { buildSessionResults } from '@/utils/buildSessionResults'
+import { resolveWeatherPreset } from '@/utils/weatherPresets'
 import {
   DEFAULT_SESSION_CONFIG,
   createSessionConfig,
@@ -10,6 +12,17 @@ import {
   type SessionResultsSnapshot,
 } from '@/types/session'
 import type { SessionEvent, SessionEventInput } from '@/types/sessionEvents'
+
+function applySessionWeather(config: SessionConfig | null): void {
+  if (!config?.weatherPreset) return
+  const values = resolveWeatherPreset(config.weatherPreset)
+  if (!values) return
+  const env = useEnvironmentStore.getState()
+  env.setTemperature(values.temperature)
+  env.setHumidity(values.humidity)
+  env.setPrecipitationRate(values.precipitationRate)
+  env.setCloudCover(values.cloudCover)
+}
 
 export const isIdleSessionPhase = (phase: SessionPhase) => phase === 'idle'
 export const isSetupSessionPhase = (phase: SessionPhase) => phase === 'setup'
@@ -72,19 +85,21 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     return config
   },
 
-  startCountdown: () =>
-    set(state => {
-      if (!state.config) return state
-      return {
-        phase: 'countdown',
-        lastActivePhase: 'countdown',
-        results: null,
-        events: [],
-      }
-    }),
+  startCountdown: () => {
+    const state = get()
+    if (!state.config) return
+    applySessionWeather(state.config)
+    set({
+      phase: 'countdown',
+      lastActivePhase: 'countdown',
+      results: null,
+      events: [],
+    })
+  },
 
   startQuickSession: (kind, options) => {
     const config = createSessionConfig(kind, options)
+    applySessionWeather(config)
     set({
       config,
       phase: 'running',
@@ -95,15 +110,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     return config
   },
 
-  startSession: () =>
-    set(state => {
-      if (!state.config) return state
-      return {
-        phase: 'running',
-        lastActivePhase: 'running',
-        results: null,
-      }
-    }),
+  startSession: () => {
+    const state = get()
+    if (!state.config) return
+    applySessionWeather(state.config)
+    set({
+      phase: 'running',
+      lastActivePhase: 'running',
+      results: null,
+    })
+  },
 
   pauseSession: () =>
     set(state => {

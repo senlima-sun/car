@@ -2,7 +2,6 @@ import { useRef, useMemo } from 'react'
 import { Group, DirectionalLight, Vector3 } from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
-import { useGameStore } from '../../../stores/useGameStore'
 import { lerp, computeAtmosphereFromDynamic } from './DynamicSky'
 
 function lerpColor(from: string, to: string, t: number): string {
@@ -28,7 +27,6 @@ interface DynamicLightingProps {
 export default function DynamicLighting({ target }: DynamicLightingProps) {
   const temperature = useEnvironmentStore(s => s.temperature)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
-  const isCustomizeMode = useGameStore(s => s.status) === 'customize'
   const sunLightRef = useRef<DirectionalLight>(null)
   const worldPos = useRef(new Vector3())
 
@@ -62,7 +60,7 @@ export default function DynamicLighting({ target }: DynamicLightingProps) {
         position={config.sunPosition}
         intensity={config.sunIntensity}
         color={config.sunColor}
-        castShadow={!isCustomizeMode}
+        castShadow={false}
         shadow-mapSize={[shadowSize, shadowSize]}
         shadow-camera-left={-15}
         shadow-camera-right={15}

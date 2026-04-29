@@ -54,6 +54,11 @@ export function useStartPosition(): StartTransform {
         startFinish as { startPoint: [number, number, number]; endPoint: [number, number, number] },
       )
 
+      if (perp && startFinish.flowDirection) {
+        const sign = startFinish.flowDirection === 'forward' ? 1 : -1
+        return spawnBehind(startFinish.position, perp[0] * sign, perp[1] * sign, elev)
+      }
+
       if (perp && sectors.length > 0) {
         const toSector0X = sectors[0].position[0] - startFinish.position[0]
         const toSector0Z = sectors[0].position[2] - startFinish.position[2]

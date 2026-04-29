@@ -43,8 +43,18 @@ export const useBrakeStore = create<BrakeStoreState>((set, get) => ({
   },
 
   syncFromPhysics: (state: BrakeState) => {
+    const prev = get()
+    const nextBias = state.front_bias * 100
+    if (
+      Math.abs(prev.frontBias - nextBias) < 0.1 &&
+      prev.engineBraking === state.engine_braking &&
+      Math.abs(prev.frontBrakeForce - state.front_brake_force) < 1 &&
+      Math.abs(prev.rearBrakeForce - state.rear_brake_force) < 1
+    ) {
+      return
+    }
     set({
-      frontBias: state.front_bias * 100, // Convert 0.50-0.70 to 50-70
+      frontBias: nextBias,
       engineBraking: state.engine_braking,
       frontBrakeForce: state.front_brake_force,
       rearBrakeForce: state.rear_brake_force,

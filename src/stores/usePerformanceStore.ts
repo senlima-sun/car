@@ -16,7 +16,7 @@ const TIER_DOWNGRADE_THRESHOLDS: Record<QualityTier, number> = {
   low: 0,
 }
 
-const TIER_ONE_PERCENT_LOW_THRESHOLDS: Record<QualityTier, number> = {
+const TIER_UPGRADE_ONE_PERCENT_LOW_THRESHOLDS: Record<QualityTier, number> = {
   ultra: 94,
   high: 54,
   medium: 36,
@@ -25,6 +25,7 @@ const TIER_ONE_PERCENT_LOW_THRESHOLDS: Record<QualityTier, number> = {
 
 const TIER_ORDER: QualityTier[] = ['low', 'medium', 'high', 'ultra']
 const TIER_CHANGE_COOLDOWN_SAMPLES = 8
+const TIER_DOWNGRADE_SUSTAINED_SAMPLES = 6
 
 const TIER_MULTIPLIERS: Record<QualityTier, number> = {
   ultra: 1.2,
@@ -63,13 +64,14 @@ export function resolveQualityTier(
   fps: number,
   onePercentLowFps: number,
   samplesSinceTierChange: number,
+  badSampleStreak = TIER_DOWNGRADE_SUSTAINED_SAMPLES,
 ): QualityTier {
   const currentIndex = TIER_ORDER.indexOf(currentTier)
 
   if (
     currentIndex > 0 &&
-    (fps < TIER_DOWNGRADE_THRESHOLDS[currentTier] ||
-      onePercentLowFps < TIER_ONE_PERCENT_LOW_THRESHOLDS[currentTier])
+    fps < TIER_DOWNGRADE_THRESHOLDS[currentTier] &&
+    badSampleStreak >= TIER_DOWNGRADE_SUSTAINED_SAMPLES
   ) {
     return TIER_ORDER[currentIndex - 1]
   }
@@ -80,7 +82,7 @@ export function resolveQualityTier(
     const nextTier = TIER_ORDER[currentIndex + 1]
     if (
       fps >= TIER_UPGRADE_THRESHOLDS[currentTier] &&
-      onePercentLowFps >= TIER_ONE_PERCENT_LOW_THRESHOLDS[nextTier]
+      onePercentLowFps >= TIER_UPGRADE_ONE_PERCENT_LOW_THRESHOLDS[nextTier]
     ) {
       return nextTier
     }
@@ -95,6 +97,7 @@ export const usePerformanceStore = create<PerformanceState & PerformanceActions>
   let filled = false
   let currentTier: QualityTier = 'ultra'
   let samplesSinceTierChange = TIER_CHANGE_COOLDOWN_SAMPLES
+  let badSampleStreak = 0
 
   return {
     tier: 'ultra',
@@ -136,10 +139,21 @@ export const usePerformanceStore = create<PerformanceState & PerformanceActions>
       const pointOnePercentLow = onePercentLow
 
       samplesSinceTierChange++
-      const tier = resolveQualityTier(currentTier, fps, onePercentLow, samplesSinceTierChange)
+      const belowCurrentTierBudget =
+        TIER_ORDER.indexOf(currentTier) > 0 && fps < TIER_DOWNGRADE_THRESHOLDS[currentTier]
+      badSampleStreak = belowCurrentTierBudget ? badSampleStreak + 1 : 0
+
+      const tier = resolveQualityTier(
+        currentTier,
+        fps,
+        onePercentLow,
+        samplesSinceTierChange,
+        badSampleStreak,
+      )
       if (tier !== currentTier) {
         currentTier = tier
         samplesSinceTierChange = 0
+        badSampleStreak = 0
       }
 
       const multiplier = TIER_MULTIPLIERS[tier]

@@ -1,5 +1,6 @@
 import { useGridStore } from '@/stores/useGridStore'
 import { LIVERY } from '@/constants/f1Livery'
+import { HUD_CLIP_LEFT, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
 
 const TEAM_PALETTE = [
   LIVERY.ACCENT_RED,
@@ -48,15 +49,16 @@ export default function TimingTower() {
   if (classification.length === 0) return null
 
   return (
-    <div className='absolute left-3 top-[76px] z-20 pointer-events-none select-none'>
-      <div
-        className='w-[230px] border border-white/10 bg-gradient-to-b from-black/85 to-black/70 backdrop-blur-md shadow-[0_14px_40px_rgba(0,0,0,0.5)]'
-        style={{
-          clipPath: 'polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px)',
-        }}
+    <div className='absolute left-4 top-[76px] z-20 pointer-events-none select-none'>
+      <HudPanel
+        accent='#ffcc00'
+        clipPath={HUD_CLIP_LEFT}
+        className='w-[238px]'
+        contentClassName='py-1.5'
+        edge='left'
       >
-        <div className='flex items-center justify-between border-b border-white/10 px-3 py-1.5'>
-          <span className='text-[9px] font-bold uppercase tracking-[0.32em] text-[#ffcc00]'>
+        <div className='flex items-center justify-between border-b border-white/10 px-3 pb-1.5'>
+          <span className={HUD_LABEL_CLASS} style={{ color: '#ffcc00' }}>
             Classification
           </span>
           <span className='font-mono text-[10px] tabular-nums text-white/45'>
@@ -74,9 +76,9 @@ export default function TimingTower() {
             return (
               <div
                 key={id}
-                className='relative flex items-center gap-2 px-2 py-[5px] transition-colors'
+                className='relative flex items-center gap-2 px-2.5 py-[5px] transition-colors'
                 style={{
-                  background: highlight ? 'rgba(255,204,0,0.08)' : 'transparent',
+                  background: highlight ? 'rgba(255,204,0,0.1)' : 'transparent',
                   borderTop: idx === 0 ? 'none' : '1px solid rgba(255,255,255,0.04)',
                 }}
               >
@@ -107,7 +109,7 @@ export default function TimingTower() {
             )
           })}
         </div>
-      </div>
+      </HudPanel>
     </div>
   )
 }

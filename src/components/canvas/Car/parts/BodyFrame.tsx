@@ -8,6 +8,8 @@ import { useCarPaintMaterial } from '../hooks/useCarPaintMaterial'
 import { WHEELBASE } from '@/constants/dimensions'
 import { useTireStore } from '@/stores/useTireStore'
 import { TIRE_COMPOUND } from '@/constants/colors'
+import { useCarPaintStore, getPartIdForMesh } from '@/stores/useCarPaintStore'
+import { isPreviewStatus, useGameStore } from '@/stores/useGameStore'
 
 const MODEL_PATH = '/models/f1_2026.glb'
 const LIVERY_BASE_COLOR_PATH = '/textures/Livery_baseColor.png'
@@ -48,8 +50,6 @@ const BW_FLAP_NAMES = { middle: 'Car_Livery_BW-M', last: 'Car_Livery_BW-L' } as 
 
 interface BodyFrameProps {
   isRaining: boolean
-  isThermalView: boolean
-  engineThermalMaterial: THREE.ShaderMaterial
   suspensionRef?: MutableRefObject<SuspensionOutput | null>
   onWheelRefs?: (refs: GltfWheelRefs) => void
   onFrontWingRefs?: (refs: FrontWingFlapRefs) => void
@@ -184,6 +184,28 @@ export function BodyFrame({
       mat.needsUpdate = true
     })
   }, [isRaining])
+
+  const status = useGameStore(s => s.status)
+  const selectedPart = useCarPaintStore(s => s.selectedPart)
+  const isolateSelected = useCarPaintStore(s => s.isolateSelected)
+
+  useEffect(() => {
+    if (!bodyRef.current) return
+    const isolating =
+      isPreviewStatus(status) && isolateSelected && selectedPart !== 'all'
+    bodyRef.current.traverse(child => {
+      if (!(child instanceof THREE.Mesh)) return
+      const partId = getPartIdForMesh(child.name)
+      if (!partId) return
+      child.visible = !isolating || partId === selectedPart
+    })
+    return () => {
+      if (!bodyRef.current) return
+      bodyRef.current.traverse(child => {
+        if (child instanceof THREE.Mesh) child.visible = true
+      })
+    }
+  }, [status, selectedPart, isolateSelected, bodyScene])
 
   useFrame(({ camera }) => {
     if (!bodyRef.current) return

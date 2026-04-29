@@ -1,8 +1,10 @@
 import { useRef } from 'react'
 import { Vector3 } from 'three'
+import { type Vector, type Rotation } from '@dimforge/rapier3d-compat'
 import { type TireTrailPoint, useTireTrailStore } from '../../../../stores/useTireTrailStore'
 import { WHEEL_POSITIONS as DIM_WHEEL_POS } from '../../../../constants/dimensions'
 import { type SuspensionOutput } from './useRaycastSuspension'
+import { type CarPhysicsOutput } from '../../../../wasm'
 
 type PhysicsContext = ReturnType<typeof import('../../../../wasm').usePhysics>
 
@@ -49,9 +51,9 @@ export function useCarRubberAndTrails({ physics }: RubberAndTrailsOptions) {
   const wetnessRef = useRef(0)
 
   const update = (
-    output: any,
-    pos: any,
-    rot: any,
+    output: CarPhysicsOutput,
+    pos: Vector,
+    rot: Rotation,
     forward: boolean,
     brake: boolean,
     handbrake: boolean,

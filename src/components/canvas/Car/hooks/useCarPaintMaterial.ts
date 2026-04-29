@@ -13,41 +13,70 @@ import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 import {
   useCarPaintStore,
   getPartIdForMesh,
+  DEFAULT_PART_MATERIAL_SETTINGS,
   type CarPartId,
 } from '../../../../stores/useCarPaintStore'
 
 const weatherState = { rainIntensity: 0 }
-useEnvironmentStore.subscribe(state => {
-  weatherState.rainIntensity = state.rainIntensity
-})
-
-const initPaint = useCarPaintStore.getState()
 const paintState = {
-  partColors: { ...initPaint.partColors },
-  flakeIntensity: initPaint.flakeIntensity,
-  flakeScale: initPaint.flakeScale,
-  clearcoatStrength: initPaint.clearcoatStrength,
-  colorDepthFactor: initPaint.colorDepthFactor,
+  partColors: {} as ReturnType<typeof useCarPaintStore.getState>['partColors'],
+  partMaterialSettings:
+    {} as ReturnType<typeof useCarPaintStore.getState>['partMaterialSettings'],
+  flakeIntensity: 0,
+  flakeScale: 0,
+  clearcoatStrength: 0,
+  colorDepthFactor: 0,
 }
-useCarPaintStore.subscribe(state => {
-  paintState.partColors = { ...state.partColors }
-  paintState.flakeIntensity = state.flakeIntensity
-  paintState.flakeScale = state.flakeScale
-  paintState.clearcoatStrength = state.clearcoatStrength
-  paintState.colorDepthFactor = state.colorDepthFactor
-})
+
+let subscriptionsInitialized = false
+
+function ensureSubscriptions() {
+  if (subscriptionsInitialized) return
+  subscriptionsInitialized = true
+
+  const env = useEnvironmentStore.getState()
+  weatherState.rainIntensity = env.rainIntensity
+  useEnvironmentStore.subscribe(state => {
+    weatherState.rainIntensity = state.rainIntensity
+  })
+
+  const initPaint = useCarPaintStore.getState()
+  paintState.partColors = initPaint.partColors
+  paintState.partMaterialSettings = initPaint.partMaterialSettings
+  paintState.flakeIntensity = initPaint.flakeIntensity
+  paintState.flakeScale = initPaint.flakeScale
+  paintState.clearcoatStrength = initPaint.clearcoatStrength
+  paintState.colorDepthFactor = initPaint.colorDepthFactor
+
+  // TODO(tech-debt): module-level subscriptions never unsubscribe. Safe today
+  // because multiple BodyFrame instances (main + Preview) share paintState; a
+  // useEffect-scoped subscription would tear down on first unmount and break
+  // the remaining consumers. Revisit when paintState is per-instance.
+  useCarPaintStore.subscribe(state => {
+    paintState.partColors = state.partColors
+    paintState.partMaterialSettings = state.partMaterialSettings
+    paintState.flakeIntensity = state.flakeIntensity
+    paintState.flakeScale = state.flakeScale
+    paintState.clearcoatStrength = state.clearcoatStrength
+    paintState.colorDepthFactor = state.colorDepthFactor
+  })
+}
 
 const _tmpColor = new THREE.Color()
 
 export function useCarPaintMaterial() {
+  ensureSubscriptions()
   const uniformsRef = useRef(createCarPaintUniforms())
   const partMaterialsRef = useRef<Map<CarPartId, THREE.MeshStandardMaterial[]>>(new Map())
 
   const applyCarPaint = useCallback((material: THREE.MeshStandardMaterial, meshName: string) => {
     const partId = getPartIdForMesh(meshName)
+    const materialSettings = partId
+      ? (paintState.partMaterialSettings[partId] ?? DEFAULT_PART_MATERIAL_SETTINGS)
+      : DEFAULT_PART_MATERIAL_SETTINGS
 
-    material.roughness = 0.35
-    material.metalness = 0.4
+    material.roughness = materialSettings.roughness
+    material.metalness = materialSettings.metalness
     material.envMapIntensity = 1.2
 
     if (partId) {
@@ -108,9 +137,17 @@ export function useCarPaintMaterial() {
 
     for (const [partId, materials] of partMaterialsRef.current) {
       _tmpColor.set(paintState.partColors[partId] ?? '#0a1128')
+      const materialSettings =
+        paintState.partMaterialSettings[partId] ?? DEFAULT_PART_MATERIAL_SETTINGS
       for (const mat of materials) {
         if (!mat.color.equals(_tmpColor)) {
           mat.color.copy(_tmpColor)
+        }
+        if (mat.roughness !== materialSettings.roughness) {
+          mat.roughness = materialSettings.roughness
+        }
+        if (mat.metalness !== materialSettings.metalness) {
+          mat.metalness = materialSettings.metalness
         }
       }
     }

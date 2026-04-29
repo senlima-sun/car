@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
 
@@ -16,35 +17,52 @@ interface MenuAction {
 const MENU_ACTIONS: MenuAction[] = [
   {
     id: 'race',
-    label: 'Start Race',
-    detail: 'Launch the countdown and go straight to the circuit.',
+    label: 'Race',
+    detail: 'Countdown · timed laps',
     actionKey: 'startRaceSession',
   },
   {
     id: 'test',
-    label: 'Start Test',
-    detail: 'Free practice run with debug overlay and testing tools.',
+    label: 'Test',
+    detail: 'Free practice · debug',
     actionKey: 'startTestSession',
   },
   {
     id: 'editor',
-    label: 'Track Editor',
-    detail: 'Open the editor and testing tools for track work.',
+    label: 'Editor',
+    detail: 'Build tracks',
     actionKey: 'openTrackEditor',
   },
   {
     id: 'showroom',
-    label: 'Watch Car',
-    detail: 'Inspect the 2026 F1 model in the showroom camera.',
+    label: 'Showroom',
+    detail: 'Inspect the 2026 car',
     actionKey: 'openShowroom',
   },
   {
     id: 'settings',
     label: 'Settings',
-    detail: 'Tune controls and display options before you drive.',
+    detail: 'Controls · display',
     actionKey: 'openSettings',
   },
 ]
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
+  },
+}
 
 export default function MainMenu() {
   const gameActions = {
@@ -56,6 +74,7 @@ export default function MainMenu() {
 
   const sessionActions = {
     beginSessionFlow: useSessionStore(s => s.beginSessionFlow),
+    startQuickSession: useSessionStore(s => s.startQuickSession),
   }
 
   const handleAction = (actionKey: MenuAction['actionKey']) => {
@@ -66,7 +85,7 @@ export default function MainMenu() {
     }
 
     if (actionKey === 'startTestSession') {
-      sessionActions.beginSessionFlow('practice', { testingMode: true })
+      sessionActions.startQuickSession('practice', { testingMode: true })
       gameActions.enterSessionShell()
       return
     }
@@ -85,59 +104,106 @@ export default function MainMenu() {
   }
 
   return (
-    <div className='absolute inset-0 z-30 flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(201,44,44,0.24),transparent_38%),linear-gradient(135deg,rgba(8,10,15,0.9),rgba(8,10,15,0.66)_42%,rgba(21,25,34,0.88))] px-6 py-8 pointer-events-auto'>
-      <div className='w-full max-w-6xl rounded-[32px] border border-white/12 bg-black/28 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl'>
-        <div className='grid gap-8 px-6 py-6 md:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)] md:px-10 md:py-10'>
-          <section className='flex min-h-[360px] flex-col justify-between'>
-            <div className='space-y-6'>
-              <div className='inline-flex w-fit items-center rounded-full border border-red-400/35 bg-red-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-red-100'>
-                F1 2026 Simulator
-              </div>
-              <div className='space-y-4'>
-                <h1 className='max-w-3xl font-mono text-4xl font-semibold uppercase tracking-[0.08em] text-white md:text-6xl'>
-                  Main Screen
-                </h1>
-                <p className='max-w-2xl text-sm leading-7 text-white/72 md:text-base'>
-                  Choose how to enter the sim. Race mode starts the lap flow, test mode gives you
-                  free practice with debug tools, and the editor lets you build tracks.
-                </p>
-              </div>
-            </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.8, ease: 'easeOut' }}
+      className='pointer-events-auto absolute inset-0  z-30 flex items-center justify-center bg-gradient-to-b from-black/85 via-black/65 to-black/95'
+    >
+      <motion.div
+        variants={containerVariants}
+        initial='hidden'
+        animate='visible'
+        className='flex w-full max-w-md flex-col gap-6'
+      >
+        <motion.header variants={itemVariants} className='space-y-3'>
+          <motion.div
+            className='flex items-center gap-3'
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+          >
+            <motion.span
+              className='inline-block h-px bg-red-400/70'
+              initial={{ width: 0 }}
+              animate={{ width: 28 }}
+              transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
+            />
+            <span className='font-mono text-[10px] uppercase tracking-[0.42em] text-red-300/80'>
+              F1 · 2026
+            </span>
+          </motion.div>
+          <motion.h1
+            variants={itemVariants}
+            className='font-mono text-4xl font-semibold uppercase tracking-[0.12em] text-white'
+          >
+            Simulator
+          </motion.h1>
+        </motion.header>
 
-            <div className='grid gap-3 text-xs uppercase tracking-[0.28em] text-white/42 md:grid-cols-3'>
-              <div className='rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4'>
-                Countdown race start
-              </div>
-              <div className='rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4'>
-                Free practice + debug
-              </div>
-              <div className='rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4'>
-                Track editor + tools
-              </div>
-            </div>
-          </section>
-
-          <section className='grid gap-3 self-stretch'>
-            {MENU_ACTIONS.map(item => (
-              <button
-                key={item.id}
-                onClick={() => handleAction(item.actionKey)}
-                className='group flex min-h-[92px] flex-col justify-between rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] px-5 py-4 text-left transition hover:border-red-300/45 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.1),rgba(255,255,255,0.04))]'
+        <motion.nav variants={containerVariants} className='flex flex-col'>
+          {MENU_ACTIONS.map(item => (
+            <motion.button
+              key={item.id}
+              variants={itemVariants}
+              onClick={() => handleAction(item.actionKey)}
+              whileHover='hover'
+              whileTap={{ scale: 0.985 }}
+              className='group relative flex items-baseline justify-between overflow-hidden border-b border-white/8 py-2.5 text-left'
+            >
+              <motion.span
+                aria-hidden
+                className='pointer-events-none absolute inset-y-0 left-0 bg-gradient-to-r from-red-500/10 to-transparent'
+                initial={{ width: 0 }}
+                variants={{ hover: { width: '100%' } }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
+              />
+              <motion.span
+                aria-hidden
+                className='pointer-events-none absolute bottom-0 left-0 h-px bg-red-300/70'
+                initial={{ width: 0 }}
+                variants={{ hover: { width: '100%' } }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              />
+              <span className='relative flex items-baseline gap-3'>
+                <motion.span
+                  variants={{ hover: { x: 6, color: 'rgb(254 202 202)' } }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                  className='font-mono text-sm font-medium uppercase tracking-[0.18em] text-white/90'
+                >
+                  {item.label}
+                </motion.span>
+                <span className='text-[10px] uppercase tracking-[0.24em] text-white/40'>
+                  {item.detail}
+                </span>
+              </span>
+              <motion.span
+                aria-hidden
+                variants={{ hover: { x: 8, color: 'rgb(254 202 202)', opacity: 1 } }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                className='relative font-mono text-xs text-white/25'
               >
-                <div className='flex items-center justify-between gap-4'>
-                  <span className='font-mono text-lg font-semibold uppercase tracking-[0.08em] text-white'>
-                    {item.label}
-                  </span>
-                  <span className='rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-white/42 transition group-hover:border-red-300/35 group-hover:text-red-100'>
-                    Enter
-                  </span>
-                </div>
-                <span className='max-w-md text-sm leading-6 text-white/62'>{item.detail}</span>
-              </button>
-            ))}
-          </section>
-        </div>
-      </div>
-    </div>
+                →
+              </motion.span>
+            </motion.button>
+          ))}
+        </motion.nav>
+
+        <motion.div
+          variants={itemVariants}
+          className='flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.32em] text-white/30'
+        >
+          <span>v26.1</span>
+          <motion.span
+            animate={{ opacity: [0.3, 0.8, 0.3] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+            className='flex items-center gap-2'
+          >
+            <span className='inline-block h-1.5 w-1.5 rounded-full bg-red-400' />
+            Ready
+          </motion.span>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   )
 }

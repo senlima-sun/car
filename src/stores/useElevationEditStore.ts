@@ -6,6 +6,7 @@ import type {
   ElevationControlPoint,
 } from '../types/trackObjects'
 import { editorCommandStack } from '../utils/commandStack'
+import { smoothElevations } from '../utils/elevationHandles'
 import type { EditorCommand } from '../types/editor'
 import { useCustomizationStore } from './useCustomizationStore'
 
@@ -33,6 +34,7 @@ interface ElevationEditState {
   toggleSmoothRoadSelection: (roadId: string) => void
   clearSmoothSelection: () => void
   setPropagateToNeighbors: (enabled: boolean) => void
+  applySmoothElevation: (roadIds: string[]) => void
 }
 
 export const useElevationEditStore = create<ElevationEditState>((set, get) => ({
@@ -148,4 +150,46 @@ export const useElevationEditStore = create<ElevationEditState>((set, get) => ({
   clearSmoothSelection: () => set({ smoothSelectedRoadIds: [] }),
 
   setPropagateToNeighbors: enabled => set({ propagateToNeighbors: enabled }),
+
+  applySmoothElevation: roadIds => {
+    if (roadIds.length === 0) return
+
+    const customStore = useCustomizationStore.getState()
+    const result = smoothElevations(roadIds, customStore.placedObjects, 1)
+    if (result.size === 0) return
+
+    const byId = new Map(customStore.placedObjects.map(o => [o.id, o]))
+    const before = new Map<string, { startElevation: number; endElevation: number }>()
+    for (const [id] of result) {
+      const obj = byId.get(id)
+      if (obj) {
+        before.set(id, {
+          startElevation: obj.startElevation ?? 0,
+          endElevation: obj.endElevation ?? 0,
+        })
+      }
+    }
+
+    const resultCopy = new Map(result)
+    const beforeCopy = new Map(before)
+
+    const command: EditorCommand = {
+      execute: () => {
+        const store = useCustomizationStore.getState()
+        for (const [id, vals] of resultCopy) {
+          store.updateObject(id, vals)
+        }
+      },
+      undo: () => {
+        const store = useCustomizationStore.getState()
+        for (const [id, vals] of beforeCopy) {
+          store.updateObject(id, vals)
+        }
+      },
+      description: 'Smooth elevations',
+    }
+    editorCommandStack.push(command)
+
+    get().clearSmoothSelection()
+  },
 }))

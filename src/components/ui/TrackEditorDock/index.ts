@@ -1,7 +1,0 @@
-export { default as TrackEditorDock } from './TrackEditorDock'
-export { default as ContextHint } from './ContextHint'
-export { default as ObjectToolbar } from './ObjectToolbar'
-export { default as DeleteTools } from './DeleteTools'
-export { default as TrackSettings } from './TrackSettings'
-export { default as GenerationTools } from './GenerationTools'
-export { default as TrackManagement } from './TrackManagement'

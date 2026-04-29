@@ -34,9 +34,10 @@ export default function FreeCamera({ target }: CameraTargetProps) {
 
     const carPosition = new Vector3()
     target.current.getWorldPosition(carPosition)
+    camera.position.set(carPosition.x - 8, carPosition.y + 5, carPosition.z - 8)
     controlsRef.current.target.copy(carPosition)
     controlsRef.current.update()
-  }, [target])
+  }, [target, camera])
 
   useEffect(() => {
     window.addEventListener('keydown', onKeyDown)

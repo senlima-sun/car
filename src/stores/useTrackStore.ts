@@ -5,6 +5,17 @@ import { useEditorStore } from './useEditorStore'
 import { useTerrainStore } from './useTerrainStore'
 import { DEFAULT_TRACK_NAME, DEFAULT_TRACK_OBJECTS } from '../constants/defaultTrack'
 import { PRESET_TRACKS } from '../constants/tracks'
+import { exportTrack } from '../utils/trackExport'
+
+let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const debouncedSaveLibrary = (saveFn: () => void): void => {
+  if (saveDebounceTimer !== null) clearTimeout(saveDebounceTimer)
+  saveDebounceTimer = setTimeout(() => {
+    saveDebounceTimer = null
+    saveFn()
+  }, 500)
+}
 
 const LEGACY_STORAGE_KEY = 'car-racing-track'
 const TRACK_LIBRARY_KEY = 'car-racing-track-library'
@@ -55,6 +66,7 @@ interface TrackState {
   trackLibrary: TrackLibrary
   isLoading: boolean
   isDirty: boolean
+  quotaExceeded: boolean
 
   createTrack: (name: string) => string
   deleteTrack: (id: string) => void
@@ -83,6 +95,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   },
   isLoading: true,
   isDirty: false,
+  quotaExceeded: false,
 
   createTrack: (name: string) => {
     const newTrack: SavedTrack = {
@@ -105,7 +118,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
     useCustomizationStore.getState().setPlacedObjects([])
 
-    get().saveLibrary()
+    debouncedSaveLibrary(() => get().saveLibrary())
 
     return newTrack.id
   },
@@ -133,7 +146,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       useCustomizationStore.getState().setPlacedObjects([])
     }
 
-    get().saveLibrary()
+    debouncedSaveLibrary(() => get().saveLibrary())
   },
 
   renameTrack: (id: string, newName: string) => {
@@ -147,7 +160,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
         ),
       },
     }))
-    get().saveLibrary()
+    debouncedSaveLibrary(() => get().saveLibrary())
   },
 
   duplicateTrack: (id: string, newName: string) => {
@@ -170,7 +183,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       },
     }))
 
-    get().saveLibrary()
+    debouncedSaveLibrary(() => get().saveLibrary())
     return newTrack.id
   },
 
@@ -198,7 +211,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       isDirty: false,
     }))
 
-    get().saveLibrary()
+    debouncedSaveLibrary(() => get().saveLibrary())
   },
 
   loadPresetTrack: (presetId: string) => {
@@ -249,7 +262,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       useEditorStore.getState().setCameraTarget(center)
     }
 
-    get().saveLibrary()
+    debouncedSaveLibrary(() => get().saveLibrary())
   },
 
   saveCurrentTrack: () => {
@@ -288,29 +301,10 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   },
 
   exportCurrentTrack: () => {
-    const { placedObjects } = useCustomizationStore.getState()
-    const activeTrack = get().getActiveTrack()
-    const terrainState = useTerrainStore.getState()
-    const hasTerrainData = terrainState.heightmap.some(h => h !== 0)
-
-    const trackName = activeTrack?.name || 'Exported Track'
-    const trackData: Record<string, unknown> = {
-      name: trackName,
-      objects: placedObjects,
-    }
-    if (hasTerrainData) {
-      trackData.heightmap = terrainState.getHeightsArray()
-    }
-
-    const blob = new Blob([JSON.stringify(trackData, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${trackName.replace(/\s+/g, '_')}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    const t = get().getActiveTrack()
+    if (!t) return
+    const liveHeightmap = useTerrainStore.getState().getHeightsArray()
+    exportTrack(t, { liveHeightmap })
   },
 
   setActiveTrack: (id: string | null) => {
@@ -334,6 +328,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
       if (libraryData) {
         const library = JSON.parse(libraryData) as TrackLibrary
+        let mutated = false
 
         if (
           DEFAULT_TRACK_OBJECTS.length > 0 &&
@@ -348,6 +343,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
             objects: [...DEFAULT_TRACK_OBJECTS],
           }
           library.tracks.unshift(defaultTrack)
+          mutated = true
         }
 
         library.tracks = library.tracks.map(t => {
@@ -355,6 +351,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
           const preset = PRESET_TRACKS.find(p => p.id === t.presetId)
           if (!preset) return t
           if (presetObjectsEqual(t.objects, preset.objects)) return t
+          mutated = true
           return {
             ...t,
             name: preset.name,
@@ -378,7 +375,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
           }
         }
 
-        get().saveLibrary()
+        if (mutated) get().saveLibrary()
         return
       }
 
@@ -436,8 +433,19 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     try {
       const { trackLibrary } = get()
       localStorage.setItem(TRACK_LIBRARY_KEY, JSON.stringify(trackLibrary))
+      if (get().quotaExceeded) set({ quotaExceeded: false })
     } catch (e) {
-      console.error('Failed to save track library:', e)
+      const isQuota =
+        e instanceof DOMException &&
+        (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')
+      if (isQuota) {
+        set({ quotaExceeded: true })
+        console.warn(
+          'Track library exceeds localStorage quota. In-memory edits will not persist until storage is cleared.',
+        )
+      } else {
+        console.error('Failed to save track library:', e)
+      }
     }
   },
 

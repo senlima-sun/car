@@ -6,13 +6,8 @@ import { useEditorStore } from '../../../stores/useEditorStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import { useVisibilityStore } from '../../../stores/useVisibilityStore'
 import { TrackObjectWrapper } from '../TrackObjects'
-import { useVisibilityUpdater } from '../../../hooks/useVisibilityUpdater'
+import VisibilityUpdater from './VisibilityUpdater'
 import type { PlacedObject } from '../../../types/trackObjects'
-
-function VisibilityManager() {
-  useVisibilityUpdater()
-  return null
-}
 
 interface PlacedObjectsRendererProps {
   enablePhysics?: boolean
@@ -23,10 +18,10 @@ export default function PlacedObjectsRenderer({
 }: PlacedObjectsRendererProps) {
   const placedObjects = useCustomizationStore(s => s.placedObjects)
   const selectedObjectId = useEditorStore(s => s.selectedObjectId)
-  const deleteMode = useEditorStore(s => s.deleteMode)
+  const deleteMode = useEditorStore(s => s.editorMode === 'delete')
   const selectObject = useEditorStore(s => s.selectObject)
   const loadLibrary = useTrackStore(s => s.loadLibrary)
-  const autoCurbMode = useEditorStore(s => s.autoCurbMode)
+  const autoCurbMode = useEditorStore(s => s.editorMode === 'autoCurb')
   const selectedRoadIds = useEditorStore(s => s.selectedRoadIds)
   const toggleRoadSelection = useEditorStore(s => s.toggleRoadSelection)
   const multiSelectedIds = useEditorStore(s => s.multiSelectedIds)
@@ -46,11 +41,21 @@ export default function PlacedObjectsRenderer({
   }, [placedObjects])
 
   const visibleObjects = useMemo(() => {
-    if (visibleObjectIds.size === 0 && placedObjects.length > 0) return placedObjects
-    const result: PlacedObject[] = []
+    const baseObjects = placedObjects.filter(
+      obj => obj.type === 'track_ribbon' || obj.type === 'painted_area',
+    )
+    const result: PlacedObject[] = [...baseObjects]
+
+    if (visibleObjectIds.size === 0 && placedObjects.length > 0) {
+      result.push(
+        ...placedObjects.filter(obj => obj.type !== 'track_ribbon' && obj.type !== 'painted_area'),
+      )
+      return result
+    }
+
     for (const id of visibleObjectIds) {
       const obj = objectMap.get(id)
-      if (obj) result.push(obj)
+      if (obj && obj.type !== 'track_ribbon' && obj.type !== 'painted_area') result.push(obj)
     }
     return result
   }, [visibleObjectIds, objectMap, placedObjects])
@@ -126,7 +131,7 @@ export default function PlacedObjectsRenderer({
 
   return (
     <>
-      <VisibilityManager />
+      <VisibilityUpdater />
       <group
         onClick={handleGroupClick}
         onPointerOver={handlePointerOver}

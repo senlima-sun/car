@@ -725,6 +725,10 @@ impl PhysicsEngine {
         }
 
         self.surface.update(dt);
+        let wetness_at_car = self
+            .track_temperature
+            .get_wetness_at(car_position[0], car_position[2]);
+        self.surface.apply_wetness(wetness_at_car);
         let surface_modifiers = self.surface.get_modifiers();
 
         // Surface grip is the primary grip modifier
@@ -775,18 +779,24 @@ impl PhysicsEngine {
         };
         self.tire_temperature.update_cooling(&cooling_input);
 
-        // Bidirectional heat exchange between tires and track
-        // Always active - even when stationary, hot tires transfer heat to track
-        let tire_avg_temp = self.tire_temperature.get_average_temperature();
-        let tire_heat_delta = self.track_temperature.update_tire_track_exchange(
-            car_position[0],
-            car_position[2],
-            tire_avg_temp,
+        // Bidirectional heat exchange between tires and track — sampled per
+        // wheel so left/right wheels see different track-cell temperatures
+        // (e.g. one wheel on hot rubber'd line, the other on cool offline).
+        let tire_temps_now = self.tire_temperature.get_temperatures();
+        let per_wheel_tire_temp = [
+            (tire_temps_now.front_left_inner + tire_temps_now.front_left_outer) * 0.5,
+            (tire_temps_now.front_right_inner + tire_temps_now.front_right_outer) * 0.5,
+            (tire_temps_now.rear_left_inner + tire_temps_now.rear_left_outer) * 0.5,
+            (tire_temps_now.rear_right_inner + tire_temps_now.rear_right_outer) * 0.5,
+        ];
+        let tire_heat_deltas = self.track_temperature.update_tire_track_exchange_per_wheel(
+            &wheel_xz,
+            per_wheel_tire_temp,
             ambient.temperature,
             dt,
         );
-        // Apply the heat change to tires
-        self.tire_temperature.apply_external_heat(tire_heat_delta);
+        self.tire_temperature
+            .apply_external_heat_per_wheel(tire_heat_deltas);
 
         // Apply puddle cooling effect (can trigger thermal shock)
         self.tire_temperature
@@ -1041,7 +1051,12 @@ impl PhysicsEngine {
             track_temperature: track_temp,
             wind_cooling_multiplier: wind_modifiers.cooling_multiplier,
         };
-        self.tire_temperature.update_heating(&heating_input);
+        // Sample track temperature beneath each wheel for per-wheel heating.
+        let per_wheel_track_temp = self
+            .track_temperature
+            .sample_temperatures_at_wheels(&wheel_xz, ambient.temperature);
+        self.tire_temperature
+            .update_heating(&heating_input, Some(per_wheel_track_temp));
 
         // Calculate weight transfer for tire wear (use actual G-forces from output)
         let weight_transfer_wear = weight_transfer_post;
@@ -1084,6 +1099,10 @@ impl PhysicsEngine {
             tires: self.tire_temperature.get_temperatures(),
             tire_temp_grip: self.tire_temperature.calculate_temp_grip(&temp_window),
             tire_in_window: self.tire_temperature.check_in_window(&temp_window),
+            tire_blowout_risk: self.tire_temperature.get_blowout_risk(),
+            tire_blown: self.tire_temperature.get_is_blown(),
+            engine_seize_risk: self.engine_temperature.get_seize_risk(),
+            engine_seized: self.engine_temperature.is_seized(),
         };
 
         // Fill in aquaplaning state

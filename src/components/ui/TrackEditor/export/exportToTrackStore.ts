@@ -1,4 +1,5 @@
 import { useCustomizationStore } from '@/stores/useCustomizationStore'
+import { useTerrainStore } from '@/stores/useTerrainStore'
 import { useTrackStore } from '@/stores/useTrackStore'
 import type { SavedTrack } from '@/types/track'
 import type { PlacedObject } from '@/types/trackObjects'
@@ -27,6 +28,10 @@ function writeDraftTrack(objects: PlacedObject[]): void {
   const library = trackState.trackLibrary
   const existingIndex = library.tracks.findIndex(t => t.id === DRAFT_TRACK_ID)
 
+  const terrainState = useTerrainStore.getState()
+  const hasTerrainData = terrainState.heightmap.some(h => h !== 0)
+  const heightmap = hasTerrainData ? terrainState.getHeightsArray() : undefined
+
   const nextDraft: SavedTrack = {
     id: DRAFT_TRACK_ID,
     name: DRAFT_TRACK_NAME,
@@ -34,6 +39,7 @@ function writeDraftTrack(objects: PlacedObject[]): void {
     updatedAt: now,
     objectCount: objects.length,
     objects,
+    heightmap,
   }
 
   const nextTracks =

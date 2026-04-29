@@ -255,47 +255,56 @@ impl TrackTemperatureGrid {
         let is_raining = rain_intensity > 0.01;
         let is_freezing = ambient.temperature < FREEZING_THRESHOLD;
 
-        // Base decay rate from temperature
-        // Cold: fast decay, Hot: slow decay, Normal: medium
-        let base_decay_rate = if celsius < 5.0 {
-            0.018 // Cold
+        // Track baseline = the temperature each cell would relax toward in the
+        // absence of cars driving on it. Asphalt sits warmer than air (solar
+        // gain, lower albedo) — TRACK_AMBIENT_MULTIPLIER captures that.
+        // Cells should *relax toward* this baseline, not decay to absolute 0.
+        let track_baseline = ambient.temperature * TRACK_AMBIENT_MULTIPLIER;
+
+        // Base relaxation rate (per second) — how fast a cell pulls back to
+        // baseline. Cold air pulls heat away faster; hot air slows it.
+        let base_relax_rate = if celsius < 5.0 {
+            0.018
         } else if celsius > 35.0 {
-            0.002 // Hot
+            0.002
         } else {
-            0.004 // Normal
+            0.004
         };
 
-        // Rain increases decay
-        let weather_decay_rate = if is_raining {
-            base_decay_rate * (1.0 + rain_intensity * 2.0) // Up to 3x decay with heavy rain
+        // Rain increases heat exchange (water conducts heat away from / to surface)
+        let weather_relax_rate = if is_raining {
+            base_relax_rate * (1.0 + rain_intensity * 2.0)
         } else {
-            base_decay_rate
+            base_relax_rate
         };
 
         let mut cells_modified = false;
 
         // Update all cells
         for cell in self.cells.values_mut() {
-            // Calculate decay rate based on surface type and wind
-            // Roads retain heat better (lower decay) unless it's raining
-            let surface_decay = if cell.is_road {
+            // Surface-specific relaxation rate. Roads have more thermal mass
+            // and a darker surface so they trail ambient more; rain accelerates
+            // exchange on impervious surfaces.
+            let surface_relax = if cell.is_road {
                 if is_raining {
-                    // Rain accelerates cooling on roads (water conducts heat away)
-                    weather_decay_rate * ROAD_RAIN_DECAY_MULTIPLIER
+                    weather_relax_rate * ROAD_RAIN_DECAY_MULTIPLIER
                 } else {
-                    // Roads retain heat much better in dry conditions
-                    weather_decay_rate * ROAD_DECAY_MULTIPLIER
+                    weather_relax_rate * ROAD_DECAY_MULTIPLIER
                 }
             } else {
-                weather_decay_rate
+                weather_relax_rate
             };
 
-            // Wind increases cooling rate
-            let decay_rate = surface_decay * wind_cooling_multiplier;
+            // Wind boosts heat exchange with the air mass.
+            let relax_rate = surface_relax * wind_cooling_multiplier;
 
-            // Temperature decay (enhanced by wind)
+            // Exponential relaxation toward baseline. Hotter-than-baseline
+            // cells cool toward it; colder-than-baseline cells warm up to it.
+            // This replaces the old "decay toward zero" which produced
+            // unrealistically cold rubber'd lines after a long session.
             let old_temp = cell.temperature;
-            cell.temperature = (cell.temperature - decay_rate * delta_seconds).max(0.0);
+            let diff = track_baseline - cell.temperature;
+            cell.temperature = (cell.temperature + diff * relax_rate * delta_seconds).max(0.0);
 
             // Wetness and water depth changes - scaled by rain_exposure, wind helps drying
             if is_raining {
@@ -636,6 +645,63 @@ impl TrackTemperatureGrid {
         -heat_to_track * 0.15
     }
 
+    /// Per-wheel bidirectional heat exchange. Samples track temperature at
+    /// each wheel's actual world position so left/right wheels (or on-line
+    /// vs off-line wheels) experience different track conditions.
+    ///
+    /// Returns a per-wheel heat delta to apply to the tire (positive = gain).
+    pub fn update_tire_track_exchange_per_wheel(
+        &mut self,
+        wheel_positions: &[[f32; 2]; 4],
+        wheel_temps: [f32; 4],
+        ambient_temp: f32,
+        delta_seconds: f32,
+    ) -> [f32; 4] {
+        let mut deltas = [0.0f32; 4];
+        if self.cells.len() >= MAX_CELLS {
+            return deltas;
+        }
+
+        let track_baseline = ambient_temp * TRACK_AMBIENT_MULTIPLIER;
+
+        for i in 0..4 {
+            let (cell_x, cell_z) = self.world_to_cell(wheel_positions[i][0], wheel_positions[i][1]);
+            let cell = self.cells.entry((cell_x, cell_z)).or_insert_with(|| {
+                let mut c = GridCell::new();
+                c.temperature = track_baseline;
+                c.last_updated = self.time;
+                c
+            });
+
+            let temp_diff = wheel_temps[i] - cell.temperature;
+            let heat_to_track = temp_diff * TIRE_TRACK_TRANSFER_RATE * delta_seconds;
+            cell.temperature = (cell.temperature + heat_to_track).clamp(0.0, 1.0);
+            cell.last_updated = self.time;
+
+            deltas[i] = -heat_to_track * 0.15;
+        }
+        self.texture_dirty = true;
+        deltas
+    }
+
+    /// Sample track temperature at each wheel's world position.
+    /// Returns the existing cell temp, or `track_baseline` if no cell exists.
+    pub fn sample_temperatures_at_wheels(
+        &self,
+        wheel_positions: &[[f32; 2]; 4],
+        ambient_temp: f32,
+    ) -> [f32; 4] {
+        let track_baseline = ambient_temp * TRACK_AMBIENT_MULTIPLIER;
+        let mut out = [track_baseline; 4];
+        for i in 0..4 {
+            let (cell_x, cell_z) = self.world_to_cell(wheel_positions[i][0], wheel_positions[i][1]);
+            if let Some(cell) = self.cells.get(&(cell_x, cell_z)) {
+                out[i] = cell.temperature;
+            }
+        }
+        out
+    }
+
     /// Update rubber deposits from per-wheel positions
     /// This creates tire marks on the track surface
     ///
@@ -827,16 +893,28 @@ mod tests {
     fn test_temperature_decay() {
         let mut grid = TrackTemperatureGrid::new(2.0, TrackBounds::default());
 
-        // Add heat
-        grid.update_car_position(0.0, 0.0, 1.0, 0.5);
-        grid.update_time(0.5);
+        // Heat the cell well above ambient baseline so we can observe relaxation
+        // back down. Multiple heating passes simulate a hot session.
+        for _ in 0..60 {
+            grid.update_car_position(0.0, 0.0, 1.0, 1.0 / 60.0);
+            grid.update_time(1.0 / 60.0);
+        }
 
         let (cx, cz) = grid.world_to_cell(0.0, 0.0);
         let initial_temp = grid.cells.get(&(cx, cz)).unwrap().temperature;
 
-        // Let it decay (dry weather - 25C, 30% humidity, no rain)
+        // Let it relax toward ambient baseline (dry 25C, 30% humidity, no rain)
         let ambient = AmbientConditions::from_celsius(25.0, 0.3);
-        for _ in 0..300 {
+        let baseline = ambient.temperature * TRACK_AMBIENT_MULTIPLIER;
+        // Sanity: we want to start above baseline so relaxation is downward.
+        assert!(
+            initial_temp > baseline,
+            "initial_temp {} should exceed baseline {}",
+            initial_temp,
+            baseline
+        );
+
+        for _ in 0..600 {
             grid.update_weather(&ambient, 1.0 / 60.0);
             grid.update_time(1.0 / 60.0);
         }
@@ -846,7 +924,51 @@ mod tests {
             .get(&(cx, cz))
             .map(|c| c.temperature)
             .unwrap_or(0.0);
+        // Cell decayed toward (but does not undershoot) the ambient baseline.
         assert!(final_temp < initial_temp);
+        assert!(final_temp >= baseline - 0.01);
+    }
+
+    #[test]
+    fn test_temperature_relaxes_toward_ambient_baseline() {
+        // Cooled cells warm back up to the ambient-driven baseline; hot cells
+        // cool down to it. Both directions move toward baseline (not zero).
+        let ambient = AmbientConditions::from_celsius(30.0, 0.3);
+        let baseline = ambient.temperature * TRACK_AMBIENT_MULTIPLIER;
+
+        // Hot cell relaxes downward — final temp should be lower than start
+        // and closer to baseline.
+        let mut hot_grid = TrackTemperatureGrid::new(2.0, TrackBounds::default());
+        let (cx, cz) = hot_grid.world_to_cell(0.0, 0.0);
+        let hot_start = 0.85;
+        hot_grid.cells.insert((cx, cz), {
+            let mut c = GridCell::new();
+            c.temperature = hot_start;
+            c
+        });
+        for _ in 0..600 {
+            hot_grid.update_weather(&ambient, 1.0 / 60.0);
+        }
+        let hot_final = hot_grid.cells.get(&(cx, cz)).unwrap().temperature;
+        assert!(hot_final < hot_start);
+        assert!((hot_final - baseline).abs() < (hot_start - baseline).abs());
+
+        // Cold cell relaxes upward — final temp should be higher than start
+        // and closer to baseline (this would have *failed* under the old
+        // "decay toward 0" model).
+        let mut cold_grid = TrackTemperatureGrid::new(2.0, TrackBounds::default());
+        let cold_start = 0.05;
+        cold_grid.cells.insert((cx, cz), {
+            let mut c = GridCell::new();
+            c.temperature = cold_start;
+            c
+        });
+        for _ in 0..600 {
+            cold_grid.update_weather(&ambient, 1.0 / 60.0);
+        }
+        let cold_final = cold_grid.cells.get(&(cx, cz)).unwrap().temperature;
+        assert!(cold_final > cold_start);
+        assert!((cold_final - baseline).abs() < (cold_start - baseline).abs());
     }
 
     #[test]
@@ -889,9 +1011,11 @@ mod tests {
         let mut road_grid = TrackTemperatureGrid::new(2.0, TrackBounds::default());
         let mut grass_grid = TrackTemperatureGrid::new(2.0, TrackBounds::default());
 
-        // Add heat to both grids
-        road_grid.update_car_position(0.0, 0.0, 1.0, 0.5);
-        grass_grid.update_car_position(0.0, 0.0, 1.0, 0.5);
+        // Add heat to both grids — multiple passes to push above ambient baseline.
+        for _ in 0..60 {
+            road_grid.update_car_position(0.0, 0.0, 1.0, 1.0 / 60.0);
+            grass_grid.update_car_position(0.0, 0.0, 1.0, 1.0 / 60.0);
+        }
 
         // Mark road grid cell as road surface
         road_grid.set_road_cell(0.0, 0.0, true);
@@ -939,9 +1063,11 @@ mod tests {
         let mut road_grid = TrackTemperatureGrid::new(2.0, TrackBounds::default());
         let mut grass_grid = TrackTemperatureGrid::new(2.0, TrackBounds::default());
 
-        // Add heat to both grids
-        road_grid.update_car_position(0.0, 0.0, 1.0, 0.5);
-        grass_grid.update_car_position(0.0, 0.0, 1.0, 0.5);
+        // Add heat to both grids — multiple passes to push above ambient baseline.
+        for _ in 0..60 {
+            road_grid.update_car_position(0.0, 0.0, 1.0, 1.0 / 60.0);
+            grass_grid.update_car_position(0.0, 0.0, 1.0, 1.0 / 60.0);
+        }
 
         // Mark road grid cell as road surface
         road_grid.set_road_cell(0.0, 0.0, true);

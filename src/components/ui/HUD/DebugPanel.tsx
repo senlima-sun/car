@@ -1,4 +1,4 @@
-import { useTireStore } from '../../../stores/useTireStore'
+import { selectAverageWear, useTireStore } from '../../../stores/useTireStore'
 import { useErsStore } from '../../../stores/useErsStore'
 import { TIRE_CONFIG, TIRE_ORDER, type TireCompound } from '../../../constants/tires'
 import {
@@ -7,7 +7,6 @@ import {
   setErsBatteryCharge,
 } from '../../../wasm/PhysicsBridge'
 
-// Map string compound to WASM enum
 const compoundToWasm: Record<TireCompound, TireCompoundWasm> = {
   soft: TireCompoundWasm.Soft,
   medium: TireCompoundWasm.Medium,
@@ -16,126 +15,21 @@ const compoundToWasm: Record<TireCompound, TireCompoundWasm> = {
   intermediate: TireCompoundWasm.Intermediate,
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'rgba(0, 0, 0, 0.85)',
-    borderRadius: 10,
-    padding: '10px 14px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    fontSize: 11,
-    minWidth: 180,
-    border: '1px solid rgba(255, 165, 0, 0.3)',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    color: '#ffa500',
-    fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 1,
-  },
-  badge: {
-    background: 'rgba(255, 165, 0, 0.2)',
-    color: '#ffa500',
-    fontSize: 8,
-    padding: '2px 6px',
-    borderRadius: 4,
-    fontWeight: 'bold',
-  },
-  row: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-  },
-  label: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 10,
-    minWidth: 70,
-  },
-  slider: {
-    flex: 1,
-    height: 4,
-    appearance: 'none' as const,
-    background: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 2,
-    outline: 'none',
-    cursor: 'pointer',
-  },
-  value: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 11,
-    minWidth: 35,
-    textAlign: 'right' as const,
-    fontFamily: 'monospace',
-  },
-  buttonRow: {
-    display: 'flex',
-    gap: 6,
-    marginTop: 4,
-  },
-  button: {
-    flex: 1,
-    background: 'rgba(255, 255, 255, 0.1)',
-    border: 'none',
-    borderRadius: 4,
-    padding: '6px 8px',
-    color: '#fff',
-    fontSize: 10,
-    cursor: 'pointer',
-    transition: 'background 0.15s',
-  },
-  syncIndicator: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-    paddingTop: 6,
-    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-  },
-  checkbox: {
-    width: 14,
-    height: 14,
-    cursor: 'pointer',
-    accentColor: '#22c55e',
-  },
-  checkboxLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-  },
-  compoundRow: {
-    display: 'flex',
-    gap: 4,
-    marginTop: 4,
-  },
-  compoundButton: {
-    flex: 1,
-    padding: '6px 4px',
-    borderRadius: 4,
-    border: '2px solid transparent',
-    cursor: 'pointer',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    gap: 2,
-    transition: 'all 0.15s',
-  },
-  compoundIcon: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  compoundName: {
-    fontSize: 7,
-    textTransform: 'uppercase' as const,
-    opacity: 0.8,
-  },
-}
+const TITLE = 'text-[#ffa500] text-[10px] font-bold uppercase tracking-[1px]'
+const BADGE = 'bg-[#ffa500]/20 text-[#ffa500] text-[8px] px-1.5 py-0.5 rounded font-bold'
+const ROW = 'flex items-center gap-2'
+const LABEL = 'text-white/60 text-[10px] min-w-[70px]'
+const SLIDER =
+  'flex-1 h-1 appearance-none rounded-[2px] outline-none cursor-pointer'
+const VALUE = 'text-white font-bold text-[11px] min-w-[35px] text-right font-mono'
+const BUTTON_ROW = 'flex gap-1.5 mt-1'
+const BUTTON_BASE =
+  'flex-1 border-0 rounded px-2 py-1.5 text-white text-[10px] cursor-pointer transition-colors duration-150'
+const COMPOUND_ROW = 'flex gap-1 mt-1'
+const COMPOUND_BUTTON_BASE =
+  'flex-1 px-1 py-1.5 rounded border-2 border-transparent cursor-pointer flex flex-col items-center gap-0.5 transition-all duration-150'
+const COMPOUND_ICON = 'text-xs font-bold'
+const COMPOUND_NAME = 'text-[7px] uppercase opacity-80'
 
 function getWearColor(wear: number): string {
   if (wear >= 90) return '#ef4444'
@@ -166,14 +60,13 @@ function getBatteryColor(charge: number): string {
 }
 
 export default function DebugPanel() {
-  const averageWear = useTireStore(state => state.averageWear)
+  const averageWear = useTireStore(selectAverageWear)
   const debugMode = useTireStore(state => state.debugMode)
   const setWearDebug = useTireStore(state => state.setWearDebug)
   const disableDebugMode = useTireStore(state => state.disableDebugMode)
   const currentCompound = useTireStore(state => state.currentCompound)
   const setTireCompound = useTireStore(state => state.setTireCompound)
 
-  // ERS state
   const batteryCharge = useErsStore(state => state.batteryCharge)
   const semiAutoConfig = useErsStore(state => state.semiAutoConfig)
   const setSemiAutoPreset = useErsStore(state => state.setSemiAutoPreset)
@@ -184,9 +77,7 @@ export default function DebugPanel() {
   const tireLife = Math.max(0, 100 - averageWear)
 
   const handleCompoundChange = (compound: TireCompound) => {
-    // Update store
     setTireCompound(compound)
-    // Update WASM physics engine
     try {
       setTireCompoundWasm(compoundToWasm[compound])
     } catch {
@@ -213,9 +104,8 @@ export default function DebugPanel() {
     }
   }
 
-  // ERS handlers
   const handleBatteryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const charge = Number(e.target.value) / 100 // Convert 0-100 to 0-1
+    const charge = Number(e.target.value) / 100
     try {
       setErsBatteryCharge(charge)
     } catch {
@@ -235,19 +125,28 @@ export default function DebugPanel() {
     }
   }
 
+  const wearColor = getWearColor(averageWear)
+  const batteryColor = getBatteryColor(batteryCharge)
+  const powerColor =
+    powerFlow > 0 ? '#22c55e' : powerFlow < 0 ? '#3b82f6' : 'rgba(255,255,255,0.5)'
+  const harvestColor =
+    harvestSource === 'SuperClip'
+      ? '#a855f7'
+      : harvestSource === 'Braking'
+        ? '#ef4444'
+        : '#3b82f6'
+
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <span style={styles.title}>Debug Tools</span>
-        {debugMode && <span style={styles.badge}>PAUSED</span>}
+    <div className='bg-black/85 rounded-[10px] px-3.5 py-2.5 flex flex-col gap-2 text-[11px] min-w-[180px] border border-[#ffa500]/30'>
+      <div className='flex justify-between items-center'>
+        <span className={TITLE}>Debug Tools</span>
+        {debugMode && <span className={BADGE}>PAUSED</span>}
       </div>
 
-      {/* Tire Compound Selector */}
-      <div style={styles.row}>
-        <span style={styles.label}>Compound</span>
+      <div className={ROW}>
+        <span className={LABEL}>Compound</span>
       </div>
-      <div style={styles.compoundRow}>
+      <div className={COMPOUND_ROW}>
         {TIRE_ORDER.map(compound => {
           const config = TIRE_CONFIG[compound]
           const isActive = currentCompound === compound
@@ -255,8 +154,8 @@ export default function DebugPanel() {
             <button
               key={compound}
               onClick={() => handleCompoundChange(compound)}
+              className={COMPOUND_BUTTON_BASE}
               style={{
-                ...styles.compoundButton,
                 background: isActive ? config.color : 'rgba(255, 255, 255, 0.1)',
                 borderColor: isActive ? config.color : 'transparent',
                 color: isActive
@@ -266,16 +165,15 @@ export default function DebugPanel() {
                   : 'rgba(255, 255, 255, 0.7)',
               }}
             >
-              <span style={styles.compoundIcon}>{config.icon}</span>
-              <span style={styles.compoundName}>{config.displayName.slice(0, 3)}</span>
+              <span className={COMPOUND_ICON}>{config.icon}</span>
+              <span className={COMPOUND_NAME}>{config.displayName.slice(0, 3)}</span>
             </button>
           )
         })}
       </div>
 
-      {/* Tire Wear Slider */}
-      <div style={styles.row}>
-        <span style={styles.label}>Tire Wear</span>
+      <div className={ROW}>
+        <span className={LABEL}>Tire Wear</span>
         <input
           type='range'
           min='0'
@@ -283,99 +181,75 @@ export default function DebugPanel() {
           step='1'
           value={averageWear}
           onChange={handleSliderChange}
+          className={SLIDER}
           style={{
-            ...styles.slider,
-            background: `linear-gradient(to right, ${getWearColor(averageWear)} ${averageWear}%, rgba(255,255,255,0.15) ${averageWear}%)`,
+            background: `linear-gradient(to right, ${wearColor} ${averageWear}%, rgba(255,255,255,0.15) ${averageWear}%)`,
           }}
         />
-        <span style={{ ...styles.value, color: getWearColor(averageWear) }}>
+        <span className={VALUE} style={{ color: wearColor }}>
           {Math.round(averageWear)}%
         </span>
       </div>
 
-      {/* Tire Life display */}
-      <div style={styles.row}>
-        <span style={styles.label}>Tire Life</span>
+      <div className={ROW}>
+        <span className={LABEL}>Tire Life</span>
         <span
-          style={{
-            ...styles.value,
-            flex: 1,
-            textAlign: 'left' as const,
-            color: getWearColor(averageWear),
-          }}
+          className='text-white font-bold text-[11px] min-w-[35px] text-left font-mono flex-1'
+          style={{ color: wearColor }}
         >
           {Math.round(tireLife)}%
         </span>
       </div>
 
-      {/* Preset buttons */}
-      <div style={styles.buttonRow}>
+      <div className={BUTTON_ROW}>
         <button
-          style={styles.button}
+          className={`${BUTTON_BASE} bg-white/10 hover:bg-[#22c55e]/30`}
           onClick={handleReset}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34, 197, 94, 0.3)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
         >
           New (0%)
         </button>
         <button
-          style={styles.button}
+          className={`${BUTTON_BASE} bg-white/10 hover:bg-[#f59e0b]/30`}
           onClick={() => handlePreset(50)}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.3)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
         >
           Half (50%)
         </button>
         <button
-          style={styles.button}
+          className={`${BUTTON_BASE} bg-white/10 hover:bg-[#ef4444]/30`}
           onClick={() => handlePreset(85)}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
         >
           Worn (85%)
         </button>
       </div>
 
-      {/* Sync toggle */}
-      <div style={styles.syncIndicator}>
+      <div className='flex items-center gap-1.5 mt-1 pt-1.5 border-t border-white/10'>
         <input
           type='checkbox'
           id='debug-sync'
           checked={!debugMode}
           onChange={handleSyncToggle}
-          style={styles.checkbox}
+          className='w-3.5 h-3.5 cursor-pointer accent-[#22c55e]'
         />
-        <label htmlFor='debug-sync' style={styles.checkboxLabel}>
+        <label htmlFor='debug-sync' className='text-white/50 text-[9px]'>
           {debugMode ? 'Enable wear sync (resume normal)' : 'Wear syncing from physics'}
         </label>
       </div>
 
-      {/* ERS Section Separator */}
-      <div
-        style={{
-          height: 1,
-          background: 'rgba(255, 165, 0, 0.3)',
-          margin: '8px 0',
-        }}
-      />
+      <div className='h-px bg-[#ffa500]/30 my-2' />
 
-      {/* ERS Header */}
-      <div style={styles.header}>
-        <span style={styles.title}>ERS Tuning</span>
+      <div className='flex justify-between items-center'>
+        <span className={TITLE}>ERS Tuning</span>
         {superClipActive && (
-          <span
-            style={{ ...styles.badge, background: 'rgba(168, 85, 247, 0.3)', color: '#a855f7' }}
-          >
+          <span className='bg-[#a855f7]/30 text-[#a855f7] text-[8px] px-1.5 py-0.5 rounded font-bold'>
             CLIP
           </span>
         )}
       </div>
 
-      {/* ERS Preset Selector */}
-      <div style={styles.row}>
-        <span style={styles.label}>Preset</span>
+      <div className={ROW}>
+        <span className={LABEL}>Preset</span>
       </div>
-      <div style={styles.compoundRow}>
+      <div className={COMPOUND_ROW}>
         {ERS_PRESETS.map(preset => {
           const isActive = semiAutoConfig.preset === preset
           const color = getErsPresetColor(preset)
@@ -383,25 +257,24 @@ export default function DebugPanel() {
             <button
               key={preset}
               onClick={() => handlePresetChange(preset)}
+              className={COMPOUND_BUTTON_BASE}
               style={{
-                ...styles.compoundButton,
                 background: isActive ? color : 'rgba(255, 255, 255, 0.1)',
                 borderColor: isActive ? color : 'transparent',
                 color: isActive ? '#fff' : 'rgba(255, 255, 255, 0.7)',
               }}
             >
-              <span style={styles.compoundIcon}>
+              <span className={COMPOUND_ICON}>
                 {preset === 'Aggressive' ? '↑' : preset === 'Conservative' ? '↓' : '⟷'}
               </span>
-              <span style={styles.compoundName}>{preset.slice(0, 3).toUpperCase()}</span>
+              <span className={COMPOUND_NAME}>{preset.slice(0, 3).toUpperCase()}</span>
             </button>
           )
         })}
       </div>
 
-      {/* Battery Charge Slider */}
-      <div style={styles.row}>
-        <span style={styles.label}>Battery</span>
+      <div className={ROW}>
+        <span className={LABEL}>Battery</span>
         <input
           type='range'
           min='0'
@@ -409,69 +282,47 @@ export default function DebugPanel() {
           step='1'
           value={batteryCharge}
           onChange={handleBatteryChange}
+          className={SLIDER}
           style={{
-            ...styles.slider,
-            background: `linear-gradient(to right, ${getBatteryColor(batteryCharge)} ${batteryCharge}%, rgba(255,255,255,0.15) ${batteryCharge}%)`,
+            background: `linear-gradient(to right, ${batteryColor} ${batteryCharge}%, rgba(255,255,255,0.15) ${batteryCharge}%)`,
           }}
         />
-        <span style={{ ...styles.value, color: getBatteryColor(batteryCharge) }}>
+        <span className={VALUE} style={{ color: batteryColor }}>
           {Math.round(batteryCharge)}%
         </span>
       </div>
 
-      {/* Power Flow Display */}
-      <div style={styles.row}>
-        <span style={styles.label}>Power</span>
+      <div className={ROW}>
+        <span className={LABEL}>Power</span>
         <span
-          style={{
-            ...styles.value,
-            flex: 1,
-            textAlign: 'left' as const,
-            color: powerFlow > 0 ? '#22c55e' : powerFlow < 0 ? '#3b82f6' : 'rgba(255,255,255,0.5)',
-          }}
+          className='text-white font-bold text-[11px] min-w-[35px] text-left font-mono flex-1'
+          style={{ color: powerColor }}
         >
           {powerFlow > 0 ? '↑' : powerFlow < 0 ? '↓' : ''} {Math.abs(Math.round(powerFlow))} kW
         </span>
         {harvestSource !== 'None' && (
-          <span
-            style={{
-              fontSize: 9,
-              color:
-                harvestSource === 'SuperClip'
-                  ? '#a855f7'
-                  : harvestSource === 'Braking'
-                    ? '#ef4444'
-                    : '#3b82f6',
-            }}
-          >
+          <span className='text-[9px]' style={{ color: harvestColor }}>
             {harvestSource === 'SuperClip' ? 'CLIP' : harvestSource === 'Braking' ? 'BRK' : 'CST'}
           </span>
         )}
       </div>
 
-      {/* Battery Preset Buttons */}
-      <div style={styles.buttonRow}>
+      <div className={BUTTON_ROW}>
         <button
-          style={styles.button}
+          className={`${BUTTON_BASE} bg-white/10 hover:bg-[#22c55e]/30`}
           onClick={() => handleBatteryPreset(100)}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(34, 197, 94, 0.3)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
         >
           Full
         </button>
         <button
-          style={styles.button}
+          className={`${BUTTON_BASE} bg-white/10 hover:bg-[#f59e0b]/30`}
           onClick={() => handleBatteryPreset(50)}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.3)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
         >
           50%
         </button>
         <button
-          style={styles.button}
+          className={`${BUTTON_BASE} bg-white/10 hover:bg-[#ef4444]/30`}
           onClick={() => handleBatteryPreset(0)}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
         >
           Empty
         </button>

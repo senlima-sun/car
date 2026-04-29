@@ -63,7 +63,7 @@ export default function TerrainBrushInteraction() {
     const canvas = gl.domElement
 
     const handlePointerDown = (e: PointerEvent) => {
-      if (!useEditorStore.getState().terrainEditMode) return
+      if (useEditorStore.getState().editorMode !== 'terrain') return
       if (e.button !== 0) return
 
       const pos = getWorldPos(e)
@@ -78,7 +78,7 @@ export default function TerrainBrushInteraction() {
     }
 
     const handlePointerMove = (e: PointerEvent) => {
-      if (!useEditorStore.getState().terrainEditMode) return
+      if (useEditorStore.getState().editorMode !== 'terrain') return
 
       const pos = getWorldPos(e)
       if (pos) {

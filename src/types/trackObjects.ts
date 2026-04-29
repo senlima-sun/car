@@ -5,10 +5,12 @@ export type ObjectType =
   | 'corner'
   | 'barrier'
   | 'road'
+  | 'track_ribbon'
   | 'curb'
   | 'pitbox'
   | 'grass_patch'
   | 'gravel_patch'
+  | 'painted_area'
   | 'wall'
   | 'wall_fence'
 export type TrackMode = 'straight' | 'curve' | 'pitroad' | 'pitroad-curve'
@@ -41,9 +43,19 @@ export interface PlacedObject {
   banking?: number
   polygonPoints?: Array<[number, number, number]>
   curbType?: CurbType
+  curbCenterline?: TrackRibbonPoint[]
   rippleHeight?: number
   adImageUrl?: string
   cornerNumber?: number
+  ribbonPoints?: TrackRibbonPoint[]
+  ribbonClosed?: boolean
+}
+
+export interface TrackRibbonPoint {
+  x: number
+  y: number
+  z: number
+  isPitLane: boolean
 }
 
 export type PlacementState =

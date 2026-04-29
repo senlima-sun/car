@@ -86,8 +86,36 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
   },
 
   syncFromPhysics: (state: ErsState) => {
+    const prev = get()
+    const nextBattery = state.battery_charge * 100
+    const nextSemi = state.semi_auto ?? prev.semiAuto
+    const ps = prev.semiAuto
+
+    const semiChanged =
+      nextSemi !== ps &&
+      (ps.coast_recommended !== nextSemi.coast_recommended ||
+        ps.is_critical !== nextSemi.is_critical ||
+        Math.abs(ps.coast_benefit - nextSemi.coast_benefit) > 0.005 ||
+        Math.abs(ps.deploy_efficiency - nextSemi.deploy_efficiency) > 0.005 ||
+        Math.abs(ps.effective_deploy_mult - nextSemi.effective_deploy_mult) > 0.005 ||
+        Math.abs(ps.effective_harvest_mult - nextSemi.effective_harvest_mult) > 0.005)
+
+    if (
+      Math.abs(prev.batteryCharge - nextBattery) < 0.1 &&
+      prev.mode === state.mode &&
+      Math.abs(prev.powerFlow - state.power_flow) < 0.5 &&
+      prev.isDeploying === state.is_deploying &&
+      prev.isHarvesting === state.is_harvesting &&
+      prev.superClipActive === state.super_clip_active &&
+      prev.harvestSource === state.harvest_source &&
+      prev.overtakeAvailable === state.overtake_available &&
+      !semiChanged
+    ) {
+      return
+    }
+
     set({
-      batteryCharge: state.battery_charge * 100, // Convert 0-1 to 0-100
+      batteryCharge: nextBattery,
       mode: state.mode,
       powerFlow: state.power_flow,
       isDeploying: state.is_deploying,
@@ -95,7 +123,7 @@ export const useErsStore = create<ErsStoreState>((set, get) => ({
       superClipActive: state.super_clip_active,
       harvestSource: state.harvest_source,
       overtakeAvailable: state.overtake_available,
-      semiAuto: state.semi_auto ?? get().semiAuto,
+      semiAuto: semiChanged ? nextSemi : prev.semiAuto,
     })
   },
 

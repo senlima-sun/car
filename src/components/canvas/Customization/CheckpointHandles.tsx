@@ -4,6 +4,7 @@ import { Billboard, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useCustomizationStore } from '../../../stores/useCustomizationStore'
 import { useEditorStore } from '../../../stores/useEditorStore'
+import { useCheckpointDragStore } from '../../../stores/useCheckpointDragStore'
 
 const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 const raycaster = new THREE.Raycaster()
@@ -66,11 +67,11 @@ function Handle({
 export default function CheckpointHandles() {
   const placedObjects = useCustomizationStore(s => s.placedObjects)
   const selectedObjectId = useEditorStore(s => s.selectedObjectId)
-  const checkpointDragState = useEditorStore(s => s.checkpointDragState)
-  const startCheckpointDrag = useEditorStore(s => s.startCheckpointDrag)
-  const updateCheckpointDrag = useEditorStore(s => s.updateCheckpointDrag)
-  const confirmCheckpointDrag = useEditorStore(s => s.confirmCheckpointDrag)
-  const cancelCheckpointDrag = useEditorStore(s => s.cancelCheckpointDrag)
+  const checkpointDragState = useCheckpointDragStore(s => s.checkpointDragState)
+  const startCheckpointDrag = useCheckpointDragStore(s => s.startCheckpointDrag)
+  const updateCheckpointDrag = useCheckpointDragStore(s => s.updateCheckpointDrag)
+  const confirmCheckpointDrag = useCheckpointDragStore(s => s.confirmCheckpointDrag)
+  const cancelCheckpointDrag = useCheckpointDragStore(s => s.cancelCheckpointDrag)
   const { camera } = useThree()
 
   const selectedCheckpoint = useMemo(() => {

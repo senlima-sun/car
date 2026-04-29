@@ -1,6 +1,7 @@
 import { useRef, useCallback, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { RigidBody, CuboidCollider, HeightfieldCollider } from '@react-three/rapier'
+import { useTexture } from '@react-three/drei'
 import { GROUND_COLLISION_GROUPS } from '@/constants/dimensions'
 import {
   GRASS_VERTEX_PREAMBLE,
@@ -22,20 +23,44 @@ const VISUAL_SUBDIVISIONS: Record<QualityTier, number> = {
 
 interface TerrainGroundProps {
   simplified?: boolean
+  interactive?: boolean
 }
 
-export default function TerrainGround({ simplified }: TerrainGroundProps) {
+interface GrassTextureSet {
+  baseColor: THREE.Texture
+  dryColor: THREE.Texture
+  wornColor: THREE.Texture
+  normal: THREE.Texture
+  roughness: THREE.Texture
+}
+
+const GRASS_TILE_SIZE_METERS = 4
+const INTERACTIVE_VISUAL_SUBDIVISIONS = 63
+
+export function getTerrainVisualSubdivisions(
+  tier: QualityTier,
+  simplified: boolean | undefined,
+  interactive: boolean | undefined,
+): number {
+  if (simplified) return 1
+  const subdivisions = VISUAL_SUBDIVISIONS[tier]
+  return interactive ? Math.min(subdivisions, INTERACTIVE_VISUAL_SUBDIVISIONS) : subdivisions
+}
+
+export default function TerrainGround({ simplified, interactive }: TerrainGroundProps) {
   const tier = usePerformanceStore(s => s.tier)
-  const visualSubs = simplified ? 1 : VISUAL_SUBDIVISIONS[tier]
+  const visualSubs = getTerrainVisualSubdivisions(tier, simplified, interactive)
   const resolution = useTerrainStore(s => s.resolution)
   const worldSize = useTerrainStore(s => s.worldSize)
   const version = useTerrainStore(s => s.version)
   const physicsVersion = useTerrainStore(s => s.physicsVersion)
+  const grassTextures = useGrassTextures()
 
   return (
     <>
       <TerrainMeshVisual
         key={`terrain-visual-${visualSubs}`}
+        grassTextures={grassTextures}
         simplified={simplified}
         subdivisions={visualSubs}
         resolution={resolution}
@@ -43,18 +68,114 @@ export default function TerrainGround({ simplified }: TerrainGroundProps) {
         version={version}
       />
       <TerrainPhysics resolution={resolution} worldSize={worldSize} version={physicsVersion} />
-      <OuterGround />
+      <OuterGround grassTextures={grassTextures} />
     </>
   )
 }
 
+function applyGrassShader(
+  shader: THREE.WebGLProgramParametersWithUniforms,
+  grassTextures: Pick<GrassTextureSet, 'dryColor' | 'wornColor'>,
+  includeDisplacement: boolean,
+) {
+  shader.uniforms.uGrassDryMap = { value: grassTextures.dryColor }
+  shader.uniforms.uGrassWornMap = { value: grassTextures.wornColor }
+  shader.vertexShader = shader.vertexShader.replace(
+    '#include <common>',
+    `#include <common>\n${GRASS_VERTEX_PREAMBLE}\n${GRASS_VERTEX_WORLDPOS_INJECT}`,
+  )
+  if (includeDisplacement) {
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>\n${GRASS_VERTEX_DISPLACEMENT}`,
+    )
+  }
+  shader.vertexShader = shader.vertexShader.replace(
+    '#include <worldpos_vertex>',
+    `#include <worldpos_vertex>\nvGrassWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
+  )
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <common>',
+    `#include <common>\n${GRASS_FRAGMENT_PREAMBLE}`,
+  )
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <color_fragment>',
+    `#include <color_fragment>\n${GRASS_COLOR_INJECT}`,
+  )
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <roughnessmap_fragment>',
+    `#include <roughnessmap_fragment>\n${GRASS_ROUGHNESS_INJECT}`,
+  )
+}
+
+function useGrassTextures(): GrassTextureSet {
+  const textures = useTexture([
+    '/textures/grass_base_color.png',
+    '/textures/grass_dry_color.png',
+    '/textures/grass_worn_color.png',
+    '/textures/grass_base_normal.png',
+    '/textures/grass_base_roughness.png',
+  ]) as THREE.Texture[]
+
+  return useMemo(() => {
+    const [baseColor, dryColor, wornColor, normal, roughness] = textures
+    for (const texture of textures) {
+      texture.wrapS = THREE.RepeatWrapping
+      texture.wrapT = THREE.RepeatWrapping
+    }
+    baseColor.colorSpace = THREE.SRGBColorSpace
+    dryColor.colorSpace = THREE.SRGBColorSpace
+    wornColor.colorSpace = THREE.SRGBColorSpace
+    return { baseColor, dryColor, wornColor, normal, roughness }
+  }, [textures])
+}
+
+function useRepeatedGrassTextures(grassTextures: GrassTextureSet, worldSize: number) {
+  const repeat = worldSize / GRASS_TILE_SIZE_METERS
+
+  const repeatedTextures = useMemo(() => {
+    const cloneTexture = (texture: THREE.Texture) => {
+      const clone = texture.clone()
+      clone.wrapS = THREE.RepeatWrapping
+      clone.wrapT = THREE.RepeatWrapping
+      clone.repeat.set(repeat, repeat)
+      clone.colorSpace = texture.colorSpace
+      clone.needsUpdate = true
+      return clone
+    }
+
+    return {
+      baseColor: cloneTexture(grassTextures.baseColor),
+      dryColor: cloneTexture(grassTextures.dryColor),
+      wornColor: cloneTexture(grassTextures.wornColor),
+      normal: cloneTexture(grassTextures.normal),
+      roughness: cloneTexture(grassTextures.roughness),
+    }
+  }, [grassTextures, repeat])
+
+  useEffect(
+    () => () => {
+      repeatedTextures.baseColor.dispose()
+      repeatedTextures.dryColor.dispose()
+      repeatedTextures.wornColor.dispose()
+      repeatedTextures.normal.dispose()
+      repeatedTextures.roughness.dispose()
+    },
+    [repeatedTextures],
+  )
+
+  return repeatedTextures
+}
+
 function TerrainMeshVisual({
+  grassTextures,
   simplified,
   subdivisions,
   resolution,
   worldSize,
   version,
 }: {
+  grassTextures: GrassTextureSet
   simplified?: boolean
   subdivisions: number
   resolution: number
@@ -62,6 +183,7 @@ function TerrainMeshVisual({
   version: number
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
+  const repeatedTextures = useRepeatedGrassTextures(grassTextures, worldSize)
 
   const geometry = useMemo(() => {
     const geo = new THREE.PlaneGeometry(worldSize, worldSize, subdivisions, subdivisions)
@@ -112,46 +234,34 @@ function TerrainMeshVisual({
   const onBeforeCompile = useCallback(
     (shader: THREE.WebGLProgramParametersWithUniforms) => {
       if (simplified) return
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <common>',
-        `#include <common>\n${GRASS_VERTEX_PREAMBLE}\n${GRASS_VERTEX_WORLDPOS_INJECT}`,
-      )
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>\n${GRASS_VERTEX_DISPLACEMENT}`,
-      )
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>\nvGrassWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
-      )
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <common>',
-        `#include <common>\n${GRASS_FRAGMENT_PREAMBLE}`,
-      )
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>\n${GRASS_COLOR_INJECT}`,
-      )
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <roughnessmap_fragment>',
-        `#include <roughnessmap_fragment>\n${GRASS_ROUGHNESS_INJECT}`,
-      )
+      applyGrassShader(shader, repeatedTextures, true)
     },
-    [simplified],
+    [repeatedTextures, simplified],
   )
 
   return (
     <mesh ref={meshRef} receiveShadow>
       <primitive object={geometry} attach='geometry' />
       {simplified ? (
-        <meshStandardMaterial roughness={0.9} color='#88aa66' />
+        <meshStandardMaterial
+          color='#ffffff'
+          map={repeatedTextures.baseColor}
+          normalMap={repeatedTextures.normal}
+          normalScale={new THREE.Vector2(0.48, 0.48)}
+          roughnessMap={repeatedTextures.roughness}
+          roughness={0.92}
+        />
       ) : (
         <meshStandardMaterial
-          roughness={0.9}
-          color='#88aa66'
+          color='#ffffff'
+          map={repeatedTextures.baseColor}
+          normalMap={repeatedTextures.normal}
+          normalScale={new THREE.Vector2(0.48, 0.48)}
+          roughnessMap={repeatedTextures.roughness}
+          roughness={0.92}
           onBeforeCompile={onBeforeCompile}
           ref={(mat: THREE.MeshStandardMaterial | null) => {
-            if (mat) mat.customProgramCacheKey = () => 'grass-terrain-procedural'
+            if (mat) mat.customProgramCacheKey = () => 'grass-terrain-textured'
           }}
         />
       )}
@@ -171,6 +281,15 @@ function TerrainPhysics({
   const heights = useMemo(() => {
     const heightmap = useTerrainStore.getState().heightmap
     const out = Array.from(heightmap)
+    let minH = Infinity
+    let maxH = -Infinity
+    for (let i = 0; i < out.length; i++) {
+      if (out[i]! < minH) minH = out[i]!
+      if (out[i]! > maxH) maxH = out[i]!
+    }
+    console.log(
+      `[TerrainPhysics] rebuild heightfield: physicsVersion=${version} heights.length=${out.length} heightRange=[${minH.toFixed(2)}, ${maxH.toFixed(2)}]`,
+    )
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolution, version])
@@ -186,7 +305,15 @@ function TerrainPhysics({
   )
 }
 
-function OuterGround() {
+function OuterGround({ grassTextures }: { grassTextures: GrassTextureSet }) {
+  const repeatedTextures = useRepeatedGrassTextures(grassTextures, 5000)
+  const onBeforeCompile = useCallback(
+    (shader: THREE.WebGLProgramParametersWithUniforms) => {
+      applyGrassShader(shader, repeatedTextures, false)
+    },
+    [repeatedTextures],
+  )
+
   return (
     <>
       <RigidBody type='fixed' colliders={false}>
@@ -199,7 +326,18 @@ function OuterGround() {
       </RigidBody>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
         <planeGeometry args={[5000, 5000, 1, 1]} />
-        <meshStandardMaterial roughness={0.9} color='#88aa66' />
+        <meshStandardMaterial
+          color='#ffffff'
+          map={repeatedTextures.baseColor}
+          normalMap={repeatedTextures.normal}
+          normalScale={new THREE.Vector2(0.38, 0.38)}
+          roughnessMap={repeatedTextures.roughness}
+          roughness={0.9}
+          onBeforeCompile={onBeforeCompile}
+          ref={(mat: THREE.MeshStandardMaterial | null) => {
+            if (mat) mat.customProgramCacheKey = () => 'grass-outer-textured'
+          }}
+        />
       </mesh>
     </>
   )

@@ -17,6 +17,9 @@ export function EdgeLines({ leftGeometry, rightGeometry, isGhost }: EdgeLinesPro
             transparent={isGhost}
             opacity={isGhost ? GHOST_OPACITY : 1}
             depthWrite={!isGhost}
+            polygonOffset
+            polygonOffsetFactor={-4}
+            polygonOffsetUnits={-4}
             side={2}
           />
         </mesh>
@@ -28,6 +31,9 @@ export function EdgeLines({ leftGeometry, rightGeometry, isGhost }: EdgeLinesPro
             transparent={isGhost}
             opacity={isGhost ? GHOST_OPACITY : 1}
             depthWrite={!isGhost}
+            polygonOffset
+            polygonOffsetFactor={-4}
+            polygonOffsetUnits={-4}
             side={2}
           />
         </mesh>

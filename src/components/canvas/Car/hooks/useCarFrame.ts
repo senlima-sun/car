@@ -109,7 +109,9 @@ export function useCarFrame({
 
     let result: ReturnType<typeof physicsStep.step> = null
     for (let i = 0; i < steps; i++) {
-      result = physicsStep.step(accumulator.fixedTimeStep, input)
+      result = physicsStep.step(accumulator.fixedTimeStep, input, {
+        applyRapierForces: i === steps - 1,
+      })
       if (!result) return
     }
 

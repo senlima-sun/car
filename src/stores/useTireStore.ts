@@ -14,7 +14,6 @@ export interface PerWheelWear {
 interface TireState {
   currentCompound: TireCompound
   perWheelWear: PerWheelWear
-  averageWear: number
   effectiveGripMultiplier: number
   gripBreakdown: GripBreakdown | null
   tireMaterial: TireMaterialOutput | null
@@ -44,10 +43,12 @@ const initialPerWheelWear: PerWheelWear = {
   rearRight: 0,
 }
 
+export const selectAverageWear = (s: { perWheelWear: PerWheelWear }): number =>
+  (s.perWheelWear.frontLeft + s.perWheelWear.frontRight + s.perWheelWear.rearLeft + s.perWheelWear.rearRight) / 4
+
 export const useTireStore = create<TireState>((set, get) => ({
   currentCompound: DEFAULT_TIRE,
   perWheelWear: { ...initialPerWheelWear },
-  averageWear: 0,
   effectiveGripMultiplier: 1.0,
   gripBreakdown: null,
   tireMaterial: null,
@@ -57,18 +58,14 @@ export const useTireStore = create<TireState>((set, get) => ({
     set({
       currentCompound: compound,
       perWheelWear: { ...initialPerWheelWear },
-      averageWear: 0,
     })
   },
 
   syncFromWasm: (wear, effectiveGrip) => {
     if (get().debugMode) return
 
-    const avgWear = (wear.frontLeft + wear.frontRight + wear.rearLeft + wear.rearRight) / 4
-
     set({
       perWheelWear: wear,
-      averageWear: avgWear,
       effectiveGripMultiplier: effectiveGrip,
     })
   },
@@ -82,23 +79,33 @@ export const useTireStore = create<TireState>((set, get) => ({
   },
 
   syncAllFromWasm: (wear, effectiveGrip, breakdown, material) => {
-    if (get().debugMode) return
+    const prev = get()
+    if (prev.debugMode) return
 
-    const avgWear = (wear.frontLeft + wear.frontRight + wear.rearLeft + wear.rearRight) / 4
+    const pw = prev.perWheelWear
+    const wearChanged =
+      Math.abs(wear.frontLeft - pw.frontLeft) > 0.05 ||
+      Math.abs(wear.frontRight - pw.frontRight) > 0.05 ||
+      Math.abs(wear.rearLeft - pw.rearLeft) > 0.05 ||
+      Math.abs(wear.rearRight - pw.rearRight) > 0.05
+
+    const gripChanged = Math.abs(effectiveGrip - prev.effectiveGripMultiplier) > 0.002
+    const breakdownChanged = breakdown !== prev.gripBreakdown
+    const materialChanged = material !== prev.tireMaterial
+
+    if (!wearChanged && !gripChanged && !breakdownChanged && !materialChanged) return
 
     set({
-      perWheelWear: wear,
-      averageWear: avgWear,
-      effectiveGripMultiplier: effectiveGrip,
-      gripBreakdown: breakdown,
-      tireMaterial: material,
+      perWheelWear: wearChanged ? wear : prev.perWheelWear,
+      effectiveGripMultiplier: gripChanged ? effectiveGrip : prev.effectiveGripMultiplier,
+      gripBreakdown: breakdownChanged ? breakdown : prev.gripBreakdown,
+      tireMaterial: materialChanged ? material : prev.tireMaterial,
     })
   },
 
   resetWear: () => {
     set({
       perWheelWear: { ...initialPerWheelWear },
-      averageWear: 0,
       effectiveGripMultiplier: 1.0,
     })
   },
@@ -121,7 +128,6 @@ export const useTireStore = create<TireState>((set, get) => ({
     set({
       debugMode: true,
       perWheelWear: wear,
-      averageWear: clamped,
     })
   },
 

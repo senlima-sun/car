@@ -1,12 +1,18 @@
 import { create } from 'zustand'
 
+let wrongWayTimer: ReturnType<typeof setTimeout> | null = null
+
 const CROSSING_COOLDOWN_MS = 2000
 const WRONG_WAY_DISMISS_MS = 3000
+
+const clearWrongWayTimer = () => {
+  if (wrongWayTimer !== null) {
+    clearTimeout(wrongWayTimer)
+    wrongWayTimer = null
+  }
+}
 const MAX_LAP_SAMPLES = 3000
 const SAMPLE_INTERVAL_MS = 200
-
-const MAX_GHOST_SAMPLES = 12000
-const GHOST_SAMPLE_INTERVAL_MS = 50
 
 interface SectorSplit {
   sectorNumber: number
@@ -43,14 +49,6 @@ interface LapTimeState {
   bestLapPath: { positions: Float32Array; speeds: Float32Array; count: number } | null
   racingLineVisible: boolean
 
-  ghostPositions: Float32Array
-  ghostRotations: Float32Array
-  ghostSteerAngles: Float32Array
-  ghostWheelRotations: Float32Array
-  ghostTimestamps: Float32Array
-  ghostHead: number
-  ghostLastSampleTime: number
-
   setActive: (active: boolean, sectorCheckpoints?: number) => void
   toggleRecording: () => void
   crossStartFinish: (isWrongWay?: boolean) => void
@@ -58,44 +56,19 @@ interface LapTimeState {
   updateCurrentTime: () => void
   setWrongWay: (wrongWay: boolean) => void
   recordPosition: (x: number, y: number, z: number, speed: number) => void
-  recordGhostFrame: (
-    x: number,
-    y: number,
-    z: number,
-    qx: number,
-    qy: number,
-    qz: number,
-    qw: number,
-    steer: number,
-    wheels: [number, number, number, number],
-  ) => void
-  getGhostBuffers: () => {
-    frameCount: number
-    positions: Float32Array
-    rotations: Float32Array
-    steerAngles: Float32Array
-    wheelRotations: Float32Array
-    timestamps: Float32Array
-  }
-  _onNewBestGhost:
-    | ((
-        lapTime: number,
-        buffers: {
-          frameCount: number
-          positions: Float32Array
-          rotations: Float32Array
-          steerAngles: Float32Array
-          wheelRotations: Float32Array
-          timestamps: Float32Array
-        },
-      ) => void)
-    | null
-  setGhostCallback: (cb: LapTimeState['_onNewBestGhost']) => void
   toggleRacingLine: () => void
   reset: () => void
 }
 
-export const useLapTimeStore = create<LapTimeState>((set, get) => ({
+export const useLapTimeStore = create<LapTimeState>((set, get) => {
+  const scheduleWrongWayDismiss = () => {
+    clearWrongWayTimer()
+    wrongWayTimer = setTimeout(() => {
+      if (get().wrongWay) set({ wrongWay: false })
+    }, WRONG_WAY_DISMISS_MS)
+  }
+
+  return {
   isActive: false,
   isRecording: false,
   currentLapStart: null,
@@ -120,20 +93,6 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
   lastSampleTime: 0,
   bestLapPath: null,
   racingLineVisible: false,
-
-  ghostPositions: new Float32Array(MAX_GHOST_SAMPLES * 3),
-  ghostRotations: new Float32Array(MAX_GHOST_SAMPLES * 4),
-  ghostSteerAngles: new Float32Array(MAX_GHOST_SAMPLES),
-  ghostWheelRotations: new Float32Array(MAX_GHOST_SAMPLES * 4),
-  ghostTimestamps: new Float32Array(MAX_GHOST_SAMPLES),
-  ghostHead: 0,
-  ghostLastSampleTime: 0,
-
-  _onNewBestGhost: null,
-
-  setGhostCallback: cb => {
-    set({ _onNewBestGhost: cb })
-  },
 
   setActive: (active, sectorCheckpoints = 0) => {
     if (!active) {
@@ -196,9 +155,7 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
 
     if (isWrongWay) {
       set({ wrongWay: true, currentLapInvalid: true })
-      setTimeout(() => {
-        if (get().wrongWay) set({ wrongWay: false })
-      }, WRONG_WAY_DISMISS_MS)
+      scheduleWrongWayDismiss()
       return
     }
 
@@ -220,8 +177,6 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         currentLapInvalid: false,
         positionHead: 0,
         lastSampleTime: 0,
-        ghostHead: 0,
-        ghostLastSampleTime: 0,
         ...sectorReset,
       })
       return
@@ -257,11 +212,6 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         }
       }
 
-      if (isNewBest && state.ghostHead > 0) {
-        const ghostBuffers = get().getGhostBuffers()
-        state._onNewBestGhost?.(lapTime, ghostBuffers)
-      }
-
       set({
         currentLapStart: now,
         currentLapTime: 0,
@@ -274,8 +224,6 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         lastSectorSplit: lastSplit,
         positionHead: 0,
         lastSampleTime: 0,
-        ghostHead: 0,
-        ghostLastSampleTime: 0,
         bestLapPath,
         ...sectorReset,
       })
@@ -291,8 +239,6 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
         lastSectorSplit: null,
         positionHead: 0,
         lastSampleTime: 0,
-        ghostHead: 0,
-        ghostLastSampleTime: 0,
         ...sectorReset,
       })
     }
@@ -305,9 +251,7 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
 
     if (isWrongWay) {
       set({ wrongWay: true, currentLapInvalid: true })
-      setTimeout(() => {
-        if (get().wrongWay) set({ wrongWay: false })
-      }, WRONG_WAY_DISMISS_MS)
+      scheduleWrongWayDismiss()
       return
     }
 
@@ -359,9 +303,7 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
     set({ wrongWay })
     if (wrongWay) {
       set({ currentLapInvalid: true })
-      setTimeout(() => {
-        if (get().wrongWay) set({ wrongWay: false })
-      }, WRONG_WAY_DISMISS_MS)
+      scheduleWrongWayDismiss()
     }
   },
 
@@ -382,50 +324,12 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
     set({ positionHead: head + 1, lastSampleTime: now })
   },
 
-  recordGhostFrame: (x, y, z, qx, qy, qz, qw, steer, wheels) => {
-    const state = get()
-    if (!state.isRecording || state.currentLapStart === null) return
-
-    const now = performance.now()
-    if (now - state.ghostLastSampleTime < GHOST_SAMPLE_INTERVAL_MS) return
-    if (state.ghostHead >= MAX_GHOST_SAMPLES) return
-
-    const h = state.ghostHead
-    state.ghostPositions[h * 3] = x
-    state.ghostPositions[h * 3 + 1] = y
-    state.ghostPositions[h * 3 + 2] = z
-    state.ghostRotations[h * 4] = qx
-    state.ghostRotations[h * 4 + 1] = qy
-    state.ghostRotations[h * 4 + 2] = qz
-    state.ghostRotations[h * 4 + 3] = qw
-    state.ghostSteerAngles[h] = steer
-    state.ghostWheelRotations[h * 4] = wheels[0]
-    state.ghostWheelRotations[h * 4 + 1] = wheels[1]
-    state.ghostWheelRotations[h * 4 + 2] = wheels[2]
-    state.ghostWheelRotations[h * 4 + 3] = wheels[3]
-    state.ghostTimestamps[h] = now - state.currentLapStart
-
-    set({ ghostHead: h + 1, ghostLastSampleTime: now })
-  },
-
-  getGhostBuffers: () => {
-    const state = get()
-    const n = state.ghostHead
-    return {
-      frameCount: n,
-      positions: new Float32Array(state.ghostPositions.buffer.slice(0, n * 3 * 4)),
-      rotations: new Float32Array(state.ghostRotations.buffer.slice(0, n * 4 * 4)),
-      steerAngles: new Float32Array(state.ghostSteerAngles.buffer.slice(0, n * 4)),
-      wheelRotations: new Float32Array(state.ghostWheelRotations.buffer.slice(0, n * 4 * 4)),
-      timestamps: new Float32Array(state.ghostTimestamps.buffer.slice(0, n * 4)),
-    }
-  },
-
   toggleRacingLine: () => {
     set({ racingLineVisible: !get().racingLineVisible })
   },
 
-  reset: () =>
+  reset: () => {
+    clearWrongWayTimer()
     set({
       isRecording: false,
       currentLapStart: null,
@@ -447,7 +351,7 @@ export const useLapTimeStore = create<LapTimeState>((set, get) => ({
       lastSampleTime: 0,
       bestLapPath: null,
       racingLineVisible: false,
-      ghostHead: 0,
-      ghostLastSampleTime: 0,
-    }),
-}))
+    })
+  },
+  }
+})

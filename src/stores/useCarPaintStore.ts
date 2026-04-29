@@ -32,6 +32,11 @@ export const CAR_PARTS = [
 
 export type CarPartId = (typeof CAR_PARTS)[number]['id']
 
+export interface PartMaterialSettings {
+  roughness: number
+  metalness: number
+}
+
 export function getPartIdForMesh(meshName: string): CarPartId | null {
   for (const part of CAR_PARTS) {
     if ((part.meshNames as readonly string[]).includes(meshName)) return part.id
@@ -42,6 +47,7 @@ export function getPartIdForMesh(meshName: string): CarPartId | null {
 export interface CarPaintPreset {
   name: string
   colors: Partial<Record<CarPartId, string>>
+  materialSettings?: Partial<Record<CarPartId, Partial<PartMaterialSettings>>>
   flakeIntensity: number
   flakeScale: number
   clearcoatStrength: number
@@ -51,6 +57,32 @@ export interface CarPaintPreset {
 const DEFAULT_COLOR = '#0a1128'
 const CARBON = '#1a1a1a'
 const TITANIUM = '#8a8a8a'
+export const DEFAULT_PART_MATERIAL_SETTINGS: PartMaterialSettings = {
+  roughness: 0.35,
+  metalness: 0.4,
+}
+const ALL_PART_IDS = CAR_PARTS.map(p => p.id)
+
+function clampMaterialValue(value: number) {
+  return Math.min(1, Math.max(0, value))
+}
+
+function normalizePartMaterialSettings(
+  source?: Partial<Record<CarPartId, Partial<PartMaterialSettings>>>,
+): Record<CarPartId, PartMaterialSettings> {
+  const settings = {} as Record<CarPartId, PartMaterialSettings>
+  for (const id of ALL_PART_IDS) {
+    settings[id] = {
+      roughness: clampMaterialValue(
+        source?.[id]?.roughness ?? DEFAULT_PART_MATERIAL_SETTINGS.roughness,
+      ),
+      metalness: clampMaterialValue(
+        source?.[id]?.metalness ?? DEFAULT_PART_MATERIAL_SETTINGS.metalness,
+      ),
+    }
+  }
+  return settings
+}
 
 export const PAINT_PRESETS: CarPaintPreset[] = [
   {
@@ -138,6 +170,17 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       brackets: '#5a5a5a',
       wheelCovers: '#5a5a5a',
     },
+    materialSettings: normalizePartMaterialSettings({
+      body: { roughness: 0.22, metalness: 0.72 },
+      secondary: { roughness: 0.3, metalness: 0.58 },
+      nose: { roughness: 0.22, metalness: 0.72 },
+      halo: { roughness: 0.18, metalness: 0.82 },
+      frontWing: { roughness: 0.24, metalness: 0.68 },
+      rearWing: { roughness: 0.24, metalness: 0.68 },
+      mirrors: { roughness: 0.32, metalness: 0.55 },
+      brackets: { roughness: 0.32, metalness: 0.55 },
+      wheelCovers: { roughness: 0.3, metalness: 0.6 },
+    }),
     flakeIntensity: 0.6,
     flakeScale: 1000,
     clearcoatStrength: 0.9,
@@ -174,6 +217,17 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       brackets: CARBON,
       wheelCovers: CARBON,
     },
+    materialSettings: normalizePartMaterialSettings({
+      body: { roughness: 0.78, metalness: 0.08 },
+      secondary: { roughness: 0.82, metalness: 0.06 },
+      nose: { roughness: 0.78, metalness: 0.08 },
+      halo: { roughness: 0.8, metalness: 0.08 },
+      frontWing: { roughness: 0.8, metalness: 0.08 },
+      rearWing: { roughness: 0.8, metalness: 0.08 },
+      mirrors: { roughness: 0.85, metalness: 0.05 },
+      brackets: { roughness: 0.85, metalness: 0.05 },
+      wheelCovers: { roughness: 0.78, metalness: 0.08 },
+    }),
     flakeIntensity: 0.1,
     flakeScale: 600,
     clearcoatStrength: 0.3,
@@ -192,6 +246,17 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       brackets: '#c0c0c0',
       wheelCovers: '#c0c0c0',
     },
+    materialSettings: normalizePartMaterialSettings({
+      body: { roughness: 0.26, metalness: 0.18 },
+      secondary: { roughness: 0.26, metalness: 0.18 },
+      nose: { roughness: 0.26, metalness: 0.18 },
+      halo: { roughness: 0.22, metalness: 0.48 },
+      frontWing: { roughness: 0.28, metalness: 0.16 },
+      rearWing: { roughness: 0.28, metalness: 0.16 },
+      mirrors: { roughness: 0.28, metalness: 0.16 },
+      brackets: { roughness: 0.24, metalness: 0.42 },
+      wheelCovers: { roughness: 0.24, metalness: 0.42 },
+    }),
     flakeIntensity: 0.55,
     flakeScale: 950,
     clearcoatStrength: 0.85,
@@ -228,6 +293,17 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       brackets: '#2a2018',
       wheelCovers: '#2a2018',
     },
+    materialSettings: normalizePartMaterialSettings({
+      body: { roughness: 0.2, metalness: 0.82 },
+      secondary: { roughness: 0.38, metalness: 0.35 },
+      nose: { roughness: 0.2, metalness: 0.82 },
+      halo: { roughness: 0.18, metalness: 0.86 },
+      frontWing: { roughness: 0.22, metalness: 0.78 },
+      rearWing: { roughness: 0.36, metalness: 0.38 },
+      mirrors: { roughness: 0.36, metalness: 0.38 },
+      brackets: { roughness: 0.42, metalness: 0.32 },
+      wheelCovers: { roughness: 0.38, metalness: 0.35 },
+    }),
     flakeIntensity: 0.65,
     flakeScale: 1100,
     clearcoatStrength: 0.85,
@@ -237,7 +313,9 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
 
 interface CarPaintState {
   partColors: Record<CarPartId, string>
+  partMaterialSettings: Record<CarPartId, PartMaterialSettings>
   selectedPart: CarPartId | 'all'
+  isolateSelected: boolean
   flakeIntensity: number
   flakeScale: number
   clearcoatStrength: number
@@ -245,14 +323,22 @@ interface CarPaintState {
 
   setPartColor: (partId: CarPartId, color: string) => void
   setAllColors: (color: string) => void
+  setPartRoughness: (partId: CarPartId, roughness: number) => void
+  setAllRoughness: (roughness: number) => void
+  setPartMetalness: (partId: CarPartId, metalness: number) => void
+  setAllMetalness: (metalness: number) => void
   setSelectedPart: (partId: CarPartId | 'all') => void
+  setIsolateSelected: (v: boolean) => void
   setFlakeIntensity: (v: number) => void
   setFlakeScale: (v: number) => void
   setClearcoatStrength: (v: number) => void
   setColorDepthFactor: (v: number) => void
   applyPreset: (preset: CarPaintPreset) => void
   getColorForPart: (partId: CarPartId) => string
+  getMaterialSettingsForPart: (partId: CarPartId) => PartMaterialSettings
   setActiveColor: (color: string) => void
+  setActiveRoughness: (roughness: number) => void
+  setActiveMetalness: (metalness: number) => void
 }
 
 const defaultPartColors: Record<CarPartId, string> = {
@@ -267,13 +353,15 @@ const defaultPartColors: Record<CarPartId, string> = {
   wheelCovers: CARBON,
 }
 
-const ALL_PART_IDS = CAR_PARTS.map(p => p.id)
+const defaultPartMaterialSettings = normalizePartMaterialSettings()
 
 export const useCarPaintStore = create<CarPaintState>()(
   persist(
     (set, get) => ({
       partColors: { ...defaultPartColors },
+      partMaterialSettings: normalizePartMaterialSettings(),
       selectedPart: 'all' as CarPartId | 'all',
+      isolateSelected: false,
       flakeIntensity: 0.4,
       flakeScale: 800,
       clearcoatStrength: 0.8,
@@ -291,7 +379,59 @@ export const useCarPaintStore = create<CarPaintState>()(
           return { partColors: colors }
         }),
 
-      setSelectedPart: selectedPart => set({ selectedPart }),
+      setPartRoughness: (partId, roughness) =>
+        set(state => ({
+          partMaterialSettings: {
+            ...state.partMaterialSettings,
+            [partId]: {
+              ...state.partMaterialSettings[partId],
+              roughness: clampMaterialValue(roughness),
+            },
+          },
+        })),
+
+      setAllRoughness: roughness =>
+        set(state => {
+          const partMaterialSettings = { ...state.partMaterialSettings }
+          for (const id of ALL_PART_IDS) {
+            partMaterialSettings[id] = {
+              ...partMaterialSettings[id],
+              roughness: clampMaterialValue(roughness),
+            }
+          }
+          return { partMaterialSettings }
+        }),
+
+      setPartMetalness: (partId, metalness) =>
+        set(state => ({
+          partMaterialSettings: {
+            ...state.partMaterialSettings,
+            [partId]: {
+              ...state.partMaterialSettings[partId],
+              metalness: clampMaterialValue(metalness),
+            },
+          },
+        })),
+
+      setAllMetalness: metalness =>
+        set(state => {
+          const partMaterialSettings = { ...state.partMaterialSettings }
+          for (const id of ALL_PART_IDS) {
+            partMaterialSettings[id] = {
+              ...partMaterialSettings[id],
+              metalness: clampMaterialValue(metalness),
+            }
+          }
+          return { partMaterialSettings }
+        }),
+
+      setSelectedPart: selectedPart =>
+        set(state => ({
+          selectedPart,
+          isolateSelected: selectedPart === 'all' ? false : state.isolateSelected,
+        })),
+
+      setIsolateSelected: isolateSelected => set({ isolateSelected }),
 
       setFlakeIntensity: flakeIntensity => set({ flakeIntensity }),
       setFlakeScale: flakeScale => set({ flakeScale }),
@@ -306,6 +446,7 @@ export const useCarPaintStore = create<CarPaintState>()(
           }
           return {
             partColors: colors,
+            partMaterialSettings: normalizePartMaterialSettings(preset.materialSettings),
             flakeIntensity: preset.flakeIntensity,
             flakeScale: preset.flakeScale,
             clearcoatStrength: preset.clearcoatStrength,
@@ -314,6 +455,8 @@ export const useCarPaintStore = create<CarPaintState>()(
         }),
 
       getColorForPart: (partId: CarPartId) => get().partColors[partId] ?? DEFAULT_COLOR,
+      getMaterialSettingsForPart: (partId: CarPartId) =>
+        get().partMaterialSettings[partId] ?? defaultPartMaterialSettings[partId],
 
       setActiveColor: color => {
         const { selectedPart } = get()
@@ -321,6 +464,24 @@ export const useCarPaintStore = create<CarPaintState>()(
           get().setAllColors(color)
         } else {
           get().setPartColor(selectedPart, color)
+        }
+      },
+
+      setActiveRoughness: roughness => {
+        const { selectedPart } = get()
+        if (selectedPart === 'all') {
+          get().setAllRoughness(roughness)
+        } else {
+          get().setPartRoughness(selectedPart, roughness)
+        }
+      },
+
+      setActiveMetalness: metalness => {
+        const { selectedPart } = get()
+        if (selectedPart === 'all') {
+          get().setAllMetalness(metalness)
+        } else {
+          get().setPartMetalness(selectedPart, metalness)
         }
       },
     }),
@@ -332,7 +493,16 @@ export const useCarPaintStore = create<CarPaintState>()(
         flakeScale: state.flakeScale,
         clearcoatStrength: state.clearcoatStrength,
         colorDepthFactor: state.colorDepthFactor,
+        partMaterialSettings: state.partMaterialSettings,
       }),
+      merge: (persisted, current) => {
+        const state = { ...current, ...(persisted as Partial<CarPaintState>) }
+        return {
+          ...state,
+          partColors: { ...defaultPartColors, ...state.partColors },
+          partMaterialSettings: normalizePartMaterialSettings(state.partMaterialSettings),
+        }
+      },
     },
   ),
 )

@@ -1,16 +1,29 @@
 use crate::types::{AmbientConditions, EngineTemperature};
 
-// Engine temperature constants
-const ENGINE_HEAT_RATE_THROTTLE: f32 = 0.08; // Heat gain per second at full throttle
-const ENGINE_HEAT_RATE_RPM: f32 = 0.05; // Additional heat from high RPM
-const ENGINE_COOLING_RATE_IDLE: f32 = 0.03; // Cooling when idle
-const ENGINE_COOLING_RATE_AIRFLOW: f32 = 0.06; // Cooling from airflow (speed-based)
-const OVERHEAT_THRESHOLD: f32 = 0.85; // ~105C - start power reduction
-const CRITICAL_THRESHOLD: f32 = 0.95; // ~115C - severe power loss
+// Engine temperature constants (normalized: 0.0 = 20C, 1.0 = 160C).
+// Rates scaled by 100/140 vs. legacy 120C-max so absolute deg-C-per-second is preserved.
+const ENGINE_HEAT_RATE_THROTTLE: f32 = 0.0571; // Heat gain per second at full throttle
+const ENGINE_HEAT_RATE_RPM: f32 = 0.0357; // Additional heat from high RPM
+const ENGINE_COOLING_RATE_IDLE: f32 = 0.0214; // Cooling when idle
+const ENGINE_COOLING_RATE_AIRFLOW: f32 = 0.0429; // Cooling from airflow (speed-based)
+// Normalization: 0.0 = 20C, 1.0 = 160C. Real F1 V6 hybrid coolant runs 90-110C
+// in normal use; teams warn lift-and-coast at ~115C; ECU begins automatic derate
+// near ~125C; bearing/coolant failure risk above ~135C.
+const OVERHEAT_THRESHOLD: f32 = 0.679; // ~115C - warn / lift-and-coast zone
+const CRITICAL_THRESHOLD: f32 = 0.75; // ~125C - ECU derate begins
+// Soft ceiling + failure: real PUs don't freeze at a hard ceiling. Past the
+// derate point, overshoot is dampened (not clipped) and seize-risk
+// accumulates — eventually the engine fails.
+const ENGINE_TEMP_SOFT_CEILING: f32 = 1.4; // ~216C absolute (catastrophic)
+const SEIZE_RISK_THRESHOLD: f32 = 0.857; // ~140C - bearing damage zone
+const SEIZE_RISK_RATE: f32 = 0.45; // Risk units / sec at extreme overheat
+const SEIZE_RISK_RECOVERY: f32 = 0.04; // Recovery rate when below threshold
 
 #[derive(Debug, Default)]
 pub struct EngineTemperatureState {
     current: EngineTemperature,
+    seize_risk: f32, // 0.0 = healthy, 1.0 = catastrophic failure
+    is_seized: bool,
 }
 
 impl EngineTemperatureState {
@@ -63,18 +76,51 @@ impl EngineTemperatureState {
 
         cooling_rate *= ambient_modifier;
 
-        // Net temperature change
+        // Newton's law of cooling: hotter = sheds heat faster. Past the warn
+        // threshold the radiator is past its design point and dissipation grows
+        // non-linearly. This naturally pulls the engine back toward equilibrium
+        // without a hard ceiling.
+        let overheat_boost = (self.current.temperature - OVERHEAT_THRESHOLD).max(0.0) * 0.8;
+        let cooling_rate = cooling_rate + overheat_boost;
+
+        // Net temperature change with soft ceiling.
         let net_change = (heat_rate - cooling_rate) * dt;
-        self.current.temperature = (self.current.temperature + net_change).clamp(0.0, 1.0);
+        let new_temp = self.current.temperature + net_change;
+        self.current.temperature = if new_temp > 1.0 {
+            // Soft-damp overshoot: more heat past 1.0 needs increasingly more
+            // surplus heat input, but never freezes. Cap at SOFT_CEILING.
+            let overshoot = new_temp - 1.0;
+            let damped = overshoot / (1.0 + overshoot * 1.5);
+            (1.0 + damped).min(ENGINE_TEMP_SOFT_CEILING)
+        } else {
+            new_temp.max(0.0)
+        };
+
+        // Seize-risk accumulation: bearing damage compounds over time at
+        // extreme temps; once risk hits 1.0 the engine has effectively failed.
+        if self.current.temperature > SEIZE_RISK_THRESHOLD {
+            let excess = (self.current.temperature - SEIZE_RISK_THRESHOLD)
+                / (ENGINE_TEMP_SOFT_CEILING - SEIZE_RISK_THRESHOLD);
+            self.seize_risk = (self.seize_risk + SEIZE_RISK_RATE * excess * dt).min(1.0);
+            if self.seize_risk >= 1.0 {
+                self.is_seized = true;
+            }
+        } else {
+            self.seize_risk = (self.seize_risk - SEIZE_RISK_RECOVERY * dt).max(0.0);
+        }
 
         // Update overheating status and power multiplier
         self.current.is_overheating = self.current.temperature > OVERHEAT_THRESHOLD;
 
-        self.current.power_multiplier = if self.current.temperature > CRITICAL_THRESHOLD {
-            // Severe power loss above critical (50% at max temp)
+        self.current.power_multiplier = if self.is_seized {
+            // Catastrophic failure: ~10% creeping power as engine effectively dies.
+            0.1
+        } else if self.current.temperature > CRITICAL_THRESHOLD {
+            // Severe power loss above critical: scales with how far past derate.
+            // At 1.0 (160C) → 50% loss. At 1.2 (188C) → near-cut.
             let excess =
                 (self.current.temperature - CRITICAL_THRESHOLD) / (1.0 - CRITICAL_THRESHOLD);
-            1.0 - excess * 0.5
+            (1.0 - excess.min(2.0) * 0.4).max(0.1)
         } else if self.current.temperature > OVERHEAT_THRESHOLD {
             // Gradual power loss in overheat zone (max 15% loss)
             let excess = (self.current.temperature - OVERHEAT_THRESHOLD)
@@ -85,12 +131,28 @@ impl EngineTemperatureState {
         };
     }
 
+    pub fn get_seize_risk(&self) -> f32 {
+        self.seize_risk
+    }
+
+    pub fn is_seized(&self) -> bool {
+        self.is_seized
+    }
+
+    /// Reset seize state (e.g. for testing or post-pit recovery).
+    pub fn clear_seize(&mut self) {
+        self.seize_risk = 0.0;
+        self.is_seized = false;
+    }
+
     pub fn get_state(&self) -> EngineTemperature {
         self.current
     }
 
     pub fn reset(&mut self) {
         self.current = EngineTemperature::default();
+        self.seize_risk = 0.0;
+        self.is_seized = false;
     }
 }
 
@@ -101,7 +163,7 @@ mod tests {
     #[test]
     fn test_engine_temp_default() {
         let state = EngineTemperatureState::new();
-        assert!((state.current.temperature - 0.3).abs() < 0.01);
+        assert!((state.current.temperature - 0.429).abs() < 0.01);
         assert!(!state.current.is_overheating);
         assert!((state.current.power_multiplier - 1.0).abs() < 0.01);
     }

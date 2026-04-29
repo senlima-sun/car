@@ -162,8 +162,9 @@ impl PowertrainState {
 
         let upshift_threshold = self.effective_upshift_threshold(max_speed_ms);
         let rpm_based_upshift = self.engine_rpm > UPSHIFT_RPM_THRESHOLD;
-        let cap_assist_upshift =
-            self.engine_rpm > upshift_threshold && !rpm_based_upshift && self.cap_assist_upshift_cooldown <= 0.0;
+        let cap_assist_upshift = self.engine_rpm > upshift_threshold
+            && !rpm_based_upshift
+            && self.cap_assist_upshift_cooldown <= 0.0;
         let next_gear_stable = self
             .next_gear_rpm(speed_ms)
             .is_some_and(|rpm| rpm >= DOWNSHIFT_RPM_THRESHOLD);

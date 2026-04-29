@@ -115,21 +115,6 @@ export const TIRE_COMPOUND = {
 } as const
 
 // =============================================================================
-// TEMPERATURE HEATMAP COLORS - For track/surface visualization
-// =============================================================================
-export const HEATMAP = {
-  deepCold: '#1a3399', // Deep blue
-  cold: '#3380e6', // Blue
-  moderate: '#33cc4d', // Green
-  warm: '#ff991a', // Orange
-  hot: '#ff261a', // Red
-
-  // Additional heatmap indicators
-  windGusting: '#ffaa33', // Orange for wind gusts
-  infoHighlight: '#6bb8ff', // Light blue for info
-} as const
-
-// =============================================================================
 // LAP TIMER COLORS
 // =============================================================================
 export const LAP_TIMER = {
@@ -207,6 +192,15 @@ export const TRACK_OBJECT = {
   // Distance markers
   distanceMarker: '#ff6600', // Orange distance marker
   distanceMarkerAlt: '#ffffff', // White distance marker
+} as const
+
+// =============================================================================
+// CURB VARIANT COLORS - Track editor curb variant overlays
+// =============================================================================
+export const CURB_VARIANT_COLOR = {
+  apex: '#facc15',
+  exit: '#f87171',
+  flat: '#94a3b8',
 } as const
 
 // =============================================================================

@@ -191,8 +191,18 @@ impl TireState {
             Self::calculate_tire_temp_wear_mult(input.tire_temperatures[RR]),
         ];
 
+        // Inner-side wheels in a turn do far less work (lateral G is borne by
+        // the outer side). Apply explicit reduction so unloaded tires barely
+        // wear during cornering — matches real F1 telemetry.
+        let inner_relief_front = 1.0 - (steer_abs / 0.5).min(1.0) * 0.45
+            - (lat_g / 1.5).min(1.0) * 0.25;
+        let inner_relief_rear = 1.0 - (steer_abs / 0.5).min(1.0) * 0.2
+            - (lat_g / 1.5).min(1.0) * 0.15;
+
         let fl_outer_mult = if is_turning_right {
             1.0 + outer_bias
+        } else if is_turning_left {
+            inner_relief_front.max(0.4)
         } else {
             1.0
         };
@@ -205,6 +215,8 @@ impl TireState {
 
         let fr_outer_mult = if is_turning_left {
             1.0 + outer_bias
+        } else if is_turning_right {
+            inner_relief_front.max(0.4)
         } else {
             1.0
         };
@@ -217,6 +229,8 @@ impl TireState {
 
         let rl_outer_mult = if is_turning_right {
             1.0 + outer_bias * 0.3
+        } else if is_turning_left {
+            inner_relief_rear.max(0.55)
         } else {
             1.0
         };
@@ -228,6 +242,8 @@ impl TireState {
 
         let rr_outer_mult = if is_turning_left {
             1.0 + outer_bias * 0.3
+        } else if is_turning_right {
+            inner_relief_rear.max(0.55)
         } else {
             1.0
         };
@@ -243,14 +259,14 @@ impl TireState {
         self.wheels[RR] = (self.wheels[RR] + rr_rate * input.delta_seconds).min(1.0);
     }
 
-    /// Calculate wear multiplier based on tire temperature
-    /// Cold tires: 0.9x wear (but poor grip)
-    /// Optimal window (0.35-0.55): 1.0x wear
-    /// Hot tires: up to 2.0x wear when overheating
+    /// Calculate wear multiplier based on tire temperature.
+    /// Normalized: 0.0 = 20C, 1.0 = 180C.
+    /// Optimal window 70-115C (compound-agnostic baseline); overheating begins
+    /// ~140C, where blistering and rapid degradation occur on slicks.
     fn calculate_tire_temp_wear_mult(temp: f32) -> f32 {
-        const OPTIMAL_MIN: f32 = 0.35;
-        const OPTIMAL_MAX: f32 = 0.55;
-        const OVERHEAT_THRESHOLD: f32 = 0.75;
+        const OPTIMAL_MIN: f32 = 0.313; // ~70C
+        const OPTIMAL_MAX: f32 = 0.594; // ~115C
+        const OVERHEAT_THRESHOLD: f32 = 0.75; // ~140C
 
         if temp < OPTIMAL_MIN {
             // Cold tire: slightly less wear
@@ -382,16 +398,17 @@ impl TireState {
 // Tire Temperature System
 // ============================================================================
 
-// Temperature constants (normalized scale: 0.0 = 20C, 1.0 = 150C)
-const TIRE_AMBIENT_TEMP: f32 = 0.15; // Cold tire starting temp (~40C)
-const TIRE_HEAT_RATE_FRICTION: f32 = 0.10; // Heat from road friction (driving)
-const TIRE_HEAT_RATE_BRAKING: f32 = 0.18; // Heat from heavy braking (front)
-const TIRE_HEAT_RATE_BRAKING_REAR: f32 = 0.08; // Heat from braking (rear)
-const TIRE_HEAT_RATE_CORNERING: f32 = 0.12; // Heat from lateral load
-const TIRE_HEAT_RATE_SPINNING: f32 = 0.25; // Heat from wheelspin/drift
-const TIRE_COOLING_RATE_AIRFLOW: f32 = 0.06; // Cooling from airflow
-const TIRE_COOLING_RATE_AMBIENT: f32 = 0.04; // Passive cooling to ambient
-const TRACK_TEMP_TRANSFER_RATE: f32 = 0.05; // Heat transfer from track surface (legacy)
+// Temperature constants (normalized scale: 0.0 = 20C, 1.0 = 180C).
+// Rates scaled by 130/160 vs. legacy 150C-max so absolute deg-C-per-second is preserved.
+const TIRE_AMBIENT_TEMP: f32 = 0.125; // Cold tire starting temp (~40C)
+const TIRE_HEAT_RATE_FRICTION: f32 = 0.081; // Heat from road friction (driving)
+const TIRE_HEAT_RATE_BRAKING: f32 = 0.146; // Heat from heavy braking (front)
+const TIRE_HEAT_RATE_BRAKING_REAR: f32 = 0.065; // Heat from braking (rear)
+const TIRE_HEAT_RATE_CORNERING: f32 = 0.0975; // Heat from lateral load
+const TIRE_HEAT_RATE_SPINNING: f32 = 0.203; // Heat from wheelspin/drift
+const TIRE_COOLING_RATE_AIRFLOW: f32 = 0.0488; // Cooling from airflow
+const TIRE_COOLING_RATE_AMBIENT: f32 = 0.0325; // Passive cooling to ambient
+const TRACK_TEMP_TRANSFER_RATE: f32 = 0.0406; // Heat transfer from track surface (legacy)
 
 // Puddle cooling and thermal shock constants
 const PUDDLE_COOLING_RATE: f32 = 0.4; // Temp drop per second in deep water
@@ -402,6 +419,15 @@ const THERMAL_SHOCK_HOT_THRESHOLD: f32 = 0.5; // Tire must be hot for shock
 const THERMAL_SHOCK_GRIP_PENALTY: f32 = 0.3; // Max 30% grip loss
 const THERMAL_SHOCK_DURATION: f32 = 3.0; // Seconds of shock effect
 const THERMAL_SHOCK_RECOVERY_RATE: f32 = 0.15; // Grip recovery per second
+
+// Soft-clamp + thermal failure constants (normalized: 1.0 = 180C).
+// Real F1 tires don't "freeze" at a ceiling — past blistering they rapidly
+// lose structural integrity and can deflate or burst. Soft ceiling allows
+// readings to climb realistically, then puncture risk accumulates.
+const TIRE_TEMP_SOFT_CEILING: f32 = 1.4; // ~244C absolute ceiling (carcass disintegration)
+const TIRE_BLOWOUT_RISK_THRESHOLD: f32 = 1.05; // ~189C — risk starts accumulating
+const TIRE_BLOWOUT_RISK_RATE: f32 = 0.6; // Risk units / sec at 1.0 (extreme overheat)
+const TIRE_BLOWOUT_RISK_RECOVERY: f32 = 0.05; // Risk decay below threshold (sec^-1)
 
 /// Input parameters for tire temperature calculation
 #[derive(Debug, Clone, Copy, Default)]
@@ -425,6 +451,8 @@ pub struct TempInput {
 pub struct TireTemperatureState {
     temps: [[f32; 2]; 4],                 // [wheel][inner/outer]
     thermal_shock: [TireThermalShock; 4], // Per-wheel thermal shock state
+    blowout_risk: [f32; 4],               // 0.0-1.0 per wheel; 1.0 = burst
+    is_blown: [bool; 4],                  // Latched once tire bursts
 }
 
 impl Default for TireTemperatureState {
@@ -432,6 +460,8 @@ impl Default for TireTemperatureState {
         Self {
             temps: [[TIRE_AMBIENT_TEMP; 2]; 4],
             thermal_shock: [TireThermalShock::default(); 4],
+            blowout_risk: [0.0; 4],
+            is_blown: [false; 4],
         }
     }
 }
@@ -457,7 +487,11 @@ impl TireTemperatureState {
             for wheel in 0..4 {
                 for edge in 0..2 {
                     let diff = ambient_target - self.temps[wheel][edge];
-                    self.temps[wheel][edge] += diff * TIRE_COOLING_RATE_AMBIENT * dt * 2.0;
+                    // Newton's law of cooling: rate scales with temp delta
+                    let overheat_boost = (self.temps[wheel][edge] - 0.6).max(0.0) * 0.5;
+                    self.temps[wheel][edge] +=
+                        diff * (TIRE_COOLING_RATE_AMBIENT + overheat_boost) * dt * 2.0;
+                    self.temps[wheel][edge] = self.temps[wheel][edge].max(0.0);
                 }
             }
             return;
@@ -474,16 +508,30 @@ impl TireTemperatureState {
 
         for wheel in 0..4 {
             for edge in 0..2 {
-                let ambient_pull = (ambient_target - self.temps[wheel][edge]) * 0.02;
-                let net = -cooling * dt + ambient_pull * dt;
-                self.temps[wheel][edge] = (self.temps[wheel][edge] + net).clamp(0.0, 1.0);
+                let temp = self.temps[wheel][edge];
+                let ambient_pull = (ambient_target - temp) * 0.02;
+                // Newton's law of cooling: hotter tires shed heat faster.
+                // At 1.0 (180C) the boost adds ~50% extra cooling rate; at 1.4
+                // (244C) it more than doubles cooling — preventing runaway.
+                let overheat_boost = (temp - 0.6).max(0.0) * 0.6;
+                let net = -(cooling + overheat_boost) * dt + ambient_pull * dt;
+                // Soft floor at 0.0 (can't go below ambient mapping); no upper clamp here —
+                // heating pass enforces TIRE_TEMP_SOFT_CEILING.
+                self.temps[wheel][edge] = (temp + net).max(0.0);
             }
         }
     }
 
     /// Update tire temperatures — heating pass only (friction, braking, cornering, drift, track)
-    /// Call AFTER car.step() so actual G-forces and weight transfer are used
-    pub fn update_heating(&mut self, input: &TempInput) {
+    /// Call AFTER car.step() so actual G-forces and weight transfer are used.
+    /// `per_wheel_track_temp`: track surface temperature sampled at each wheel's
+    /// world position (0.0-1.0 normalized). Pass `None` to fall back to the
+    /// car-center value in `input.track_temperature`.
+    pub fn update_heating(
+        &mut self,
+        input: &TempInput,
+        per_wheel_track_temp: Option<[f32; 4]>,
+    ) {
         let dt = input.delta_seconds.min(0.05);
 
         if input.speed_ms < 0.5 {
@@ -509,6 +557,7 @@ impl TireTemperatureState {
 
         let turning_left = input.steer_angle < -0.02;
         let turning_right = input.steer_angle > 0.02;
+        let is_cornering = turning_left || turning_right;
 
         let drift_heat = if input.is_drifting {
             TIRE_HEAT_RATE_SPINNING
@@ -518,17 +567,37 @@ impl TireTemperatureState {
             0.0
         };
 
-        let track_heat = if input.track_temperature > 0.3 {
-            TRACK_TEMP_TRANSFER_RATE * (input.track_temperature - 0.3) * speed_factor
-        } else {
-            0.0
-        };
-
         for wheel in 0..4 {
             let is_front = wheel < 2;
             let is_left = wheel == 0 || wheel == 2;
 
             let load_mult = self.get_load_multiplier(wheel, &input.weight_transfer);
+
+            // Per-wheel track contact heat (cell sampled under this wheel)
+            let wheel_track_temp = per_wheel_track_temp
+                .map(|arr| arr[wheel])
+                .unwrap_or(input.track_temperature);
+            let track_heat = if wheel_track_temp > 0.3 {
+                TRACK_TEMP_TRANSFER_RATE * (wheel_track_temp - 0.3) * speed_factor
+            } else {
+                0.0
+            };
+
+            // Side-of-car cornering loading. Inner-side wheels in a turn carry
+            // ~30-40% of the static load; outer-side wheels carry the rest.
+            // Real F1: inner-side temps DROP below straight-line because the
+            // tire is barely doing work. Both edges of inner wheels scale
+            // together, but outer wheels' OUTER edge gets the strongest hit.
+            let is_loaded_side = (turning_left && !is_left) || (turning_right && is_left);
+            let cornering_side_factor = if is_cornering {
+                if is_loaded_side {
+                    1.3 // Outer side bears most lateral work
+                } else {
+                    0.45 // Inner side unloaded — significantly less heat
+                }
+            } else {
+                1.0
+            };
 
             for edge in 0..2 {
                 let is_inner = edge == 0;
@@ -541,22 +610,24 @@ impl TireTemperatureState {
                     brake_heat_rear
                 };
 
-                let outer_bonus = if turning_left && !is_left {
+                // Edge bias on top of side factor: outer edge of outer wheel
+                // takes the most punishment due to camber + load.
+                let edge_factor = if is_cornering && is_loaded_side {
                     if is_inner {
-                        0.6
+                        0.85
                     } else {
-                        1.4
+                        1.4 // Outer edge of outer wheel — hottest spot
                     }
-                } else if turning_right && is_left {
+                } else if is_cornering && !is_loaded_side {
                     if is_inner {
-                        0.6
+                        0.7 // Inner wheel barely flexing inside edge
                     } else {
-                        1.4
+                        1.0
                     }
                 } else {
                     1.0
                 };
-                heat += cornering_heat * outer_bonus;
+                heat += cornering_heat * cornering_side_factor * edge_factor;
 
                 if !is_front {
                     heat += drift_heat;
@@ -567,7 +638,34 @@ impl TireTemperatureState {
                 heat *= load_mult;
 
                 let net = heat * dt;
-                self.temps[wheel][edge] = (self.temps[wheel][edge] + net).clamp(0.0, 1.0);
+                let new_temp = self.temps[wheel][edge] + net;
+
+                // Soft ceiling: as temp climbs past 1.0, additional heat input
+                // is increasingly resisted (heat dissipation grows non-linearly).
+                // Past TIRE_TEMP_SOFT_CEILING the carcass has effectively burned
+                // through and the tire is structurally compromised.
+                self.temps[wheel][edge] = if new_temp > 1.0 {
+                    let overshoot = new_temp - 1.0;
+                    let damped = overshoot / (1.0 + overshoot * 1.5);
+                    (1.0 + damped).min(TIRE_TEMP_SOFT_CEILING)
+                } else {
+                    new_temp.max(0.0)
+                };
+            }
+
+            // Blowout risk accumulation per wheel.
+            let max_edge_temp = self.temps[wheel][0].max(self.temps[wheel][1]);
+            if max_edge_temp > TIRE_BLOWOUT_RISK_THRESHOLD {
+                let excess = (max_edge_temp - TIRE_BLOWOUT_RISK_THRESHOLD)
+                    / (TIRE_TEMP_SOFT_CEILING - TIRE_BLOWOUT_RISK_THRESHOLD);
+                self.blowout_risk[wheel] =
+                    (self.blowout_risk[wheel] + TIRE_BLOWOUT_RISK_RATE * excess * dt).min(1.0);
+                if self.blowout_risk[wheel] >= 1.0 {
+                    self.is_blown[wheel] = true;
+                }
+            } else {
+                self.blowout_risk[wheel] =
+                    (self.blowout_risk[wheel] - TIRE_BLOWOUT_RISK_RECOVERY * dt).max(0.0);
             }
         }
     }
@@ -575,7 +673,23 @@ impl TireTemperatureState {
     /// Legacy combined update (delegates to cooling + heating)
     pub fn update(&mut self, input: &TempInput) {
         self.update_cooling(input);
-        self.update_heating(input);
+        self.update_heating(input, None);
+    }
+
+    /// Get per-wheel blowout risk (0.0 = safe, 1.0 = burst)
+    pub fn get_blowout_risk(&self) -> [f32; 4] {
+        self.blowout_risk
+    }
+
+    /// Whether each wheel has burst from thermal overload.
+    pub fn get_is_blown(&self) -> [bool; 4] {
+        self.is_blown
+    }
+
+    /// Reset blowout state (e.g. tire change in pit)
+    pub fn reset_blowout(&mut self) {
+        self.blowout_risk = [0.0; 4];
+        self.is_blown = [false; 4];
     }
 
     fn get_load_multiplier(&self, wheel: usize, wt: &WeightTransferResult) -> f32 {
@@ -653,12 +767,25 @@ impl TireTemperatureState {
         total / 4.0
     }
 
-    /// Apply external heat change (from track-tire heat exchange)
-    /// heat_delta: positive = tire gains heat, negative = tire loses heat
+    /// Apply external heat change (from track-tire heat exchange).
+    /// heat_delta: positive = tire gains heat, negative = tire loses heat.
+    /// Uniform across all wheels — kept for legacy callers.
     pub fn apply_external_heat(&mut self, heat_delta: f32) {
         for wheel in 0..4 {
             for edge in 0..2 {
-                self.temps[wheel][edge] = (self.temps[wheel][edge] + heat_delta).clamp(0.0, 1.0);
+                let new_temp = self.temps[wheel][edge] + heat_delta;
+                self.temps[wheel][edge] = new_temp.clamp(0.0, TIRE_TEMP_SOFT_CEILING);
+            }
+        }
+    }
+
+    /// Apply per-wheel external heat deltas — used by per-wheel track-tire
+    /// exchange so left/right or on-line/off-line wheels heat differently.
+    pub fn apply_external_heat_per_wheel(&mut self, deltas: [f32; 4]) {
+        for wheel in 0..4 {
+            for edge in 0..2 {
+                let new_temp = self.temps[wheel][edge] + deltas[wheel];
+                self.temps[wheel][edge] = new_temp.clamp(0.0, TIRE_TEMP_SOFT_CEILING);
             }
         }
     }

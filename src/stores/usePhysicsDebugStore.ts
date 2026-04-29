@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-interface WheelDebug {
+export interface WheelDebug {
   compression: number
   hitY: number
   isGrounded: boolean

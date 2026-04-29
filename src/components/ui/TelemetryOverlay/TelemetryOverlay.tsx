@@ -131,8 +131,8 @@ function drawMiniData(
 
   ctx.fillStyle = '#ffffff'
   ctx.fillText('ENG', col2, row)
-  const engC = last(engineTemp) * 100 + 20
-  ctx.fillStyle = getHeatColor(engC, 60, 100)
+  const engC = last(engineTemp) * 140 + 20
+  ctx.fillStyle = getHeatColor(engC, 90, 125)
   ctx.fillText(`${Math.round(engC)}°C`, col2 + 30 * dpr, row)
 
   ctx.fillStyle = '#ffffff'
@@ -160,7 +160,7 @@ function drawMiniData(
     const tx = (i < 2 ? col2 : col2 + 80 * dpr) + (i % 2 === 0 ? 0 : 40 * dpr)
     const ty = row + (i < 2 ? 0 : lineH)
     const tTemp = last(tireTemps[i])
-    const tCelsius = tTemp * 130 + 20
+    const tCelsius = tTemp * 160 + 20
     ctx.fillStyle = getTireColor(tTemp)
     ctx.fillText(`${labels[i]} ${Math.round(tCelsius)}`, tx, ty)
   }
@@ -186,8 +186,8 @@ function getHeatColor(temp: number, low: number, high: number): string {
 }
 
 function getTireColor(normalized: number): string {
-  if (normalized < 0.35) return '#3b82f6'
-  if (normalized < 0.55) return '#22c55e'
+  if (normalized < 0.313) return '#3b82f6'
+  if (normalized < 0.594) return '#22c55e'
   if (normalized < 0.75) return '#eab308'
   return '#ef4444'
 }

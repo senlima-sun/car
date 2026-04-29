@@ -7,6 +7,7 @@ import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { type CarInput } from '../../../../wasm'
 import { type SuspensionOutput } from './useRaycastSuspension'
 import { WHEEL_POSITIONS as DIM_WHEEL_POS } from '../../../../constants/dimensions'
+import type { CurbType } from '../../../../types/trackObjects'
 
 type PhysicsContext = ReturnType<typeof import('../../../../wasm').usePhysics>
 
@@ -16,6 +17,10 @@ interface PhysicsStepOptions {
   windEnabled: boolean
   startPosition: [number, number, number]
   suspensionStep: (dt: number) => SuspensionOutput | null
+}
+
+interface StepOptions {
+  applyRapierForces?: boolean
 }
 
 export function useCarPhysicsStep({
@@ -31,15 +36,29 @@ export function useCarPhysicsStep({
   const surfaceNormalRef = useRef<[number, number, number]>([0, 1, 0])
   const validationCounter = useRef(0)
   const windSyncCounter = useRef(0)
-  const syncedCurbRef = useRef<string | null>(null)
+  const syncedCurbIsOnRef = useRef<boolean | null>(null)
+  const syncedCurbSideRef = useRef<'left' | 'right' | null>(null)
+  const syncedCurbTypeRef = useRef<CurbType | null>(null)
   const syncedErsModeRef = useRef<string | null>(null)
   const syncedAeroModeRef = useRef<string | null>(null)
   const syncedOvertakeRef = useRef<boolean | null>(null)
+  const posArrRef = useRef<[number, number, number]>([0, 0, 0])
+  const rotArrRef = useRef<[number, number, number, number]>([0, 0, 0, 0])
+  const linvelArrRef = useRef<[number, number, number]>([0, 0, 0])
+  const angvelArrRef = useRef<[number, number, number]>([0, 0, 0])
   const brakeAppliedRef = useRef(false)
+  const linvelVecRef = useRef({ x: 0, y: 0, z: 0 })
+  const angvelVecRef = useRef({ x: 0, y: 0, z: 0 })
+  const safeLinvelRef = useRef({ x: 0, y: 0, z: 0 })
+  const zeroAngvelRef = useRef({ x: 0, y: 0, z: 0 })
+  const safeTranslationRef = useRef({ x: 0, y: 0, z: 0 })
+  const safeRotationRef = useRef({ x: 0, y: 0, z: 0, w: 1 })
+  const downforceVecRef = useRef({ x: 0, y: 0, z: 0 })
 
-  const step = (dt: number, input: CarInput) => {
+  const step = (dt: number, input: CarInput, options?: StepOptions) => {
     const chassis = chassisRef.current
     if (!chassis) return null
+    const applyRapierForces = options?.applyRapierForces ?? true
 
     const pos = chassis.translation()
     const rot = chassis.rotation()
@@ -60,32 +79,41 @@ export function useCarPhysicsStep({
       (!Number.isFinite(pos.x) || !Number.isFinite(pos.y) || !Number.isFinite(pos.z))
 
     if (velocityIsInvalid || angVelIsInvalid || posIsInvalid) {
-      const safeLinvel = velocityIsInvalid
-        ? { x: 0, y: -1, z: 0 }
-        : {
-            x: Math.sign(linvel.x) * Math.min(Math.abs(linvel.x) * 0.5, 20),
-            y: linvel.y,
-            z: Math.sign(linvel.z) * Math.min(Math.abs(linvel.z) * 0.5, 20),
-          }
+      const safeLinvel = safeLinvelRef.current
+      if (velocityIsInvalid) {
+        safeLinvel.x = 0
+        safeLinvel.y = -1
+        safeLinvel.z = 0
+      } else {
+        safeLinvel.x = Math.sign(linvel.x) * Math.min(Math.abs(linvel.x) * 0.5, 20)
+        safeLinvel.y = linvel.y
+        safeLinvel.z = Math.sign(linvel.z) * Math.min(Math.abs(linvel.z) * 0.5, 20)
+      }
 
       chassis.setLinvel(safeLinvel, true)
-      chassis.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      chassis.setAngvel(zeroAngvelRef.current, true)
 
       if (posIsInvalid) {
-        chassis.setTranslation(
-          { x: startPosition[0], y: startPosition[1], z: startPosition[2] },
-          true,
-        )
-        chassis.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
+        const tv = safeTranslationRef.current
+        tv.x = startPosition[0]
+        tv.y = startPosition[1]
+        tv.z = startPosition[2]
+        chassis.setTranslation(tv, true)
+        chassis.setRotation(safeRotationRef.current, true)
       }
       return null
     }
 
     const { isOnCurb, curbSide, curbType } = getCurbState()
-    const curbKey = `${isOnCurb ? 1 : 0}:${curbSide ?? ''}:${curbType ?? ''}`
-    if (curbKey !== syncedCurbRef.current) {
+    if (
+      isOnCurb !== syncedCurbIsOnRef.current ||
+      curbSide !== syncedCurbSideRef.current ||
+      curbType !== syncedCurbTypeRef.current
+    ) {
       physics.setOnCurb(isOnCurb, curbSide || undefined, curbType || undefined)
-      syncedCurbRef.current = curbKey
+      syncedCurbIsOnRef.current = isOnCurb
+      syncedCurbSideRef.current = curbSide
+      syncedCurbTypeRef.current = curbType
     }
 
     const overtakeAvailable = useSessionStore.getState().config?.testingMode ?? false
@@ -114,43 +142,51 @@ export function useCarPhysicsStep({
     }
     brakeAppliedRef.current = brakeApplied
 
+    const posArr = posArrRef.current
+    posArr[0] = pos.x; posArr[1] = pos.y; posArr[2] = pos.z
+    const rotArr = rotArrRef.current
+    rotArr[0] = rot.x; rotArr[1] = rot.y; rotArr[2] = rot.z; rotArr[3] = rot.w
+    const linvelArr = linvelArrRef.current
+    linvelArr[0] = linvel.x; linvelArr[1] = linvel.y; linvelArr[2] = linvel.z
+    const angvelArr = angvelArrRef.current
+    angvelArr[0] = angvel.x; angvelArr[1] = angvel.y; angvelArr[2] = angvel.z
     const syncResult = physics.stepAndSync(
       dt,
       input,
-      [pos.x, pos.y, pos.z],
-      [rot.x, rot.y, rot.z, rot.w],
-      [linvel.x, linvel.y, linvel.z],
-      [angvel.x, angvel.y, angvel.z],
+      posArr,
+      rotArr,
+      linvelArr,
+      angvelArr,
       surfaceNormalRef.current,
     )
     const output = syncResult.physics
 
     windSyncCounter.current++
 
-    chassis.setLinvel(
-      {
-        x: output.linear_velocity[0],
-        y: linvel.y,
-        z: output.linear_velocity[2],
-      },
-      true,
-    )
+    const lv = linvelVecRef.current
+    lv.x = output.linear_velocity[0]
+    lv.y = linvel.y
+    lv.z = output.linear_velocity[2]
+    chassis.setLinvel(lv, true)
 
-    chassis.setAngvel(
-      {
-        x: output.angular_velocity[0],
-        y: output.angular_velocity[1],
-        z: output.angular_velocity[2],
-      },
-      true,
-    )
+    const av = angvelVecRef.current
+    av.x = output.angular_velocity[0]
+    av.y = output.angular_velocity[1]
+    av.z = output.angular_velocity[2]
+    chassis.setAngvel(av, true)
 
     const wdf = syncResult.world_downforce
-    if (wdf && (wdf[0] !== 0 || wdf[1] !== 0 || wdf[2] !== 0)) {
-      chassis.applyImpulse({ x: wdf[0] * dt, y: wdf[1] * dt, z: wdf[2] * dt }, true)
+    if (applyRapierForces && wdf && (wdf[0] !== 0 || wdf[1] !== 0 || wdf[2] !== 0)) {
+      const dv = downforceVecRef.current
+      dv.x = wdf[0] * dt
+      dv.y = wdf[1] * dt
+      dv.z = wdf[2] * dt
+      chassis.applyImpulse(dv, true)
     }
 
-    suspensionOutputRef.current = suspensionStep(dt)
+    if (applyRapierForces) {
+      suspensionOutputRef.current = suspensionStep(dt)
+    }
 
     if (suspensionOutputRef.current) {
       const w = suspensionOutputRef.current.wheels
@@ -166,7 +202,12 @@ export function useCarPhysicsStep({
       const ny = Math.cos(pitch) * Math.cos(roll)
       const nz = -Math.sin(roll)
       const len = Math.sqrt(nx * nx + ny * ny + nz * nz)
-      surfaceNormalRef.current = len > 0.01 ? [nx / len, ny / len, nz / len] : [0, 1, 0]
+      const n = surfaceNormalRef.current
+      if (len > 0.01) {
+        n[0] = nx / len; n[1] = ny / len; n[2] = nz / len
+      } else {
+        n[0] = 0; n[1] = 1; n[2] = 0
+      }
     }
 
     return {

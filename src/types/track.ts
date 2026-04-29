@@ -12,6 +12,7 @@ export interface SavedTrack extends TrackMetadata {
   objects: PlacedObject[]
   pitLaneData?: unknown
   heightmap?: number[]
+  presetId?: string
 }
 
 export interface TrackLibrary {

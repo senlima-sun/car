@@ -10,7 +10,6 @@ import { FrontWingAnimator } from './FrontWing'
 import { RearWingAnimator } from './RearWing'
 import { Cockpit } from './Cockpit'
 import DynamicParts from './DynamicParts'
-import { useEngineThermal } from '../hooks/useEngineThermal'
 import type { SuspensionOutput } from '../hooks/useRaycastSuspension'
 
 interface CarBodyProps {
@@ -21,7 +20,6 @@ export default function CarBody({ suspensionRef }: CarBodyProps) {
   const cameraMode = useGameStore(state => state.cameraMode)
   const rainIntensity = useEnvironmentStore(state => state.rainIntensity)
   const isRaining = rainIntensity > 0.01
-  const { engineThermalMaterial } = useEngineThermal()
 
   const [wheelRefs, setWheelRefs] = useState<GltfWheelRefs>({
     fl: null,
@@ -56,8 +54,6 @@ export default function CarBody({ suspensionRef }: CarBodyProps) {
     <group scale={CAR_SCALE}>
       <BodyFrame
         isRaining={isRaining}
-        isThermalView={false}
-        engineThermalMaterial={engineThermalMaterial}
         suspensionRef={suspensionRef}
         onWheelRefs={handleWheelRefs}
         onFrontWingRefs={handleFrontWingRefs}
