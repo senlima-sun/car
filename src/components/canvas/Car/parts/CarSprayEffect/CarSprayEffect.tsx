@@ -73,18 +73,18 @@ export default function CarSprayEffect({ carStateRef }: CarSprayEffectProps) {
     }
   }, [sprayGeometry, mistGeometry, dropletGeometry, shaderMaterial])
 
-  const surfaceCache = useRef<{ frame: number; condition: 'wet' | 'icy' | null }>({
-    frame: 0,
-    condition: null,
-  })
-  const frameCounterRef = useRef(0)
+  const surfaceCache = useRef<{
+    counter: number
+    lastSampled: number
+    condition: 'wet' | 'icy' | null
+  }>({ counter: 0, lastSampled: 0, condition: null })
 
   const getSurfaceCondition = () => {
-    frameCounterRef.current++
-    if (frameCounterRef.current - surfaceCache.current.frame < SURFACE_SAMPLE_EVERY) {
+    surfaceCache.current.counter++
+    if (surfaceCache.current.counter - surfaceCache.current.lastSampled < SURFACE_SAMPLE_EVERY) {
       return surfaceCache.current.condition
     }
-    surfaceCache.current.frame = frameCounterRef.current
+    surfaceCache.current.lastSampled = surfaceCache.current.counter
 
     const { position: carPosition } = carStateRef.current
     let next: 'wet' | 'icy' | null = null
@@ -239,8 +239,9 @@ export default function CarSprayEffect({ carStateRef }: CarSprayEffectProps) {
     updateParticles(mistData, mistGeometry, MIST_COUNT, 'mist', 3, 0.96)
     updateParticles(dropletData, dropletGeometry, DROPLET_COUNT, 'droplet', 20, 0.99)
 
-    hasActiveRef.current =
-      sprayData.activeCount > 0 || mistData.activeCount > 0 || dropletData.activeCount > 0
+    const totalActive =
+      sprayData.activeCount + mistData.activeCount + dropletData.activeCount
+    hasActiveRef.current = totalActive > 0
   })
 
   if (rainIntensity <= 0.01 && temperature >= 0) {
