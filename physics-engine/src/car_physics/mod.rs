@@ -23,6 +23,9 @@ const SLIP_RATIO_ABS_CLAMP: f32 = 2.0;
 const WHEEL_OMEGA_OVERSPEED_RATIO: f32 = 5.0;
 const WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S: f32 = 50.0;
 const AXLE_TO_CORNER_SPLIT: f32 = 0.5;
+// Linear damping rate (1/s) applied to body forward velocity below 1 m/s
+// while braking. Compensates for slip-ratio oscillation at near-zero speed.
+const LOW_SPEED_CREEP_DAMPING_RATE: f32 = 8.0;
 
 // ============================================================================
 // Car Physics State
@@ -222,7 +225,7 @@ impl CarPhysicsState {
             // near zero velocity because ω locks at 0 and slip jumps between
             // signs each frame. A linear damper on body velocity keeps the
             // car from stalling at ~0.9 m/s under full brake.
-            longitudinal_force -= forward_speed * CAR_MASS * 8.0;
+            longitudinal_force -= forward_speed * CAR_MASS * LOW_SPEED_CREEP_DAMPING_RATE;
         }
 
         if effective_throttle < 0.01

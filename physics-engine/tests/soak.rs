@@ -4,8 +4,10 @@ use car_physics_engine::types::CarInput;
 mod common;
 use common::{assert_output_finite, FIXED_DT};
 
-const SOAK_STEPS: usize = 72_000;
-const LIN_VEL_BLOWUP_LIMIT_SQ: f32 = 500.0 * 500.0;
+const SOAK_SECONDS: usize = 600;
+const SOAK_STEPS: usize = SOAK_SECONDS * 120;
+const LIN_VEL_BLOWUP_LIMIT_MS: f32 = 500.0;
+const LIN_VEL_BLOWUP_LIMIT_SQ: f32 = LIN_VEL_BLOWUP_LIMIT_MS * LIN_VEL_BLOWUP_LIMIT_MS;
 
 struct XorShift32 {
     state: u32,
