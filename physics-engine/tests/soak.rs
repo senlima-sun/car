@@ -1,8 +1,11 @@
 use car_physics_engine::engine::PhysicsEngine;
-use car_physics_engine::types::{CarInput, CarPhysicsOutput};
+use car_physics_engine::types::CarInput;
 
-const FIXED_DT: f32 = 1.0 / 120.0;
+mod common;
+use common::{assert_output_finite, FIXED_DT};
+
 const SOAK_STEPS: usize = 10_000;
+const LIN_VEL_BLOWUP_LIMIT_SQ: f32 = 500.0 * 500.0;
 
 struct XorShift32 {
     state: u32,
@@ -36,37 +39,6 @@ impl XorShift32 {
     }
 }
 
-fn assert_output_finite(output: &CarPhysicsOutput, frame: usize, tag: &str) {
-    let checks: [(&str, f32); 8] = [
-        ("speed_kmh", output.speed_kmh),
-        ("forward_speed_ms", output.forward_speed_ms),
-        ("slip_angle", output.slip_angle),
-        ("effective_grip", output.effective_grip),
-        ("lateral_g", output.lateral_g),
-        ("longitudinal_g", output.longitudinal_g),
-        ("skid_intensity", output.skid_intensity),
-        ("steer_angle", output.steer_angle),
-    ];
-    for (name, v) in checks {
-        assert!(
-            v.is_finite(),
-            "{tag}: {name} not finite at frame {frame} (got {v})",
-        );
-    }
-    for (i, v) in output.linear_velocity.iter().enumerate() {
-        assert!(
-            v.is_finite(),
-            "{tag}: linear_velocity[{i}] not finite at frame {frame} (got {v})",
-        );
-    }
-    for (i, v) in output.angular_velocity.iter().enumerate() {
-        assert!(
-            v.is_finite(),
-            "{tag}: angular_velocity[{i}] not finite at frame {frame} (got {v})",
-        );
-    }
-}
-
 fn build_input(rng: &mut XorShift32) -> CarInput {
     CarInput {
         forward: rng.bool_with_prob(0.55),
@@ -97,10 +69,9 @@ fn pick_surface_normal(rng: &mut XorShift32) -> [f32; 3] {
         [0.0, 0.0, 1.0]
     } else if rng.bool_with_prob(0.10) {
         let tilt = rng.signed_f32() * 0.30;
-        let nx = tilt;
         let nz = tilt * 0.5;
-        let ny = (1.0 - nx * nx - nz * nz).max(0.01).sqrt();
-        [nx, ny, nz]
+        let ny = (1.0 - tilt * tilt - nz * nz).max(0.01).sqrt();
+        [tilt, ny, nz]
     } else {
         [0.0, 1.0, 0.0]
     }
@@ -122,15 +93,16 @@ fn soak_step_handles_10k_adversarial_steps() {
         let surface_normal = pick_surface_normal(&mut rng);
 
         let output = engine.step(dt, input, position, rotation, linvel, angvel, surface_normal);
-        assert_output_finite(&output, frame, "step");
+        assert_output_finite(&output, frame);
 
         linvel = output.linear_velocity;
         angvel = output.angular_velocity;
 
-        let lin_mag = (linvel[0] * linvel[0] + linvel[1] * linvel[1] + linvel[2] * linvel[2]).sqrt();
+        let lin_mag_sq =
+            linvel[0] * linvel[0] + linvel[1] * linvel[1] + linvel[2] * linvel[2];
         assert!(
-            lin_mag < 500.0,
-            "linear velocity blow-up at frame {frame}: |v|={lin_mag}"
+            lin_mag_sq < LIN_VEL_BLOWUP_LIMIT_SQ,
+            "linear velocity blow-up at frame {frame}: |v|^2={lin_mag_sq}"
         );
     }
 }
@@ -152,7 +124,7 @@ fn soak_step_and_sync_handles_10k_adversarial_steps() {
 
         let bundle =
             engine.step_and_sync(dt, input, position, rotation, linvel, angvel, surface_normal);
-        assert_output_finite(&bundle.physics, frame, "step_and_sync");
+        assert_output_finite(&bundle.physics, frame);
 
         assert!(
             bundle.world_downforce[0].is_finite()

@@ -1,8 +1,13 @@
 use car_physics_engine::engine::PhysicsEngine;
 use car_physics_engine::types::{CarInput, CarPhysicsOutput};
 
-const FIXED_DT: f32 = 1.0 / 120.0;
-const MAX_STEPS: usize = 240 * 120;
+mod common;
+use common::FIXED_DT;
+
+const MAX_SECONDS: usize = 240;
+const MAX_STEPS: usize = MAX_SECONDS * 120;
+const WARMUP_STEPS: usize = 60;
+const BRAKE_STOP_THRESHOLD_MS: f32 = 0.5;
 
 fn step(
     engine: &mut PhysicsEngine,
@@ -74,7 +79,7 @@ fn measure_50_to_zero_stop_distance() -> Option<f32> {
     let mut angvel = [0.0_f32; 3];
     let mut position = [0.0_f32, 1.0, 0.0];
 
-    for _ in 0..60 {
+    for _ in 0..WARMUP_STEPS {
         step(
             &mut engine,
             warmup_input,
@@ -103,7 +108,7 @@ fn measure_50_to_zero_stop_distance() -> Option<f32> {
             [0.0, 0.0, 0.0, 1.0],
         );
         position[2] += linvel[2] * FIXED_DT;
-        if out.forward_speed_ms <= 0.5 {
+        if out.forward_speed_ms <= BRAKE_STOP_THRESHOLD_MS {
             return Some(position[2] - start_z);
         }
     }
@@ -129,17 +134,16 @@ fn measure_steady_state_lat_g_at_80m_radius() -> Option<f32> {
     let mut yaw = 0.0_f32;
 
     let mut peak_lat_g = 0.0_f32;
-    let warmup_steps = 60;
     let measure_steps = 240;
 
-    for n in 0..(warmup_steps + measure_steps) {
+    for n in 0..(WARMUP_STEPS + measure_steps) {
         let rot = rotation_for_yaw(yaw);
         let out = step(&mut engine, input, &mut linvel, &mut angvel, position, rot);
         position[0] += linvel[0] * FIXED_DT;
         position[2] += linvel[2] * FIXED_DT;
         yaw += angvel[1] * FIXED_DT;
 
-        if n >= warmup_steps {
+        if n >= WARMUP_STEPS {
             let lat = out.lateral_g.abs();
             if lat > peak_lat_g {
                 peak_lat_g = lat;

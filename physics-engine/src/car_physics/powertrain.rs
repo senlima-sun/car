@@ -394,13 +394,9 @@ mod tests {
         assert_eq!(pt.shift_state, ShiftState::Engaged);
     }
 
-    // Pre-Wave-1 Goal-2 baseline: locks the current scalar `drive_force` produced
-    // by the powertrain at a fixed gear/throttle/speed. Phase 2 routes torque
-    // through per-wheel slip ratio + Pacejka longitudinal, replacing the direct
-    // `drive_force` body-force injection. This test guards against accidental
-    // regression in the legacy field while the new pipeline lands; once Phase 2
-    // ships and consumers stop reading `drive_force`, this test should be
-    // replaced with an `engine_torque_nm` assertion (Wave 2 follow-up).
+    // Wave-1 Phase-2 (Step 2.5) replaces this baseline with an
+    // `engine_torque_nm` assertion once drive force routes through per-wheel
+    // slip ratio. Until then, lock the legacy scalar `drive_force` value.
     #[test]
     fn test_pre_goal2_drive_force_baseline_at_30ms_gear2() {
         let mut pt = PowertrainState::new();

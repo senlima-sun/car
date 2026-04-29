@@ -1,6 +1,9 @@
 use car_physics_engine::engine::PhysicsEngine;
 use car_physics_engine::types::{CarInput, CarPhysicsOutput, StepAndSyncOutput};
 
+mod common;
+use common::FIXED_DT;
+
 // `lib.rs::step_and_sync` deserializes each positional arg via
 // `serde_wasm_bindgen::from_value` (a JsValue → typed-struct round-trip) and
 // re-serializes the output via `to_value`. We can't exercise the JsValue path
@@ -34,7 +37,7 @@ fn ffi_inputs_roundtrip_through_serde() {
 
     let mut engine = PhysicsEngine::new();
     let bundle = engine.step_and_sync(
-        1.0 / 120.0,
+        FIXED_DT,
         input,
         position,
         rotation,
@@ -72,7 +75,7 @@ fn missing_optional_input_fields_default_to_zero() {
 
     let mut engine = PhysicsEngine::new();
     let out: CarPhysicsOutput = engine.step(
-        1.0 / 120.0,
+        FIXED_DT,
         input,
         [0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 1.0],
@@ -87,7 +90,7 @@ fn missing_optional_input_fields_default_to_zero() {
 fn output_schema_is_stable_for_js_consumers() {
     let mut engine = PhysicsEngine::new();
     let bundle = engine.step_and_sync(
-        1.0 / 120.0,
+        FIXED_DT,
         CarInput::default(),
         [0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 1.0],
