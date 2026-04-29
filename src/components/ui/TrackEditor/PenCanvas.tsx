@@ -8,6 +8,7 @@ import { screenToWorld, worldToScreen, zoomAt } from './geometry/viewport'
 import { screenPointOf } from './hooks/usePointerWorld'
 import { closestPointOnAnyPath, closestPointOnPath } from './geometry/closestPoint'
 import { buildPreviewSegment } from './helpers/previewSegment'
+import { useTerrainBrushStroke } from './hooks/useTerrainBrushStroke'
 import {
   CLOSE_RADIUS_SCREEN,
   DRAG_THRESHOLD_SCREEN,
@@ -20,11 +21,6 @@ import {
   hitTestPitArea,
   pitAreaRotateHandleWorld,
 } from './geometry/hitTest'
-import { useTerrainBrushStore } from '@/stores/useTerrainBrushStore'
-import { useTerrainStore } from '@/stores/useTerrainStore'
-import { computeBrushStroke, type BrushParams } from '@/utils/terrainBrush'
-import { editorCommandStack } from '@/utils/commandStack'
-import type { EditorCommand } from '@/types/editor'
 import HeightmapOverlay from './layers/HeightmapOverlay'
 import TerrainBrushCursor from './layers/TerrainBrushCursor'
 import PenCanvasGrid from './layers/PenCanvasGrid'
@@ -48,13 +44,7 @@ export default function PenCanvas() {
     edge: 'left' | 'right'
   } | null>(null)
   const [drag, setDrag] = useState<Drag>(null)
-  const [terrainStrokeActive, setTerrainStrokeActive] = useState(false)
-  const terrainStroke = useRef<{
-    active: boolean
-    lastTime: number
-    diff: Map<number, { before: number; after: number }>
-    rafId: number | null
-  }>({ active: false, lastTime: 0, diff: new Map(), rafId: null })
+  const terrain = useTerrainBrushStroke()
 
   const { doc, viewport, tool, pen, pendingCurbVariant } = useTrackEditorStore(
     useShallow(s => ({
@@ -65,23 +55,6 @@ export default function PenCanvas() {
       pendingCurbVariant: s.pendingCurbVariant,
     })),
   )
-
-  const flushTerrainBrushVisuals = useCallback(() => {
-    const stroke = terrainStroke.current
-    if (stroke.rafId !== null) {
-      cancelAnimationFrame(stroke.rafId)
-      stroke.rafId = null
-    }
-    useTerrainStore.getState().flushVisualVersion()
-  }, [])
-
-  const scheduleTerrainBrushVisuals = useCallback(() => {
-    if (terrainStroke.current.rafId !== null) return
-    terrainStroke.current.rafId = requestAnimationFrame(() => {
-      terrainStroke.current.rafId = null
-      useTerrainStore.getState().flushVisualVersion()
-    })
-  }, [])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -191,39 +164,6 @@ export default function PenCanvas() {
     [viewport],
   )
 
-  const applyTerrainBrush = useCallback(
-    (worldX: number, worldZ: number, dt: number) => {
-      const { terrainBrushType, terrainBrushRadius, terrainBrushStrength, terrainFlattenTarget } =
-        useTerrainBrushStore.getState()
-      const { heightmap, resolution, worldSize, applyBrushStroke } = useTerrainStore.getState()
-      const params: BrushParams = {
-        type: terrainBrushType,
-        radius: terrainBrushRadius,
-        strength: terrainBrushStrength,
-        flattenTarget: terrainFlattenTarget,
-      }
-      const changes = computeBrushStroke(
-        heightmap,
-        resolution,
-        worldSize,
-        worldX,
-        worldZ,
-        params,
-        dt,
-      )
-      if (changes.size === 0) return
-      const diff = terrainStroke.current.diff
-      for (const [index, after] of changes) {
-        const existing = diff.get(index)
-        if (existing) existing.after = after
-        else diff.set(index, { before: heightmap[index]!, after })
-      }
-      applyBrushStroke(changes, { deferVersion: true })
-      scheduleTerrainBrushVisuals()
-    },
-    [scheduleTerrainBrushVisuals],
-  )
-
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.button !== 0 && e.button !== 1) return
     e.currentTarget.setPointerCapture?.(e.pointerId)
@@ -237,14 +177,7 @@ export default function PenCanvas() {
 
     if (tool === 'terrain') {
       const world = worldOf(e)
-      terrainStroke.current = {
-        active: true,
-        lastTime: performance.now(),
-        diff: new Map(),
-        rafId: terrainStroke.current.rafId,
-      }
-      setTerrainStrokeActive(true)
-      applyTerrainBrush(world.x, world.y, 1 / 60)
+      terrain.startStroke(world.x, world.y)
       return
     }
 
@@ -513,12 +446,7 @@ export default function PenCanvas() {
 
     if (tool === 'terrain') {
       setHoverWorld(world)
-      if (terrainStroke.current.active) {
-        const now = performance.now()
-        const dt = Math.min((now - terrainStroke.current.lastTime) / 1000, 0.1)
-        terrainStroke.current.lastTime = now
-        applyTerrainBrush(world.x, world.y, dt)
-      }
+      terrain.continueStroke(world.x, world.y)
       return
     }
 
@@ -673,46 +601,9 @@ export default function PenCanvas() {
       setDrag(null)
       return
     }
-    if (terrainStroke.current.active) {
-      const diff = terrainStroke.current.diff
-      terrainStroke.current.active = false
-      setTerrainStrokeActive(false)
-      if (terrainStroke.current.rafId !== null) {
-        flushTerrainBrushVisuals()
-      }
-      if (diff.size > 0) {
-        const diffCopy = new Map(diff)
-        const brushType = useTerrainBrushStore.getState().terrainBrushType
-        const command: EditorCommand = {
-          execute: () => {
-            const changes = new Map<number, number>()
-            for (const [index, { after }] of diffCopy) changes.set(index, after)
-            useTerrainStore.getState().applyBrushStroke(changes)
-            useTerrainStore.getState().commitPhysics()
-          },
-          undo: () => {
-            const changes = new Map<number, number>()
-            for (const [index, { before }] of diffCopy) changes.set(index, before)
-            useTerrainStore.getState().applyBrushStroke(changes)
-            useTerrainStore.getState().commitPhysics()
-          },
-          description: `Terrain ${brushType}`,
-        }
-        editorCommandStack.push(command)
-        useTerrainStore.getState().commitPhysics()
-      }
-      terrainStroke.current.diff = new Map()
-    }
+    terrain.commitStroke()
     setDrag(null)
   }
-
-  useEffect(() => {
-    return () => {
-      if (terrainStroke.current.rafId !== null) {
-        cancelAnimationFrame(terrainStroke.current.rafId)
-      }
-    }
-  }, [])
 
   const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     const screen = screenPointOf(e, svgRef.current)
@@ -747,7 +638,7 @@ export default function PenCanvas() {
       onWheel={onWheel}
       onContextMenu={onContextMenu}
     >
-      <HeightmapOverlay viewport={viewport} suspendUpdates={terrainStrokeActive} />
+      <HeightmapOverlay viewport={viewport} suspendUpdates={terrain.isStrokeActive} />
       {tool !== 'terrain' && <PenCanvasGrid viewport={viewport} svgRef={svgRef} />}
       <PenCanvasPaths />
       {previewSegment && (
