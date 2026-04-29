@@ -2,6 +2,19 @@ use crate::constants::car::CAR_MASS;
 
 const HANDBRAKE_REAR_GRIP: f32 = 0.2;
 const THROTTLE_OVERSTEER_FACTOR: f32 = 0.90;
+const DEFAULT_LOAD_SENSITIVITY: f32 = 0.015;
+const PEAK_LATERAL_SLIP_DEG: f32 = 9.0;
+
+/// Apply Pacejka load-sensitivity to a per-wheel Fz: heavier corners produce
+/// less μ per unit load. Mirrors the inline formula used in
+/// `pacejka_grip_efficiency`, `peak_mu_at_fz`, and `calculate_per_wheel_forces`
+/// so all three see the same effective Fz.
+#[inline]
+fn effective_fz_with_load_sensitivity(fz: f32, load_sensitivity: f32) -> f32 {
+    let fz_nominal = CAR_MASS * 9.81 / 4.0;
+    let load_factor = 1.0 - load_sensitivity * (fz / fz_nominal - 1.0).max(0.0);
+    fz * load_factor.clamp(0.7, 1.0)
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct PacejkaCoeffs {
@@ -69,10 +82,8 @@ pub fn combined_slip(fx_pure: f32, fy_pure: f32, mu_fz_limit: f32) -> (f32, f32)
 /// sensitivity factor used by `pacejka_grip_efficiency`. Use this to compute
 /// the friction-ellipse radius `peak_mu * effective_fz` for `combined_slip`.
 pub fn peak_mu_at_fz(fz: f32, coeffs: &PacejkaCoeffs) -> f32 {
-    let fz_nominal = CAR_MASS * 9.81 / 4.0;
-    let load_factor = 1.0 - 0.015 * (fz / fz_nominal - 1.0).max(0.0);
-    let effective_fz = fz * load_factor.clamp(0.7, 1.0);
-    let peak_slip = 9.0_f32.to_radians();
+    let effective_fz = effective_fz_with_load_sensitivity(fz, DEFAULT_LOAD_SENSITIVITY);
+    let peak_slip = PEAK_LATERAL_SLIP_DEG.to_radians();
     let peak_force = pacejka_force(peak_slip, effective_fz, coeffs).abs();
     peak_force / effective_fz.max(100.0)
 }
@@ -95,16 +106,16 @@ pub fn calculate_per_wheel_forces(
     load_sensitivity: f32,
 ) -> WheelForces {
     let slip_angle_rad = slip_angle_deg.to_radians();
-
-    let fz_nominal = CAR_MASS * 9.81 / 4.0;
-    let load_factor = 1.0 - load_sensitivity * (fz / fz_nominal - 1.0).max(0.0);
-    let effective_fz = fz * load_factor.clamp(0.7, 1.0);
+    let effective_fz = effective_fz_with_load_sensitivity(fz, load_sensitivity);
 
     let fy_pure = pacejka_lateral(slip_angle_rad, effective_fz, lat_coeffs);
     let fx_pure = pacejka_longitudinal(slip_ratio, effective_fz, lon_coeffs);
 
-    let mu_fz_limit = peak_mu_at_fz(fz, lat_coeffs).max(peak_mu_at_fz(fz, lon_coeffs))
-        * effective_fz;
+    // Conservative-permissive cap: use the larger of lateral / longitudinal
+    // peak μ for the ellipse radius. Wave 3 will replace with full Pacejka
+    // Gx/Gy combined-slip weighting that respects distinct semi-axes.
+    let mu_fz_limit =
+        peak_mu_at_fz(fz, lat_coeffs).max(peak_mu_at_fz(fz, lon_coeffs)) * effective_fz;
     let (fx, fy) = combined_slip(fx_pure, fy_pure, mu_fz_limit);
 
     WheelForces {
@@ -118,11 +129,9 @@ pub fn calculate_per_wheel_forces(
 
 pub fn pacejka_grip_efficiency(slip_angle_deg: f32, fz: f32) -> f32 {
     let lat_coeffs = PacejkaCoeffs::lateral_default();
-    let fz_nominal = CAR_MASS * 9.81 / 4.0;
-    let load_factor = 1.0 - 0.015 * (fz / fz_nominal - 1.0).max(0.0);
-    let effective_fz = fz * load_factor.clamp(0.7, 1.0);
+    let effective_fz = effective_fz_with_load_sensitivity(fz, DEFAULT_LOAD_SENSITIVITY);
 
-    let peak_slip = 9.0f32.to_radians();
+    let peak_slip = PEAK_LATERAL_SLIP_DEG.to_radians();
     let peak_force = pacejka_lateral(peak_slip, effective_fz, &lat_coeffs).abs();
     let peak_mu = peak_force / effective_fz.max(100.0);
 
@@ -222,9 +231,8 @@ mod tests {
 
         let mu_peak =
             peak_mu_at_fz(FZ_NOMINAL, &lat_coeffs).max(peak_mu_at_fz(FZ_NOMINAL, &lon_coeffs));
-        let load_factor = 1.0 - 0.015 * (FZ_NOMINAL / FZ_NOMINAL - 1.0).max(0.0);
-        let effective_fz = FZ_NOMINAL * load_factor.clamp(0.7, 1.0);
-        let mu_fz_limit = mu_peak * effective_fz;
+        // At nominal Fz the load-sensitivity factor reduces to 1.0.
+        let mu_fz_limit = mu_peak * FZ_NOMINAL;
 
         let (fx_c, fy_c) = combined_slip(fx_pure, fy_pure, mu_fz_limit);
         let combined_total = (fx_c * fx_c + fy_c * fy_c).sqrt();

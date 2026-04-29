@@ -358,17 +358,18 @@ impl CarPhysicsState {
             // TODO(wave-1-phase-4): unify longitudinal grip stack with the
             // lateral path. Currently scales by base μ only to preserve the
             // existing integration-test envelope.
-            let fx_raw = sanitize(
+            let fx_pacejka = sanitize(
                 pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT),
                 0.0,
             );
-            let fx_unclamped = fx_raw * BASE_TIRE_GRIP_COEFFICIENT * downforce_grip_bonus;
-            // Friction-ellipse cap. Wave 1 has no per-wheel Fy yet, so this
+            // Friction-ellipse cap in raw-Newton units; apply grip scaling
+            // once after capping so the cap and the value share the same
+            // dimensions. Wave 1 has no per-wheel Fy yet, so this
             // degenerates to a friction-line cap on |fx|. Wave 3 will pass a
             // real lateral force and the full ellipse will engage.
-            let mu_peak = peak_mu_at_fz(fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT);
-            let mu_fz_limit = mu_peak * fz * BASE_TIRE_GRIP_COEFFICIENT * downforce_grip_bonus;
-            let (fx, _) = combined_slip(fx_unclamped, 0.0, mu_fz_limit);
+            let mu_fz_limit = peak_mu_at_fz(fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT) * fz;
+            let (fx_capped, _) = combined_slip(fx_pacejka, 0.0, mu_fz_limit);
+            let fx = fx_capped * BASE_TIRE_GRIP_COEFFICIENT * downforce_grip_bonus;
             wheel_fx_now[wheel] = fx;
             wheel_long_force += fx;
         }
