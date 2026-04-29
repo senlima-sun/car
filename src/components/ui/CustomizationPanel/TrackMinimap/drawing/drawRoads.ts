@@ -7,7 +7,7 @@ export function drawRoads(
   roads: PlacedObject[],
   t: MinimapTransforms,
 ) {
-  const { toScreenX, toScreenZ, rotX, rotZ, scale, angle } = t
+  const { toScreenX, toScreenZ, rotX, rotZ } = t
 
   for (const road of roads) {
     ctx.beginPath()
@@ -47,7 +47,7 @@ export function drawRoads(
 
     ctx.stroke()
 
-    if (road.flowDirection) drawFlowArrow(ctx, road, t, scale, angle)
+    if (road.flowDirection) drawFlowArrow(ctx, road, t)
   }
 }
 
@@ -55,10 +55,8 @@ function drawFlowArrow(
   ctx: CanvasRenderingContext2D,
   road: PlacedObject,
   t: MinimapTransforms,
-  scale: number,
-  angle: number,
 ) {
-  const { toScreenX, toScreenZ, rotX, rotZ } = t
+  const { toScreenX, toScreenZ, rotX, rotZ, scale, angle } = t
   const isForward = road.flowDirection === 'forward'
   let mx: number, mz: number, dx: number, dz: number
 

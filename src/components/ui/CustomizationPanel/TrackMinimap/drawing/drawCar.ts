@@ -5,9 +5,10 @@ export function drawCar(
   carPos: [number, number, number],
   t: MinimapTransforms,
 ) {
-  const { toScreenX, toScreenZ, rotX, rotZ } = t
-  const carX = rotX(toScreenX(carPos[0]), toScreenZ(carPos[2]))
-  const carZ = rotZ(toScreenX(carPos[0]), toScreenZ(carPos[2]))
+  const sx = t.toScreenX(carPos[0])
+  const sz = t.toScreenZ(carPos[2])
+  const carX = t.rotX(sx, sz)
+  const carZ = t.rotZ(sx, sz)
   ctx.beginPath()
   ctx.arc(carX, carZ, 5, 0, Math.PI * 2)
   ctx.fillStyle = '#00ff88'
@@ -22,9 +23,10 @@ export function drawGhost(
   ghostPos: [number, number, number],
   t: MinimapTransforms,
 ) {
-  const { toScreenX, toScreenZ, rotX, rotZ } = t
-  const gx = rotX(toScreenX(ghostPos[0]), toScreenZ(ghostPos[2]))
-  const gz = rotZ(toScreenX(ghostPos[0]), toScreenZ(ghostPos[2]))
+  const sx = t.toScreenX(ghostPos[0])
+  const sz = t.toScreenZ(ghostPos[2])
+  const gx = t.rotX(sx, sz)
+  const gz = t.rotZ(sx, sz)
   ctx.beginPath()
   ctx.arc(gx, gz, 4, 0, Math.PI * 2)
   ctx.fillStyle = '#00ccff'
@@ -41,9 +43,11 @@ export function drawCameraView(
   camDistance: number,
   t: MinimapTransforms,
 ) {
-  const { toScreenX, toScreenZ, rotX, rotZ, scale, drawSize } = t
-  const camRx = rotX(toScreenX(camTargetX), toScreenZ(camTargetZ))
-  const camRz = rotZ(toScreenX(camTargetX), toScreenZ(camTargetZ))
+  const sx = t.toScreenX(camTargetX)
+  const sz = t.toScreenZ(camTargetZ)
+  const camRx = t.rotX(sx, sz)
+  const camRz = t.rotZ(sx, sz)
+  const { scale, drawSize } = t
 
   const viewRadius = camDistance * scale * 0.6
   const clampedRadius = Math.max(8, Math.min(viewRadius, drawSize * 0.45))
