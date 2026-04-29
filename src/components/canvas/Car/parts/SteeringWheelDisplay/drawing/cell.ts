@@ -1,5 +1,5 @@
-import { BORDER, FM, FS, LABEL_COL, LW } from '../constants'
-import type { CellBounds } from '../helpers'
+import { BORDER, FM, FS, GREEN, LABEL_COL, LW } from '../constants'
+import { tempToC, tireTempCol, type CellBounds } from '../helpers'
 
 export function strokeCell(ctx: CanvasRenderingContext2D, b: CellBounds, bg?: string) {
   if (bg) {
@@ -72,4 +72,20 @@ export function drawCell(
   drawLabel(ctx, b, label, opts?.labelColor)
   drawValue(ctx, b, value, color, opts?.sizeFactor)
   if (opts?.sub) drawSub(ctx, b, opts.sub, opts.subColor)
+}
+
+export function drawTireTempCell(
+  ctx: CanvasRenderingContext2D,
+  b: CellBounds,
+  tempNorm: number,
+  life: number,
+) {
+  strokeCell(ctx, b)
+  const fs = Math.round(Math.min(b.h * 0.45, 36))
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = tireTempCol(tempNorm)
+  ctx.font = `bold ${fs}px ${FM}`
+  ctx.fillText(`${tempToC(tempNorm)}°`, b.x + b.w / 2, b.y + b.h * 0.45)
+  drawSub(ctx, b, `${Math.round(life)}%`, GREEN)
 }

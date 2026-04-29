@@ -9,6 +9,7 @@ import { useLapTimeStore } from '@/stores/useLapTimeStore'
 import { getSwDisplay } from '@/stores/useSwDisplayStore'
 import { useTemperatureStore } from '@/stores/useTemperatureStore'
 import { useTireStore } from '@/stores/useTireStore'
+import type { EngineBrakingLevel, SemiAutoPreset } from '@/wasm/PhysicsBridge'
 import {
   formatLapTime,
   getGearColor,
@@ -36,8 +37,20 @@ import {
   YELLOW,
 } from './constants'
 import { drawBatteryBar } from './drawing/batteryBar'
-import { drawCell, drawLabel, drawSub, strokeCell } from './drawing/cell'
-import { cellBounds, tempToC, tireTempCol, wearCol } from './helpers'
+import { drawCell, drawLabel, drawTireTempCell, strokeCell } from './drawing/cell'
+import { cellBounds, wearCol } from './helpers'
+
+const SOC_BY_PRESET: Record<SemiAutoPreset, string> = {
+  Aggressive: '3',
+  Balanced: '5',
+  Conservative: '8',
+}
+
+const EB_BY_LEVEL: Record<EngineBrakingLevel, string> = {
+  Low: '2',
+  Medium: '5',
+  High: '8',
+}
 
 export function useSteeringWheelDisplay() {
   const speed = useCarStore(s => s.speed)
@@ -144,12 +157,8 @@ export function useSteeringWheelDisplay() {
       deltaCol = d <= 0 ? GREEN : RED
     }
 
-    const socVal =
-      ({ Aggressive: '3', Balanced: '5', Conservative: '8' } as Record<string, string>)[
-        ersPreset
-      ] ?? '5'
-    const ebVal =
-      ({ Low: '2', Medium: '5', High: '8' } as Record<string, string>)[engineBraking] ?? '5'
+    const socVal = SOC_BY_PRESET[ersPreset]
+    const ebVal = EB_BY_LEVEL[engineBraking]
     const aeroVal = aeroMode === 'Corner' ? 'CRN' : 'STR'
     const aeroCol = aeroMode === 'Corner' ? BLUE : GREEN
     const otVal = ovt ? 'ON' : overtakeAvailable ? 'RDY' : 'OFF'
@@ -247,28 +256,8 @@ export function useSteeringWheelDisplay() {
       )
     }
 
-    {
-      const b = cellBounds(4, 3)
-      strokeCell(ctx, b)
-      const fs = Math.round(Math.min(b.h * 0.45, 36))
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillStyle = tireTempCol(flT)
-      ctx.font = `bold ${fs}px ${FM}`
-      ctx.fillText(`${tempToC(flT)}°`, b.x + b.w / 2, b.y + b.h * 0.45)
-      drawSub(ctx, b, `${Math.round(flLife)}%`, GREEN)
-    }
-    {
-      const b = cellBounds(5, 3)
-      strokeCell(ctx, b)
-      const fs = Math.round(Math.min(b.h * 0.45, 36))
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillStyle = tireTempCol(frT)
-      ctx.font = `bold ${fs}px ${FM}`
-      ctx.fillText(`${tempToC(frT)}°`, b.x + b.w / 2, b.y + b.h * 0.45)
-      drawSub(ctx, b, `${Math.round(frLife)}%`, GREEN)
-    }
+    drawTireTempCell(ctx, cellBounds(4, 3), flT, flLife)
+    drawTireTempCell(ctx, cellBounds(5, 3), frT, frLife)
 
     drawCell(ctx, cellBounds(0, 4), '', `${Math.round(rlLife)}`, wearCol(rlW), {
       bg: TIRE_BG,
@@ -284,28 +273,8 @@ export function useSteeringWheelDisplay() {
     drawCell(ctx, cellBounds(2, 4), 'BAT', `${Math.round(batteryCharge)}`, batCol)
     strokeCell(ctx, cellBounds(3, 4))
 
-    {
-      const b = cellBounds(4, 4)
-      strokeCell(ctx, b)
-      const fs = Math.round(Math.min(b.h * 0.45, 36))
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillStyle = tireTempCol(rlT)
-      ctx.font = `bold ${fs}px ${FM}`
-      ctx.fillText(`${tempToC(rlT)}°`, b.x + b.w / 2, b.y + b.h * 0.45)
-      drawSub(ctx, b, `${Math.round(rlLife)}%`, GREEN)
-    }
-    {
-      const b = cellBounds(5, 4)
-      strokeCell(ctx, b)
-      const fs = Math.round(Math.min(b.h * 0.45, 36))
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillStyle = tireTempCol(rrT)
-      ctx.font = `bold ${fs}px ${FM}`
-      ctx.fillText(`${tempToC(rrT)}°`, b.x + b.w / 2, b.y + b.h * 0.45)
-      drawSub(ctx, b, `${Math.round(rrLife)}%`, GREEN)
-    }
+    drawTireTempCell(ctx, cellBounds(4, 4), rlT, rlLife)
+    drawTireTempCell(ctx, cellBounds(5, 4), rrT, rrLife)
   }
 }
 

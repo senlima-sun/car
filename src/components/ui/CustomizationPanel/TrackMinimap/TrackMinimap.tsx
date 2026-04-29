@@ -20,6 +20,22 @@ export default function TrackMinimap() {
   rotationRef.current = ROTATION_ANGLES[dirIndex]
 
   const bounds = useMemo(() => computeBounds(placedObjects), [placedObjects])
+  const roads = useMemo(
+    () => placedObjects.filter(o => o.type === 'road' && o.startPoint && o.endPoint),
+    [placedObjects],
+  )
+  const checkpoints = useMemo(
+    () => placedObjects.filter(o => o.type === 'checkpoint'),
+    [placedObjects],
+  )
+
+  const roadsRef = useRef(roads)
+  const checkpointsRef = useRef(checkpoints)
+  roadsRef.current = roads
+  checkpointsRef.current = checkpoints
+
+  const transformsRef = useRef<ReturnType<typeof makeTransforms> | null>(null)
+  const transformsKeyRef = useRef<string>('')
 
   const drawMinimap = useCallback(
     (ctx: CanvasRenderingContext2D, currentBounds: NonNullable<typeof bounds>) => {
@@ -37,15 +53,18 @@ export default function TrackMinimap() {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
       ctx.fillRect(0, 0, MINIMAP_SIZE, MINIMAP_SIZE)
 
-      const transforms = makeTransforms(currentBounds, rotationRef.current)
+      const angle = rotationRef.current
+      const tKey = `${currentBounds.minX},${currentBounds.maxX},${currentBounds.minZ},${currentBounds.maxZ},${angle}`
+      if (tKey !== transformsKeyRef.current || transformsRef.current === null) {
+        transformsRef.current = makeTransforms(currentBounds, angle)
+        transformsKeyRef.current = tKey
+      }
+      const transforms = transformsRef.current
 
-      const objects = useCustomizationStore.getState().placedObjects
-      const roads = objects.filter(o => o.type === 'road' && o.startPoint && o.endPoint)
-      drawRoads(ctx, roads, transforms)
+      drawRoads(ctx, roadsRef.current, transforms)
 
       const curSector = useLapTimeStore.getState().currentSector
-      const checkpoints = objects.filter(o => o.type === 'checkpoint')
-      drawCheckpoints(ctx, checkpoints, curSector, transforms)
+      drawCheckpoints(ctx, checkpointsRef.current, curSector, transforms)
 
       const isCustomize = isCustomizeStatus(useGameStore.getState().status)
       if (isCustomize) {
