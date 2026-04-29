@@ -24,6 +24,12 @@ describe('keyToAction', () => {
     ).toEqual({ kind: 'redo' })
   })
 
+  it('Cmd+Shift+Z returns redo on Mac', () => {
+    expect(
+      keyToAction({ ...baseEvent, code: 'KeyZ', metaKey: true, shiftKey: true }, ctx()),
+    ).toEqual({ kind: 'redo' })
+  })
+
   it('Cmd+Z (metaKey) returns undo on Mac', () => {
     expect(keyToAction({ ...baseEvent, code: 'KeyZ', metaKey: true }, ctx())).toEqual({
       kind: 'undo',

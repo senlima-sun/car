@@ -111,4 +111,16 @@ describe('buildPreviewSegment', () => {
     })
     expect(result).toBe('M 1 2 L 10 5')
   })
+
+  it('cubic preview collapses second control point to the hover point', () => {
+    const anchor = makeAnchor({ x: 0, y: 0 }, { x: 3, y: 4 })
+    const path = makePath('p1', [anchor])
+    const result = buildPreviewSegment({
+      paths: [path],
+      viewport: identityViewport,
+      pen: { activePathId: 'p1', startRef: null },
+      hoverWorld: { x: 7, y: 9 },
+    })
+    expect(result).toBe('M 0 0 C 3 4 7 9 7 9')
+  })
 })
