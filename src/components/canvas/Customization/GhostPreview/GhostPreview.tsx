@@ -93,7 +93,7 @@ export default function GhostPreview({
   const isPit = isPitRoad(trackMode)
   const isWall = selectedObjectType ? isWallType(selectedObjectType) : false
 
-  const sharedSnapLayers = (
+  const renderSharedSnapLayers = () => (
     <>
       {isLinear && (
         <SnapIndicatorsLayer snapPoints={snapPoints} previewPosition={previewPosition} />
@@ -115,9 +115,7 @@ export default function GhostPreview({
   if (isLinear && placementState === 'selecting') {
     return (
       <>
-        {isLinear && (
-          <SnapIndicatorsLayer snapPoints={snapPoints} previewPosition={previewPosition} />
-        )}
+        <SnapIndicatorsLayer snapPoints={snapPoints} previewPosition={previewPosition} />
         <LinearSelectingPreview
           selectedObjectType={selectedObjectType}
           previewPosition={previewPosition}
@@ -132,7 +130,7 @@ export default function GhostPreview({
     if (placementState === 'dragging' && dragStartPoint) {
       return (
         <>
-          {sharedSnapLayers}
+          {renderSharedSnapLayers()}
           <CurveDraggingPreview
             selectedObjectType={selectedObjectType}
             previewPosition={previewPosition}
@@ -147,7 +145,7 @@ export default function GhostPreview({
     if (placementState === 'placingControlPoint' && dragStartPoint && controlPoint) {
       return (
         <>
-          {sharedSnapLayers}
+          {renderSharedSnapLayers()}
           <CurvePlacingControlPointPreview
             selectedObjectType={selectedObjectType}
             previewPosition={previewPosition}
@@ -165,7 +163,7 @@ export default function GhostPreview({
   if (isLinear && (!isCurveMode || isWall) && placementState === 'dragging' && dragStartPoint) {
     return (
       <>
-        {sharedSnapLayers}
+        {renderSharedSnapLayers()}
         <LinearDraggingPreview
           selectedObjectType={selectedObjectType}
           previewPosition={previewPosition}

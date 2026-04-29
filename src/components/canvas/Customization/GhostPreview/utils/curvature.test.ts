@@ -29,4 +29,9 @@ describe('computeCurvatureRadius', () => {
     const { center } = computeCurvatureRadius([-2, 0, 0], [0, 0, 3], [2, 0, 0])
     expect(center[1]).toBe(0)
   })
+
+  it('unit Bezier arc produces radius 1.0 at t=0.5', () => {
+    const { radius } = computeCurvatureRadius([-1, 0, 0], [0, 0, 1], [1, 0, 0])
+    expect(radius).toBeCloseTo(1.0, 6)
+  })
 })

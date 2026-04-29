@@ -12,7 +12,7 @@ import {
   CurvedCurbPreview,
   PitBox,
   Ramp,
-} from '../../../TrackObjects'
+} from '@/components/canvas/TrackObjects'
 import { PIT_BOX_WIDTH, PIT_ROAD_WIDTH } from '@/constants/trackObjects'
 
 type CurbDragState = {

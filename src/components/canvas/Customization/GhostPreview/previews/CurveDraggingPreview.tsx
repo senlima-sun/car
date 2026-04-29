@@ -5,7 +5,7 @@ import {
   CurvedRoadSegment,
   PitRoadSegment,
   RoadSegment,
-} from '../../../TrackObjects'
+} from '@/components/canvas/TrackObjects'
 import { BarrierBlockedIndicator } from '../indicators/BarrierBlockedIndicator'
 import { ControlPointGuideLine } from '../indicators/ControlPointGuideLine'
 

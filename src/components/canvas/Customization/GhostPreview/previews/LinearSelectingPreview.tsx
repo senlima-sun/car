@@ -5,7 +5,7 @@ import {
   RoadSegment,
   Wall,
   WallFence,
-} from '../../../TrackObjects'
+} from '@/components/canvas/TrackObjects'
 
 const DEFAULT_LENGTH = 4
 

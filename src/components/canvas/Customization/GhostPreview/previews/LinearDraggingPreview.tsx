@@ -4,7 +4,7 @@ import {
   RoadSegment,
   Wall,
   WallFence,
-} from '../../../TrackObjects'
+} from '@/components/canvas/TrackObjects'
 import { BarrierBlockedIndicator } from '../indicators/BarrierBlockedIndicator'
 
 export function LinearDraggingPreview({

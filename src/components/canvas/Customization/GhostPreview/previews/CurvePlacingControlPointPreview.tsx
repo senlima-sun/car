@@ -2,7 +2,7 @@ import {
   CurvedBarrier,
   CurvedPitRoadSegment,
   CurvedRoadSegment,
-} from '../../../TrackObjects'
+} from '@/components/canvas/TrackObjects'
 import { BarrierBlockedIndicator } from '../indicators/BarrierBlockedIndicator'
 import { ControlPointGuideLine } from '../indicators/ControlPointGuideLine'
 import { CurvatureIndicator } from '../indicators/CurvatureIndicator'
