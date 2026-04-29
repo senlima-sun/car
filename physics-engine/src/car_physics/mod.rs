@@ -6,7 +6,7 @@ pub mod tire_model;
 pub mod weight_transfer;
 
 use crate::car_physics::powertrain::TIRE_RADIUS;
-use crate::car_physics::tire_model::{pacejka_longitudinal, PacejkaCoeffs};
+use crate::car_physics::tire_model::{combined_slip, pacejka_longitudinal, peak_mu_at_fz, PacejkaCoeffs};
 use crate::constants::car::*;
 use crate::tires::is_front_wheel;
 use crate::types::{
@@ -358,9 +358,17 @@ impl CarPhysicsState {
             // TODO(wave-1-phase-4): unify longitudinal grip stack with the
             // lateral path. Currently scales by base μ only to preserve the
             // existing integration-test envelope.
-            let fx_raw =
-                sanitize(pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT), 0.0);
-            let fx = fx_raw * BASE_TIRE_GRIP_COEFFICIENT * downforce_grip_bonus;
+            let fx_raw = sanitize(
+                pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT),
+                0.0,
+            );
+            let fx_unclamped = fx_raw * BASE_TIRE_GRIP_COEFFICIENT * downforce_grip_bonus;
+            // Friction-ellipse cap. Wave 1 has no per-wheel Fy yet, so this
+            // degenerates to a friction-line cap on |fx|. Wave 3 will pass a
+            // real lateral force and the full ellipse will engage.
+            let mu_peak = peak_mu_at_fz(fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT);
+            let mu_fz_limit = mu_peak * fz * BASE_TIRE_GRIP_COEFFICIENT * downforce_grip_bonus;
+            let (fx, _) = combined_slip(fx_unclamped, 0.0, mu_fz_limit);
             wheel_fx_now[wheel] = fx;
             wheel_long_force += fx;
         }

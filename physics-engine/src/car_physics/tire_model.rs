@@ -50,23 +50,31 @@ pub fn pacejka_longitudinal(slip_ratio: f32, fz: f32, coeffs: &PacejkaCoeffs) ->
     pacejka_force(slip_ratio, fz, coeffs)
 }
 
-pub fn combined_slip(fx_pure: f32, fy_pure: f32) -> (f32, f32) {
-    let fx_abs = fx_pure.abs();
-    let fy_abs = fy_pure.abs();
-
-    if fx_abs < 0.001 && fy_abs < 0.001 {
+/// Friction-ellipse limiting: if `sqrt(fx² + fy²) > mu_fz_limit`, scale both
+/// components proportionally so the total is exactly the limit. Direction is
+/// preserved. `mu_fz_limit` should be `peak_μ × Fz` for the wheel.
+///
+/// TODO(wave-3): replace with full Pacejka `Gx`/`Gy` combined-slip weighting.
+pub fn combined_slip(fx_pure: f32, fy_pure: f32, mu_fz_limit: f32) -> (f32, f32) {
+    let total_sq = fx_pure * fx_pure + fy_pure * fy_pure;
+    let limit_sq = mu_fz_limit * mu_fz_limit;
+    if total_sq <= limit_sq || total_sq < 1e-6 {
         return (fx_pure, fy_pure);
     }
-
-    let total_pure = (fx_abs * fx_abs + fy_abs * fy_abs).sqrt();
-    let max_force = fx_abs.max(fy_abs);
-    let scale = if total_pure > max_force {
-        max_force / total_pure
-    } else {
-        1.0
-    };
-
+    let scale = mu_fz_limit / total_sq.sqrt();
     (fx_pure * scale, fy_pure * scale)
+}
+
+/// Peak longitudinal/lateral μ available at this Fz, after the same load
+/// sensitivity factor used by `pacejka_grip_efficiency`. Use this to compute
+/// the friction-ellipse radius `peak_mu * effective_fz` for `combined_slip`.
+pub fn peak_mu_at_fz(fz: f32, coeffs: &PacejkaCoeffs) -> f32 {
+    let fz_nominal = CAR_MASS * 9.81 / 4.0;
+    let load_factor = 1.0 - 0.015 * (fz / fz_nominal - 1.0).max(0.0);
+    let effective_fz = fz * load_factor.clamp(0.7, 1.0);
+    let peak_slip = 9.0_f32.to_radians();
+    let peak_force = pacejka_force(peak_slip, effective_fz, coeffs).abs();
+    peak_force / effective_fz.max(100.0)
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -95,7 +103,9 @@ pub fn calculate_per_wheel_forces(
     let fy_pure = pacejka_lateral(slip_angle_rad, effective_fz, lat_coeffs);
     let fx_pure = pacejka_longitudinal(slip_ratio, effective_fz, lon_coeffs);
 
-    let (fx, fy) = combined_slip(fx_pure, fy_pure);
+    let mu_fz_limit = peak_mu_at_fz(fz, lat_coeffs).max(peak_mu_at_fz(fz, lon_coeffs))
+        * effective_fz;
+    let (fx, fy) = combined_slip(fx_pure, fy_pure, mu_fz_limit);
 
     WheelForces {
         fx,
@@ -202,10 +212,6 @@ mod tests {
         );
     }
 
-    // TODO(wave-1 phase-3): tighten this test to a true friction-circle check
-    // (`combined_total <= mu_peak * fz`) once `combined_slip` accepts a
-    // `mu_fz_limit` argument. Today it asserts <= max(|Fx|, |Fy|), which passes
-    // against the broken `max(...)` denominator in `combined_slip`.
     #[test]
     fn test_combined_slip_within_friction_circle() {
         let lat_coeffs = PacejkaCoeffs::lateral_default();
@@ -214,16 +220,64 @@ mod tests {
         let fy_pure = pacejka_lateral(0.15, FZ_NOMINAL, &lat_coeffs).abs();
         let fx_pure = pacejka_longitudinal(0.1, FZ_NOMINAL, &lon_coeffs).abs();
 
-        let (fx_c, fy_c) = combined_slip(fx_pure, fy_pure);
+        let mu_peak =
+            peak_mu_at_fz(FZ_NOMINAL, &lat_coeffs).max(peak_mu_at_fz(FZ_NOMINAL, &lon_coeffs));
+        let load_factor = 1.0 - 0.015 * (FZ_NOMINAL / FZ_NOMINAL - 1.0).max(0.0);
+        let effective_fz = FZ_NOMINAL * load_factor.clamp(0.7, 1.0);
+        let mu_fz_limit = mu_peak * effective_fz;
+
+        let (fx_c, fy_c) = combined_slip(fx_pure, fy_pure, mu_fz_limit);
         let combined_total = (fx_c * fx_c + fy_c * fy_c).sqrt();
-        let pure_max = fy_pure.max(fx_pure);
 
         assert!(
-            combined_total <= pure_max * 1.05,
-            "Combined force ({}) should not exceed friction circle ({})",
+            combined_total <= mu_fz_limit * 1.001,
+            "Combined force ({}) should be capped by μ_peak·Fz ({})",
             combined_total,
-            pure_max
+            mu_fz_limit
         );
+    }
+
+    #[test]
+    fn test_combined_slip_unchanged_within_circle() {
+        let mu_fz_limit = 5000.0_f32;
+        let (fx, fy) = combined_slip(1000.0, 800.0, mu_fz_limit);
+        assert!((fx - 1000.0).abs() < 0.001);
+        assert!((fy - 800.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_combined_slip_pure_long_capped_at_limit() {
+        let mu_fz_limit = 3000.0_f32;
+        let (fx, fy) = combined_slip(5000.0, 0.0, mu_fz_limit);
+        assert!(
+            (fx - mu_fz_limit).abs() < 0.01,
+            "pure-longitudinal should clamp to mu_fz_limit, got {}",
+            fx
+        );
+        assert!(fy.abs() < 0.001);
+    }
+
+    #[test]
+    fn test_combined_slip_pure_lat_capped_at_limit() {
+        let mu_fz_limit = 3000.0_f32;
+        let (fx, fy) = combined_slip(0.0, -5000.0, mu_fz_limit);
+        assert!(fx.abs() < 0.001);
+        assert!(
+            (fy + mu_fz_limit).abs() < 0.01,
+            "pure-lateral negative should clamp to -mu_fz_limit, got {}",
+            fy
+        );
+    }
+
+    #[test]
+    fn test_combined_slip_preserves_direction() {
+        let mu_fz_limit = 1000.0_f32;
+        let (fx, fy) = combined_slip(3000.0, 4000.0, mu_fz_limit);
+        let total = (fx * fx + fy * fy).sqrt();
+        assert!((total - mu_fz_limit).abs() < 0.01);
+        // Direction (3,4) → magnitude 5; scaled to 1000 → fx=600, fy=800.
+        assert!((fx - 600.0).abs() < 0.5);
+        assert!((fy - 800.0).abs() < 0.5);
     }
 
     #[test]
