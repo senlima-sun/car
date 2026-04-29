@@ -26,6 +26,15 @@ interface CarSprayEffectProps {
   carStateRef: MutableRefObject<CarState>
 }
 
+function buildGeometry(data: ParticleData) {
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.BufferAttribute(data.positions, 3))
+  geo.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1))
+  geo.setAttribute('opacity', new THREE.BufferAttribute(data.opacities, 1))
+  geo.setAttribute('lifetime', new THREE.BufferAttribute(data.lifetimes, 1))
+  return geo
+}
+
 export default function CarSprayEffect({ carStateRef }: CarSprayEffectProps) {
   const temperature = useEnvironmentStore(s => s.temperature)
   const rainIntensity = useEnvironmentStore(s => s.rainIntensity)
@@ -38,15 +47,6 @@ export default function CarSprayEffect({ carStateRef }: CarSprayEffectProps) {
   const sprayData = useMemo(() => initParticleData(SPRAY_COUNT, 'spray'), [])
   const mistData = useMemo(() => initParticleData(MIST_COUNT, 'mist'), [])
   const dropletData = useMemo(() => initParticleData(DROPLET_COUNT, 'droplet'), [])
-
-  const buildGeometry = (data: ParticleData) => {
-    const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.BufferAttribute(data.positions, 3))
-    geo.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1))
-    geo.setAttribute('opacity', new THREE.BufferAttribute(data.opacities, 1))
-    geo.setAttribute('lifetime', new THREE.BufferAttribute(data.lifetimes, 1))
-    return geo
-  }
 
   const sprayGeometry = useMemo(() => buildGeometry(sprayData), [sprayData])
   const mistGeometry = useMemo(() => buildGeometry(mistData), [mistData])

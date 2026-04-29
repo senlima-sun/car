@@ -11,4 +11,4 @@ export const WHEEL_POSITIONS = [
   { x: 0.95, z: 1.6, isRear: false },
   { x: -0.95, z: -1.2, isRear: true },
   { x: 0.95, z: -1.2, isRear: true },
-]
+] as const

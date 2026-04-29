@@ -104,4 +104,15 @@ describe('advanceParticle', () => {
     expect(d.positions).toBe(positionsRef)
     expect(d.velocities).toBe(velocitiesRef)
   })
+
+  it('turbulence perturbs x/z velocity beyond pure drag', () => {
+    const d1 = makeActiveAt(0)
+    const d2 = makeActiveAt(0)
+    advanceParticle(d1, 0, 1, 0, 0.9, false)
+    advanceParticle(d2, 0, 1, 0, 0.9, true)
+    const turbulenceChanged =
+      d1.velocities[0] !== d2.velocities[0] || d1.velocities[2] !== d2.velocities[2]
+    expect(turbulenceChanged).toBe(true)
+    expect(d1.velocities[1]).toBeCloseTo(d2.velocities[1], 6)
+  })
 })
