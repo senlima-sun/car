@@ -11,6 +11,11 @@ pub const FR: usize = 1; // Front Right
 pub const RL: usize = 2; // Rear Left
 pub const RR: usize = 3; // Rear Right
 
+#[inline]
+pub const fn is_front_wheel(wheel: usize) -> bool {
+    wheel < 2
+}
+
 /// Input parameters for per-wheel wear calculation
 #[derive(Debug, Clone, Copy, Default)]
 pub struct WearInput {

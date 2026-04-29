@@ -8,6 +8,7 @@ pub mod weight_transfer;
 use crate::car_physics::powertrain::TIRE_RADIUS;
 use crate::car_physics::tire_model::{pacejka_longitudinal, PacejkaCoeffs};
 use crate::constants::car::*;
+use crate::tires::is_front_wheel;
 use crate::types::{
     CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers, WindModifiers,
 };
@@ -17,11 +18,11 @@ use crate::utils::{lerp, sanitize, Quat, Vec3};
 // contribution (2026 F1 ICE I≈0.15 × gear²~20 ≈ 3 kg·m²) plus wheel/upright
 // (~1.5 kg·m²). Tuned in Phase 4 calibration.
 const WHEEL_INERTIA: f32 = 8.0;
-const SLIP_RATIO_VEL_FLOOR: f32 = 0.5;
-const SLIP_RATIO_CLAMP: f32 = 2.0;
-const WHEEL_OMEGA_HEADROOM_FACTOR: f32 = 5.0;
-const WHEEL_OMEGA_HEADROOM_BIAS: f32 = 50.0;
-const REAR_WHEEL_INDICES: [usize; 2] = [2, 3];
+const SLIP_RATIO_VEL_FLOOR_MS: f32 = 0.5;
+const SLIP_RATIO_ABS_CLAMP: f32 = 2.0;
+const WHEEL_OMEGA_OVERSPEED_RATIO: f32 = 5.0;
+const WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S: f32 = 50.0;
+const AXLE_TO_CORNER_SPLIT: f32 = 0.5;
 
 // ============================================================================
 // Car Physics State
@@ -202,9 +203,9 @@ impl CarPhysicsState {
         };
 
         // Throttle and per-wheel brake forces go through the slip-ratio path
-        // computed below (search "Wheel-spin integration"). Handbrake skid
-        // and pure-reverse-from-rest stay as direct body impulses; they
-        // aren't modelled by the longitudinal Pacejka path in Wave 1.
+        // in the wheel-spin block ~100 lines below. Handbrake skid and
+        // pure-reverse-from-rest stay as direct body impulses; they aren't
+        // modelled by the longitudinal Pacejka path in Wave 1.
         let in_reverse = input.backward && forward_speed <= 0.1;
         if input.handbrake && forward_speed.abs() > 0.05 {
             let handbrake_force = (front_brake_force + rear_brake_force) * 2.5;
@@ -304,12 +305,12 @@ impl CarPhysicsState {
         // brake torque per wheel through `pacejka_longitudinal` via slip
         // ratio. Tire-reaction torque uses last frame's Fx (1-step lag at
         // 120Hz) to avoid the implicit-couple chicken-and-egg.
-        let drive_throttle_active =
-            effective_throttle > 0.01 && effective_brake < 0.01 && !input.handbrake;
-        let drive_engaged = drive_throttle_active
+        let drive_engaged = effective_throttle > 0.01
+            && effective_brake < 0.01
+            && !input.handbrake
             && pt_out.shift_state == powertrain::ShiftState::Engaged;
         let driven_wheel_torque = if drive_engaged {
-            pt_out.drive_force * TIRE_RADIUS * 0.5 * effective_throttle
+            pt_out.drive_force * TIRE_RADIUS * AXLE_TO_CORNER_SPLIT * effective_throttle
         } else {
             0.0
         };
@@ -322,45 +323,43 @@ impl CarPhysicsState {
         } else {
             0.0
         };
-        let lon_coeffs = PacejkaCoeffs::longitudinal_default();
+        let omega_cap = (forward_speed.abs() / TIRE_RADIUS) * WHEEL_OMEGA_OVERSPEED_RATIO
+            + WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S;
+        let v_floor = forward_speed.abs().max(SLIP_RATIO_VEL_FLOOR_MS);
         let mut wheel_long_force = 0.0_f32;
         let mut wheel_fx_now = [0.0_f32; 4];
         for wheel in 0..4 {
-            let is_driven = REAR_WHEEL_INDICES.contains(&wheel);
-            let drive_torque = if is_driven { driven_wheel_torque } else { 0.0 };
-            let per_axle_brake = if wheel < 2 {
+            let is_driven = !is_front_wheel(wheel);
+            let per_axle_brake = if is_front_wheel(wheel) {
                 front_brake_force
             } else {
                 rear_brake_force
             };
-            let brake_torque_corner = per_axle_brake * 0.5 * brake_torque_modifier * TIRE_RADIUS;
-            let brake_signed_torque = -brake_torque_corner * self.wheel_angvel[wheel].signum();
-            let tire_reaction_torque = self.prev_wheel_fx[wheel] * TIRE_RADIUS;
+            let has_brake_torque = braking_active && per_axle_brake > 0.0;
 
-            let net_torque = drive_torque + brake_signed_torque - tire_reaction_torque;
-            self.wheel_angvel[wheel] += net_torque / WHEEL_INERTIA * dt;
-
-            let omega_cap = (forward_speed.abs() / TIRE_RADIUS) * WHEEL_OMEGA_HEADROOM_FACTOR
-                + WHEEL_OMEGA_HEADROOM_BIAS;
-            self.wheel_angvel[wheel] = self.wheel_angvel[wheel].clamp(-omega_cap, omega_cap);
-
-            // Non-driven wheels with no brake just roll kinematically.
-            if !is_driven && !braking_active {
+            // Non-driven wheels with no brake just roll kinematically; skip
+            // the integrate/clamp work that would be overwritten anyway.
+            if !is_driven && !has_brake_torque {
                 self.wheel_angvel[wheel] = forward_speed / TIRE_RADIUS;
+            } else {
+                let drive_torque = if is_driven { driven_wheel_torque } else { 0.0 };
+                let brake_torque_corner =
+                    per_axle_brake * AXLE_TO_CORNER_SPLIT * brake_torque_modifier * TIRE_RADIUS;
+                let brake_signed_torque = -brake_torque_corner * self.wheel_angvel[wheel].signum();
+                let tire_reaction_torque = self.prev_wheel_fx[wheel] * TIRE_RADIUS;
+                let net_torque = drive_torque + brake_signed_torque - tire_reaction_torque;
+                self.wheel_angvel[wheel] += net_torque / WHEEL_INERTIA * dt;
+                self.wheel_angvel[wheel] = self.wheel_angvel[wheel].clamp(-omega_cap, omega_cap);
             }
 
-            let v_floor = forward_speed.abs().max(SLIP_RATIO_VEL_FLOOR);
             let slip_ratio = ((self.wheel_angvel[wheel] * TIRE_RADIUS - forward_speed) / v_floor)
-                .clamp(-SLIP_RATIO_CLAMP, SLIP_RATIO_CLAMP);
+                .clamp(-SLIP_RATIO_ABS_CLAMP, SLIP_RATIO_ABS_CLAMP);
             let fz = resolved_wheel_loads[wheel].max(0.0);
-            // Phase 2 calibration knob: scale longitudinal Pacejka by the
-            // base tire μ only (not the full surface/material/weather grip
-            // stack used by the lateral path). This matches the magnitude
-            // of the old direct drive_force injection at tarmac conditions
-            // and keeps the integration-test envelope green. Phase 4 will
-            // unify how the grip stack chains into longitudinal vs lateral
-            // once the wave-1 model is otherwise settled.
-            let fx_raw = sanitize(pacejka_longitudinal(slip_ratio, fz, &lon_coeffs), 0.0);
+            // TODO(wave-1-phase-4): unify longitudinal grip stack with the
+            // lateral path. Currently scales by base μ only to preserve the
+            // existing integration-test envelope.
+            let fx_raw =
+                sanitize(pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT), 0.0);
             let fx = fx_raw * BASE_TIRE_GRIP_COEFFICIENT * downforce_grip_bonus;
             wheel_fx_now[wheel] = fx;
             wheel_long_force += fx;

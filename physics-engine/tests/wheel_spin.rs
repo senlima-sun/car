@@ -2,7 +2,7 @@ use car_physics_engine::engine::PhysicsEngine;
 use car_physics_engine::types::{CarInput, SurfaceType};
 
 mod common;
-use common::FIXED_DT;
+use common::{assert_output_finite, FIXED_DT};
 
 fn run(engine: &mut PhysicsEngine, input: CarInput, mut linvel: [f32; 3], steps: usize) -> [f32; 3] {
     for _ in 0..steps {
@@ -81,7 +81,7 @@ fn longitudinal_force_obeys_friction_envelope_at_rest() {
         ..Default::default()
     };
     let mut linvel = [0.0, 0.0, 0.0];
-    for _ in 0..30 {
+    for frame in 0..30 {
         let out = engine.step(
             FIXED_DT,
             input,
@@ -92,6 +92,7 @@ fn longitudinal_force_obeys_friction_envelope_at_rest() {
             [0.0, 1.0, 0.0],
             None,
         );
+        assert_output_finite(&out, frame);
         assert!(
             out.longitudinal_g.abs() < 3.0,
             "longitudinal_g spike beyond friction envelope: {}",

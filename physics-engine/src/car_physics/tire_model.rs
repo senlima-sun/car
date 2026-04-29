@@ -12,22 +12,26 @@ pub struct PacejkaCoeffs {
 }
 
 impl PacejkaCoeffs {
+    pub const LATERAL_DEFAULT: Self = Self {
+        b: 10.0,
+        c: 1.9,
+        d: 1.0,
+        e: 0.97,
+    };
+
+    pub const LONGITUDINAL_DEFAULT: Self = Self {
+        b: 20.0,
+        c: 1.65,
+        d: 1.0,
+        e: 0.97,
+    };
+
     pub fn lateral_default() -> Self {
-        Self {
-            b: 10.0,
-            c: 1.9,
-            d: 1.0,
-            e: 0.97,
-        }
+        Self::LATERAL_DEFAULT
     }
 
     pub fn longitudinal_default() -> Self {
-        Self {
-            b: 20.0,
-            c: 1.65,
-            d: 1.0,
-            e: 0.97,
-        }
+        Self::LONGITUDINAL_DEFAULT
     }
 }
 
