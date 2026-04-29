@@ -150,4 +150,12 @@ export const styles: Record<string, React.CSSProperties> = {
     color: '#666',
     fontSize: 13,
   },
+  modeContainer: {
+    padding: '12px 0',
+  },
+  deleteConfirmText: {
+    padding: '8px 12px',
+    color: '#ccc',
+    fontSize: 13,
+  },
 }

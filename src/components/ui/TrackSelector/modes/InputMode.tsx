@@ -29,7 +29,7 @@ export function InputMode({
   }
 
   return (
-    <div style={{ padding: '12px 0' }}>
+    <div style={styles.modeContainer}>
       <div style={styles.menuSectionTitle}>{title}</div>
       <input
         ref={inputRef}
