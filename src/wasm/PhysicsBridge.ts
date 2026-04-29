@@ -454,6 +454,18 @@ function sanitizeVec3(
   ]
 }
 
+function sanitizeWheelLoads(
+  loads: [number, number, number, number] | undefined,
+): [number, number, number, number] | null {
+  if (!loads) return null
+  const fl = sanitize(loads[0], 0)
+  const fr = sanitize(loads[1], 0)
+  const rl = sanitize(loads[2], 0)
+  const rr = sanitize(loads[3], 0)
+  if (fl + fr + rl + rr < 1) return null
+  return [Math.max(fl, 0), Math.max(fr, 0), Math.max(rl, 0), Math.max(rr, 0)]
+}
+
 /**
  * Run a single physics step
  */
@@ -465,12 +477,14 @@ export function stepPhysics(
   linvel: [number, number, number],
   angvel: [number, number, number],
   surfaceNormal: [number, number, number] = [0, 1, 0],
+  wheelLoads?: [number, number, number, number],
 ): CarPhysicsOutput {
   const eng = getPhysicsEngine()
 
   const safeLinvel = sanitizeVec3(linvel)
   const safeAngvel = sanitizeVec3(angvel)
   const safeDelta = sanitize(delta, 0.016)
+  const safeLoads = sanitizeWheelLoads(wheelLoads)
 
   return eng.step(
     safeDelta,
@@ -480,6 +494,7 @@ export function stepPhysics(
     safeLinvel,
     safeAngvel,
     surfaceNormal,
+    safeLoads,
   ) as CarPhysicsOutput
 }
 
@@ -494,11 +509,13 @@ export function stepAndSync(
   linvel: [number, number, number],
   angvel: [number, number, number],
   surfaceNormal: [number, number, number] = [0, 1, 0],
+  wheelLoads?: [number, number, number, number],
 ): StepAndSyncOutput {
   const eng = getPhysicsEngine()
   const safeLinvel = sanitizeVec3(linvel)
   const safeAngvel = sanitizeVec3(angvel)
   const safeDelta = sanitize(delta, 0.016)
+  const safeLoads = sanitizeWheelLoads(wheelLoads)
   const result = eng.step_and_sync(
     safeDelta,
     input,
@@ -507,6 +524,7 @@ export function stepAndSync(
     safeLinvel,
     safeAngvel,
     surfaceNormal,
+    safeLoads,
   ) as StepAndSyncOutput
 
   recordWasmCall()

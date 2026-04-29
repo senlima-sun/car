@@ -110,6 +110,45 @@ fn soak_step_handles_10k_adversarial_steps() {
 }
 
 #[test]
+fn step_with_real_wheel_loads_produces_finite_output() {
+    let mut engine = PhysicsEngine::new();
+    let input = CarInput {
+        forward: true,
+        throttle: 0.5,
+        ..Default::default()
+    };
+    let mut linvel = [0.0_f32, 0.0, 20.0];
+    let mut angvel = [0.0_f32; 3];
+    let position = [0.0_f32, 1.0, 0.0];
+    let rotation = [0.0_f32, 0.0, 0.0, 1.0];
+    let surface_normal = [0.0_f32, 1.0, 0.0];
+
+    for frame in 0..240 {
+        let nominal_corner = 750.0 * 9.81 * 0.25;
+        let front_load_factor = 1.0 + 0.15 * (frame as f32 / 60.0).sin();
+        let real_loads = [
+            nominal_corner * front_load_factor,
+            nominal_corner * front_load_factor,
+            nominal_corner * (2.0 - front_load_factor),
+            nominal_corner * (2.0 - front_load_factor),
+        ];
+        let out = engine.step(
+            FIXED_DT,
+            input,
+            position,
+            rotation,
+            linvel,
+            angvel,
+            surface_normal,
+            Some(real_loads),
+        );
+        assert_output_finite(&out, frame);
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+    }
+}
+
+#[test]
 fn soak_step_and_sync_handles_10k_adversarial_steps() {
     let mut engine = PhysicsEngine::new();
     let mut rng = XorShift32::new(0x5A5A_4321);

@@ -62,6 +62,7 @@ export interface WheelSuspensionData {
 export interface SuspensionOutput {
   wheels: [WheelSuspensionData, WheelSuspensionData, WheelSuspensionData, WheelSuspensionData]
   anyGrounded: boolean
+  wheelForces: [number, number, number, number]
 }
 
 const DEFAULT_WHEEL: WheelSuspensionData = {
@@ -209,10 +210,12 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
   const outputRef = useRef<SuspensionOutput>({
     wheels: wheelsRef.current as SuspensionOutput['wheels'],
     anyGrounded: false,
+    wheelForces: wheelForcesRef.current,
   })
   const defaultOutputRef = useRef<SuspensionOutput>({
     wheels: [DEFAULT_WHEEL, DEFAULT_WHEEL, DEFAULT_WHEEL, DEFAULT_WHEEL],
     anyGrounded: false,
+    wheelForces: [0, 0, 0, 0],
   })
 
   function step(dt: number): SuspensionOutput {

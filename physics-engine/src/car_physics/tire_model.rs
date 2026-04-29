@@ -310,4 +310,29 @@ mod tests {
     ) -> f32 {
         pacejka_grip_efficiency(slip_angle, normal_load) * base_grip_coeff
     }
+
+    #[test]
+    fn test_calculate_tire_grip_routes_fl_fr_to_front_axle() {
+        let per_wheel = CAR_MASS * 9.81 * 0.25;
+        let symmetric = [per_wheel * 1.5, per_wheel * 1.5, per_wheel * 0.5, per_wheel * 0.5];
+        let swapped_axles =
+            [per_wheel * 0.5, per_wheel * 0.5, per_wheel * 1.5, per_wheel * 1.5];
+
+        let (front_a, rear_a) = calculate_tire_grip(8.0, symmetric, 1.7, false, false);
+        let (front_b, rear_b) = calculate_tire_grip(8.0, swapped_axles, 1.7, false, false);
+
+        assert!(
+            (front_a - rear_b).abs() < 1e-4,
+            "front from heavy-front == rear from heavy-rear: {} vs {}",
+            front_a,
+            rear_b
+        );
+        assert!(
+            (rear_a - front_b).abs() < 1e-4,
+            "rear from heavy-front == front from heavy-rear: {} vs {}",
+            rear_a,
+            front_b
+        );
+    }
+
 }

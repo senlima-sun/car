@@ -150,6 +150,7 @@ export function useCarPhysicsStep({
     linvelArr[0] = linvel.x; linvelArr[1] = linvel.y; linvelArr[2] = linvel.z
     const angvelArr = angvelArrRef.current
     angvelArr[0] = angvel.x; angvelArr[1] = angvel.y; angvelArr[2] = angvel.z
+    const prevWheelForces = suspensionOutputRef.current?.wheelForces
     const syncResult = physics.stepAndSync(
       dt,
       input,
@@ -158,6 +159,7 @@ export function useCarPhysicsStep({
       linvelArr,
       angvelArr,
       surfaceNormalRef.current,
+      prevWheelForces,
     )
     const output = syncResult.physics
 
