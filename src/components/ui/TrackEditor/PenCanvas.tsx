@@ -8,6 +8,7 @@ import { screenToWorld, worldToScreen, zoomAt } from './geometry/viewport'
 import { screenPointOf } from './hooks/usePointerWorld'
 import { closestPointOnAnyPath, closestPointOnPath } from './geometry/closestPoint'
 import { buildPreviewSegment } from './helpers/previewSegment'
+import { usePenCanvasKeyboard } from './hooks/usePenCanvasKeyboard'
 import { useTerrainBrushStroke } from './hooks/useTerrainBrushStroke'
 import {
   CLOSE_RADIUS_SCREEN,
@@ -35,7 +36,7 @@ import type { Drag } from './hooks/types'
 
 export default function PenCanvas() {
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const [spaceDown, setSpaceDown] = useState(false)
+  const { spaceDown } = usePenCanvasKeyboard()
   const [hoverWorld, setHoverWorld] = useState<Point | null>(null)
   const [penPathInsertHint, setPenPathInsertHint] = useState<Point | null>(null)
   const [curbHoverHint, setCurbHoverHint] = useState<{
@@ -57,103 +58,11 @@ export default function PenCanvas() {
   )
 
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
-      if (e.code === 'Space') {
-        if (!spaceDown) setSpaceDown(true)
-        e.preventDefault()
-      } else if (e.key === 'Escape') {
-        useTrackEditorStore.getState().cancelActivePath()
-      } else if (e.key === 'Enter') {
-        useTrackEditorStore.getState().finishActivePath()
-      }
-    }
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') setSpaceDown(false)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('keyup', onKeyUp)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('keyup', onKeyUp)
-    }
-  }, [spaceDown])
-
-  useEffect(() => {
     const el = svgRef.current
     if (!el) return
     const handler = (e: WheelEvent) => e.preventDefault()
     el.addEventListener('wheel', handler, { passive: false })
     return () => el.removeEventListener('wheel', handler)
-  }, [])
-
-  useEffect(() => {
-    const pressed = new Set<string>()
-    let rafId: number | null = null
-    let lastTime = 0
-
-    const isPanKey = (key: string): boolean =>
-      key === 'w' ||
-      key === 'a' ||
-      key === 's' ||
-      key === 'd' ||
-      key === 'W' ||
-      key === 'A' ||
-      key === 'S' ||
-      key === 'D'
-
-    const step = (now: number) => {
-      if (pressed.size === 0) {
-        rafId = null
-        lastTime = 0
-        return
-      }
-      const dt = lastTime === 0 ? 16 : Math.min(48, now - lastTime)
-      lastTime = now
-      const speed = 900 * (dt / 1000)
-      let dx = 0
-      let dy = 0
-      if (pressed.has('a')) dx += speed
-      if (pressed.has('d')) dx -= speed
-      if (pressed.has('w')) dy += speed
-      if (pressed.has('s')) dy -= speed
-      if (dx !== 0 || dy !== 0) {
-        useTrackEditorStore.getState().setViewport(v => ({
-          ...v,
-          pan: { x: v.pan.x + dx, y: v.pan.y + dy },
-        }))
-      }
-      rafId = requestAnimationFrame(step)
-    }
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      if (!isPanKey(e.key)) return
-      const key = e.key.toLowerCase()
-      if (!pressed.has(key)) pressed.add(key)
-      if (rafId === null) rafId = requestAnimationFrame(step)
-      e.preventDefault()
-    }
-
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (!isPanKey(e.key)) return
-      pressed.delete(e.key.toLowerCase())
-    }
-
-    const onBlur = () => pressed.clear()
-
-    window.addEventListener('keydown', onKeyDown)
-    window.addEventListener('keyup', onKeyUp)
-    window.addEventListener('blur', onBlur)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      window.removeEventListener('keyup', onKeyUp)
-      window.removeEventListener('blur', onBlur)
-      if (rafId !== null) cancelAnimationFrame(rafId)
-    }
   }, [])
 
   const worldOf = useCallback(
