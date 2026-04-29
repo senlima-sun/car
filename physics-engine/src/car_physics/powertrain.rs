@@ -394,6 +394,40 @@ mod tests {
         assert_eq!(pt.shift_state, ShiftState::Engaged);
     }
 
+    // Pre-Wave-1 Goal-2 baseline: locks the current scalar `drive_force` produced
+    // by the powertrain at a fixed gear/throttle/speed. Phase 2 routes torque
+    // through per-wheel slip ratio + Pacejka longitudinal, replacing the direct
+    // `drive_force` body-force injection. This test guards against accidental
+    // regression in the legacy field while the new pipeline lands; once Phase 2
+    // ships and consumers stop reading `drive_force`, this test should be
+    // replaced with an `engine_torque_nm` assertion (Wave 2 follow-up).
+    #[test]
+    fn test_pre_goal2_drive_force_baseline_at_30ms_gear2() {
+        let mut pt = PowertrainState::new();
+        pt.current_gear = 1;
+        pt.engine_rpm = 8500.0;
+        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0);
+
+        assert_eq!(
+            pt.shift_state,
+            ShiftState::Engaged,
+            "Baseline expects Engaged shift state, got {:?}",
+            pt.shift_state
+        );
+
+        const BASELINE_DRIVE_FORCE_N: f32 = 6505.4883;
+        const TOLERANCE_PCT: f32 = 0.01;
+        let delta = (out.drive_force - BASELINE_DRIVE_FORCE_N).abs();
+        let allowed = BASELINE_DRIVE_FORCE_N.abs() * TOLERANCE_PCT;
+        assert!(
+            delta <= allowed,
+            "drive_force drifted: got {}, baseline {}, allowed delta {} (1%)",
+            out.drive_force,
+            BASELINE_DRIVE_FORCE_N,
+            allowed
+        );
+    }
+
     #[test]
     fn test_cap_assist_upshift_does_not_chain_immediately() {
         let mut pt = PowertrainState::new();
