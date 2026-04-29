@@ -203,9 +203,10 @@ impl CarPhysicsState {
         };
 
         // Throttle and per-wheel brake forces go through the slip-ratio path
-        // in the wheel-spin block ~100 lines below. Handbrake skid and
-        // pure-reverse-from-rest stay as direct body impulses; they aren't
-        // modelled by the longitudinal Pacejka path in Wave 1.
+        // in the wheel-spin block ~100 lines below. Handbrake skid,
+        // pure-reverse-from-rest, and the low-speed creep assist stay as
+        // direct body impulses; they aren't modelled by the longitudinal
+        // Pacejka path in Wave 1.
         let in_reverse = input.backward && forward_speed <= 0.1;
         if input.handbrake && forward_speed.abs() > 0.05 {
             let handbrake_force = (front_brake_force + rear_brake_force) * 2.5;
@@ -216,6 +217,12 @@ impl CarPhysicsState {
         } else if in_reverse {
             let reverse_force = 8000.0;
             longitudinal_force -= reverse_force;
+        } else if effective_brake > 0.01 && forward_speed.abs() < 1.0 {
+            // Low-speed creep assist: the slip-ratio Pacejka path oscillates
+            // near zero velocity because ω locks at 0 and slip jumps between
+            // signs each frame. A linear damper on body velocity keeps the
+            // car from stalling at ~0.9 m/s under full brake.
+            longitudinal_force -= forward_speed * CAR_MASS * 8.0;
         }
 
         if effective_throttle < 0.01

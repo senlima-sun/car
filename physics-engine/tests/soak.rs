@@ -4,7 +4,7 @@ use car_physics_engine::types::CarInput;
 mod common;
 use common::{assert_output_finite, FIXED_DT};
 
-const SOAK_STEPS: usize = 10_000;
+const SOAK_STEPS: usize = 72_000;
 const LIN_VEL_BLOWUP_LIMIT_SQ: f32 = 500.0 * 500.0;
 
 struct XorShift32 {
@@ -78,7 +78,7 @@ fn pick_surface_normal(rng: &mut XorShift32) -> [f32; 3] {
 }
 
 #[test]
-fn soak_step_handles_10k_adversarial_steps() {
+fn soak_step_handles_adversarial_steps() {
     let mut engine = PhysicsEngine::new();
     let mut rng = XorShift32::new(0xA5A5_1234);
 
@@ -155,7 +155,7 @@ fn step_with_real_wheel_loads_produces_finite_output() {
 }
 
 #[test]
-fn soak_step_and_sync_handles_10k_adversarial_steps() {
+fn soak_step_and_sync_handles_adversarial_steps() {
     let mut engine = PhysicsEngine::new();
     let mut rng = XorShift32::new(0x5A5A_4321);
 

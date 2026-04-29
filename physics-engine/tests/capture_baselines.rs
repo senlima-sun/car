@@ -1,8 +1,14 @@
 use car_physics_engine::engine::PhysicsEngine;
-use car_physics_engine::types::{CarInput, CarPhysicsOutput};
+use car_physics_engine::types::{CarInput, CarPhysicsOutput, SurfaceType};
 
 mod common;
 use common::FIXED_DT;
+
+fn make_road_engine() -> PhysicsEngine {
+    let mut engine = PhysicsEngine::new();
+    engine.set_surface(SurfaceType::Road);
+    engine
+}
 
 const MAX_SECONDS: usize = 240;
 const MAX_STEPS: usize = MAX_SECONDS * 120;
@@ -38,7 +44,7 @@ fn rotation_for_yaw(yaw: f32) -> [f32; 4] {
 }
 
 fn measure_zero_to_100() -> Option<f32> {
-    let mut engine = PhysicsEngine::new();
+    let mut engine = make_road_engine();
     let target_ms = 100.0 / 3.6;
     let input = CarInput {
         forward: true,
@@ -68,7 +74,7 @@ fn measure_zero_to_100() -> Option<f32> {
 }
 
 fn measure_50_to_zero_stop_distance() -> Option<f32> {
-    let mut engine = PhysicsEngine::new();
+    let mut engine = make_road_engine();
 
     // Forward direction is +Z (Quat::IDENTITY.forward() = (0,0,1)).
     let warmup_input = CarInput {
@@ -109,7 +115,7 @@ fn measure_50_to_zero_stop_distance() -> Option<f32> {
             [0.0, 0.0, 0.0, 1.0],
         );
         position[2] += linvel[2] * FIXED_DT;
-        if out.forward_speed_ms <= BRAKE_STOP_THRESHOLD_MS {
+        if out.forward_speed_ms.abs() <= BRAKE_STOP_THRESHOLD_MS {
             return Some(position[2] - start_z);
         }
     }
@@ -117,7 +123,7 @@ fn measure_50_to_zero_stop_distance() -> Option<f32> {
 }
 
 fn measure_steady_state_lat_g_at_80m_radius() -> Option<f32> {
-    let mut engine = PhysicsEngine::new();
+    let mut engine = make_road_engine();
     let radius = 80.0_f32;
     let target_speed = 50.0_f32;
     let yaw_rate = target_speed / radius;
@@ -164,7 +170,7 @@ fn capture_wave_1_baselines() {
     let json = format!(
         r#"{{
   "schema_version": 1,
-  "captured_at": "pre-wave-1",
+  "captured_at": "post-wave-1",
   "scenarios": {{
     "zero_to_100_kmh_seconds": {},
     "fifty_ms_to_zero_stop_distance_m": {},

@@ -152,7 +152,17 @@ export function useCarPhysicsStep({
     angvelArr[0] = angvel.x; angvelArr[1] = angvel.y; angvelArr[2] = angvel.z
     // 1-frame lag: suspension runs after this physics step, so we feed
     // frame N-1's per-wheel Fz. ~8.3 ms at 120Hz; reorder is Wave 2+ work.
-    const prevWheelForces = suspensionOutputRef.current?.wheelForces
+    let prevWheelForces = suspensionOutputRef.current?.wheelForces
+    if (
+      shouldValidate &&
+      prevWheelForces &&
+      (!Number.isFinite(prevWheelForces[0]) ||
+        !Number.isFinite(prevWheelForces[1]) ||
+        !Number.isFinite(prevWheelForces[2]) ||
+        !Number.isFinite(prevWheelForces[3]))
+    ) {
+      prevWheelForces = undefined
+    }
     const syncResult = physics.stepAndSync(
       dt,
       input,
