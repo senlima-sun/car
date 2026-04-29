@@ -1,5 +1,9 @@
-const TIRE_RADIUS: f32 = 0.33;
+pub const TIRE_RADIUS: f32 = 0.33;
 const TRANSMISSION_EFFICIENCY: f32 = 0.85;
+// Engine-side rotational inertia. Wave 1 keeps this unused; including it in
+// the per-wheel ODE requires gear-ratio² reflection through a clutch model
+// that's explicitly out of scope. Wave 2+ work.
+#[allow(dead_code)]
 const ENGINE_INERTIA: f32 = 0.15;
 const REDLINE_RPM: f32 = 15000.0;
 const IDLE_RPM: f32 = 4000.0;

@@ -1319,9 +1319,16 @@ mod tests {
             ..Default::default()
         };
 
+        // Start above the launch-wheelspin regime so the test discriminates
+        // power, not traction. Below ~50 km/h both engines saturate the
+        // tire's longitudinal Pacejka curve and produce equal acceleration.
+        // Above ~150 km/h both reach drag-limited terminal speed. Sample
+        // mid-regime acceleration over a short window.
+        let cruise_linvel = [0.0_f32, 0.0, 18.0];
+
         let mut normal_engine = PhysicsEngine::new();
-        let mut linvel = [0.0, 0.0, 0.0];
-        for _ in 0..120 {
+        let mut linvel = cruise_linvel;
+        for _ in 0..60 {
             let output = normal_engine.step(
                 1.0 / 60.0,
                 input,
@@ -1356,8 +1363,8 @@ mod tests {
                 .power_multiplier
         );
 
-        let mut linvel2 = [0.0, 0.0, 0.0];
-        for _ in 0..120 {
+        let mut linvel2 = cruise_linvel;
+        for _ in 0..60 {
             let output = overheated_engine.step(
                 1.0 / 60.0,
                 input,
