@@ -202,6 +202,10 @@ mod tests {
         );
     }
 
+    // TODO(wave-1 phase-3): tighten this test to a true friction-circle check
+    // (`combined_total <= mu_peak * fz`) once `combined_slip` accepts a
+    // `mu_fz_limit` argument. Today it asserts <= max(|Fx|, |Fy|), which passes
+    // against the broken `max(...)` denominator in `combined_slip`.
     #[test]
     fn test_combined_slip_within_friction_circle() {
         let lat_coeffs = PacejkaCoeffs::lateral_default();
