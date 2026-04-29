@@ -1,503 +1,91 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { useActiveAeroStore } from '@/stores/useActiveAeroStore'
-import { useCarStore } from '@/stores/useCarStore'
+import { motion } from 'motion/react'
+import { PAINT_PRESETS, useCarPaintStore } from '@/stores/useCarPaintStore'
 import { useGameStore } from '@/stores/useGameStore'
-import { useCarPaintStore, PAINT_PRESETS, CAR_PARTS } from '@/stores/useCarPaintStore'
-
-const TWO_PI = Math.PI * 2
-
-function Slider({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-}: {
-  label: string
-  value: number
-  min: number
-  max: number
-  step: number
-  onChange: (v: number) => void
-}) {
-  const pct = ((value - min) / (max - min)) * 100
-  return (
-    <div style={styles.sliderGroup}>
-      <div style={styles.sliderHeader}>
-        <span style={styles.sliderLabel}>{label}</span>
-        <span style={styles.sliderValue}>{value.toFixed(2)}</span>
-      </div>
-      <input
-        type='range'
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={e => onChange(parseFloat(e.target.value))}
-        style={{
-          ...styles.slider,
-          background: `linear-gradient(to right, #f97316 0%, #f97316 ${pct}%, rgba(255,255,255,0.15) ${pct}%, rgba(255,255,255,0.15) 100%)`,
-        }}
-      />
-    </div>
-  )
-}
-
-function PresetButton({
-  label,
-  onClick,
-  active,
-}: {
-  label: string
-  onClick: () => void
-  active?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        ...styles.presetBtn,
-        ...(active ? styles.presetBtnActive : {}),
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-function CarPaintSection() {
-  const partColors = useCarPaintStore(s => s.partColors)
-  const selectedPart = useCarPaintStore(s => s.selectedPart)
-  const flakeIntensity = useCarPaintStore(s => s.flakeIntensity)
-  const clearcoatStrength = useCarPaintStore(s => s.clearcoatStrength)
-  const colorDepthFactor = useCarPaintStore(s => s.colorDepthFactor)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-
-  const store = useCarPaintStore.getState
-  const activeColor = selectedPart === 'all' ? partColors.body : partColors[selectedPart]
-
-  return (
-    <div style={styles.section}>
-      <div style={styles.subheader}>CAR PAINT</div>
-
-      <div style={styles.partTabs}>
-        <button
-          onClick={() => store().setSelectedPart('all')}
-          style={{
-            ...styles.partTab,
-            ...(selectedPart === 'all' ? styles.partTabActive : {}),
-          }}
-        >
-          All
-        </button>
-        {CAR_PARTS.map(part => (
-          <button
-            key={part.id}
-            onClick={() => store().setSelectedPart(part.id)}
-            style={{
-              ...styles.partTab,
-              ...(selectedPart === part.id ? styles.partTabActive : {}),
-            }}
-          >
-            <span
-              style={{
-                ...styles.partDot,
-                backgroundColor: partColors[part.id],
-              }}
-            />
-            {part.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={styles.swatchGrid}>
-        {PAINT_PRESETS.map(preset => (
-          <button
-            key={preset.name}
-            title={preset.name}
-            onClick={() => {
-              if (selectedPart === 'all') {
-                store().applyPreset(preset)
-              } else {
-                store().setPartColor(
-                  selectedPart,
-                  preset.colors[selectedPart] ?? preset.colors.body ?? '#0a1128',
-                )
-              }
-            }}
-            style={{
-              ...styles.swatch,
-              backgroundColor:
-                selectedPart === 'all'
-                  ? preset.colors.body
-                  : (preset.colors[selectedPart] ?? preset.colors.body ?? '#0a1128'),
-            }}
-          />
-        ))}
-      </div>
-
-      <div style={styles.colorInputRow}>
-        <input
-          type='color'
-          value={activeColor}
-          onChange={e => store().setActiveColor(e.target.value)}
-          style={styles.colorInput}
-        />
-        <span style={styles.colorHex}>{activeColor.toUpperCase()}</span>
-        <button
-          onClick={() => setShowAdvanced(s => !s)}
-          style={{
-            ...styles.advancedToggle,
-            ...(showAdvanced ? styles.partTabActive : {}),
-          }}
-        >
-          {showAdvanced ? 'Hide' : 'Shader'}
-        </button>
-      </div>
-
-      {showAdvanced && (
-        <>
-          <Slider
-            label='Flake Sparkle'
-            value={flakeIntensity}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={v => store().setFlakeIntensity(v)}
-          />
-          <Slider
-            label='Clearcoat'
-            value={clearcoatStrength}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={v => store().setClearcoatStrength(v)}
-          />
-          <Slider
-            label='Color Depth'
-            value={colorDepthFactor}
-            min={0}
-            max={0.6}
-            step={0.01}
-            onChange={v => store().setColorDepthFactor(v)}
-          />
-        </>
-      )}
-    </div>
-  )
-}
+import { sectionVariants } from './constants/animations'
+import { AeroSection } from './sections/AeroSection'
+import { CarPaintSection } from './sections/CarPaintSection'
+import { SceneSection } from './sections/SceneSection'
+import { SteeringSection } from './sections/SteeringSection'
+import { WheelsSection } from './sections/WheelsSection'
 
 export default function AnimationPreviewPanel() {
-  const frontWingAngle = useActiveAeroStore(s => s.frontWingAngle)
-  const rearWingAngle = useActiveAeroStore(s => s.rearWingAngle)
-  const steerAngle = useCarStore(s => s.steerAngle)
-  const wheelRotations = useCarStore(s => s.wheelRotations)
-
-  const [autoSpin, setAutoSpin] = useState(false)
-  const rafRef = useRef<number>(0)
-  const lastTimeRef = useRef<number>(0)
-
-  const spinLoop = useCallback((time: number) => {
-    if (lastTimeRef.current === 0) lastTimeRef.current = time
-    const dt = (time - lastTimeRef.current) / 1000
-    lastTimeRef.current = time
-
-    const { wheelRotations: cur } = useCarStore.getState()
-    const inc = dt * 8
-    useCarStore.getState().updateTelemetry({
-      wheelRotations: [
-        (cur[0] + inc) % TWO_PI,
-        (cur[1] + inc) % TWO_PI,
-        (cur[2] + inc) % TWO_PI,
-        (cur[3] + inc) % TWO_PI,
-      ],
-    })
-    rafRef.current = requestAnimationFrame(spinLoop)
-  }, [])
-
-  useEffect(() => {
-    if (autoSpin) {
-      lastTimeRef.current = 0
-      rafRef.current = requestAnimationFrame(spinLoop)
-    } else {
-      cancelAnimationFrame(rafRef.current)
-    }
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [autoSpin, spinLoop])
-
-  const setFrontWing = (v: number) => useActiveAeroStore.setState({ frontWingAngle: v })
-  const setRearWing = (v: number) => useActiveAeroStore.setState({ rearWingAngle: v })
-  const setSteer = (v: number) => useCarStore.getState().updateTelemetry({ steerAngle: v })
-  const setWheelRot = (v: number) => {
-    useCarStore.getState().updateTelemetry({ wheelRotations: [v, v, v, v] })
-  }
-
-  const presetCorner = () => {
-    useActiveAeroStore.setState({ frontWingAngle: 1, rearWingAngle: 1 })
-  }
-  const presetStraight = () => {
-    useActiveAeroStore.setState({ frontWingAngle: 0, rearWingAngle: 0 })
-  }
-  const presetLockLeft = () => {
-    useCarStore.getState().updateTelemetry({ steerAngle: -0.6 })
-  }
-  const presetLockRight = () => {
-    useCarStore.getState().updateTelemetry({ steerAngle: 0.6 })
-  }
-
-  const isCorner = frontWingAngle === 1 && rearWingAngle === 1
-  const isStraight = frontWingAngle === 0 && rearWingAngle === 0
+  const partColors = useCarPaintStore(s => s.partColors)
+  const activePresetName = PAINT_PRESETS.find(
+    p => p.colors.body && p.colors.body.toLowerCase() === partColors.body.toLowerCase(),
+  )?.name
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        ANIMATION PREVIEW <span style={styles.hint}>(F2)</span>
-      </div>
-
-      <div style={styles.divider} />
-
-      <div style={styles.section}>
-        <div style={styles.subheader}>AERO</div>
-        <Slider
-          label='Front Wing'
-          value={frontWingAngle}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={setFrontWing}
-        />
-        <Slider
-          label='Rear Wing'
-          value={rearWingAngle}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={setRearWing}
-        />
-        <div style={styles.presetRow}>
-          <PresetButton label='Corner' onClick={presetCorner} active={isCorner} />
-          <PresetButton label='Straight' onClick={presetStraight} active={isStraight} />
-        </div>
-      </div>
-
-      <div style={styles.divider} />
-
-      <div style={styles.section}>
-        <div style={styles.subheader}>STEERING</div>
-        <Slider
-          label='Steer Angle'
-          value={steerAngle}
-          min={-0.6}
-          max={0.6}
-          step={0.01}
-          onChange={setSteer}
-        />
-        <div style={styles.presetRow}>
-          <PresetButton label='Lock Left' onClick={presetLockLeft} active={steerAngle === -0.6} />
-          <PresetButton label='Center' onClick={() => setSteer(0)} active={steerAngle === 0} />
-          <PresetButton label='Lock Right' onClick={presetLockRight} active={steerAngle === 0.6} />
-        </div>
-      </div>
-
-      <div style={styles.divider} />
-
-      <div style={styles.section}>
-        <div style={styles.subheader}>WHEELS</div>
-        <Slider
-          label='Wheel Spin'
-          value={wheelRotations[0]}
-          min={0}
-          max={TWO_PI}
-          step={0.01}
-          onChange={setWheelRot}
-        />
-        <div style={styles.presetRow}>
-          <PresetButton
-            label={autoSpin ? 'Stop Spin' : 'Auto Spin'}
-            onClick={() => setAutoSpin(s => !s)}
-            active={autoSpin}
+    <motion.div
+      initial={{ opacity: 0, x: 24 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      className='pointer-events-auto absolute right-4 top-4 z-[100] flex max-h-[calc(100vh-32px)] w-[296px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/70 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl'
+    >
+      <div className='relative border-b border-white/8 px-4 pt-3.5 pb-3'>
+        <div className='flex items-center gap-2.5'>
+          <motion.span
+            className='inline-block h-px bg-red-400/70'
+            initial={{ width: 0 }}
+            animate={{ width: 22 }}
+            transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' }}
           />
+          <span className='font-mono text-[9px] uppercase tracking-[0.36em] text-red-300/80'>
+            F1 · 2026
+          </span>
+          <span className='ml-auto flex items-center gap-1.5'>
+            <motion.span
+              animate={{ opacity: [0.4, 0.95, 0.4] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              className='h-1.5 w-1.5 rounded-full bg-red-400'
+            />
+            <span className='font-mono text-[9px] uppercase tracking-[0.28em] text-white/30'>
+              F2
+            </span>
+          </span>
+        </div>
+        <div className='mt-1.5 flex items-baseline justify-between'>
+          <h2 className='font-mono text-[15px] font-semibold uppercase tracking-[0.18em] text-white'>
+            Showroom
+          </h2>
+          {activePresetName && (
+            <span className='font-mono text-[9px] uppercase tracking-[0.24em] text-white/35'>
+              {activePresetName}
+            </span>
+          )}
         </div>
       </div>
 
-      <div style={styles.divider} />
+      <motion.div
+        variants={sectionVariants}
+        initial='hidden'
+        animate='visible'
+        className='showroom-scroll divide-y divide-white/5 overflow-y-auto px-4'
+      >
+        <AeroSection />
+        <SteeringSection />
+        <WheelsSection />
+        <CarPaintSection />
+        <SceneSection />
+      </motion.div>
 
-      <CarPaintSection />
-
-      <div style={styles.divider} />
-
-      <button onClick={() => useGameStore.getState().exitPreviewMode()} style={styles.backBtn}>
-        Back to Racing
-      </button>
-    </div>
+      <div className='border-t border-white/8 px-4 py-3'>
+        <button
+          onClick={() => useGameStore.getState().exitPreviewMode()}
+          className='group flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:border-red-300/50 hover:bg-red-500/10 focus-visible:border-red-300/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-300/40'
+        >
+          <span className='flex items-baseline gap-2'>
+            <span className='font-mono text-xs text-white/30 transition group-hover:-translate-x-1 group-hover:text-red-200'>
+              ←
+            </span>
+            <span className='font-mono text-[11px] uppercase tracking-[0.24em] text-white/85 group-hover:text-red-100'>
+              Back
+            </span>
+          </span>
+          <span className='rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-white/40 group-hover:border-red-300/40 group-hover:text-red-200/80'>
+            F2
+          </span>
+        </button>
+      </div>
+    </motion.div>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 280,
-    background: 'rgba(0,0,0,0.92)',
-    border: '1px solid rgba(249,115,22,0.4)',
-    borderRadius: 10,
-    padding: '12px 14px',
-    fontFamily: 'monospace',
-    fontSize: 11,
-    color: '#e5e7eb',
-    pointerEvents: 'auto',
-    zIndex: 1000,
-    userSelect: 'none',
-  },
-  header: {
-    fontSize: 13,
-    fontWeight: 700,
-    color: '#f97316',
-    marginBottom: 4,
-  },
-  hint: { fontSize: 9, color: '#6b7280', marginLeft: 4 },
-  section: { marginBottom: 4 },
-  subheader: { fontSize: 10, fontWeight: 600, color: '#f97316', marginBottom: 6 },
-  divider: { borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0' },
-  sliderGroup: { marginBottom: 8 },
-  sliderHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 3,
-  },
-  sliderLabel: { color: '#9ca3af', fontSize: 11 },
-  sliderValue: { color: '#e5e7eb', fontVariantNumeric: 'tabular-nums', fontSize: 11 },
-  slider: {
-    width: '100%',
-    height: 4,
-    appearance: 'none' as React.CSSProperties['appearance'],
-    borderRadius: 2,
-    outline: 'none',
-    cursor: 'pointer',
-  },
-  presetRow: {
-    display: 'flex',
-    gap: 6,
-    marginTop: 6,
-    flexWrap: 'wrap' as const,
-  },
-  presetBtn: {
-    padding: '3px 10px',
-    fontSize: 10,
-    fontFamily: 'monospace',
-    fontWeight: 600,
-    color: '#d1d5db',
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.15)',
-    borderRadius: 4,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  },
-  presetBtnActive: {
-    color: '#fff',
-    background: 'rgba(249,115,22,0.3)',
-    borderColor: '#f97316',
-  },
-  backBtn: {
-    width: '100%',
-    padding: '8px 0',
-    fontSize: 12,
-    fontFamily: 'monospace',
-    fontWeight: 700,
-    color: '#fff',
-    background: 'rgba(249,115,22,0.2)',
-    border: '1px solid rgba(249,115,22,0.5)',
-    borderRadius: 6,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  },
-  swatchGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(6, 1fr)',
-    gap: 5,
-    marginBottom: 8,
-  },
-  swatch: {
-    width: '100%',
-    aspectRatio: '1',
-    borderRadius: 4,
-    border: '2px solid rgba(255,255,255,0.12)',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-    padding: 0,
-  },
-  swatchActive: {
-    borderColor: '#f97316',
-    boxShadow: '0 0 6px rgba(249,115,22,0.5)',
-  },
-  colorInputRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  colorInput: {
-    width: 32,
-    height: 24,
-    padding: 0,
-    border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 3,
-    cursor: 'pointer',
-    background: 'transparent',
-  },
-  colorHex: {
-    fontSize: 11,
-    fontFamily: 'monospace',
-    color: '#9ca3af',
-  },
-  partTabs: {
-    display: 'flex',
-    flexWrap: 'wrap' as const,
-    gap: 4,
-    marginBottom: 8,
-  },
-  partTab: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    padding: '2px 8px',
-    fontSize: 9,
-    fontFamily: 'monospace',
-    fontWeight: 600,
-    color: '#9ca3af',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 3,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  },
-  partTabActive: {
-    color: '#fff',
-    background: 'rgba(249,115,22,0.25)',
-    borderColor: '#f97316',
-  },
-  partDot: {
-    display: 'inline-block',
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    border: '1px solid rgba(255,255,255,0.2)',
-    flexShrink: 0,
-  },
-  advancedToggle: {
-    marginLeft: 'auto',
-    padding: '2px 8px',
-    fontSize: 9,
-    fontFamily: 'monospace',
-    fontWeight: 600,
-    color: '#9ca3af',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 3,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  },
 }
