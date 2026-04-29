@@ -6,6 +6,7 @@ import {
   PitRoadSegment,
   RoadSegment,
 } from '@/components/canvas/TrackObjects'
+import type { ObjectType } from '@/types/trackObjects'
 import { BarrierBlockedIndicator } from '../indicators/BarrierBlockedIndicator'
 import { ControlPointGuideLine } from '../indicators/ControlPointGuideLine'
 
@@ -16,7 +17,7 @@ export function CurveDraggingPreview({
   isPit,
   barrierBlocked,
 }: {
-  selectedObjectType: string
+  selectedObjectType: ObjectType
   previewPosition: [number, number, number]
   dragStartPoint: [number, number, number]
   isPit: boolean

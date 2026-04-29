@@ -14,6 +14,7 @@ import {
   Ramp,
 } from '@/components/canvas/TrackObjects'
 import { PIT_BOX_WIDTH, PIT_ROAD_WIDTH } from '@/constants/trackObjects'
+import type { ObjectType } from '@/types/trackObjects'
 
 type CurbDragState = {
   road: Parameters<typeof getRoadEdgePositionAt>[0]
@@ -32,7 +33,7 @@ export function PointObjectPreview({
   curbPreviewEndT,
   curbPreviewEndPosition,
 }: {
-  selectedObjectType: string
+  selectedObjectType: ObjectType
   previewPosition: [number, number, number]
   previewRotation: number
   placementState: string

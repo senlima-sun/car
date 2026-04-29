@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { Vector3 } from 'three'
 import { Line } from '@react-three/drei'
 import { OBJECT_CONFIGS } from '@/constants/trackObjects'
+import type { ObjectType } from '@/types/trackObjects'
 
 export function PolygonDrawingPreview({
   points,
@@ -11,23 +12,26 @@ export function PolygonDrawingPreview({
 }: {
   points: Array<[number, number, number]>
   cursorPos: [number, number, number] | null
-  surfaceType: string
+  surfaceType: ObjectType
 }) {
   const color = OBJECT_CONFIGS[surfaceType as keyof typeof OBJECT_CONFIGS]?.color ?? '#888888'
 
+  const cursorX = cursorPos?.[0] ?? null
+  const cursorZ = cursorPos?.[2] ?? null
+
   const linePoints = useMemo(() => {
     const pts = points.map(p => new Vector3(p[0], 0.1, p[2]))
-    if (cursorPos) pts.push(new Vector3(cursorPos[0], 0.1, cursorPos[2]))
+    if (cursorX !== null && cursorZ !== null) pts.push(new Vector3(cursorX, 0.1, cursorZ))
     return pts
-  }, [points, cursorPos])
+  }, [points, cursorX, cursorZ])
 
   const isNearFirst = useMemo(() => {
-    if (!cursorPos || points.length < 3) return false
+    if (cursorX === null || cursorZ === null || points.length < 3) return false
     const first = points[0]
-    const dx = cursorPos[0] - first[0]
-    const dz = cursorPos[2] - first[2]
+    const dx = cursorX - first[0]
+    const dz = cursorZ - first[2]
     return Math.sqrt(dx * dx + dz * dz) < 1.5
-  }, [points, cursorPos])
+  }, [points, cursorX, cursorZ])
 
   const filledShape = useMemo(() => {
     if (points.length < 3) return null

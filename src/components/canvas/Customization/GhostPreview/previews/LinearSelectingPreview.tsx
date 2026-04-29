@@ -6,6 +6,7 @@ import {
   Wall,
   WallFence,
 } from '@/components/canvas/TrackObjects'
+import type { ObjectType } from '@/types/trackObjects'
 
 const DEFAULT_LENGTH = 4
 
@@ -15,7 +16,7 @@ export function LinearSelectingPreview({
   previewRotation,
   isPit,
 }: {
-  selectedObjectType: string
+  selectedObjectType: ObjectType
   previewPosition: [number, number, number]
   previewRotation: number
   isPit: boolean

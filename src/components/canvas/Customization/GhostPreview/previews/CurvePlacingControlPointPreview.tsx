@@ -3,6 +3,7 @@ import {
   CurvedPitRoadSegment,
   CurvedRoadSegment,
 } from '@/components/canvas/TrackObjects'
+import type { ObjectType } from '@/types/trackObjects'
 import { BarrierBlockedIndicator } from '../indicators/BarrierBlockedIndicator'
 import { ControlPointGuideLine } from '../indicators/ControlPointGuideLine'
 import { CurvatureIndicator } from '../indicators/CurvatureIndicator'
@@ -16,7 +17,7 @@ export function CurvePlacingControlPointPreview({
   isPit,
   barrierBlocked,
 }: {
-  selectedObjectType: string
+  selectedObjectType: ObjectType
   previewPosition: [number, number, number]
   dragStartPoint: [number, number, number]
   controlPoint: [number, number, number]

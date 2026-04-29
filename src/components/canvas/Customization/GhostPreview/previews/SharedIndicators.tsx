@@ -2,15 +2,11 @@ import {
   findNearestSnapPoint,
   type SnapPointWithDirection,
 } from '@/stores/useCustomizationStore'
+import type { SnapSettings } from '@/stores/useEditorStore'
+import type { OverlapResult } from '@/utils/trackConnection'
 import { SnapPointIndicator } from '../indicators/SnapPointIndicator'
 import { AngleGuideLines } from '../indicators/AngleGuideLines'
 import { TangentIndicator } from '../indicators/TangentIndicator'
-
-type SnapSettings = {
-  angleSnap: boolean
-  tangentSnap: boolean
-  angleIncrements: number[]
-}
 
 export function SnapIndicatorsLayer({
   snapPoints,
@@ -58,12 +54,6 @@ export function SnapGuidesLayer({
       )}
     </>
   )
-}
-
-type OverlapResult = {
-  hasOverlap: boolean
-  regions: Array<{ position: [number, number, number] }>
-  overlapPercentage: number
 }
 
 export function OverlapWarningLayer({

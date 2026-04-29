@@ -5,6 +5,7 @@ import {
   Wall,
   WallFence,
 } from '@/components/canvas/TrackObjects'
+import type { ObjectType } from '@/types/trackObjects'
 import { BarrierBlockedIndicator } from '../indicators/BarrierBlockedIndicator'
 
 export function LinearDraggingPreview({
@@ -14,7 +15,7 @@ export function LinearDraggingPreview({
   isPit,
   barrierBlocked,
 }: {
-  selectedObjectType: string
+  selectedObjectType: ObjectType
   previewPosition: [number, number, number]
   dragStartPoint: [number, number, number]
   isPit: boolean
