@@ -412,6 +412,13 @@ fn test_handbrake_induces_drift() {
         "Need speed for drift test, got {:.1} m/s",
         speed
     );
+    // Sentinel: catch silent regressions in the other direction (e.g., a
+    // future change that makes acceleration unrealistically fast).
+    assert!(
+        speed < 60.0,
+        "Drift-test warmup speed unrealistically high, got {:.1} m/s",
+        speed
+    );
 
     let yaw_offset = 50.0_f32.to_radians();
     let half = yaw_offset * 0.5;

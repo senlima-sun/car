@@ -355,10 +355,28 @@ impl CarPhysicsState {
                 let drive_torque = if is_driven { driven_wheel_torque } else { 0.0 };
                 let brake_torque_corner =
                     per_axle_brake * AXLE_TO_CORNER_SPLIT * brake_torque_modifier * TIRE_RADIUS;
-                let brake_signed_torque = -brake_torque_corner * self.wheel_angvel[wheel].signum();
+                // Brake opposes the macro vehicle motion, not the instantaneous
+                // wheel ω. Using `wheel_angvel.signum()` causes a sign-flip
+                // oscillation when ω passes through zero (signum(0)=+1) which
+                // pumps spurious force into `prev_wheel_fx`. Indexing off
+                // `forward_speed` keeps the brake direction stable across the
+                // free-roll → braked → locked transition.
+                let brake_signed_torque = -brake_torque_corner * forward_speed.signum();
                 let tire_reaction_torque = self.prev_wheel_fx[wheel] * TIRE_RADIUS;
                 let net_torque = drive_torque + brake_signed_torque - tire_reaction_torque;
-                self.wheel_angvel[wheel] += net_torque / WHEEL_INERTIA * dt;
+                let omega_before = self.wheel_angvel[wheel];
+                let omega_after = omega_before + net_torque / WHEEL_INERTIA * dt;
+                // Anti-overshoot: when only brake torque is active and the
+                // step would carry ω across zero, clamp at zero so the wheel
+                // doesn't reverse-spin under braking.
+                self.wheel_angvel[wheel] = if drive_torque.abs() < f32::EPSILON
+                    && has_brake_torque
+                    && omega_before * omega_after < 0.0
+                {
+                    0.0
+                } else {
+                    omega_after
+                };
                 self.wheel_angvel[wheel] = self.wheel_angvel[wheel].clamp(-omega_cap, omega_cap);
             }
 

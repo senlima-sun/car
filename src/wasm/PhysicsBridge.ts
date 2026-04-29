@@ -455,22 +455,24 @@ function sanitizeVec3(
 }
 
 const WHEEL_LOADS_MIN_TOTAL_N = 1
-const wheelLoadsScratch: [number, number, number, number] = [0, 0, 0, 0]
 
 function sanitizeWheelLoads(
   loads: [number, number, number, number] | undefined,
 ): [number, number, number, number] | null {
   if (!loads) return null
-  let sum = 0
-  for (let i = 0; i < 4; i++) {
-    const v = loads[i]
-    if (!Number.isFinite(v)) return null
-    const clamped = v > 0 ? v : 0
-    wheelLoadsScratch[i] = clamped
-    sum += clamped
+  if (!Number.isFinite(loads[0]) || !Number.isFinite(loads[1])
+      || !Number.isFinite(loads[2]) || !Number.isFinite(loads[3])) {
+    return null
   }
-  if (sum < WHEEL_LOADS_MIN_TOTAL_N) return null
-  return wheelLoadsScratch
+  const fl = loads[0] > 0 ? loads[0] : 0
+  const fr = loads[1] > 0 ? loads[1] : 0
+  const rl = loads[2] > 0 ? loads[2] : 0
+  const rr = loads[3] > 0 ? loads[3] : 0
+  if (fl + fr + rl + rr < WHEEL_LOADS_MIN_TOTAL_N) return null
+  // Fresh tuple per call: serde-wasm-bindgen serializes synchronously, but
+  // returning a shared scratch buffer would alias if FFI ever batches or
+  // multiple callers run in one tick (e.g., a future ghost-replay path).
+  return [fl, fr, rl, rr]
 }
 
 /**
