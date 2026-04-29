@@ -11,19 +11,12 @@ export type PlacerAction =
   | { kind: 'undoPolygonPoint' }
   | { kind: 'closePolygon' }
 
-export type KeyboardEventLike = {
-  code: string
-  ctrlKey: boolean
-  metaKey: boolean
-  shiftKey: boolean
-}
-
 export type PlacerKeyContext = {
   placementState: PlacementState
 }
 
 export function keyToAction(
-  event: KeyboardEventLike,
+  event: Pick<KeyboardEvent, 'code' | 'ctrlKey' | 'metaKey' | 'shiftKey'>,
   ctx: PlacerKeyContext,
 ): PlacerAction | null {
   const cmd = event.ctrlKey || event.metaKey

@@ -4,6 +4,9 @@ import type {
   AnchorRef,
   CheckpointKind,
   CheckpointMarker,
+  CurbEdge,
+  CurbMarker,
+  CurbVariant,
   EditorDocument,
   HandleRef,
   HandleType,
@@ -16,10 +19,11 @@ import { isAnchorRefSlot } from '../geometry/types'
 import { add, clonePt, eq, len, lerp, normalize, reflect, sub } from '../geometry/point'
 import { makeAnchor, makePath, nextId } from '../geometry/path'
 import { identityViewport, type Viewport } from '../geometry/viewport'
+import { useEditorStore } from '@/stores/useEditorStore'
 
-export type Tool = 'pen' | 'select' | 'start-finish' | 'sector' | 'pit-area'
+export type Tool = 'pen' | 'select' | 'start-finish' | 'sector' | 'pit-area' | 'curb' | 'terrain'
 
-type PenState = {
+export type PenState = {
   activePathId: string | null
   hoverClose: boolean
   startRef: AnchorRef | null
@@ -30,6 +34,7 @@ type Snapshot = {
   checkpoints: CheckpointMarker[]
   raceDirection: RaceDirection
   pitBoxAreas: PitBoxArea[]
+  curbs: CurbMarker[]
 }
 
 type EditorState = {
@@ -37,11 +42,15 @@ type EditorState = {
   checkpoints: CheckpointMarker[]
   raceDirection: RaceDirection
   pitBoxAreas: PitBoxArea[]
+  curbs: CurbMarker[]
+  selectedCurbId: string | null
+  pendingCurbVariant: CurbVariant
   viewport: Viewport
   tool: Tool
   selected: AnchorRef | null
   selectedAnchors: AnchorRef[]
   selectedPitBoxAreaId: string | null
+  selectedPathId: string | null
   pen: PenState
   past: Snapshot[]
   future: Snapshot[]
@@ -62,6 +71,7 @@ type EditorState = {
   ) => void
   closeActivePath: () => void
   finishActivePath: () => void
+  cancelActivePath: () => void
 
   setAnchorPoint: (ref: AnchorRef, world: Point, keepHandles: boolean) => void
   setHandle: (ref: HandleRef, world: Point, opts: { breakSymmetry: boolean }) => void
@@ -86,6 +96,19 @@ type EditorState = {
   updatePitBoxArea: (id: string, updates: Partial<Omit<PitBoxArea, 'id'>>) => void
   deletePitBoxArea: (id: string) => void
   setSelectedPitBoxAreaId: (id: string | null) => void
+  setSelectedPathId: (id: string | null) => void
+
+  addCurb: (
+    pathId: string,
+    pathStart: number,
+    pathEnd: number,
+    edge: CurbEdge,
+    variant: CurbVariant,
+  ) => string
+  updateCurb: (id: string, updates: Partial<Omit<CurbMarker, 'id'>>) => void
+  deleteCurb: (id: string) => void
+  setSelectedCurbId: (id: string | null) => void
+  setPendingCurbVariant: (variant: CurbVariant) => void
 
   commit: () => void
   undo: () => void
@@ -97,6 +120,7 @@ type EditorState = {
     checkpoints: CheckpointMarker[]
     raceDirection: RaceDirection
     pitBoxAreas: PitBoxArea[]
+    curbs?: CurbMarker[]
   }) => void
 }
 
@@ -122,11 +146,13 @@ const snapshotOf = (s: {
   checkpoints: CheckpointMarker[]
   raceDirection: RaceDirection
   pitBoxAreas: PitBoxArea[]
+  curbs: CurbMarker[]
 }): Snapshot => ({
   doc: cloneDoc(s.doc),
   checkpoints: s.checkpoints.map(c => ({ ...c })),
   raceDirection: s.raceDirection,
   pitBoxAreas: s.pitBoxAreas.map(a => ({ ...a, position: clonePt(a.position) })),
+  curbs: s.curbs.map(c => ({ ...c })),
 })
 
 function findPath(doc: EditorDocument, id: string): Path | null {
@@ -192,11 +218,15 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
   checkpoints: [],
   raceDirection: 'forward',
   pitBoxAreas: [],
+  curbs: [],
+  selectedCurbId: null,
+  pendingCurbVariant: 'apex',
   viewport: identityViewport(),
   tool: 'pen',
   selected: null,
   selectedAnchors: [],
   selectedPitBoxAreaId: null,
+  selectedPathId: null,
   pen: { activePathId: null, hoverClose: false, startRef: null },
   past: [],
   future: [],
@@ -204,6 +234,7 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
   setTool: t =>
     set(s => {
       if (t === s.tool) return s
+      useEditorStore.getState().setTerrainEditMode(t === 'terrain')
       return {
         tool: t,
         pen: {
@@ -214,6 +245,8 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         selected: t === 'select' ? s.selected : null,
         selectedAnchors: t === 'select' ? s.selectedAnchors : [],
         selectedPitBoxAreaId: t === 'select' ? s.selectedPitBoxAreaId : null,
+        selectedPathId: t === 'select' ? s.selectedPathId : null,
+        selectedCurbId: t === 'select' ? s.selectedCurbId : null,
       }
     }),
 
@@ -342,7 +375,21 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         }
         return c
       })
-      return { doc, checkpoints, past, future: [] }
+      const splitAt = segmentIndex + t
+      const denomLeft = t > 1e-9 ? t : 1
+      const denomRight = 1 - t > 1e-9 ? 1 - t : 1
+      const remapPathPos = (p: number): number => {
+        if (p < segmentIndex) return p
+        if (p < splitAt) return segmentIndex + (p - segmentIndex) / denomLeft
+        if (p < segmentIndex + 1) return segmentIndex + 1 + (p - splitAt) / denomRight
+        return p + 1
+      }
+      const curbs = s.curbs.map(c =>
+        c.pathId !== pathId
+          ? c
+          : { ...c, pathStart: remapPathPos(c.pathStart), pathEnd: remapPathPos(c.pathEnd) },
+      )
+      return { doc, checkpoints, curbs, past, future: [] }
     })
     return insertedIndex
   },
@@ -379,6 +426,32 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
 
   finishActivePath: () => {
     set({ pen: { activePathId: null, hoverClose: false, startRef: null } })
+  },
+
+  cancelActivePath: () => {
+    set(s => {
+      const id = s.pen.activePathId
+      if (!id) {
+        return {
+          pen: { activePathId: null, hoverClose: false, startRef: null },
+        }
+      }
+      const doc = cloneDoc(s.doc)
+      doc.paths = doc.paths.filter(p => p.id !== id)
+      const checkpoints = s.checkpoints.filter(c => c.pathId !== id)
+      const curbs = s.curbs.filter(c => c.pathId !== id)
+      return {
+        doc,
+        checkpoints,
+        curbs,
+        pen: { activePathId: null, hoverClose: false, startRef: null },
+        selected: s.selected?.pathId === id ? null : s.selected,
+        selectedAnchors: s.selectedAnchors.filter(a => a.pathId !== id),
+        selectedPathId: s.selectedPathId === id ? null : s.selectedPathId,
+        selectedCurbId:
+          s.selectedCurbId && curbs.find(c => c.id === s.selectedCurbId) ? s.selectedCurbId : null,
+      }
+    })
   },
 
   setAnchorPoint: (ref, world, keepHandles) => {
@@ -465,6 +538,17 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         if (c.pathId !== ref.pathId) return true
         return c.segmentIndex < segmentLimit
       })
+      const removeLo = Math.max(0, ref.anchorIndex - 1)
+      const removeHi = ref.anchorIndex + 1
+      const curbs = s.curbs.flatMap(c => {
+        if (c.pathId !== ref.pathId) return [c]
+        const overlapsRemoved = c.pathEnd > removeLo && c.pathStart < removeHi
+        if (overlapsRemoved) return []
+        if (c.pathStart >= removeHi) {
+          return [{ ...c, pathStart: c.pathStart - 1, pathEnd: c.pathEnd - 1 }]
+        }
+        return [c]
+      })
       if (path.pitLaneSegments) {
         const shifted = path.pitLaneSegments
           .filter(i => i !== ref.anchorIndex - 1 && i !== ref.anchorIndex)
@@ -473,15 +557,29 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         if (shifted.length === 0) delete path.pitLaneSegments
         else path.pitLaneSegments = shifted
       }
-      return { doc, checkpoints, selected: null, selectedAnchors: [] }
+      const pathGone = path.anchors.length === 0
+      const finalCurbs = pathGone ? curbs.filter(c => c.pathId !== ref.pathId) : curbs
+      return {
+        doc,
+        checkpoints,
+        curbs: finalCurbs,
+        selected: null,
+        selectedAnchors: [],
+        selectedPathId: pathGone && s.selectedPathId === ref.pathId ? null : s.selectedPathId,
+        selectedCurbId:
+          s.selectedCurbId && finalCurbs.find(c => c.id === s.selectedCurbId)
+            ? s.selectedCurbId
+            : null,
+      }
     })
   },
 
   setSelected: ref =>
-    set({
+    set(s => ({
       selected: ref,
       selectedAnchors: ref ? [ref] : [],
-    }),
+      selectedPathId: ref ? ref.pathId : s.selectedPathId,
+    })),
 
   toggleAnchorInSelection: ref =>
     set(s => {
@@ -499,7 +597,7 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
       }
     }),
 
-  clearSelection: () => set({ selected: null, selectedAnchors: [] }),
+  clearSelection: () => set({ selected: null, selectedAnchors: [], selectedPathId: null }),
 
   setPenStartRef: ref =>
     set(s => ({
@@ -572,6 +670,45 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
 
   setSelectedPitBoxAreaId: id => set({ selectedPitBoxAreaId: id }),
 
+  setSelectedPathId: id => set({ selectedPathId: id }),
+
+  addCurb: (pathId, pathStart, pathEnd, edge, variant) => {
+    const past = [...get().past, snapshotOf(get())].slice(-HISTORY_LIMIT)
+    const id = nextId('curb')
+    const lo = Math.min(pathStart, pathEnd)
+    const hi = Math.max(pathStart, pathEnd)
+    set(s => ({
+      curbs: [...s.curbs, { id, pathId, pathStart: lo, pathEnd: hi, edge, variant }],
+      selectedCurbId: id,
+      past,
+      future: [],
+    }))
+    return id
+  },
+
+  updateCurb: (id, updates) => {
+    const past = [...get().past, snapshotOf(get())].slice(-HISTORY_LIMIT)
+    set(s => ({
+      curbs: s.curbs.map(c => (c.id === id ? { ...c, ...updates } : c)),
+      past,
+      future: [],
+    }))
+  },
+
+  deleteCurb: id => {
+    const past = [...get().past, snapshotOf(get())].slice(-HISTORY_LIMIT)
+    set(s => ({
+      curbs: s.curbs.filter(c => c.id !== id),
+      selectedCurbId: s.selectedCurbId === id ? null : s.selectedCurbId,
+      past,
+      future: [],
+    }))
+  },
+
+  setSelectedCurbId: id => set({ selectedCurbId: id }),
+
+  setPendingCurbVariant: variant => set({ pendingCurbVariant: variant }),
+
   addCheckpoint: (kind, pathId, segmentIndex, t) => {
     const past = [...get().past, snapshotOf(get())].slice(-HISTORY_LIMIT)
     set(s => {
@@ -624,10 +761,13 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         checkpoints: prev.checkpoints,
         raceDirection: prev.raceDirection,
         pitBoxAreas: prev.pitBoxAreas,
+        curbs: prev.curbs,
         pen: { activePathId: null, hoverClose: false, startRef: null },
         selected: null,
         selectedAnchors: [],
         selectedPitBoxAreaId: null,
+        selectedPathId: null,
+        selectedCurbId: null,
       }
     })
   },
@@ -643,10 +783,13 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         checkpoints: next.checkpoints,
         raceDirection: next.raceDirection,
         pitBoxAreas: next.pitBoxAreas,
+        curbs: next.curbs,
         pen: { activePathId: null, hoverClose: false, startRef: null },
         selected: null,
         selectedAnchors: [],
         selectedPitBoxAreaId: null,
+        selectedPathId: null,
+        selectedCurbId: null,
       }
     })
   },
@@ -657,12 +800,15 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
       checkpoints: [],
       raceDirection: 'forward',
       pitBoxAreas: [],
+      curbs: [],
       past: [],
       future: [],
       pen: { activePathId: null, hoverClose: false, startRef: null },
       selected: null,
       selectedAnchors: [],
       selectedPitBoxAreaId: null,
+      selectedPathId: null,
+      selectedCurbId: null,
     })
   },
 
@@ -675,12 +821,15 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         ...area,
         position: clonePt(area.position),
       })),
+      curbs: (next.curbs ?? []).map(c => ({ ...c })),
       past: [],
       future: [],
       pen: { activePathId: null, hoverClose: false, startRef: null },
       selected: null,
       selectedAnchors: [],
       selectedPitBoxAreaId: null,
+      selectedPathId: null,
+      selectedCurbId: null,
     })
   },
 }))

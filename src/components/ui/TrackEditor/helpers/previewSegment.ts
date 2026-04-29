@@ -1,16 +1,12 @@
 import { getAnchor, resolveAnchor } from '../geometry/path'
-import type { AnchorRef, Path, Point } from '../geometry/types'
+import type { Path, Point } from '../geometry/types'
 import { worldToScreen, type Viewport } from '../geometry/viewport'
-
-export type PenSnapshot = {
-  activePathId: string | null
-  startRef: AnchorRef | null
-}
+import type { PenState } from '../state/useTrackEditorStore'
 
 export function buildPreviewSegment(args: {
   paths: Path[]
   viewport: Viewport
-  pen: PenSnapshot
+  pen: Pick<PenState, 'activePathId' | 'startRef'>
   hoverWorld: Point | null
 }): string | null {
   const { paths, viewport, pen, hoverWorld } = args
