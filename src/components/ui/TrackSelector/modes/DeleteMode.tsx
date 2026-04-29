@@ -6,7 +6,7 @@ export function DeleteMode({
   onConfirm,
   onCancel,
 }: {
-  trackName: string | undefined
+  trackName: string
   onConfirm: () => void
   onCancel: () => void
 }) {

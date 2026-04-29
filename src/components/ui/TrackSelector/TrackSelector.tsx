@@ -165,9 +165,9 @@ export default function TrackSelector() {
             />
           )}
 
-          {menuMode === 'delete' && (
+          {menuMode === 'delete' && activeTrack && (
             <DeleteMode
-              trackName={activeTrack?.name}
+              trackName={activeTrack.name}
               onConfirm={handleConfirmDelete}
               onCancel={handleCancel}
             />
