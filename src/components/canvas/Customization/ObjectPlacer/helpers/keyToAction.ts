@@ -1,10 +1,4 @@
-export type PlacementState =
-  | 'selecting'
-  | 'placing'
-  | 'dragging'
-  | 'placingControlPoint'
-  | 'curbDragging'
-  | 'polygonDrawing'
+import type { PlacementState } from '@/types/trackObjects'
 
 export type PlacerAction =
   | { kind: 'undo' }

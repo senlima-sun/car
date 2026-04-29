@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
-import { keyToAction, type PlacementState } from './keyToAction'
+import type { PlacementState } from '@/types/trackObjects'
+import { keyToAction } from './keyToAction'
 
 const baseEvent = {
   code: '',

@@ -22,6 +22,7 @@ import { findBarriersOnRoad } from '../../../utils/trackValidation'
 import { TRACK_WIDTH } from '../../../constants/dimensions'
 import { useTerrainStore } from '../../../stores/useTerrainStore'
 import GhostPreview from './GhostPreview'
+import { useObjectPlacerKeyboard } from './ObjectPlacer/hooks/useObjectPlacerKeyboard'
 
 export default function ObjectPlacer() {
   const groundRef = useRef<Mesh>(null)
@@ -54,7 +55,7 @@ export default function ObjectPlacer() {
   const updateCurbDrag = useEditorStore(s => s.updateCurbDrag)
   const confirmCurbPlacement = useEditorStore(s => s.confirmCurbPlacement)
   const cancelCurbPlacement = useEditorStore(s => s.cancelCurbPlacement)
-  const partialDeleteMode = useEditorStore(s => s.partialDeleteMode)
+  const partialDeleteMode = useEditorStore(s => s.editorMode === 'partialDelete')
   const partialDeleteState = useEditorStore(s => s.partialDeleteState)
   const startPartialDelete = useEditorStore(s => s.startPartialDelete)
   const updatePartialDeletePreview = useEditorStore(s => s.updatePartialDeletePreview)
@@ -69,8 +70,8 @@ export default function ObjectPlacer() {
   const copySelected = useEditorStore(s => s.copySelected)
   const pasteAtPosition = useEditorStore(s => s.pasteAtPosition)
   const previewPositionForPaste = useEditorStore(s => s.previewPosition)
-  const terrainEditMode = useEditorStore(s => s.terrainEditMode)
-  const elevationEditMode = useEditorStore(s => s.elevationEditMode)
+  const terrainEditMode = useEditorStore(s => s.editorMode === 'terrain')
+  const elevationEditMode = useEditorStore(s => s.editorMode === 'elevation')
   const setElevationEditMode = useEditorStore(s => s.setElevationEditMode)
   const setStartSnapElevation = useEditorStore(s => s.setStartSnapElevation)
   const setEndSnapElevation = useEditorStore(s => s.setEndSnapElevation)
@@ -365,111 +366,25 @@ export default function ObjectPlacer() {
     ],
   )
 
-  // Handle keyboard
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyZ') {
-        event.preventDefault()
-        if (event.shiftKey) {
-          redo()
-        } else {
-          undo()
-        }
-        return
-      }
-
-      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyC') {
-        event.preventDefault()
-        copySelected()
-        return
-      }
-      if ((event.ctrlKey || event.metaKey) && event.code === 'KeyV') {
-        event.preventDefault()
-        if (previewPositionForPaste) {
-          pasteAtPosition(previewPositionForPaste)
-        }
-        return
-      }
-
-      switch (event.code) {
-        case 'KeyR': {
-          const editorState = useEditorStore.getState()
-          const customStore = useCustomizationStore.getState()
-          if (editorState.selectedObjectId) {
-            const obj = customStore.placedObjects.find(o => o.id === editorState.selectedObjectId)
-            if (obj?.type === 'checkpoint' && obj.startPoint && obj.endPoint) {
-              const cx = (obj.startPoint[0] + obj.endPoint[0]) / 2
-              const cz = (obj.startPoint[2] + obj.endPoint[2]) / 2
-              const rotateAroundCenter = (
-                p: [number, number, number],
-              ): [number, number, number] => {
-                const dx = p[0] - cx
-                const dz = p[2] - cz
-                return [cx - dz, p[1], cz + dx]
-              }
-              const newStart = rotateAroundCenter(obj.startPoint)
-              const newEnd = rotateAroundCenter(obj.endPoint)
-              const newRotation = Math.atan2(newEnd[0] - newStart[0], newEnd[2] - newStart[2])
-              customStore.updateObject(obj.id, {
-                startPoint: newStart,
-                endPoint: newEnd,
-                position: [cx, 0, cz],
-                rotation: newRotation,
-              })
-              break
-            }
-          }
-          rotatePreviewCW()
-          break
-        }
-        case 'KeyY':
-          setElevationEditMode(!useEditorStore.getState().elevationEditMode)
-          break
-        case 'Escape':
-          if (elevationEditMode) {
-            setElevationEditMode(false)
-          } else if (placementState === 'polygonDrawing') {
-            cancelPolygon()
-          } else if (partialDeleteMode && partialDeleteState) {
-            cancelPartialDelete()
-          } else if (placementState === 'curbDragging') {
-            cancelCurbPlacement()
-          } else {
-            cancelPlacement()
-          }
-          break
-        case 'Backspace':
-          if (placementState === 'polygonDrawing') {
-            undoLastPolygonPoint()
-          }
-          break
-        case 'Enter':
-          if (placementState === 'polygonDrawing') {
-            closePolygon()
-          }
-          break
-      }
-    },
-    [
-      rotatePreviewCW,
-      cancelPlacement,
-      cancelCurbPlacement,
-      cancelPartialDelete,
-      cancelPolygon,
-      undoLastPolygonPoint,
-      closePolygon,
-      placementState,
-      partialDeleteMode,
-      partialDeleteState,
-      elevationEditMode,
-      setElevationEditMode,
-      undo,
-      redo,
-      copySelected,
-      pasteAtPosition,
-      previewPositionForPaste,
-    ],
-  )
+  useObjectPlacerKeyboard({
+    placementState,
+    partialDeleteMode,
+    partialDeleteState,
+    elevationEditMode,
+    previewPositionForPaste,
+    rotatePreviewCW,
+    cancelPlacement,
+    cancelCurbPlacement,
+    cancelPartialDelete,
+    cancelPolygon,
+    undoLastPolygonPoint,
+    closePolygon,
+    setElevationEditMode,
+    undo,
+    redo,
+    copySelected,
+    pasteAtPosition,
+  })
 
   const handleDblClick = useCallback(
     (event: MouseEvent) => {
@@ -492,7 +407,6 @@ export default function ObjectPlacer() {
     canvas.addEventListener('dblclick', handleDblClick)
     canvas.addEventListener('pointerdown', handlePointerDown)
     canvas.addEventListener('pointerup', handlePointerUp)
-    window.addEventListener('keydown', handleKeyDown)
 
     return () => {
       canvas.removeEventListener('pointermove', handlePointerMove)
@@ -502,7 +416,6 @@ export default function ObjectPlacer() {
       canvas.removeEventListener('dblclick', handleDblClick)
       canvas.removeEventListener('pointerdown', handlePointerDown)
       canvas.removeEventListener('pointerup', handlePointerUp)
-      window.removeEventListener('keydown', handleKeyDown)
     }
   }, [
     gl,
@@ -513,7 +426,6 @@ export default function ObjectPlacer() {
     handleDblClick,
     handlePointerDown,
     handlePointerUp,
-    handleKeyDown,
   ])
 
   // Update preview position each frame
