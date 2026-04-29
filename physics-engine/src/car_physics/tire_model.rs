@@ -267,8 +267,7 @@ mod tests {
     }
 
     fn uniform_loads() -> [f32; 4] {
-        let per_wheel = CAR_MASS * 9.81 * 0.25;
-        [per_wheel, per_wheel, per_wheel, per_wheel]
+        [FZ_NOMINAL; 4]
     }
 
     #[test]
@@ -313,10 +312,18 @@ mod tests {
 
     #[test]
     fn test_calculate_tire_grip_routes_fl_fr_to_front_axle() {
-        let per_wheel = CAR_MASS * 9.81 * 0.25;
-        let symmetric = [per_wheel * 1.5, per_wheel * 1.5, per_wheel * 0.5, per_wheel * 0.5];
-        let swapped_axles =
-            [per_wheel * 0.5, per_wheel * 0.5, per_wheel * 1.5, per_wheel * 1.5];
+        let symmetric = [
+            FZ_NOMINAL * 1.5,
+            FZ_NOMINAL * 1.5,
+            FZ_NOMINAL * 0.5,
+            FZ_NOMINAL * 0.5,
+        ];
+        let swapped_axles = [
+            FZ_NOMINAL * 0.5,
+            FZ_NOMINAL * 0.5,
+            FZ_NOMINAL * 1.5,
+            FZ_NOMINAL * 1.5,
+        ];
 
         let (front_a, rear_a) = calculate_tire_grip(8.0, symmetric, 1.7, false, false);
         let (front_b, rear_b) = calculate_tire_grip(8.0, swapped_axles, 1.7, false, false);
@@ -334,5 +341,4 @@ mod tests {
             front_b
         );
     }
-
 }

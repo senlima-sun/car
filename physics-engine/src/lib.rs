@@ -914,17 +914,26 @@ impl Default for PhysicsEngine {
     }
 }
 
+/// Total per-wheel-load floor below which we treat the array as "no signal"
+/// and let the engine fall back to its quasi-static estimate. A car at rest
+/// pushes ~7830 N total; this picks up undefined/null/all-zero arrays from JS.
 const WHEEL_LOADS_MIN_TOTAL_N: f32 = 1.0;
 
+/// Deserialize the optional `wheel_loads` FFI arg from JS. Returns `None`
+/// (engine uses fallback) when the value is undefined/null, fails to parse,
+/// contains non-finite entries, or sums below the no-signal floor.
 fn parse_wheel_loads(value: JsValue) -> Option<[f32; 4]> {
     if value.is_undefined() || value.is_null() {
         return None;
     }
     let loads: [f32; 4] = from_value(value).ok()?;
-    if !loads.iter().all(|v| v.is_finite()) {
-        return None;
+    let mut sum = 0.0_f32;
+    for v in &loads {
+        if !v.is_finite() {
+            return None;
+        }
+        sum += v;
     }
-    let sum: f32 = loads.iter().sum();
     if sum < WHEEL_LOADS_MIN_TOTAL_N {
         return None;
     }

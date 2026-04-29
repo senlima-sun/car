@@ -454,16 +454,23 @@ function sanitizeVec3(
   ]
 }
 
+const WHEEL_LOADS_MIN_TOTAL_N = 1
+const wheelLoadsScratch: [number, number, number, number] = [0, 0, 0, 0]
+
 function sanitizeWheelLoads(
   loads: [number, number, number, number] | undefined,
 ): [number, number, number, number] | null {
   if (!loads) return null
-  const fl = sanitize(loads[0], 0)
-  const fr = sanitize(loads[1], 0)
-  const rl = sanitize(loads[2], 0)
-  const rr = sanitize(loads[3], 0)
-  if (fl + fr + rl + rr < 1) return null
-  return [Math.max(fl, 0), Math.max(fr, 0), Math.max(rl, 0), Math.max(rr, 0)]
+  let sum = 0
+  for (let i = 0; i < 4; i++) {
+    const v = loads[i]
+    if (!Number.isFinite(v)) return null
+    const clamped = v > 0 ? v : 0
+    wheelLoadsScratch[i] = clamped
+    sum += clamped
+  }
+  if (sum < WHEEL_LOADS_MIN_TOTAL_N) return null
+  return wheelLoadsScratch
 }
 
 /**

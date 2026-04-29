@@ -66,8 +66,8 @@ fn missing_optional_input_fields_default_to_zero() {
         "brake": false,
         "handbrake": false
     }"#;
-    let input: CarInput =
-        serde_json::from_str(input_json).expect("CarInput deserializes with omitted optional fields");
+    let input: CarInput = serde_json::from_str(input_json)
+        .expect("CarInput deserializes with omitted optional fields");
 
     assert_eq!(input.steer, 0.0);
     assert_eq!(input.throttle, 0.0);
@@ -83,7 +83,7 @@ fn missing_optional_input_fields_default_to_zero() {
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
-    None,
+        None,
     );
     assert!(out.speed_kmh.is_finite());
 }
@@ -99,7 +99,7 @@ fn output_schema_is_stable_for_js_consumers() {
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
-    None,
+        None,
     );
 
     let json = serde_json::to_value(&bundle).expect("StepAndSyncOutput → Value");

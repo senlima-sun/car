@@ -1276,7 +1276,7 @@ mod tests {
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
 
         // Should have positive forward velocity after accelerating
@@ -1330,7 +1330,7 @@ mod tests {
                 linvel,
                 [0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
-            None,
+                None,
             );
             linvel = output.linear_velocity;
         }
@@ -1366,7 +1366,7 @@ mod tests {
                 linvel2,
                 [0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
-            None,
+                None,
             );
             linvel2 = output.linear_velocity;
         }
@@ -1397,7 +1397,7 @@ mod tests {
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
 
         assert!(output.grip_breakdown.base_compound_grip > 0.0);
@@ -1436,7 +1436,7 @@ mod tests {
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         let second = engine.step(
             1.0 / 120.0,
@@ -1446,7 +1446,7 @@ mod tests {
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
 
         assert!(
@@ -1469,7 +1469,7 @@ mod tests {
             [0.0, 0.0, 15.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
 
         assert!(output.bottoming_out.is_contact);
@@ -1493,7 +1493,7 @@ mod tests {
                 [0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
-            None,
+                None,
             );
         }
 
@@ -1522,7 +1522,7 @@ mod tests {
             [25.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         let scraping_output = scraping.step(
             1.0 / 120.0,
@@ -1532,7 +1532,7 @@ mod tests {
             [25.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
 
         assert!(scraping_output.bottoming_out.is_contact);

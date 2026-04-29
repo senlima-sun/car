@@ -93,15 +93,21 @@ fn soak_step_handles_10k_adversarial_steps() {
         let surface_normal = pick_surface_normal(&mut rng);
 
         let output = engine.step(
-            dt, input, position, rotation, linvel, angvel, surface_normal, None,
+            dt,
+            input,
+            position,
+            rotation,
+            linvel,
+            angvel,
+            surface_normal,
+            None,
         );
         assert_output_finite(&output, frame);
 
         linvel = output.linear_velocity;
         angvel = output.angular_velocity;
 
-        let lin_mag_sq =
-            linvel[0] * linvel[0] + linvel[1] * linvel[1] + linvel[2] * linvel[2];
+        let lin_mag_sq = linvel[0] * linvel[0] + linvel[1] * linvel[1] + linvel[2] * linvel[2];
         assert!(
             lin_mag_sq < LIN_VEL_BLOWUP_LIMIT_SQ,
             "linear velocity blow-up at frame {frame}: |v|^2={lin_mag_sq}"
@@ -164,7 +170,14 @@ fn soak_step_and_sync_handles_10k_adversarial_steps() {
         let surface_normal = pick_surface_normal(&mut rng);
 
         let bundle = engine.step_and_sync(
-            dt, input, position, rotation, linvel, angvel, surface_normal, None,
+            dt,
+            input,
+            position,
+            rotation,
+            linvel,
+            angvel,
+            surface_normal,
+            None,
         );
         assert_output_finite(&bundle.physics, frame);
 

@@ -87,7 +87,7 @@ fn test_extreme_small_dt() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         assert_output_finite(&output, frame);
         linvel = output.linear_velocity;
@@ -115,7 +115,7 @@ fn test_extreme_large_dt() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         assert_output_finite(&output, frame);
         linvel = output.linear_velocity;
@@ -136,7 +136,7 @@ fn test_zero_speed_no_division_by_zero() {
         zero_velocity(),
         zero_velocity(),
         [0.0, 1.0, 0.0],
-    None,
+        None,
     );
     assert_output_finite(&output, 0);
 
@@ -168,7 +168,7 @@ fn test_continuous_acceleration_100_frames() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         assert_output_finite(&output, frame);
 
@@ -216,7 +216,7 @@ fn test_extreme_cold_temperature() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         assert_output_finite(&output, frame);
         linvel = output.linear_velocity;
@@ -247,7 +247,7 @@ fn test_extreme_hot_temperature() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         assert_output_finite(&output, frame);
         linvel = output.linear_velocity;
@@ -278,7 +278,7 @@ fn test_full_tire_wear_continues_running() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         assert_output_finite(&output, frame);
         linvel = output.linear_velocity;
@@ -308,7 +308,7 @@ fn test_simultaneous_brake_and_throttle() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         assert_output_finite(&output, frame);
         linvel = output.linear_velocity;
@@ -337,7 +337,7 @@ fn test_max_steering_at_high_speed() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         linvel = output.linear_velocity;
         angvel = output.angular_velocity;
@@ -358,7 +358,7 @@ fn test_max_steering_at_high_speed() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         assert_output_finite(&output, frame);
         linvel = output.linear_velocity;
@@ -387,7 +387,7 @@ fn test_handbrake_at_speed() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         linvel = output.linear_velocity;
         angvel = output.angular_velocity;
@@ -407,7 +407,7 @@ fn test_handbrake_at_speed() {
             linvel,
             angvel,
             [0.0, 1.0, 0.0],
-        None,
+            None,
         );
         assert_output_finite(&output, frame);
         linvel = output.linear_velocity;
