@@ -92,7 +92,9 @@ fn soak_step_handles_10k_adversarial_steps() {
         let input = build_input(&mut rng);
         let surface_normal = pick_surface_normal(&mut rng);
 
-        let output = engine.step(dt, input, position, rotation, linvel, angvel, surface_normal);
+        let output = engine.step(
+            dt, input, position, rotation, linvel, angvel, surface_normal, None,
+        );
         assert_output_finite(&output, frame);
 
         linvel = output.linear_velocity;
@@ -122,8 +124,9 @@ fn soak_step_and_sync_handles_10k_adversarial_steps() {
         let input = build_input(&mut rng);
         let surface_normal = pick_surface_normal(&mut rng);
 
-        let bundle =
-            engine.step_and_sync(dt, input, position, rotation, linvel, angvel, surface_normal);
+        let bundle = engine.step_and_sync(
+            dt, input, position, rotation, linvel, angvel, surface_normal, None,
+        );
         assert_output_finite(&bundle.physics, frame);
 
         assert!(

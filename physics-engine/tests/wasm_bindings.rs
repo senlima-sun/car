@@ -44,6 +44,7 @@ fn ffi_inputs_roundtrip_through_serde() {
         linvel,
         angvel,
         surface_normal,
+        None,
     );
 
     let serialized = serde_json::to_string(&bundle).expect("StepAndSyncOutput serializes");
@@ -82,6 +83,7 @@ fn missing_optional_input_fields_default_to_zero() {
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
+    None,
     );
     assert!(out.speed_kmh.is_finite());
 }
@@ -97,6 +99,7 @@ fn output_schema_is_stable_for_js_consumers() {
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0],
+    None,
     );
 
     let json = serde_json::to_value(&bundle).expect("StepAndSyncOutput → Value");

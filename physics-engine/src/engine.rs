@@ -596,6 +596,7 @@ impl PhysicsEngine {
         current_linvel: [f32; 3],
         current_angvel: [f32; 3],
         surface_normal: [f32; 3],
+        wheel_loads: Option<[f32; 4]>,
     ) -> CarPhysicsOutput {
         let dt = delta_seconds.min(0.05);
 
@@ -930,6 +931,7 @@ impl PhysicsEngine {
             ers_harvest_decel,
             air_density,
             surface_normal,
+            wheel_loads,
         );
 
         // Apply pit lane speed limiter braking
@@ -1157,6 +1159,7 @@ impl PhysicsEngine {
         current_linvel: [f32; 3],
         current_angvel: [f32; 3],
         surface_normal: [f32; 3],
+        wheel_loads: Option<[f32; 4]>,
     ) -> crate::types::StepAndSyncOutput {
         let physics = self.step(
             delta_seconds,
@@ -1166,6 +1169,7 @@ impl PhysicsEngine {
             current_linvel,
             current_angvel,
             surface_normal,
+            wheel_loads,
         );
         let wind_state = self.get_wind_state();
         let aero_state = self.get_active_aero_state();
@@ -1272,6 +1276,7 @@ mod tests {
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
+        None,
         );
 
         // Should have positive forward velocity after accelerating
@@ -1325,6 +1330,7 @@ mod tests {
                 linvel,
                 [0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
+            None,
             );
             linvel = output.linear_velocity;
         }
@@ -1360,6 +1366,7 @@ mod tests {
                 linvel2,
                 [0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
+            None,
             );
             linvel2 = output.linear_velocity;
         }
@@ -1390,6 +1397,7 @@ mod tests {
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
+        None,
         );
 
         assert!(output.grip_breakdown.base_compound_grip > 0.0);
@@ -1428,6 +1436,7 @@ mod tests {
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
+        None,
         );
         let second = engine.step(
             1.0 / 120.0,
@@ -1437,6 +1446,7 @@ mod tests {
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
+        None,
         );
 
         assert!(
@@ -1459,6 +1469,7 @@ mod tests {
             [0.0, 0.0, 15.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
+        None,
         );
 
         assert!(output.bottoming_out.is_contact);
@@ -1482,6 +1493,7 @@ mod tests {
                 [0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
+            None,
             );
         }
 
@@ -1510,6 +1522,7 @@ mod tests {
             [25.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
+        None,
         );
         let scraping_output = scraping.step(
             1.0 / 120.0,
@@ -1519,6 +1532,7 @@ mod tests {
             [25.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
+        None,
         );
 
         assert!(scraping_output.bottoming_out.is_contact);

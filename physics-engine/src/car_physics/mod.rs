@@ -84,6 +84,7 @@ impl CarPhysicsState {
         ers_harvest_decel: f32,
         air_density: f32,
         surface_normal: [f32; 3],
+        wheel_loads: Option<[f32; 4]>,
     ) -> CarPhysicsOutput {
         let dt = delta.min(0.05); // Clamp delta time
 
@@ -267,9 +268,9 @@ impl CarPhysicsState {
             active_aero_downforce_mult,
             air_density,
         );
-        let total_load = gravity_normal + downforce;
+        let quasi_static_total_load = gravity_normal + downforce;
         let load_sensitivity = 0.015;
-        let load_ratio = total_load / gravity_normal.max(1.0);
+        let load_ratio = quasi_static_total_load / gravity_normal.max(1.0);
         let downforce_grip_bonus =
             load_ratio.powf(1.0 - load_sensitivity * (load_ratio - 1.0).max(0.0));
 
@@ -288,14 +289,19 @@ impl CarPhysicsState {
         let weight_transfer =
             weight_transfer::calculate_weight_transfer(sanitize(long_g, 0.0), sanitize(lat_g, 0.0));
 
-        // Tire grip calculation
+        let resolved_wheel_loads = wheel_loads.unwrap_or_else(|| {
+            let base = quasi_static_total_load * 0.25;
+            let front_corner = base + weight_transfer.front_load_change * 0.5;
+            let rear_corner = base + weight_transfer.rear_load_change * 0.5;
+            [front_corner, front_corner, rear_corner, rear_corner]
+        });
+
         let (front_grip, rear_grip) = tire_model::calculate_tire_grip(
             self.slip_angle_smoothed,
-            total_load,
+            resolved_wheel_loads,
             grip_coefficient * downforce_grip_bonus,
             input.handbrake,
             effective_throttle > 0.01 && effective_brake < 0.01,
-            &weight_transfer,
         );
 
         let combined_grip = front_grip * 0.4 + rear_grip * 0.6;

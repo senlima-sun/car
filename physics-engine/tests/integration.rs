@@ -73,6 +73,7 @@ fn step_sim(
         state.linvel,
         state.angvel,
         [0.0, 1.0, 0.0],
+    None,
     );
 
     state.linvel = output.linear_velocity;
@@ -310,6 +311,7 @@ fn test_rain_reduces_grip() {
             ZERO_VEL,
             ZERO_VEL,
             [0.0, 1.0, 0.0],
+        None,
         );
     }
     let mut state_rain = SimState::new();
@@ -621,6 +623,7 @@ fn test_step_and_sync_output_contains_ers() {
         state.linvel,
         state.angvel,
         [0.0, 1.0, 0.0],
+    None,
     );
 
     let json = serde_json::to_string(&sync_output).unwrap();

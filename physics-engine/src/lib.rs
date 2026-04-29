@@ -747,6 +747,7 @@ impl PhysicsEngine {
         current_linvel: JsValue,
         current_angvel: JsValue,
         surface_normal: JsValue,
+        wheel_loads: JsValue,
     ) -> JsValue {
         let input: CarInput = from_value(input).unwrap_or_default();
         let position: [f32; 3] = from_value(car_position).unwrap_or([0.0, 0.0, 0.0]);
@@ -754,6 +755,7 @@ impl PhysicsEngine {
         let linvel: [f32; 3] = from_value(current_linvel).unwrap_or([0.0, 0.0, 0.0]);
         let angvel: [f32; 3] = from_value(current_angvel).unwrap_or([0.0, 0.0, 0.0]);
         let normal: [f32; 3] = from_value(surface_normal).unwrap_or([0.0, 1.0, 0.0]);
+        let loads: Option<[f32; 4]> = parse_wheel_loads(wheel_loads);
 
         let output = self.inner.step(
             delta_seconds,
@@ -763,6 +765,7 @@ impl PhysicsEngine {
             linvel,
             angvel,
             normal,
+            loads,
         );
         to_value(&output).unwrap_or(JsValue::NULL)
     }
@@ -783,6 +786,7 @@ impl PhysicsEngine {
         current_linvel: JsValue,
         current_angvel: JsValue,
         surface_normal: JsValue,
+        wheel_loads: JsValue,
     ) -> JsValue {
         let input: CarInput = from_value(input).unwrap_or_default();
         let position: [f32; 3] = from_value(car_position).unwrap_or([0.0, 0.0, 0.0]);
@@ -790,6 +794,7 @@ impl PhysicsEngine {
         let linvel: [f32; 3] = from_value(current_linvel).unwrap_or([0.0, 0.0, 0.0]);
         let angvel: [f32; 3] = from_value(current_angvel).unwrap_or([0.0, 0.0, 0.0]);
         let normal: [f32; 3] = from_value(surface_normal).unwrap_or([0.0, 1.0, 0.0]);
+        let loads: Option<[f32; 4]> = parse_wheel_loads(wheel_loads);
 
         let output = self.inner.step_and_sync(
             delta_seconds,
@@ -799,6 +804,7 @@ impl PhysicsEngine {
             linvel,
             angvel,
             normal,
+            loads,
         );
         to_value(&output).unwrap_or(JsValue::NULL)
     }
@@ -906,4 +912,21 @@ impl Default for PhysicsEngine {
     fn default() -> Self {
         Self::new()
     }
+}
+
+const WHEEL_LOADS_MIN_TOTAL_N: f32 = 1.0;
+
+fn parse_wheel_loads(value: JsValue) -> Option<[f32; 4]> {
+    if value.is_undefined() || value.is_null() {
+        return None;
+    }
+    let loads: [f32; 4] = from_value(value).ok()?;
+    if !loads.iter().all(|v| v.is_finite()) {
+        return None;
+    }
+    let sum: f32 = loads.iter().sum();
+    if sum < WHEEL_LOADS_MIN_TOTAL_N {
+        return None;
+    }
+    Some(loads)
 }

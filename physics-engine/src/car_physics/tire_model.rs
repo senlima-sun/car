@@ -1,4 +1,3 @@
-use super::weight_transfer::WeightTransferResult;
 use crate::constants::car::CAR_MASS;
 
 const HANDBRAKE_REAR_GRIP: f32 = 0.2;
@@ -127,16 +126,14 @@ pub fn pacejka_grip_efficiency(slip_angle_deg: f32, fz: f32) -> f32 {
 
 pub fn calculate_tire_grip(
     slip_angle: f32,
-    total_load: f32,
+    wheel_loads: [f32; 4],
     grip_coefficient: f32,
     handbrake: bool,
     throttle: bool,
-    weight_transfer: &WeightTransferResult,
 ) -> (f32, f32) {
-    let base_load_per_wheel = total_load / 4.0;
-
-    let front_load = base_load_per_wheel + weight_transfer.front_load_change;
-    let rear_load = base_load_per_wheel + weight_transfer.rear_load_change;
+    let [fl, fr, rl, rr] = wheel_loads;
+    let front_load = (fl + fr) * 0.5;
+    let rear_load = (rl + rr) * 0.5;
 
     let front_mu = pacejka_grip_efficiency(slip_angle, front_load);
     let front_grip = front_mu * grip_coefficient;
@@ -155,7 +152,6 @@ pub fn calculate_tire_grip(
 
 #[cfg(test)]
 mod tests {
-    use super::super::weight_transfer::WeightTransferResult;
     use super::*;
 
     const EPSILON: f32 = 0.01;
@@ -270,30 +266,29 @@ mod tests {
         assert!(grip_high_coeff > grip_low_coeff);
     }
 
+    fn uniform_loads() -> [f32; 4] {
+        let per_wheel = CAR_MASS * 9.81 * 0.25;
+        [per_wheel, per_wheel, per_wheel, per_wheel]
+    }
+
     #[test]
     fn test_handbrake_reduces_rear() {
-        let weight = WeightTransferResult::default();
-        let (_, rear_normal) =
-            calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, false, false, &weight);
-        let (_, rear_handbrake) =
-            calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, true, false, &weight);
+        let (_, rear_normal) = calculate_tire_grip(8.0, uniform_loads(), 1.7, false, false);
+        let (_, rear_handbrake) = calculate_tire_grip(8.0, uniform_loads(), 1.7, true, false);
         assert!(rear_handbrake < rear_normal * 0.3);
     }
 
     #[test]
     fn test_throttle_oversteer() {
-        let weight = WeightTransferResult::default();
-        let (_, rear_coast) = calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, false, false, &weight);
-        let (_, rear_throttle) =
-            calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, false, true, &weight);
+        let (_, rear_coast) = calculate_tire_grip(8.0, uniform_loads(), 1.7, false, false);
+        let (_, rear_throttle) = calculate_tire_grip(8.0, uniform_loads(), 1.7, false, true);
         assert!(rear_throttle < rear_coast);
         assert!(rear_throttle > rear_coast * 0.5);
     }
 
     #[test]
     fn test_front_rear_balance() {
-        let weight = WeightTransferResult::default();
-        let (front, rear) = calculate_tire_grip(8.0, CAR_MASS * 9.81, 1.7, false, false, &weight);
+        let (front, rear) = calculate_tire_grip(8.0, uniform_loads(), 1.7, false, false);
         assert!(front > 0.0);
         assert!(rear > 0.0);
     }

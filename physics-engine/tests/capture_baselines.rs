@@ -25,6 +25,7 @@ fn step(
         *linvel,
         *angvel,
         [0.0, 1.0, 0.0],
+    None,
     );
     *linvel = out.linear_velocity;
     *angvel = out.angular_velocity;
