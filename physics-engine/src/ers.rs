@@ -7,12 +7,8 @@ use crate::types::{
 // ============================================================================
 
 const BATTERY_CAPACITY_KJ: f32 = 4000.0; // 4 MJ = 4000 kJ
-// Wave 4 Phase 6: 2026 F1 spec lifts the per-lap recovery cap from
-// 8.5 MJ (mid-2025 estimate) to 9.0 MJ. Matches FIA Technical Regs.
+// 2026 F1 FIA Technical Regs: per-lap recovery and deploy caps are both 9.0 MJ.
 pub const LAP_RECOVERY_CAP_MJ: f32 = 9.0;
-// Wave 4 Phase 6: 2026 F1 spec adds a per-lap *deploy* cap (was unset
-// in Wave 3; deploy was effectively gated only by battery + targeting
-// scheduler). Real 2026 cars are limited to 9.0 MJ deploy per lap.
 pub const LAP_DEPLOY_CAP_MJ: f32 = 9.0;
 
 // Deployment scheduler thresholds (pacing regulates deploy under throttle)
@@ -464,10 +460,13 @@ impl ErsPhysicsState {
         // DEPLOYMENT (can happen simultaneously with super clipping)
         // ========================================================================
 
-        // Wave 4 Phase 6: per-lap deploy cap. Real 2026 F1 limits deploy
-        // to 9.0 MJ/lap; once reached, deploy stops until lap rollover.
+        // 2026 F1 per-lap deploy cap: deploy stops once 9.0 MJ reached, until lap rollover.
         let deploy_cap_reached = self.current.lap_deployed_mj >= LAP_DEPLOY_CAP_MJ;
-        if is_accelerating && !is_braking && self.current.battery_charge > 0.0 && !deploy_cap_reached {
+        if is_accelerating
+            && !is_braking
+            && self.current.battery_charge > 0.0
+            && !deploy_cap_reached
+        {
             let deploy_power = anticipated_deploy_power;
 
             if deploy_power > 1.0 {
@@ -918,49 +917,41 @@ mod tests {
         assert!(state.current.power_flow >= SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW);
     }
 
-    /// Wave 4 Phase 6: 2026 F1 spec — 9 MJ per-lap deploy cap.
-    /// Once `lap_deployed_mj` reaches the cap, deploy stops until lap reset.
+    /// 2026 F1 spec: once `lap_deployed_mj` reaches 9.0 MJ, deploy stops until lap reset.
     #[test]
     fn test_lap_deploy_cap_at_9mj() {
         let mut state = ErsPhysicsState::new();
-        state.set_mode(ErsMode::Attack); // Highest deploy multiplier
-        // Pre-load deployed energy to just under the cap.
+        state.set_mode(ErsMode::Attack);
         state.current.lap_deployed_mj = 8.95;
-        // Battery full so the deploy gate would otherwise fire.
         state.current.battery_charge = 1.0;
-        // Drive at high speed → deploy schedule should target near full.
         for _ in 0..120 {
             state.update(1.0 / 120.0, true, false, 80.0, 1.0);
         }
-        // After ~1 second of attempted deploy, the cap should have fired.
         assert!(
             state.current.lap_deployed_mj <= LAP_DEPLOY_CAP_MJ + 0.1,
             "lap_deployed_mj exceeded cap: {} > {}",
             state.current.lap_deployed_mj,
             LAP_DEPLOY_CAP_MJ
         );
-        // Once the cap is fully reached, deploy should be inactive.
         state.current.lap_deployed_mj = LAP_DEPLOY_CAP_MJ;
-        let _ = state.update(1.0 / 120.0, true, false, 80.0, 1.0);
+        state.update(1.0 / 120.0, true, false, 80.0, 1.0);
         assert!(
             !state.current.is_deploying,
             "deploy should be inactive once lap cap reached"
         );
     }
 
+    /// 2026 F1 spec: per-lap recovery cap is 9.0 MJ (raised from 8.5).
     #[test]
     fn test_lap_recovery_cap_at_9mj() {
-        // Wave 4 Phase 6: recovery cap raised 8.5 → 9.0 MJ.
-        // The accumulate_recovered helper sets lap_recovery_cap_reached.
         let mut state = ErsPhysicsState::new();
         state.current.battery_charge = 0.0;
-        state.current.lap_recovered_mj = 8.95; // Just below the new cap
+        state.current.lap_recovered_mj = 8.95;
         state.update(1.0 / 60.0, false, true, 70.0, 0.0);
-        // Should still be recovering (just under cap)
         assert!(!state.current.lap_recovery_cap_reached);
 
         state.current.lap_recovered_mj = LAP_RECOVERY_CAP_MJ + 0.1;
-        state.accumulate_recovered(0.0); // forces the cap-check
+        state.accumulate_recovered(0.0);
         assert!(state.current.lap_recovery_cap_reached);
     }
 }

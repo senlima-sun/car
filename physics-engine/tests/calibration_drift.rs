@@ -125,16 +125,14 @@ fn phase_n_oil_80m_lat_g_drift_within_bounds() {
     assert_drift_within("oil 80m lat-g", actual, baseline, 0.25);
 }
 
-/// Wave 4 Phase 5 contract: 2026 X-mode flattens BOTH wings symmetrically
-/// (Wave 3 Phase 4 had asymmetric DRS rear-only unloading; that's been
-/// removed per 2026 regs). The DRS AeroMode variant is preserved for
-/// serde compat but now behaves identically to Straight. The test now
-/// asserts SYMMETRY: front and rear loads scale together, NOT a rear-only
-/// drop.
+/// 2026 X-mode flattens BOTH wings symmetrically (front_mult = rear_mult = 0.55).
+/// The DRS `AeroMode` variant is preserved for serde compat but now behaves
+/// identically to Straight. Asserts symmetric per-axle Fz drop, not rear-only.
 #[test]
 fn phase_5_x_mode_symmetric_downforce() {
     use car_physics_engine::engine::PhysicsEngine;
     use car_physics_engine::types::{AeroMode, CarInput, SurfaceType};
+    use common::FIXED_DT;
     let measure_axle_fz = |straight: bool| -> (f32, f32) {
         let mut engine = PhysicsEngine::new();
         engine.set_surface(SurfaceType::Road);
@@ -149,9 +147,6 @@ fn phase_5_x_mode_symmetric_downforce() {
         let mut linvel = [0.0_f32, 0.0, 60.0];
         let mut angvel = [0.0_f32; 3];
         for _ in 0..120 {
-            if straight {
-                engine.set_aero_mode(AeroMode::Straight);
-            }
             let out = engine.step(
                 FIXED_DT,
                 input,
@@ -179,7 +174,6 @@ fn phase_5_x_mode_symmetric_downforce() {
         let rear = out.per_wheel_forces.fz[2] + out.per_wheel_forces.fz[3];
         (front, rear)
     };
-    use common::FIXED_DT;
     let (corner_front, corner_rear) = measure_axle_fz(false);
     let (x_front, x_rear) = measure_axle_fz(true);
     let front_drop = (corner_front - x_front) / corner_front;
@@ -189,8 +183,6 @@ fn phase_5_x_mode_symmetric_downforce() {
         front_drop * 100.0,
         rear_drop * 100.0
     );
-    // X-mode flattens both wings symmetrically (front_mult = rear_mult = 0.55).
-    // Per-axle Fz drops should be similar, not asymmetric.
     let asymmetry = (front_drop - rear_drop).abs();
     assert!(
         asymmetry < 0.10,
@@ -199,7 +191,6 @@ fn phase_5_x_mode_symmetric_downforce() {
         rear_drop * 100.0,
         asymmetry * 100.0
     );
-    // And both axles should drop measurably (X-mode flattens vs Z-mode).
     assert!(front_drop > 0.0, "X-mode front should unload vs Z-mode");
     assert!(rear_drop > 0.0, "X-mode rear should unload vs Z-mode");
 }
