@@ -42,12 +42,12 @@ pub fn calculate_weight_transfer(longitudinal_g: f32, lateral_g: f32) -> WeightT
 
     // Lateral weight transfer (cornering). Wave 4 Phase 2: per-axle
     // track widths. Each axle carries its share of the total mass and
-    // sees its own roll-moment arm. Front/rear lateral transfer:
+    // levers about its own half-track:
     //   ΔFz_front = (lat_g × M_front × h) / track_front
     //   ΔFz_rear  = (lat_g × M_rear  × h) / track_rear
-    // The aggregated `lat_transfer` is the average shift used by the
-    // existing left/right consumers; per-axle splits are reported via
-    // `lat_transfer_front` / `lat_transfer_rear` for the integrator.
+    // The two are summed into the aggregate `lat_transfer` consumed by
+    // `left_load_change` / `right_load_change`. Positive lat_g = right
+    // turn → load shifts left.
     let mass_front = CAR_MASS * WEIGHT_DIST_FRONT;
     let mass_rear = CAR_MASS * (1.0 - WEIGHT_DIST_FRONT);
     let lat_transfer_front =
