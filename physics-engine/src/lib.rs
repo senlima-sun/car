@@ -176,6 +176,14 @@ impl PhysicsEngine {
         self.inner.reset_tire_wear();
     }
 
+    /// Clear blown-tire latch and per-wheel blowout risk. Call from the
+    /// JS respawn path so heat-blown tires don't persist across game-
+    /// mode transitions.
+    #[wasm_bindgen]
+    pub fn reset_tire_blowout(&mut self) {
+        self.inner.reset_tire_blowout();
+    }
+
     /// Set tire wear for all wheels (for debug/testing)
     /// wear: 0.0 (new) to 1.0 (fully worn)
     #[wasm_bindgen]

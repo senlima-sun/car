@@ -11,7 +11,7 @@ fn capture_wave_1_baselines() {
     let json = format!(
         r#"{{
   "schema_version": 1,
-  "captured_at": "post-wave-1",
+  "captured_at": "post-wave-2-phase-5",
   "scenarios": {{
     "zero_to_100_kmh_seconds": {},
     "fifty_ms_to_zero_stop_distance_m": {},

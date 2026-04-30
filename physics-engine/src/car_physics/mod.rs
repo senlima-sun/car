@@ -81,6 +81,7 @@ impl CarPhysicsState {
         tire_degradation: &TireDegradationModifiers,
         wind_modifiers: &WindModifiers,
         curb_grip_bonus: f32,
+        longitudinal_grip_modifier: f32,
         is_on_curb: bool,
         curb_speed_multiplier: f32,
         ers_boost: f32,
@@ -335,6 +336,7 @@ impl CarPhysicsState {
             rear_brake_force,
             resolved_wheel_loads,
             downforce_grip_bonus,
+            longitudinal_grip_modifier,
         });
         longitudinal_force += wheel_long_force;
 

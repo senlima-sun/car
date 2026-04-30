@@ -30,6 +30,7 @@ import {
   getTireWear,
   getTireWearPerWheel,
   resetTireWear,
+  resetTireBlowout,
   getEffectiveGrip,
   setOnCurb,
   isOnCurb,
@@ -153,6 +154,7 @@ interface PhysicsContextValue {
   getTireWear: typeof getTireWear
   getTireWearPerWheel: typeof getTireWearPerWheel
   resetTireWear: typeof resetTireWear
+  resetTireBlowout: typeof resetTireBlowout
   getEffectiveGrip: typeof getEffectiveGrip
   setOnCurb: typeof setOnCurb
   isOnCurb: typeof isOnCurb
@@ -281,6 +283,7 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       getTireWear,
       getTireWearPerWheel,
       resetTireWear,
+      resetTireBlowout,
       getEffectiveGrip,
       setOnCurb,
       isOnCurb,

@@ -25,6 +25,13 @@ pub struct WheelSpinInputs {
     pub rear_brake_force: f32,
     pub resolved_wheel_loads: [f32; 4],
     pub downforce_grip_bonus: f32,
+    /// Environmental grip stack (surface × weather × aquaplaning ×
+    /// terrain). Multiplied into the longitudinal Pacejka output so
+    /// wet/oil/aqua reduce braking and acceleration the same way they
+    /// reduce cornering. Cold-tire material grip stays lateral-only —
+    /// the wheel-spin integrator's tire-reaction feedback loop already
+    /// couples to the cold-rubber state via prev_wheel_fx.
+    pub longitudinal_grip_modifier: f32,
 }
 
 #[derive(Debug, Default)]
@@ -112,7 +119,10 @@ impl WheelSpinIntegrator {
             // on |fx|. Wave 3 will pass real lateral force.
             let mu_fz_limit = peak_mu_at_fz(fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT) * fz;
             let (fx_capped, _) = combined_slip(fx_pacejka, 0.0, mu_fz_limit);
-            let fx = fx_capped * BASE_TIRE_GRIP_COEFFICIENT * i.downforce_grip_bonus;
+            let fx = fx_capped
+                * BASE_TIRE_GRIP_COEFFICIENT
+                * i.downforce_grip_bonus
+                * i.longitudinal_grip_modifier;
             wheel_fx_now[wheel] = fx;
             wheel_long_force += fx;
         }
@@ -141,6 +151,7 @@ mod tests {
             rear_brake_force: 0.0,
             resolved_wheel_loads: nominal_loads(),
             downforce_grip_bonus: 1.0,
+            longitudinal_grip_modifier: 1.0,
         }
     }
 

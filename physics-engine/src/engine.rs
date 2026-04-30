@@ -181,6 +181,13 @@ impl PhysicsEngine {
         self.tires.reset_wear();
     }
 
+    /// Reset blowout state (clear blown latch and per-wheel risk).
+    /// Wave 2 Phase 5: surfaced for the JS respawn path so blown tires
+    /// don't persist across game-mode transitions.
+    pub fn reset_tire_blowout(&mut self) {
+        self.tire_temperature.reset_blowout();
+    }
+
     pub fn set_tire_wear(&mut self, wear: f32) {
         self.tires.set_wear_all(wear);
     }
@@ -871,6 +878,25 @@ impl PhysicsEngine {
             * thermal_shock_grip
             * terrain_grip;
 
+        // Wave 2 Phase 5: longitudinal grip stack. The lateral path
+        // multiplies BASE_TIRE_GRIP_COEFFICIENT by `combined_grip`
+        // (above) including cold-tire material drop. Pre-Phase 5 the
+        // longitudinal path bypassed this entirely; wet/oil and
+        // aquaplaning didn't penalize braking or acceleration. Now the
+        // longitudinal path gets the *environmental* subset of the
+        // grip stack — surface, weather friction, aquaplaning, terrain —
+        // matching what causes wet/oil grip loss. Cold-rubber
+        // (`material_grip_avg`) and thermal-shock factors stay
+        // lateral-only because the wheel-spin integrator's ω/Pacejka
+        // path is already cold-rubber-coupled via the tire-reaction
+        // torque feedback; double-applying the material multiplier
+        // would collapse launch performance below the calibration
+        // envelope.
+        let longitudinal_grip_modifier = surface_modifiers.grip_multiplier
+            * weather_modifiers.friction_slip_multiplier
+            * aquaplaning_grip
+            * terrain_grip;
+
         // Speed modifier from surface
         let surface_speed = surface_modifiers.speed_multiplier;
 
@@ -919,6 +945,7 @@ impl PhysicsEngine {
             &tire_degradation,
             &wind_modifiers,
             combined_grip,
+            longitudinal_grip_modifier,
             self.curb.is_on_curb(),
             surface_speed,
             ers_boost,

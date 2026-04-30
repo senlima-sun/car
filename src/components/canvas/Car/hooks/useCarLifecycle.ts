@@ -1,6 +1,7 @@
 import { useRef, useEffect, MutableRefObject } from 'react'
 import { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore } from '../../../../stores/useGameStore'
+import { resetTireBlowout } from '../../../../wasm/PhysicsBridge'
 
 interface CarLifecycleOptions {
   chassisRef: MutableRefObject<RapierRigidBody | null>
@@ -50,6 +51,9 @@ export function useCarLifecycle({ chassisRef, startPosition }: CarLifecycleOptio
       chassis.setGravityScale(1, true)
       chassis.setLinvel({ x: 0, y: 0, z: 0 }, true)
       chassis.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      // Wave 2 Phase 5: clear thermally-blown tires on respawn so a
+      // burst from the previous session doesn't carry into the next.
+      resetTireBlowout()
     }
     prevGameStatusRef.current = gameStatus
   }

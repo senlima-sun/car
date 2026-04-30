@@ -724,6 +724,14 @@ export function resetTireWear(): void {
 }
 
 /**
+ * Clear blown-tire latch and per-wheel blowout risk.
+ * Call from respawn lifecycle paths so heat-blown tires don't persist.
+ */
+export function resetTireBlowout(): void {
+  getPhysicsEngine().reset_tire_blowout()
+}
+
+/**
  * Set tire wear for all wheels (for debug/testing)
  * @param wearPercentage Wear percentage 0-100 (0 = new, 100 = fully worn)
  */

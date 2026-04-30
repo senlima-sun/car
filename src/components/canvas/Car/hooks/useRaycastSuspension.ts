@@ -135,39 +135,19 @@ export function resolveAirborneVerticalCorrection({
 }
 
 const SAMPLE_POINTS_BASE_LEN = BASE_BODY_SAMPLE_POINTS.length
-const SAMPLE_POINTS_BUFFER: Array<[number, number, number]> = Array.from(
-  { length: SAMPLE_POINTS_BASE_LEN + 3 },
-  () => [0, 0, 0],
-)
-for (let i = 0; i < SAMPLE_POINTS_BASE_LEN; i++) {
-  const src = BASE_BODY_SAMPLE_POINTS[i]
-  SAMPLE_POINTS_BUFFER[i][0] = src[0]
-  SAMPLE_POINTS_BUFFER[i][1] = src[1]
-  SAMPLE_POINTS_BUFFER[i][2] = src[2]
-}
 
-function fillBodySamplePoints(forwardSpeed: number): number {
-  const lookahead = getTerrainLookaheadDistance(forwardSpeed)
-  if (lookahead === 0) return SAMPLE_POINTS_BASE_LEN
-
-  const frontSign = forwardSpeed >= 0 ? 1 : -1
-  const probeZ = frontSign * (WHEELBASE * 0.5 + lookahead)
-  const trackGauge = frontSign >= 0 ? TRACK_GAUGE_FRONT : TRACK_GAUGE_REAR
-
-  const a = SAMPLE_POINTS_BUFFER[SAMPLE_POINTS_BASE_LEN]
-  a[0] = 0
-  a[1] = SUSPENSION.LOWER_CHASSIS_Y
-  a[2] = probeZ
-  const b = SAMPLE_POINTS_BUFFER[SAMPLE_POINTS_BASE_LEN + 1]
-  b[0] = -trackGauge * 0.42
-  b[1] = SUSPENSION.LOWER_CHASSIS_Y
-  b[2] = probeZ
-  const c = SAMPLE_POINTS_BUFFER[SAMPLE_POINTS_BASE_LEN + 2]
-  c[0] = trackGauge * 0.42
-  c[1] = SUSPENSION.LOWER_CHASSIS_Y
-  c[2] = probeZ
-
-  return SAMPLE_POINTS_BASE_LEN + 3
+function makeSamplePointsBuffer(): Array<[number, number, number]> {
+  const buf: Array<[number, number, number]> = Array.from(
+    { length: SAMPLE_POINTS_BASE_LEN + 3 },
+    () => [0, 0, 0],
+  )
+  for (let i = 0; i < SAMPLE_POINTS_BASE_LEN; i++) {
+    const src = BASE_BODY_SAMPLE_POINTS[i]
+    buf[i][0] = src[0]
+    buf[i][1] = src[1]
+    buf[i][2] = src[2]
+  }
+  return buf
 }
 
 export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBody | null>) {
@@ -192,6 +172,35 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
     { hitY: 0, compression: 0, isGrounded: false, deflection: 0 },
   ])
   const wheelForcesRef = useRef<[number, number, number, number]>([0, 0, 0, 0])
+  // Per-hook scratch so a future ghost-replay or multiplayer instance
+  // doesn't share state with the player car (Wave 2 Phase 5).
+  const samplePointsBufferRef = useRef(makeSamplePointsBuffer())
+
+  function fillBodySamplePoints(forwardSpeed: number): number {
+    const buf = samplePointsBufferRef.current
+    const lookahead = getTerrainLookaheadDistance(forwardSpeed)
+    if (lookahead === 0) return SAMPLE_POINTS_BASE_LEN
+
+    const frontSign = forwardSpeed >= 0 ? 1 : -1
+    const probeZ = frontSign * (WHEELBASE * 0.5 + lookahead)
+    const trackGauge = frontSign >= 0 ? TRACK_GAUGE_FRONT : TRACK_GAUGE_REAR
+
+    const a = buf[SAMPLE_POINTS_BASE_LEN]
+    a[0] = 0
+    a[1] = SUSPENSION.LOWER_CHASSIS_Y
+    a[2] = probeZ
+    const b = buf[SAMPLE_POINTS_BASE_LEN + 1]
+    b[0] = -trackGauge * 0.42
+    b[1] = SUSPENSION.LOWER_CHASSIS_Y
+    b[2] = probeZ
+    const c = buf[SAMPLE_POINTS_BASE_LEN + 2]
+    c[0] = trackGauge * 0.42
+    c[1] = SUSPENSION.LOWER_CHASSIS_Y
+    c[2] = probeZ
+
+    return SAMPLE_POINTS_BASE_LEN + 3
+  }
+
   const wheelWorldPosRef = useRef<{ x: number; y: number; z: number }[]>([
     { x: 0, y: 0, z: 0 },
     { x: 0, y: 0, z: 0 },
@@ -370,8 +379,9 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
     }
 
     let maxBodyPenetration = 0
+    const samplePointsBuffer = samplePointsBufferRef.current
     for (let i = 0; i < bodySampleCount; i++) {
-      const sp = SAMPLE_POINTS_BUFFER[i]
+      const sp = samplePointsBuffer[i]
       const lx = sp[0]
       const ly = sp[1]
       const lz = sp[2]
