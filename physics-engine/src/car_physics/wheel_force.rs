@@ -287,6 +287,39 @@ mod tests {
     }
 
     #[test]
+    fn fy_consistent_with_axle_average_under_symmetric_loads() {
+        // At symmetric front/rear loads + moderate slip angle, the per-wheel
+        // Fy from `pacejka_lateral_per_wheel` should sum to the same total
+        // that `pacejka_lateral` would produce on the axle-averaged Fz times
+        // 4 (within 5%). Establishes that the per-wheel decomposition isn't
+        // a re-derivation drift.
+        use crate::car_physics::tire_model::pacejka_lateral_per_wheel;
+        let mut s = WheelForceIntegrator::new();
+        let mut inputs = idle_inputs();
+        inputs.slip_angle_smoothed_deg = 6.0;
+        let out = s.step(&inputs);
+
+        let slip_rad = 6.0_f32.to_radians();
+        let one_corner_fy = pacejka_lateral_per_wheel(
+            slip_rad,
+            nominal_loads()[0],
+            &PacejkaCoeffs::LATERAL_DEFAULT,
+            crate::car_physics::tire_model::TIRE_DEFAULT_LOAD_SENSITIVITY,
+        )
+        .abs();
+        let expected_total = one_corner_fy * 4.0;
+        let observed = out.total_lat_force.abs();
+        let drift = (observed - expected_total).abs() / expected_total;
+        assert!(
+            drift < 0.05,
+            "axle-average parity drifted: observed {} vs expected {} ({}%)",
+            observed,
+            expected_total,
+            drift * 100.0
+        );
+    }
+
+    #[test]
     fn fy_total_equals_sum_of_per_wheel() {
         let mut s = WheelForceIntegrator::new();
         let mut inputs = idle_inputs();
