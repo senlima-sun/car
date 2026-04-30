@@ -55,8 +55,7 @@ fn capture_wave_3_dry_baselines() {
 #[test]
 #[ignore]
 fn capture_wave_3_wet_baselines() {
-    let wet_stop_50_to_0 =
-        measure_stop_distance_with(make_wet_road_engine(), 50.0);
+    let wet_stop_50_to_0 = measure_stop_distance_with(make_wet_road_engine(), 50.0);
     let wet_lat_g_80m = measure_lat_g_with(make_wet_road_engine());
     let oil_lat_g_80m = measure_lat_g_with(make_oil_proxy_engine());
 
@@ -87,4 +86,3 @@ fn capture_wave_3_wet_baselines() {
     println!("oil_steady_state_80m_radius_peak_lat_g = {:?}", oil_lat_g_80m);
     println!("wrote {}", path.display());
 }
-
