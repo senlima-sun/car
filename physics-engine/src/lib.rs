@@ -809,6 +809,65 @@ impl PhysicsEngine {
         to_value(&output).unwrap_or(JsValue::NULL)
     }
 
+    /// Packed-payload variant of `step_and_sync` (Wave 2 Phase 3).
+    /// Reads all numeric per-step input from a single `Float32Array`
+    /// instead of 6 individual `JsValue` deserializes. JS-side caller
+    /// owns the buffer and writes into it once per frame; Rust reads as
+    /// a borrowed slice with no allocation. `CarInput` booleans are
+    /// packed into `input_bits`:
+    ///   bit 0 forward, bit 1 backward, bit 2 left, bit 3 right,
+    ///   bit 4 brake,   bit 5 handbrake.
+    /// Payload layout (25 floats):
+    ///   [0] dt
+    ///   [1] throttle
+    ///   [2] steer
+    ///   [3] brake_analog
+    ///   [4] _reserved (zero)
+    ///   [5..8]  car_position xyz
+    ///   [8..12] car_rotation xyzw
+    ///   [12..15] current_linvel xyz
+    ///   [15..18] current_angvel xyz
+    ///   [18..21] surface_normal xyz
+    ///   [21..25] wheel_loads fl/fr/rl/rr
+    /// `wheel_loads` is treated as "no signal" (engine fallback) when
+    /// the four-wheel sum < `WHEEL_LOADS_MIN_TOTAL_N` (matches the
+    /// legacy `parse_wheel_loads` semantics).
+    #[wasm_bindgen]
+    pub fn step_and_sync_packed(&mut self, payload: &[f32], input_bits: u32) -> JsValue {
+        if payload.len() < 25 {
+            return JsValue::NULL;
+        }
+        let input = CarInput {
+            forward: (input_bits & 0b0000_0001) != 0,
+            backward: (input_bits & 0b0000_0010) != 0,
+            left: (input_bits & 0b0000_0100) != 0,
+            right: (input_bits & 0b0000_1000) != 0,
+            brake: (input_bits & 0b0001_0000) != 0,
+            handbrake: (input_bits & 0b0010_0000) != 0,
+            steer: payload[2],
+            throttle: payload[1],
+            brake_analog: payload[3],
+        };
+        let position = [payload[5], payload[6], payload[7]];
+        let rotation = [payload[8], payload[9], payload[10], payload[11]];
+        let linvel = [payload[12], payload[13], payload[14]];
+        let angvel = [payload[15], payload[16], payload[17]];
+        let normal = [payload[18], payload[19], payload[20]];
+        let raw_loads = [payload[21], payload[22], payload[23], payload[24]];
+        let loads = if raw_loads.iter().all(|v| v.is_finite())
+            && raw_loads.iter().sum::<f32>() >= WHEEL_LOADS_MIN_TOTAL_N
+        {
+            Some(raw_loads)
+        } else {
+            None
+        };
+
+        let output = self.inner.step_and_sync(
+            payload[0], input, position, rotation, linvel, angvel, normal, loads,
+        );
+        to_value(&output).unwrap_or(JsValue::NULL)
+    }
+
     // ========================================================================
     // Terrain API
     // ========================================================================

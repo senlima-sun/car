@@ -522,8 +522,28 @@ export function stepPhysics(
 }
 
 /**
- * Combined physics step + state sync (fewer FFI calls)
+ * Combined physics step + state sync (fewer FFI calls).
+ * Wave 2 Phase 3: payload is packed into a single shared Float32Array(25)
+ * and CarInput booleans into a u32 bitfield, replacing 6 separate
+ * `serde_wasm_bindgen::from_value` calls per frame with one slice
+ * borrow on the Rust side. Single-owner buffer; safe under the current
+ * sequential 120Hz game loop. A future ghost-replay path that calls
+ * `stepAndSync` twice per frame would need its own scratch.
  */
+const STEP_PACKED_LEN = 25
+const stepPackedBuffer = new Float32Array(STEP_PACKED_LEN)
+
+function encodeInputBits(input: CarInput): number {
+  return (
+    (input.forward ? 0b0000_0001 : 0) |
+    (input.backward ? 0b0000_0010 : 0) |
+    (input.left ? 0b0000_0100 : 0) |
+    (input.right ? 0b0000_1000 : 0) |
+    (input.brake ? 0b0001_0000 : 0) |
+    (input.handbrake ? 0b0010_0000 : 0)
+  )
+}
+
 export function stepAndSync(
   delta: number,
   input: CarInput,
@@ -535,20 +555,29 @@ export function stepAndSync(
   wheelLoads?: [number, number, number, number],
 ): StepAndSyncOutput {
   const eng = getPhysicsEngine()
-  const safeLinvel = sanitizeVec3(linvel, undefined, "linvel")
-  const safeAngvel = sanitizeVec3(angvel, undefined, "angvel")
+  const safeLinvel = sanitizeVec3(linvel, undefined, 'linvel')
+  const safeAngvel = sanitizeVec3(angvel, undefined, 'angvel')
   const safeDelta = sanitize(delta, 0.016)
   const safeLoads = sanitizeWheelLoads(wheelLoads)
-  const result = eng.step_and_sync(
-    safeDelta,
-    input,
-    position,
-    rotation,
-    safeLinvel,
-    safeAngvel,
-    surfaceNormal,
-    safeLoads,
-  ) as StepAndSyncOutput
+
+  const buf = stepPackedBuffer
+  buf[0] = safeDelta
+  buf[1] = sanitize(input.throttle ?? 0, 0)
+  buf[2] = sanitize(input.steer ?? 0, 0)
+  buf[3] = sanitize(input.brake_analog ?? 0, 0)
+  buf[4] = 0
+  buf[5] = position[0]; buf[6] = position[1]; buf[7] = position[2]
+  buf[8] = rotation[0]; buf[9] = rotation[1]; buf[10] = rotation[2]; buf[11] = rotation[3]
+  buf[12] = safeLinvel[0]; buf[13] = safeLinvel[1]; buf[14] = safeLinvel[2]
+  buf[15] = safeAngvel[0]; buf[16] = safeAngvel[1]; buf[17] = safeAngvel[2]
+  buf[18] = surfaceNormal[0]; buf[19] = surfaceNormal[1]; buf[20] = surfaceNormal[2]
+  if (safeLoads) {
+    buf[21] = safeLoads[0]; buf[22] = safeLoads[1]; buf[23] = safeLoads[2]; buf[24] = safeLoads[3]
+  } else {
+    buf[21] = 0; buf[22] = 0; buf[23] = 0; buf[24] = 0
+  }
+
+  const result = eng.step_and_sync_packed(buf, encodeInputBits(input)) as StepAndSyncOutput
 
   recordWasmCall()
   publishStepBundle(result)
