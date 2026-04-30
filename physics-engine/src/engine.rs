@@ -900,25 +900,13 @@ impl PhysicsEngine {
             * thermal_shock_grip
             * terrain_grip;
 
-        // Wave 2 Phase 5: longitudinal grip stack. The lateral path
-        // multiplies BASE_TIRE_GRIP_COEFFICIENT by `combined_grip`
-        // (above) including cold-tire material drop. Pre-Phase 5 the
-        // longitudinal path bypassed this entirely; wet/oil and
-        // aquaplaning didn't penalize braking or acceleration. Now the
-        // longitudinal path gets the *environmental* subset of the
-        // grip stack — surface, weather friction, aquaplaning, terrain —
-        // matching what causes wet/oil grip loss. Cold-rubber
-        // (`material_grip_avg`) and thermal-shock factors stay
-        // lateral-only because the wheel-spin integrator's ω/Pacejka
-        // path is already cold-rubber-coupled via the tire-reaction
-        // torque feedback; double-applying the material multiplier
-        // would collapse launch performance below the calibration
-        // envelope.
-        let environmental_grip_modifier = surface_modifiers.grip_multiplier
-            * weather_modifiers.friction_slip_multiplier
-            * aquaplaning_grip
-            * terrain_grip
-            * curb_turn_grip;
+        // Wave 3 Phase 6: lateral grip-stack unification. The Wave 2
+        // split (`environmental_grip_modifier` for longitudinal vs full
+        // `combined_grip` for lateral) collapses into a single
+        // `combined_grip` chain consumed by both Fx and Fy paths inside
+        // `WheelForceIntegrator`. Cold-rubber drop on launch is now
+        // calibrated via `BASE_TIRE_GRIP_COEFFICIENT` rather than a
+        // double-application split.
 
         // Speed modifier from surface
         let surface_speed = surface_modifiers.speed_multiplier;
@@ -968,7 +956,6 @@ impl PhysicsEngine {
             &tire_degradation,
             &wind_modifiers,
             combined_grip,
-            environmental_grip_modifier,
             self.curb.is_on_curb(),
             surface_speed,
             ers_boost,

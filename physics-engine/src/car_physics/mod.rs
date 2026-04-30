@@ -84,8 +84,11 @@ impl CarPhysicsState {
         weather_modifiers: &WeatherModifiers,
         tire_degradation: &TireDegradationModifiers,
         wind_modifiers: &WindModifiers,
-        curb_grip_bonus: f32,
-        environmental_grip_modifier: f32,
+        // Wave 3 Phase 6: full grip-stack multiplier (surface × material
+        // × weather × aqua × terrain × curb × thermal_shock). Replaces
+        // the Wave 2 split (separate `curb_grip_bonus` + `environmental_
+        // grip_modifier`). Both Fx and Fy paths multiply this single value.
+        combined_grip_multiplier: f32,
         is_on_curb: bool,
         curb_speed_multiplier: f32,
         ers_boost: f32,
@@ -136,7 +139,7 @@ impl CarPhysicsState {
         let grip_coefficient = BASE_TIRE_GRIP_COEFFICIENT
             * weather_modifiers.friction_slip_multiplier
             * tire_degradation.grip_multiplier
-            * curb_grip_bonus;
+            * combined_grip_multiplier;
         self.effective_grip = grip_coefficient;
 
         // Calculate slip angle
@@ -359,29 +362,27 @@ impl CarPhysicsState {
             rear_brake_force,
             resolved_wheel_loads,
             downforce_grip_bonus,
-            environmental_grip_modifier,
+            combined_grip_multiplier,
             slip_angle_smoothed_deg: self.slip_angle_smoothed,
             clutch_engagement,
             total_gear_ratio: pt_out.total_gear_ratio,
         });
         longitudinal_force += wheel_force_out.total_long_force;
 
-        let (front_grip, rear_grip) = tire_model::calculate_tire_grip(
-            self.slip_angle_smoothed,
-            resolved_wheel_loads,
-            grip_coefficient * downforce_grip_bonus,
-            input.handbrake,
-            effective_throttle > 0.01 && effective_brake < 0.01,
-        );
-
-        let combined_grip = front_grip * 0.4 + rear_grip * 0.6;
-
-        // Turn dynamics
+        // Phase 6 (Wave 3): the lateral grip stack is unified inside the
+        // integrator (single `combined_grip_multiplier` chain for both Fx
+        // and Fy). The body-frame yaw computation stays on the legacy
+        // steering-geometry path because the force-shaped variant has a
+        // chicken-and-egg start-up problem: ω derives from Fy which
+        // derives from slip_angle which derives from ω. The legacy path
+        // sets ω directly from steering geometry + grip — wins on
+        // bootstrap stability. Force-shaped variant remains available for
+        // future use (Wave 4+ where chassis dynamics can be re-architected).
         let angular_velocity = if self.steer_angle.abs() > 0.005 && self.speed_ms > 0.3 {
             steering::calculate_turn_dynamics(
                 self.steer_angle,
                 self.speed_ms,
-                combined_grip,
+                grip_coefficient * downforce_grip_bonus,
                 self.drift.is_drifting(),
             )
         } else {
@@ -403,9 +404,12 @@ impl CarPhysicsState {
             0.0
         };
 
-        // Calculate lateral correction with tire degradation effects
+        // Calculate lateral correction with tire degradation effects.
+        // Phase 6 (Wave 3) replaces the legacy axle-averaged μ-scalar
+        // `combined_grip` with `grip_coefficient` (BASE × tire-deg ×
+        // weather × combined_grip_multiplier × downforce_grip_bonus).
         let lateral_correction = self.drift.get_lateral_correction(
-            combined_grip,
+            grip_coefficient * downforce_grip_bonus,
             weather_modifiers.drift_lateral_correction_multiplier,
             if is_on_curb { 1.1 } else { 1.0 },
             tire_degradation.lateral_correction_penalty,
@@ -471,7 +475,7 @@ impl CarPhysicsState {
             current_gear_ratio: pt_out.gear_ratio,
             slip_angle: self.slip_angle_smoothed,
             is_drifting: self.drift.is_drifting(),
-            effective_grip: combined_grip,
+            effective_grip: grip_coefficient,
             lateral_g: sanitize(lat_g, 0.0),
             longitudinal_g: sanitize(long_g, 0.0),
             skid_intensity,

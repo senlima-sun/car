@@ -1,7 +1,5 @@
 use crate::constants::car::CAR_MASS;
 
-const HANDBRAKE_REAR_GRIP: f32 = 0.2;
-const THROTTLE_OVERSTEER_FACTOR: f32 = 0.90;
 const DEFAULT_LOAD_SENSITIVITY: f32 = 0.015;
 const PEAK_LATERAL_SLIP_DEG: f32 = 9.0;
 
@@ -254,32 +252,6 @@ pub fn pacejka_grip_efficiency(slip_angle_deg: f32, fz: f32) -> f32 {
     current_mu.max(peak_mu * 0.5)
 }
 
-pub fn calculate_tire_grip(
-    slip_angle: f32,
-    wheel_loads: [f32; 4],
-    grip_coefficient: f32,
-    handbrake: bool,
-    throttle: bool,
-) -> (f32, f32) {
-    let [fl, fr, rl, rr] = wheel_loads;
-    let front_load = (fl + fr) * 0.5;
-    let rear_load = (rl + rr) * 0.5;
-
-    let front_mu = pacejka_grip_efficiency(slip_angle, front_load);
-    let front_grip = front_mu * grip_coefficient;
-
-    let rear_mu = pacejka_grip_efficiency(slip_angle, rear_load);
-    let mut rear_grip = rear_mu * grip_coefficient;
-
-    if handbrake {
-        rear_grip *= HANDBRAKE_REAR_GRIP;
-    } else if throttle {
-        rear_grip *= THROTTLE_OVERSTEER_FACTOR;
-    }
-
-    (front_grip, rear_grip)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -441,28 +413,6 @@ mod tests {
 
     fn uniform_loads() -> [f32; 4] {
         [FZ_NOMINAL; 4]
-    }
-
-    #[test]
-    fn test_handbrake_reduces_rear() {
-        let (_, rear_normal) = calculate_tire_grip(8.0, uniform_loads(), 1.7, false, false);
-        let (_, rear_handbrake) = calculate_tire_grip(8.0, uniform_loads(), 1.7, true, false);
-        assert!(rear_handbrake < rear_normal * 0.3);
-    }
-
-    #[test]
-    fn test_throttle_oversteer() {
-        let (_, rear_coast) = calculate_tire_grip(8.0, uniform_loads(), 1.7, false, false);
-        let (_, rear_throttle) = calculate_tire_grip(8.0, uniform_loads(), 1.7, false, true);
-        assert!(rear_throttle < rear_coast);
-        assert!(rear_throttle > rear_coast * 0.5);
-    }
-
-    #[test]
-    fn test_front_rear_balance() {
-        let (front, rear) = calculate_tire_grip(8.0, uniform_loads(), 1.7, false, false);
-        assert!(front > 0.0);
-        assert!(rear > 0.0);
     }
 
     #[test]
@@ -668,35 +618,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_calculate_tire_grip_routes_fl_fr_to_front_axle() {
-        let symmetric = [
-            FZ_NOMINAL * 1.5,
-            FZ_NOMINAL * 1.5,
-            FZ_NOMINAL * 0.5,
-            FZ_NOMINAL * 0.5,
-        ];
-        let swapped_axles = [
-            FZ_NOMINAL * 0.5,
-            FZ_NOMINAL * 0.5,
-            FZ_NOMINAL * 1.5,
-            FZ_NOMINAL * 1.5,
-        ];
-
-        let (front_a, rear_a) = calculate_tire_grip(8.0, symmetric, 1.7, false, false);
-        let (front_b, rear_b) = calculate_tire_grip(8.0, swapped_axles, 1.7, false, false);
-
-        assert!(
-            (front_a - rear_b).abs() < 1e-4,
-            "front from heavy-front == rear from heavy-rear: {} vs {}",
-            front_a,
-            rear_b
-        );
-        assert!(
-            (rear_a - front_b).abs() < 1e-4,
-            "rear from heavy-front == front from heavy-rear: {} vs {}",
-            rear_a,
-            front_b
-        );
-    }
 }

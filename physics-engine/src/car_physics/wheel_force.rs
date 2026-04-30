@@ -33,7 +33,13 @@ pub struct WheelForceInputs {
     /// reduce cornering. Cold-tire material grip stays lateral-only —
     /// the wheel-force integrator's tire-reaction feedback loop already
     /// couples to the cold-rubber state via prev_wheel_fx.
-    pub environmental_grip_modifier: f32,
+    /// Wave 3 Phase 6: full grip stack multiplier (surface × material ×
+    /// weather × aqua × terrain × curb × thermal_shock). Replaces the
+    /// Wave 2 `environmental_grip_modifier` split — both longitudinal
+    /// and lateral paths now multiply the same combined grip after
+    /// G-method weighting. Cold-rubber drop on launch is calibrated via
+    /// `BASE_TIRE_GRIP_COEFFICIENT` rather than a separate split.
+    pub combined_grip_multiplier: f32,
     /// Chassis-level slip angle in degrees, after Wave 1 EMA smoothing.
     /// Phase 1 (Wave 3) feeds it as the per-wheel slip angle (no kinematic
     /// yaw-rate × wheel-offset correction yet — see Wave 4 backlog).
@@ -194,14 +200,19 @@ impl WheelForceIntegrator {
             // `calculate_per_wheel_forces` ellipse).
             let mu_fz_limit = peak_mu_lat_at_fz(fz).max(peak_mu_lon_at_fz(fz)) * fz;
             let (fx_capped, fy_capped) = combined_slip(fx_combined, fy_combined, mu_fz_limit);
-            let fx = fx_capped
-                * BASE_TIRE_GRIP_COEFFICIENT
-                * i.downforce_grip_bonus
-                * i.environmental_grip_modifier;
+            // Wave 3 Phase 6: unified grip stack. Both axes multiply by the
+            // same `BASE_TIRE_GRIP_COEFFICIENT × downforce_grip_bonus ×
+            // combined_grip_multiplier` chain. Replaces the Wave 2 split
+            // where the lateral path got the full chain and the longitudinal
+            // path only the environmental subset.
+            let grip_chain =
+                BASE_TIRE_GRIP_COEFFICIENT * i.downforce_grip_bonus * i.combined_grip_multiplier;
+            let fx = fx_capped * grip_chain;
+            let fy = fy_capped * grip_chain;
             wheel_fx_now[wheel] = fx;
-            wheel_fy_now[wheel] = fy_capped;
+            wheel_fy_now[wheel] = fy;
             wheel_long_force += fx;
-            wheel_lat_force += fy_capped;
+            wheel_lat_force += fy;
         }
         self.prev_wheel_fx = wheel_fx_now;
         WheelForceOutput {
@@ -234,7 +245,7 @@ mod tests {
             rear_brake_force: 0.0,
             resolved_wheel_loads: nominal_loads(),
             downforce_grip_bonus: 1.0,
-            environmental_grip_modifier: 1.0,
+            combined_grip_multiplier: 1.0,
             slip_angle_smoothed_deg: 0.0,
             // Default: idle (slipping clutch, low inertia coupling). Tests
             // that need locked-clutch behaviour override these explicitly.
@@ -333,9 +344,8 @@ mod tests {
         // longitudinal slip (G-method gy = 1.0; friction-ellipse cap doesn't
         // clamp 4 wheels × pacejka_lateral_per_wheel inside the circle), the
         // integrator's total_lat_force should round-trip the per-wheel
-        // Pacejka call. Run the integrator long enough for slip_ratio to
-        // settle to zero on rear wheels (no drive/brake → ω drifts to v/r
-        // via tire-reaction feedback within ~30 steps).
+        // Pacejka call after applying the unified grip chain
+        // (BASE_TIRE_GRIP_COEFFICIENT × downforce × combined_grip_mult).
         let mut s = WheelForceIntegrator::new();
         let mut inputs = idle_inputs();
         inputs.slip_angle_smoothed_deg = 6.0;
@@ -361,7 +371,10 @@ mod tests {
             TIRE_DEFAULT_LOAD_SENSITIVITY,
         )
         .abs();
-        let expected_total = one_corner_fy * 4.0;
+        // Phase 6 unified grip stack: Fy scales by the same chain Fx does.
+        // idle_inputs has downforce_grip_bonus=1.0, combined_grip_mult=1.0,
+        // so the chain reduces to BASE_TIRE_GRIP_COEFFICIENT.
+        let expected_total = one_corner_fy * 4.0 * BASE_TIRE_GRIP_COEFFICIENT;
         let observed = out.total_lat_force.abs();
         let drift = (observed - expected_total).abs() / expected_total;
         assert!(
@@ -560,11 +573,12 @@ mod tests {
             s.step(&inputs);
         }
         let out = s.step(&inputs);
-        // Each rear wheel Fx must stay inside μ × Fz on Pacejka-LON, ~1.0 × 1957 = ~2 kN.
+        // Each rear wheel Fx must stay inside μ × Fz × BASE_TIRE_GRIP_COEFFICIENT
+        // (~ 1.0 × 1957 × 3.5 = ~6.85 kN). Phase 6 bumped BASE; cap accordingly.
         for w in 2..4 {
             let fx_abs = out.fx_per_wheel[w].abs();
             assert!(
-                fx_abs < 5000.0,
+                fx_abs < 8000.0,
                 "rear[{}] Fx exceeded friction cap: {}",
                 w,
                 fx_abs
