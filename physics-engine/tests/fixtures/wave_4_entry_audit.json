@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-4-entry-audit",
+  "wave_3_head_commit": "b2ceed7",
+  "calibration_strict": "pass",
+  "soak_runs": [
+    {
+      "run": 1,
+      "step_count": 82000,
+      "result": "pass",
+      "tests": [
+        "step_with_real_wheel_loads_produces_finite_output",
+        "soak_step_combined_slip_stress",
+        "soak_step_handles_adversarial_steps",
+        "soak_step_and_sync_handles_adversarial_steps"
+      ]
+    },
+    {
+      "run": 2,
+      "step_count": 82000,
+      "result": "pass"
+    },
+    {
+      "run": 3,
+      "step_count": 82000,
+      "result": "pass"
+    }
+  ],
+  "notes": "Wave 3 exit invariants confirmed at HEAD b2ceed7. Three back-to-back soak runs deterministic; calibration_strict ±0.5% on all 8 scenarios passes; 82k = 72k adversarial + 10k combined-slip-stress."
+}
