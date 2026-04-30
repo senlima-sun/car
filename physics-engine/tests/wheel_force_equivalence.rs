@@ -24,17 +24,18 @@ struct Fixture {
     frames: Vec<FrameRecord>,
 }
 
-/// Phase 1 (Wave 3) bit-equivalence gate. Replays the 1000-frame
-/// deterministic input pattern captured in `wheel_force_pre_phase_1.json`
-/// (frozen at Wave 2 head, before the Phase 1 rename + per-wheel Fy
-/// promotion) and asserts that the longitudinal output is bit-equivalent
-/// AND the lateral output is bit-equivalent — Phase 1 deliberately
-/// preserves Fx by keeping the friction-ellipse cap as `(fx, 0)`. Phase 2
-/// will refresh this fixture as the G-method shifts both axes.
+/// Wave 3 wheel-force replay-equivalence gate. From Phase 2 onward this
+/// reads `wheel_force_post_phase_2.json` (the post-G-method baseline)
+/// rather than the pre-Phase-1 fixture, so any future drift is measured
+/// against the live G-method behaviour. The Phase 1 fixture is preserved
+/// in tree as a record of what the model produced before the deliberate
+/// behaviour change. (Phase 2 input pattern happens to bit-match Phase 1
+/// to within 1e-5 — `wheel_spin_test_input` doesn't excite enough off-
+/// axis slip on the chassis to surface G-method drift.)
 #[test]
-fn phase_1_replay_matches_pre_phase_1_fixture() {
+fn wheel_force_replay_matches_active_fixture() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/wheel_force_pre_phase_1.json");
+        .join("tests/fixtures/wheel_force_post_phase_2.json");
     let json = std::fs::read_to_string(&path).expect("fixture exists");
     let fixture: Fixture = serde_json::from_str(&json).expect("fixture parses");
     assert_eq!(fixture.frames.len(), FRAMES);
