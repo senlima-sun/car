@@ -508,6 +508,12 @@ impl CarPhysicsState {
         }
     }
 
+    /// Reset the powertrain to launch state (1st gear, idle RPM, engaged).
+    /// Wave 4: used by formation-lap-warmup test scenarios.
+    pub fn reset_powertrain_for_launch(&mut self) {
+        self.powertrain.reset_for_launch();
+    }
+
     pub fn get_rpm(&self) -> f32 {
         self.rpm
     }

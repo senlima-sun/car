@@ -94,6 +94,27 @@ pub fn measure_zero_to_100() -> Option<f32> {
     measure_zero_to_100_with(make_road_engine())
 }
 
+/// Warm tires by running a 20-second cruise at moderate throttle
+/// before the measurement, then reset the powertrain to 1st-gear
+/// launch state. Real F1 launches happen on warm tires (formation
+/// lap raises tire temperature into the optimal window). Without
+/// this, `material_grip_avg` sits at the Gaussian cold floor (~0.4)
+/// and the launch is unrealistically slow. The powertrain reset is
+/// needed because the warmup leaves the car in 4-6th gear; the
+/// downshift logic can't catch up on a cold launch from rest.
+fn warm_up_tires(engine: &mut PhysicsEngine, linvel: &mut [f32; 3], angvel: &mut [f32; 3]) {
+    let cruise = CarInput {
+        forward: true,
+        throttle: 0.6,
+        ..Default::default()
+    };
+    linvel[2] = 50.0;
+    for _ in 0..(20 * 120) {
+        step_engine(engine, cruise, linvel, angvel, [0.0, 0.0, 0.0, 1.0]);
+    }
+    engine.reset_powertrain_for_launch();
+}
+
 pub fn measure_zero_to_100_with(mut engine: PhysicsEngine) -> Option<f32> {
     let target_ms = 100.0 / 3.6;
     let input = CarInput {
@@ -103,6 +124,11 @@ pub fn measure_zero_to_100_with(mut engine: PhysicsEngine) -> Option<f32> {
     };
     let mut linvel = [0.0_f32; 3];
     let mut angvel = [0.0_f32; 3];
+    // Warm tires (formation-lap proxy) before the launch measurement.
+    warm_up_tires(&mut engine, &mut linvel, &mut angvel);
+    // Reset to standstill for the launch.
+    linvel = [0.0_f32; 3];
+    angvel = [0.0_f32; 3];
     for n in 0..MAX_STEPS {
         let out = step_engine(&mut engine, input, &mut linvel, &mut angvel, [0.0, 0.0, 0.0, 1.0]);
         if out.forward_speed_ms >= target_ms {

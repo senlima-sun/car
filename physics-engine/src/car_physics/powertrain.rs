@@ -51,6 +51,14 @@ impl PowertrainState {
         Self::default()
     }
 
+    /// Reset to launch state: 1st gear, idle RPM, engaged. Used by test
+    /// scenarios that simulate a race start after a formation-lap warmup
+    /// — without this, the warmup leaves the car in 4-6th gear and the
+    /// launch from rest can't downshift fast enough to use peak torque.
+    pub fn reset_for_launch(&mut self) {
+        *self = Self::default();
+    }
+
     pub fn update(
         &mut self,
         dt: f32,
@@ -66,7 +74,22 @@ impl PowertrainState {
         let total_ratio = gear_ratio * FINAL_DRIVE;
 
         let wheel_rpm = speed_ms / (TIRE_RADIUS * 2.0 * std::f32::consts::PI) * 60.0;
-        let target_rpm = (wheel_rpm * total_ratio).clamp(IDLE_RPM, REDLINE_RPM);
+        let kinematic_rpm = wheel_rpm * total_ratio;
+        // Wave 4 launch fix: when the wheel-derived engine RPM would be
+        // below IDLE (i.e., we're at or near standstill), target peak-
+        // torque RPM under full throttle. Real cars rev the engine while
+        // the clutch slips during launch — the clutch decouples engine
+        // and wheels until they synchronise. Without this, the engine
+        // sits at IDLE for the first ~2.5s of a launch, the clutch
+        // never engages, and 0-100 stretches to ~5s.
+        let target_rpm = if is_throttle && kinematic_rpm < IDLE_RPM {
+            // Launch: spin engine up to peak-torque RPM proportional to
+            // throttle. Clutch engagement (in `clutch.rs`) handles the
+            // disconnect between this and the wheel-derived RPM.
+            PEAK_TORQUE_RPM
+        } else {
+            kinematic_rpm.clamp(IDLE_RPM, REDLINE_RPM)
+        };
         let rpm_response = if self.shift_state == ShiftState::Shifting {
             5.0
         } else {

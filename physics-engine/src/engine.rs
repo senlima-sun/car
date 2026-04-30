@@ -195,6 +195,14 @@ impl PhysicsEngine {
         self.tire_temperature.reset_blowout();
     }
 
+    /// Reset the powertrain to launch state (1st gear, idle RPM, engaged).
+    /// Used by test scenarios that simulate a race start after a formation
+    /// lap warmup — without this, the warmup leaves the car in 4-6th
+    /// gear and the launch from rest can't downshift fast enough.
+    pub fn reset_powertrain_for_launch(&mut self) {
+        self.car.reset_powertrain_for_launch();
+    }
+
     pub fn set_tire_wear(&mut self, wear: f32) {
         self.tires.set_wear_all(wear);
     }

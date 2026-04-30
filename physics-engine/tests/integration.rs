@@ -15,6 +15,26 @@ fn make_engine() -> PhysicsEngine {
     engine
 }
 
+/// Warm tires + reset powertrain to launch state. Wave 4: cold tires
+/// produce ~0.5g grip; warm tires (~1.5g) match real F1 launch.
+/// Without this, 0-100 km/h tests inflate to ~5s instead of 2.6s.
+fn warm_up_for_launch(engine: &mut PhysicsEngine, state: &mut SimState) {
+    let cruise = CarInput {
+        forward: true,
+        throttle: 0.6,
+        ..Default::default()
+    };
+    state.linvel = [0.0, 0.0, 50.0];
+    for _ in 0..(20 * 60) {
+        step_sim(engine, state, &cruise);
+    }
+    engine.reset_powertrain_for_launch();
+    state.linvel = ZERO_VEL;
+    state.angvel = ZERO_VEL;
+    state.position = ORIGIN;
+    state.rotation = IDENTITY_QUAT;
+}
+
 fn throttle_input() -> CarInput {
     CarInput {
         forward: true,
@@ -117,6 +137,7 @@ fn step_sim(
 fn test_acceleration_0_to_100_reasonable_time() {
     let mut engine = make_engine();
     let mut state = SimState::new();
+    warm_up_for_launch(&mut engine, &mut state);
     let input = throttle_input();
 
     let mut reached_100 = false;
@@ -171,6 +192,7 @@ fn test_acceleration_0_to_100_reasonable_time() {
 fn test_braking_from_100_reasonable_distance() {
     let mut engine = make_engine();
     let mut state = SimState::new();
+    warm_up_for_launch(&mut engine, &mut state);
     let input = throttle_input();
 
     for _ in 0..300 {
@@ -459,6 +481,7 @@ fn test_ers_recovers_energy_on_braking() {
     let mut engine = make_engine();
     engine.set_ers_mode(ErsMode::SemiAuto);
     let mut state = SimState::new();
+    warm_up_for_launch(&mut engine, &mut state);
 
     for _ in 0..300 {
         step_sim(&mut engine, &mut state, &throttle_input());
@@ -513,6 +536,7 @@ fn test_ers_output_reflects_harvesting_state() {
     let mut engine = make_engine();
     engine.set_ers_mode(ErsMode::SemiAuto);
     let mut state = SimState::new();
+    warm_up_for_launch(&mut engine, &mut state);
 
     for _ in 0..300 {
         step_sim(&mut engine, &mut state, &throttle_input());
