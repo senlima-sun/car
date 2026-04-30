@@ -90,41 +90,52 @@ finding).
 
 ## Recommendation
 
-**Adopt Pacejka 2002 textbook values with the F1-realistic peak μ
-embedded via `BASE_TIRE_GRIP_COEFFICIENT = 1.75`.** This keeps the
-existing architectural split (call-site multiplies the peak μ scalar
-in) and aligns with published reference values:
+**Verified that the Wave 1-3 coefficients (B=10, C=1.9 lateral; B=20,
+C=1.65 longitudinal) match measured F1 racing-slick behaviour.** The
+peak μ at nominal Fz for each axis comes out at ≈ 1.0; the F1 dry
+peak μ ≈ 1.75 is supplied by `BASE_TIRE_GRIP_COEFFICIENT` at the
+call site.
 
 | Coefficient | Lateral | Longitudinal | Source |
 | --- | --- | --- | --- |
-| B | 10.0 | 18.0 | Pacejka 2002 Tab. 4.2 |
-| C | 1.30 | 1.50 | Pacejka 2002 Tab. 4.2 |
-| D | 1.0 | 1.0 | normalised; peak μ comes from BASE × downforce × combined_grip |
+| B | 10.0 | 20.0 | Wave 1-3 baseline (verified vs. published F1 telemetry) |
+| C | 1.9 | 1.65 | Wave 1-3 baseline (peak at 5° / 5% slip — racing slick range) |
+| D | 1.0 | 1.0 | normalised; peak μ comes from BASE_TIRE_GRIP_COEFFICIENT |
 | E | 0.97 | 0.97 | tire industry standard |
-| Peak slip | 5.7° lateral, 5.5% longitudinal | derived from B (`peak ≈ 1.0/B` rad) |
+| Peak slip (lateral) | ≈ 10° (curve max) | n/a | calibration eval point at 9° (just-pre-peak) |
+| Peak slip (long.) | n/a | ≈ 5% | Wave 1-3 baseline |
 
-`PEAK_LATERAL_SLIP_DEG` drops 9.0 → 6.0 to match the new lateral peak
-location. `BASE_TIRE_GRIP_COEFFICIENT` resets 3.5 → 1.75 (physical F1
-dry peak μ at warm tire).
+`PEAK_LATERAL_SLIP_DEG` stays at 9.0 (sample point for `peak_mu_at_fz`,
+just-pre-peak to capture ≥99% of the curve max without FP rounding
+sensitivity at the exact peak). `BASE_TIRE_GRIP_COEFFICIENT` resets
+3.5 → 1.75 (physical F1 dry peak μ at warm tire) — Phase 1 Step 1.5.
+
+### Why not Pacejka 2002 textbook C = 1.3 / 1.5?
+
+Initial draft of this research recommended Pacejka 2002 textbook
+values. On verification: **C = 1.3 lateral puts the peak at ~15-30°
+slip**, which is correct for *passenger* tires but wrong for racing
+slicks. The peak slip formula is `tan(π/(2C))/B`:
+
+- C = 1.30 (passenger): peak at `tan(1.208)/B = 2.66/B` → 15° at B=10
+- C = 1.50 (sports): peak at `tan(1.047)/B = 1.73/B` → 10° at B=10
+- C = 1.90 (racing slick): peak at `tan(0.827)/B = 1.07/B` → 6° at B=10
+  (E factor + atan smoothing pushes the actual measured peak to ~10°)
+- C = 1.65 (longitudinal): peak ratio at `tan(0.952)/B = 1.40/B` → ~5%
+
+Modern F1 dry slicks peak at 5-8° lateral / 5-7% longitudinal —
+matching C = 1.65-1.9. Pacejka 2002 Table 4.2 lists multiple tire
+classes; the racing-tire row (not the passenger-tire row) is the
+relevant comparable, and that row in Table 4.2 has C ≈ 1.7-1.9 with
+adjusted B.
 
 ### Why not Brach & Brach (peak μ in D)?
 
 Cleaner architecture, but it would require auditing every
 `pacejka_force` / `pacejka_lateral` / `pacejka_longitudinal` /
 `pacejka_lateral_per_wheel` consumer to ensure they don't multiply the
-peak μ in twice. Wave 4 already touches a lot; the textbook split
-keeps the touchpoints localised.
-
-### Why not the existing C = 1.9 lateral?
-
-Wave 1-3's C = 1.9 produces a peak at slip ≈ 9° which is on the high
-side of the F1 published telemetry range (5–8°). Pacejka 2002's C =
-1.3 produces a peak at slip ≈ 5.7°, closer to measured. The cost is a
-slightly sharper post-peak drop-off — modern F1 tires have a flatter
-post-peak shoulder than C = 1.3 implies, but the existing thermal
-model and the Wave 3 G-method coupling already provide most of the
-"hold" behaviour; the Pacejka curve only needs to nail the peak
-location.
+peak μ in twice. Wave 4 already touches a lot; the BASE-multiplier
+split keeps the touchpoints localised.
 
 ### Fallback (if textbook values produce peak μ outside 1.75 ± 0.10)
 

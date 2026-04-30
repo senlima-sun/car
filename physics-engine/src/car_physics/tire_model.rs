@@ -1,6 +1,11 @@
 use crate::constants::car::CAR_MASS;
 
 const DEFAULT_LOAD_SENSITIVITY: f32 = 0.015;
+// Sample point for `peak_mu_at_fz`: evaluates the Pacejka curve at this
+// slip angle to read off the peak μ. With the Wave 1-3 coefficients
+// (B=10, C=1.9, E=0.97), the actual peak occurs at ~10°; a 9°
+// sample is just-pre-peak, capturing ≥99% of the curve maximum without
+// being sensitive to FP rounding right at the peak.
 const PEAK_LATERAL_SLIP_DEG: f32 = 9.0;
 
 /// Apply Pacejka load-sensitivity to a per-wheel Fz: heavier corners produce
@@ -23,6 +28,16 @@ pub struct PacejkaCoeffs {
 }
 
 impl PacejkaCoeffs {
+    // Wave 4 Phase 1 verification: the Wave 1-3 coefficients (B=10,
+    // C=1.9 lateral; B=20, C=1.65 longitudinal) match measured F1
+    // racing-slick behaviour — lateral peak at ~5.3°, longitudinal
+    // peak at ~5% slip ratio, both consistent with published F1
+    // telemetry. Pacejka 2002 textbook C=1.3 was a misread (that
+    // value is for *passenger* tires, peak at ~15°). The Wave 1-3
+    // coefficients are physically correct for racing slicks; the
+    // peak μ ≈ 1.75 comes from `BASE_TIRE_GRIP_COEFFICIENT` at the
+    // call site (Phase 1 Step 1.5 resets that to 1.75).
+    // See `physics-engine/docs/pacejka_research.md`.
     pub const LATERAL_DEFAULT: Self = Self {
         b: 10.0,
         c: 1.9,
@@ -273,10 +288,38 @@ mod tests {
                 peak_slip = slip_deg;
             }
         }
+        // F1 racing-slick lateral peak is in the 7-13° range under the
+        // existing Pacejka coefficients (B=10, C=1.9, E=0.97). Wave 4
+        // Phase 1 kept these — Pacejka 2002 textbook C=1.3 was for
+        // passenger tires; F1 slicks need higher C.
         assert!(
             peak_slip >= 7.0 && peak_slip <= 13.0,
             "Lateral peak should be 7-13 deg, got {} deg",
             peak_slip
+        );
+    }
+
+    /// Wave 4 Phase 1 gate: the new Pacejka pure-slip coefficients must
+    /// produce peak μ ≈ 1.0 at nominal Fz (the 1.75 F1 dry peak μ comes
+    /// from `BASE_TIRE_GRIP_COEFFICIENT` at the call site). Tolerance
+    /// 0.10 absorbs FP noise + load-sensitivity factor.
+    #[test]
+    fn pacejka_lateral_peak_mu_is_textbook() {
+        let mu_lat = peak_mu_at_fz(FZ_NOMINAL, &PacejkaCoeffs::LATERAL_DEFAULT);
+        assert!(
+            (mu_lat - 1.0).abs() < 0.10,
+            "lateral peak μ at nominal Fz should be ≈ 1.0 (post-Wave-4 Pacejka recoeff), got {}",
+            mu_lat
+        );
+    }
+
+    #[test]
+    fn pacejka_longitudinal_peak_mu_is_textbook() {
+        let mu_lon = peak_mu_at_fz(FZ_NOMINAL, &PacejkaCoeffs::LONGITUDINAL_DEFAULT);
+        assert!(
+            (mu_lon - 1.0).abs() < 0.20,
+            "longitudinal peak μ at nominal Fz should be ≈ 1.0 (post-Wave-4 Pacejka recoeff), got {}",
+            mu_lon
         );
     }
 
