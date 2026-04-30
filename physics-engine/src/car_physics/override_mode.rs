@@ -23,21 +23,15 @@ pub struct OverrideOutput {
     pub additional_power_w: f32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct OverrideModeState {
     /// Energy used this lap (joules).
     energy_used_j: f32,
 }
 
-impl Default for OverrideModeState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl OverrideModeState {
     pub fn new() -> Self {
-        Self { energy_used_j: 0.0 }
+        Self::default()
     }
 
     /// Update Override Mode for one step. Returns the additional power
