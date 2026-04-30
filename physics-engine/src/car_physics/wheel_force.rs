@@ -541,6 +541,43 @@ mod tests {
     }
 
     #[test]
+    fn explicit_euler_stable_at_high_engine_torque_in_first_gear() {
+        // Phase 5 Step 5.3 stability check. Per the plan, the worst case is
+        // 1st-gear locked clutch (I_eff ~24 kg·m²) at high tire-reaction
+        // stiffness — explicit Euler could ring at dt = 1/120. Run 10000
+        // steps with worst-case torque + dt = 1/60 and assert ω stays
+        // bounded.
+        let mut s = WheelForceIntegrator::new();
+        let mut inputs = idle_inputs();
+        inputs.dt = 1.0 / 60.0;
+        inputs.forward_speed = 5.0;
+        inputs.drive_engaged = true;
+        inputs.driven_wheel_torque = 5000.0;
+        inputs.clutch_engagement = 1.0;
+        inputs.total_gear_ratio = 10.4;
+        for n in 0..10_000 {
+            let out = s.step(&inputs);
+            for w in 0..4 {
+                let omega = s.wheel_angvel()[w];
+                assert!(
+                    omega.is_finite(),
+                    "omega[{w}] non-finite at step {n}: {omega}"
+                );
+                // Cap is enforced inside step(); just sanity-check it's
+                // not flying off.
+                assert!(
+                    omega.abs() < 1e4,
+                    "omega[{w}] exploded at step {n}: {omega}"
+                );
+            }
+            for w in 0..4 {
+                assert!(out.fx_per_wheel[w].is_finite());
+                assert!(out.fy_per_wheel[w].is_finite());
+            }
+        }
+    }
+
+    #[test]
     fn slipping_clutch_reduces_drive_torque() {
         // Same I_eff scaling but engagement low → drive torque proportional.
         // Capture front-wheel state (kinematic) vs rear-wheel state (driven).
