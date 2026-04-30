@@ -31,6 +31,37 @@ pub fn get_max_steer_angle(speed_kmh: f32, wear_multiplier: f32, instability: f3
     }
 }
 
+/// Calculate angular velocity directly from per-wheel lateral force
+/// (in newtons). Wave 3 Phase 6 force-shaped turn-dynamics input.
+///
+/// Newtonian: at speed `v`, lateral force `F_y` produces a centripetal
+/// acceleration `a = F_y / m`, which corresponds to angular velocity
+/// `ω = a / v = F_y / (m × v)`.
+///
+/// Sign convention: positive lat force means turning to the right (positive
+/// rotation around +Y), so `ω = -F_y / (m × v)` matches the existing
+/// `calculate_turn_dynamics` direction (negative steer_angle.signum()).
+/// `steer_sign` carries the driver intent: a non-zero sign uses the lat
+/// force in the corresponding direction.
+pub fn calculate_turn_dynamics_from_lateral_force(
+    total_lat_force_n: f32,
+    mass: f32,
+    speed_ms: f32,
+    steer_sign: f32,
+) -> f32 {
+    if speed_ms.abs() < 0.3 || mass.abs() < 1.0 {
+        return 0.0;
+    }
+    let centripetal_accel = total_lat_force_n / mass;
+    let angular_velocity = centripetal_accel / speed_ms;
+    let direction = if steer_sign.abs() < f32::EPSILON {
+        1.0
+    } else {
+        -steer_sign.signum()
+    };
+    angular_velocity.abs() * direction
+}
+
 /// Calculate angular velocity from steering using Ackermann geometry
 pub fn calculate_turn_dynamics(
     steer_angle: f32, // radians
@@ -151,6 +182,56 @@ mod tests {
 
         // Higher speed should produce higher angular velocity
         assert!(ang_vel_fast > ang_vel_slow);
+    }
+
+    // Phase 6 (Wave 3) — force-shaped turn dynamics
+
+    #[test]
+    fn force_shaped_turn_zero_at_zero_force() {
+        let omega = calculate_turn_dynamics_from_lateral_force(0.0, 750.0, 30.0, 1.0);
+        assert!(omega.abs() < 1e-6);
+    }
+
+    #[test]
+    fn force_shaped_turn_zero_at_zero_speed() {
+        let omega = calculate_turn_dynamics_from_lateral_force(5000.0, 750.0, 0.0, 1.0);
+        assert!(omega.abs() < 1e-6);
+    }
+
+    #[test]
+    fn force_shaped_turn_matches_centripetal_formula() {
+        // F_y = m × v × ω  →  ω = F_y / (m × v)
+        let f_y = 7500.0_f32;
+        let m = 750.0_f32;
+        let v = 50.0_f32;
+        let expected = f_y / (m * v);
+        let omega = calculate_turn_dynamics_from_lateral_force(f_y, m, v, 1.0).abs();
+        assert!(
+            (omega - expected).abs() < 1e-3,
+            "ω should be F_y/(m×v) = {}, got {}",
+            expected,
+            omega
+        );
+    }
+
+    #[test]
+    fn force_shaped_turn_direction_matches_steer_sign() {
+        // Positive steer (right) → negative angular velocity (right turn).
+        let omega_right = calculate_turn_dynamics_from_lateral_force(5000.0, 750.0, 20.0, 1.0);
+        // Negative steer (left) → positive angular velocity.
+        let omega_left = calculate_turn_dynamics_from_lateral_force(5000.0, 750.0, 20.0, -1.0);
+        assert!(omega_right < 0.0);
+        assert!(omega_left > 0.0);
+        assert!((omega_right + omega_left).abs() < 1e-6);
+    }
+
+    #[test]
+    fn force_shaped_turn_grows_with_force() {
+        let omega_low =
+            calculate_turn_dynamics_from_lateral_force(2000.0, 750.0, 20.0, 1.0).abs();
+        let omega_high =
+            calculate_turn_dynamics_from_lateral_force(8000.0, 750.0, 20.0, 1.0).abs();
+        assert!(omega_high > omega_low);
     }
 
     #[test]
