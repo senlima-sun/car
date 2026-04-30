@@ -1,4 +1,5 @@
-pub const CAR_MASS: f32 = 798.0;
+// Wave 4 Phase 2: minimum mass dropped 798 → 768 kg per 2026 F1 regs.
+pub const CAR_MASS: f32 = 768.0;
 pub const WHEELBASE: f32 = 3.38;
 pub const TRACK_WIDTH: f32 = 1.525;
 pub const CG_HEIGHT: f32 = 0.35;
