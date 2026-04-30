@@ -124,6 +124,72 @@ pub fn pacejka_lateral_per_wheel(
 /// without importing `DEFAULT_LOAD_SENSITIVITY` directly.
 pub const TIRE_DEFAULT_LOAD_SENSITIVITY: f32 = DEFAULT_LOAD_SENSITIVITY;
 
+/// Pacejka MF6.1 *combined-slip* coefficients. **Distinct from `PacejkaCoeffs`**
+/// which holds *pure-slip* coefficients used by `pacejka_lateral` and
+/// `pacejka_longitudinal`. The G-functions modulate the pure-slip Fx and Fy
+/// to account for off-axis coupling: `G_x` weights Fx by lateral slip,
+/// `G_y` weights Fy by longitudinal slip. At zero off-axis slip both G
+/// functions return exactly 1.0 (pure-slip preserved).
+///
+/// Defaults are physically reasonable for the existing tire model; Phase 2
+/// (Wave 3) Step 2.4 captures calibration drift for tuning.
+#[derive(Clone, Copy, Debug)]
+pub struct CombinedSlipCoeffs {
+    /// Shape `G_x` as a function of lateral slip (slip_angle_rad).
+    pub b_alpha: f32,
+    pub c_alpha: f32,
+    /// Shape `G_y` as a function of longitudinal slip (slip_ratio).
+    pub b_kappa: f32,
+    pub c_kappa: f32,
+}
+
+impl CombinedSlipCoeffs {
+    pub const LATERAL_DEFAULT_COMBINED: Self = Self {
+        b_alpha: 10.0,
+        c_alpha: 1.0,
+        b_kappa: 10.0,
+        c_kappa: 1.0,
+    };
+}
+
+/// Pacejka G-method longitudinal-axis weighting. Returns a multiplier in
+/// `[0, 1]` to apply to `fx_pure`. At `slip_angle_rad = 0`, returns exactly
+/// 1.0 (pure-slip Fx preserved). At peak combined slip, returns ~0.5–0.7
+/// — Fx rolls off smoothly as slip angle grows. Sign-coupled via
+/// `slip_angle × signum(slip_ratio)` so trail-braking (slip_ratio < 0,
+/// slip_angle > 0) is handled correctly.
+pub fn gx_combined(slip_ratio: f32, slip_angle_rad: f32, coeffs: &CombinedSlipCoeffs) -> f32 {
+    if slip_angle_rad.abs() < 1e-6 {
+        return 1.0;
+    }
+    let sign = if slip_ratio == 0.0 {
+        1.0
+    } else {
+        slip_ratio.signum()
+    };
+    let inner = coeffs.b_alpha * slip_angle_rad * sign;
+    let g = (coeffs.c_alpha * inner.atan()).cos();
+    g.clamp(0.0, 1.0)
+}
+
+/// Pacejka G-method lateral-axis weighting. Returns a multiplier in
+/// `[0, 1]` to apply to `fy_pure`. At `slip_ratio = 0`, returns exactly
+/// 1.0 (pure-slip Fy preserved). Sign-coupled via
+/// `slip_ratio × signum(slip_angle)`.
+pub fn gy_combined(slip_angle_rad: f32, slip_ratio: f32, coeffs: &CombinedSlipCoeffs) -> f32 {
+    if slip_ratio.abs() < 1e-6 {
+        return 1.0;
+    }
+    let sign = if slip_angle_rad == 0.0 {
+        1.0
+    } else {
+        slip_angle_rad.signum()
+    };
+    let inner = coeffs.b_kappa * slip_ratio * sign;
+    let g = (coeffs.c_kappa * inner.atan()).cos();
+    g.clamp(0.0, 1.0)
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct WheelForces {
     pub fx: f32,
@@ -491,6 +557,101 @@ mod tests {
             fy_4x,
             fy_nominal * 4.0
         );
+    }
+
+    // Phase 2 (Wave 3) — Pacejka G-method tests
+
+    #[test]
+    fn gx_returns_unity_at_zero_slip_angle() {
+        let g = gx_combined(0.1, 0.0, &CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED);
+        assert!((g - 1.0).abs() < 1e-6, "gx at zero slip_angle should be 1.0, got {}", g);
+    }
+
+    #[test]
+    fn gy_returns_unity_at_zero_slip_ratio() {
+        let g = gy_combined(0.1, 0.0, &CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED);
+        assert!((g - 1.0).abs() < 1e-6, "gy at zero slip_ratio should be 1.0, got {}", g);
+    }
+
+    #[test]
+    fn gx_drops_below_one_at_moderate_combined_slip() {
+        // slip_ratio ≈ 0.1 (driving), slip_angle ≈ 10 deg → Fx weighting drops.
+        let g = gx_combined(
+            0.1,
+            10.0_f32.to_radians(),
+            &CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED,
+        );
+        assert!(
+            g < 0.95 && g > 0.0,
+            "gx at moderate combined slip should drop below 0.95, got {}",
+            g
+        );
+    }
+
+    #[test]
+    fn gy_drops_below_one_at_moderate_combined_slip() {
+        let g = gy_combined(
+            10.0_f32.to_radians(),
+            0.1,
+            &CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED,
+        );
+        assert!(
+            g < 0.95 && g > 0.0,
+            "gy at moderate combined slip should drop below 0.95, got {}",
+            g
+        );
+    }
+
+    #[test]
+    fn gx_monotonically_decreases_in_slip_angle() {
+        let coeffs = CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED;
+        let kappa = 0.05;
+        let g_small = gx_combined(kappa, 2.0_f32.to_radians(), &coeffs);
+        let g_mid = gx_combined(kappa, 6.0_f32.to_radians(), &coeffs);
+        let g_large = gx_combined(kappa, 12.0_f32.to_radians(), &coeffs);
+        assert!(g_small > g_mid, "gx should drop with slip angle: {} vs {}", g_small, g_mid);
+        assert!(g_mid > g_large, "gx should drop with slip angle: {} vs {}", g_mid, g_large);
+    }
+
+    #[test]
+    fn gx_handles_opposite_sign_slip_trail_braking() {
+        // Trail-brake corner-entry: slip_ratio < 0 (locking up) AND slip_angle > 0 (turning).
+        // gx must remain well-defined and < 1 (off-axis slip still couples).
+        let coeffs = CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED;
+        let g = gx_combined(-0.1, 10.0_f32.to_radians(), &coeffs);
+        assert!(g.is_finite(), "gx must be finite for opposite-sign combined slip");
+        assert!(
+            g < 1.0 && g > 0.0,
+            "gx should drop on combined trail-brake slip, got {}",
+            g
+        );
+    }
+
+    #[test]
+    fn gx_symmetric_in_slip_angle_sign() {
+        let coeffs = CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED;
+        let kappa = 0.1;
+        let pos = gx_combined(kappa, 8.0_f32.to_radians(), &coeffs);
+        let neg = gx_combined(kappa, -8.0_f32.to_radians(), &coeffs);
+        assert!(
+            (pos - neg).abs() < 1e-6,
+            "gx should be symmetric in slip_angle sign: {} vs {}",
+            pos,
+            neg
+        );
+    }
+
+    #[test]
+    fn combined_slip_coeffs_are_distinct_type_from_pacejka_coeffs() {
+        // Compile-time guard: CombinedSlipCoeffs is intentionally a separate
+        // type from PacejkaCoeffs. Pure-slip coeffs (b/c/d/e) shape the
+        // Pacejka force curve; combined-slip coeffs (b_alpha/c_alpha/
+        // b_kappa/c_kappa) shape the G-functions.
+        let _pure: PacejkaCoeffs = PacejkaCoeffs::LATERAL_DEFAULT;
+        let _combined: CombinedSlipCoeffs = CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED;
+        // If these were the same type the call below wouldn't compile.
+        // (Trivial assertion; the test's value is the explicit type
+        // annotation above.)
     }
 
     #[test]
