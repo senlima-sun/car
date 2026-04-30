@@ -1,5 +1,6 @@
 use crate::constants::aero::{DEFAULT_AIR_DENSITY, FRONTAL_AREA};
 use crate::constants::car::{BASE_DOWNFORCE_COEFFICIENT, BASE_DRAG_COEFFICIENT};
+use crate::utils::smoothstep;
 
 /// Time constant for the per-axle ride-height EMA. Suspension noise floor
 /// at 120Hz is ~33ms (a few raycast steps); 80ms is high enough to filter
@@ -64,12 +65,6 @@ const RIDE_HEIGHT_PLATEAU_END_M: f32 = 0.045;
 const RIDE_HEIGHT_FALLOFF_END_M: f32 = 0.150;
 const PORPOISING_FLOOR_MULT: f32 = 0.5;
 const WING_ONLY_FALLOFF_MULT: f32 = 0.6;
-
-#[inline]
-fn smoothstep(t: f32) -> f32 {
-    let t = t.clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
 
 /// Ground-effect downforce multiplier as a function of ride height.
 /// C¹ continuous via smoothstep at every region boundary. Real F1 cars
