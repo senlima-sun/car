@@ -67,6 +67,40 @@ and what was held bit-equivalent.
 - Phase 7 perf snapshot allows up to +5% versus the Wave 2 final p50.
   Hard-fail blocks merge if exceeded; profile the G-method math first.
 
+### Wave 4 migration footprint (Phase 0 Step 0.3)
+
+#### `TRACK_WIDTH` (car axle gauge — Phase 2 split into front/rear)
+
+Note: JS-side `TRACK_WIDTH` (12 m, in `src/constants/dimensions.ts`) is the
+**road surface width**, NOT the car axle gauge — leave untouched. The car
+axle gauge in JS is `TRACK_GAUGE_FRONT` / `TRACK_GAUGE_REAR` (already
+split at 1.52 / 1.53 m); update those values to 2026 spec (1.9 / 1.8 m)
+in Phase 2.
+
+Rust touchpoints (must split into `TRACK_WIDTH_FRONT` / `_REAR`):
+- `physics-engine/src/constants/car.rs` — declaration
+- `physics-engine/src/car_physics/weight_transfer.rs` — `lat_transfer` formula uses single `TRACK_WIDTH`
+- `physics-engine/src/engine.rs:1050` — `half_track = TRACK_WIDTH / 2.0`
+
+JS touchpoints (update gauge constants to 2026 spec only):
+- `src/constants/dimensions.ts` — `TRACK_GAUGE_FRONT`, `TRACK_GAUGE_REAR`, `TRACK_GAUGE` alias
+
+#### `TIRE_RADIUS` (Phase 3 cascade 0.33 → 0.36 m)
+
+Rust touchpoints:
+- `physics-engine/src/car_physics/powertrain.rs` — declaration + 4 `wheel_rpm` / `drive_force` / `max_speed_in_gear` callers
+- `physics-engine/src/car_physics/mod.rs:342` — `pt_out.drive_force * TIRE_RADIUS * AXLE_TO_CORNER_SPLIT`
+- `physics-engine/src/car_physics/wheel_force.rs` — 8 callers in `step` + 4 callers in tests
+  (`omega_cap`, kinematic ω, brake torque, tire reaction, slip ratio, target ω in tests)
+
+JS touchpoints (already at 0.37; bump to 0.36 to align with Rust 2026 spec):
+- `src/constants/dimensions.ts:8` — `WHEEL_RADIUS` declaration
+- `src/components/canvas/Car/Car.tsx` — 4 `BallCollider` `args={[WHEEL_RADIUS]}` consumers
+- `src/components/canvas/Car/hooks/useCarTelemetryLogging.ts` — `wheelRadius` local
+- `src/components/canvas/Car/hooks/useRaycastSuspension.ts` — `REST_LENGTH` + `wheelBottomY`
+- `src/components/canvas/Preview/PreviewScene.tsx` — preview placement Y
+- `src/components/canvas/TrackObjects/StartGrid.tsx` — if present
+
 ### Outcome
 
 Wave 3 closed with the new strict ±0.5% gate against the post-Phase-7
