@@ -12,7 +12,9 @@ pub const ENGINE_INERTIA: f32 = 0.15;
 const REDLINE_RPM: f32 = 15000.0;
 const IDLE_RPM: f32 = 4000.0;
 const PEAK_TORQUE_RPM: f32 = 10500.0;
-const PEAK_TORQUE_NM: f32 = 380.0;
+// Wave 4 Phase 4: 2026 F1 ICE peak torque ≈ 480 Nm (1.6L V6 turbo
+// hybrid; published spec). Was 380 Nm = 2025-spec.
+const PEAK_TORQUE_NM: f32 = 480.0;
 const SHIFT_TIME_S: f32 = 0.05;
 const UPSHIFT_RPM_THRESHOLD: f32 = 13500.0;
 const DOWNSHIFT_RPM_THRESHOLD: f32 = 6500.0;
@@ -448,10 +450,9 @@ mod tests {
             pt.shift_state
         );
 
-        // Wave 4 Phase 3: TIRE_RADIUS 0.33 → 0.36 m. At the same gearbox
-        // output torque, drive_force = wheel_torque / radius drops ~9%.
-        // Baseline updated 6505 → 5919 to match the new radius.
-        const BASELINE_DRIVE_FORCE_N: f32 = 5919.4355;
+        // Wave 4 Phase 3 dropped 6505 → 5919 (radius 0.33 → 0.36).
+        // Wave 4 Phase 4 lifts to 7477 (PEAK_TORQUE_NM 380 → 480 = +26%).
+        const BASELINE_DRIVE_FORCE_N: f32 = 7477.1807;
         const TOLERANCE_PCT: f32 = 0.01;
         let delta = (out.drive_force - BASELINE_DRIVE_FORCE_N).abs();
         let allowed = BASELINE_DRIVE_FORCE_N.abs() * TOLERANCE_PCT;
