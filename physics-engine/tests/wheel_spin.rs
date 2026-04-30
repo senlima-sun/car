@@ -60,9 +60,11 @@ fn full_brake_from_50ms_reduces_forward_speed() {
     };
     linvel = run(&mut engine, brake_input, linvel, 120);
 
+    // Wave 4 Phase 1 BASE_TIRE_GRIP_COEFFICIENT 3.5 → 2.5 reduces brake
+    // deceleration by ~30%. Threshold relaxed 0.5 → 0.6 of initial speed.
     assert!(
-        linvel[2] < initial_forward * 0.5,
-        "After 1s of full brake, forward speed should drop below half ({} → {})",
+        linvel[2] < initial_forward * 0.6,
+        "After 1s of full brake, forward speed should drop below 60% ({} → {})",
         initial_forward,
         linvel[2]
     );

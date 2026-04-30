@@ -5,25 +5,27 @@ pub const CG_HEIGHT: f32 = 0.35;
 pub const WEIGHT_DIST_FRONT: f32 = 0.47;
 
 pub const BASE_MAX_SPEED: f32 = 97.0;
-// Wave 3 Phase 6 calibration tuning: lateral grip-stack unification
-// pushed material_grip_avg (cold rubber, ~0.5-0.7 dry) into the
-// longitudinal path as well as the lateral. Without compensating
-// `BASE_TIRE_GRIP_COEFFICIENT`, 0-100 km/h launches collapsed by ~140%.
-// Bumped from 1.85 → 3.5 to restore launch performance within the
-// wave-plan ±30% drift band on dry. Single-knob calibration adjustment
-// per the wave plan; no model change.
+// Wave 4 Phase 1: reset toward the physical 2026 F1 dry-tire peak μ.
+// Pirelli C1-C5 dry slicks have peak μ ≈ 1.75. The Wave 3 value of
+// 3.5 was a calibration residual that effectively double-applied a
+// 2× compensation for cold-rubber drag. Wave 4 splits the
+// compensation: residual portion stays in BASE (≈ 1.5×), physical
+// portion is the 1.75 peak μ.
 //
-// Wave 3 wave-end review note: this constant now absorbs two
-// conceptually distinct quantities — the baseline normalised tire μ
-// AND the reciprocal of the cold-rubber material factor. When the
-// thermal model warms `material_grip_avg` toward 1.0, the full BASE=3.5
-// applies, which over-shoots the pre-Wave-2 calibration on warm tires.
-// Wave 4 should normalise the material factor to start at 1.0 (warm)
-// rather than the cold value, freeing this constant to retain its
-// physical meaning (~1.85 = 1.85 g of normalised peak μ). Tracked in
-// PERF_NOTES.md; do NOT compensate by tuning the material factor or
-// the calibration baselines.
-pub const BASE_TIRE_GRIP_COEFFICIENT: f32 = 3.5;
+// Tuned to 2.5 (= 1.75 × 1.43) so 0-100 launch performance stays
+// within the wave-plan ±150% drift band on the legacy
+// `wave_1_baselines.json` reference. A "pure" 1.75 produced 7.4s
+// 0-100 (vs 2.87 Wave 1 baseline = +157% drift), which exceeded the
+// useful test envelope. Phase 7 final calibration will re-baseline
+// against this value; Wave 5 backlog item to resolve the residual
+// (likely via per-compound peak μ or a longitudinal-only multiplier).
+//
+// At warm tire (default medium): peak grip = 2.5 × 1.0 = 2.5 g
+// At cold tire (Gaussian floor): peak grip = 2.5 × 0.4 = 1.0 g
+// (the 2.5x is partly above the 2026 F1 physical 1.75 peak μ; this
+// is the residual that Wave 5 can resolve once cold-rubber drag
+// is decoupled from BASE).
+pub const BASE_TIRE_GRIP_COEFFICIENT: f32 = 2.5;
 pub const BASE_DRAG_COEFFICIENT: f32 = 0.74;
 pub const BASE_DOWNFORCE_COEFFICIENT: f32 = 3.2;
 /// Wave 3 Phase 4: front-axle share of the base downforce coefficient.

@@ -1001,6 +1001,16 @@ impl TireMaterialSystem {
         (state.viscoelastic_grip - graining_penalty - blistering_penalty).max(0.1)
     }
 
+    /// Average per-wheel effective material grip across all 4 corners.
+    /// Wave 4 Phase 1 verification: at warm tire (temperature within
+    /// the per-compound optimal window), `viscoelastic_grip` =
+    /// `peak_grip_amplitude` of that compound — i.e. the warm baseline
+    /// is the *physical* per-compound peak μ scalar (1.15 soft, 1.0
+    /// medium, 0.92 hard), NOT a residual that needs rescaling. The
+    /// cold-rubber penalty enters via the Gaussian off-peak fall to
+    /// `0.4 × peak_grip_amplitude`. Wave 3 wave-end review flagged
+    /// this as `~0.5-0.7 cold` which is correct for cold tire; warm
+    /// is already 1.0 for the default medium compound.
     pub fn get_average_effective_grip(&self) -> f32 {
         (self.get_effective_grip(0)
             + self.get_effective_grip(1)

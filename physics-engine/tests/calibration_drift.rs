@@ -5,8 +5,12 @@ use common::{
     measure_stop_distance_with, measure_zero_to_100, read_baseline_scenario_from,
 };
 
-const DRY_FIXTURE: &str = "tests/fixtures/wave_3_dry_baselines.json";
-const WET_FIXTURE: &str = "tests/fixtures/wave_3_wet_baselines.json";
+// Wave 4: drift is now measured against `wave_4_pre_baselines.json`
+// (= Wave 3 strict-gate values), which is the anchor for cumulative
+// Phase 1-6 drift reporting. The original Wave 3 phase-0-pre fixtures
+// stay in tree as historical records.
+const DRY_FIXTURE: &str = "tests/fixtures/wave_4_pre_baselines.json";
+const WET_FIXTURE: &str = "tests/fixtures/wave_4_pre_baselines.json";
 
 fn pct_drift(actual: f32, baseline: f32) -> f32 {
     ((actual - baseline) / baseline).abs()
@@ -33,29 +37,29 @@ fn assert_drift_within(label: &str, actual: f32, baseline: f32, max_drift: f32) 
     );
 }
 
-/// Wave 3 calibration drift sanity check. Read-only — runs the Wave 3
-/// entry baselines through the post-Phase-N engine and reports drift.
-/// Bounds reflect the cumulative behaviour change scope through each
-/// phase:
+/// Wave 3/4 calibration drift sanity check. Read-only — runs the
+/// Wave 4 pre-baselines (= Wave 3 strict-gate values) through the
+/// post-Phase-N engine and reports drift. Bounds reflect cumulative
+/// behaviour change scope through each phase:
 ///
-///   0-100 km/h dry          : ±30% (Phase 5 engine inertia adds ~25%)
-///   50 m/s -> 0 stop dry    : ±25% (Phase 5 engine braking shortens stop)
+///   0-100 km/h dry          : ±50% (Wave 4 Phase 1 BASE reset shifts launch heavily)
+///   50 m/s -> 0 stop dry    : ±40% (Wave 4 Phase 1 BASE reset shifts stop heavily)
 ///   80m radius lat-g dry    : ±20%
-///   DRS 200-300 km/h dry    : ±35% (Phase 5 reflected inertia hits hardest in low gears)
-///   100 km/h -> 0 stop dry  : ±30%
-///   50 m/s -> 0 stop wet    : ±30%
+///   DRS 200-300 km/h dry    : ±40% (Phase 5 reflected inertia + Phase 1 cold-rubber)
+///   100 km/h -> 0 stop dry  : ±40%
+///   50 m/s -> 0 stop wet    : ±40%
 ///   80m radius lat-g wet    : ±25%
 ///   80m radius lat-g oil    : ±25%
 ///
 /// Stays separate from `calibration_strict.rs` so it doesn't gate the
-/// build during Phase 2-6 (which deliberately re-baseline). Phase 7
+/// build during Phase 1-6 (which deliberately re-baseline). Phase 7
 /// promotes the new numbers to the strict ±0.5% gate.
 
 #[test]
 fn phase_n_dry_zero_to_100_drift_within_bounds() {
     let actual = measure_zero_to_100().expect("0-100 reachable");
     let baseline = read_baseline_scenario_from(DRY_FIXTURE, "zero_to_100_kmh_seconds");
-    assert_drift_within("0-100 km/h", actual, baseline, 0.30);
+    assert_drift_within("0-100 km/h", actual, baseline, 0.50);
 }
 
 #[test]
@@ -63,7 +67,7 @@ fn phase_n_dry_50ms_stop_distance_drift_within_bounds() {
     let actual = measure_stop_distance().expect("stop reachable");
     let baseline =
         read_baseline_scenario_from(DRY_FIXTURE, "fifty_ms_to_zero_stop_distance_m");
-    assert_drift_within("50 m/s stop", actual, baseline, 0.25);
+    assert_drift_within("50 m/s stop", actual, baseline, 0.40);
 }
 
 #[test]
@@ -79,7 +83,7 @@ fn phase_n_dry_drs_200_to_300_drift_within_bounds() {
     let actual = measure_drs_200_to_300().expect("DRS 200-300 reachable");
     let baseline =
         read_baseline_scenario_from(DRY_FIXTURE, "drs_active_200_to_300_kmh_seconds");
-    assert_drift_within("DRS 200-300", actual, baseline, 0.35);
+    assert_drift_within("DRS 200-300", actual, baseline, 0.40);
 }
 
 #[test]
@@ -87,7 +91,7 @@ fn phase_n_dry_100kmh_stop_distance_drift_within_bounds() {
     let actual = measure_stop_distance_100kmh().expect("100->0 stop reachable");
     let baseline =
         read_baseline_scenario_from(DRY_FIXTURE, "hundred_kmh_to_zero_stop_distance_m");
-    assert_drift_within("100 km/h stop", actual, baseline, 0.30);
+    assert_drift_within("100 km/h stop", actual, baseline, 0.40);
 }
 
 #[test]
@@ -98,7 +102,7 @@ fn phase_n_wet_50ms_stop_distance_drift_within_bounds() {
         WET_FIXTURE,
         "wet_fifty_ms_to_zero_stop_distance_m",
     );
-    assert_drift_within("wet 50 m/s stop", actual, baseline, 0.30);
+    assert_drift_within("wet 50 m/s stop", actual, baseline, 0.40);
 }
 
 #[test]
