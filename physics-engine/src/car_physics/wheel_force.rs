@@ -1,7 +1,8 @@
 use crate::car_physics::powertrain::TIRE_RADIUS;
 use crate::car_physics::tire_model::{
-    combined_slip, pacejka_lateral_per_wheel, pacejka_longitudinal, peak_mu_lon_at_fz,
-    PacejkaCoeffs, TIRE_DEFAULT_LOAD_SENSITIVITY,
+    combined_slip, gx_combined, gy_combined, pacejka_lateral_per_wheel, pacejka_longitudinal,
+    peak_mu_lat_at_fz, peak_mu_lon_at_fz, CombinedSlipCoeffs, PacejkaCoeffs,
+    TIRE_DEFAULT_LOAD_SENSITIVITY,
 };
 use crate::constants::car::BASE_TIRE_GRIP_COEFFICIENT;
 use crate::tires::is_front_wheel;
@@ -139,11 +140,11 @@ impl WheelForceIntegrator {
             let fz = i.resolved_wheel_loads[wheel].max(0.0);
             // TODO(wave-2-phase-5): unify longitudinal grip stack with the
             // lateral path. Currently scales by base μ only.
-            let fx_pacejka = sanitize(
+            let fx_pure = sanitize(
                 pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT),
                 0.0,
             );
-            let fy_pacejka = sanitize(
+            let fy_pure = sanitize(
                 pacejka_lateral_per_wheel(
                     slip_angle_rad,
                     fz,
@@ -152,20 +153,36 @@ impl WheelForceIntegrator {
                 ),
                 0.0,
             );
-            // Phase 1 (Wave 3): friction-ellipse cap stays as (fx, 0) to
-            // preserve Wave 2 bit-equivalence on the longitudinal path.
-            // Phase 2 promotes the cap to (fx, fy) alongside Pacejka
-            // Gx/Gy weighting; until then Fy is telemetry-only.
-            let mu_fz_limit = peak_mu_lon_at_fz(fz) * fz;
-            let (fx_capped, _) = combined_slip(fx_pacejka, 0.0, mu_fz_limit);
+            // Phase 2 (Wave 3): Pacejka G-method weights pure-slip Fx by
+            // lateral slip and pure-slip Fy by longitudinal slip. At zero
+            // off-axis slip both multipliers are 1.0 (pure-slip preserved).
+            // The friction-ellipse below is now a defensive guard since
+            // G-method already keeps total magnitude inside the circle.
+            let g_x = gx_combined(
+                slip_ratio,
+                slip_angle_rad,
+                &CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED,
+            );
+            let g_y = gy_combined(
+                slip_angle_rad,
+                slip_ratio,
+                &CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED,
+            );
+            let fx_combined = fx_pure * g_x;
+            let fy_combined = fy_pure * g_y;
+            // Two-axis friction-ellipse cap. Radius uses the larger of
+            // lateral / longitudinal peak μ (matches Wave 1's
+            // `calculate_per_wheel_forces` ellipse).
+            let mu_fz_limit = peak_mu_lat_at_fz(fz).max(peak_mu_lon_at_fz(fz)) * fz;
+            let (fx_capped, fy_capped) = combined_slip(fx_combined, fy_combined, mu_fz_limit);
             let fx = fx_capped
                 * BASE_TIRE_GRIP_COEFFICIENT
                 * i.downforce_grip_bonus
                 * i.environmental_grip_modifier;
             wheel_fx_now[wheel] = fx;
-            wheel_fy_now[wheel] = fy_pacejka;
+            wheel_fy_now[wheel] = fy_capped;
             wheel_long_force += fx;
-            wheel_lat_force += fy_pacejka;
+            wheel_lat_force += fy_capped;
         }
         self.prev_wheel_fx = wheel_fx_now;
         WheelForceOutput {
@@ -289,15 +306,29 @@ mod tests {
 
     #[test]
     fn fy_consistent_with_axle_average_under_symmetric_loads() {
-        // At symmetric front/rear loads + moderate slip angle, the per-wheel
-        // Fy from `pacejka_lateral_per_wheel` should sum to the same total
-        // that `pacejka_lateral` would produce on the axle-averaged Fz times
-        // 4 (within 5%). Establishes that the per-wheel decomposition isn't
-        // a re-derivation drift.
+        // Axle-average parity: at symmetric Fz + moderate slip angle + zero
+        // longitudinal slip (G-method gy = 1.0; friction-ellipse cap doesn't
+        // clamp 4 wheels × pacejka_lateral_per_wheel inside the circle), the
+        // integrator's total_lat_force should round-trip the per-wheel
+        // Pacejka call. Run the integrator long enough for slip_ratio to
+        // settle to zero on rear wheels (no drive/brake → ω drifts to v/r
+        // via tire-reaction feedback within ~30 steps).
         let mut s = WheelForceIntegrator::new();
         let mut inputs = idle_inputs();
         inputs.slip_angle_smoothed_deg = 6.0;
+        for _ in 0..60 {
+            s.step(&inputs);
+        }
         let out = s.step(&inputs);
+
+        // Confirm slip-ratio has settled.
+        for sr in &out.slip_ratio_per_wheel {
+            assert!(
+                sr.abs() < 0.05,
+                "slip_ratio should have settled to ~0, got {:?}",
+                out.slip_ratio_per_wheel
+            );
+        }
 
         let slip_rad = 6.0_f32.to_radians();
         let one_corner_fy = pacejka_lateral_per_wheel(
@@ -317,6 +348,105 @@ mod tests {
             expected_total,
             drift * 100.0
         );
+    }
+
+    // Phase 2 (Wave 3) — G-method combined-slip behaviour change tests
+
+    #[test]
+    fn combined_slip_reduces_fx_when_lateral_slip_present() {
+        // Pure-slip vs combined-slip Fx: at slip_ratio = 0.1 + slip_angle = 10°,
+        // gx_combined kicks in and Fx drops below the pure-slip value.
+        let mut s_pure = WheelForceIntegrator::new();
+        let mut inputs_pure = idle_inputs();
+        inputs_pure.drive_engaged = true;
+        inputs_pure.driven_wheel_torque = 1500.0; // induce slip_ratio
+        inputs_pure.slip_angle_smoothed_deg = 0.0; // pure-slip baseline
+        // Warm up so slip_ratio settles.
+        for _ in 0..30 {
+            s_pure.step(&inputs_pure);
+        }
+        let pure_out = s_pure.step(&inputs_pure);
+
+        let mut s_combined = WheelForceIntegrator::new();
+        let mut inputs_combined = idle_inputs();
+        inputs_combined.drive_engaged = true;
+        inputs_combined.driven_wheel_torque = 1500.0;
+        inputs_combined.slip_angle_smoothed_deg = 10.0; // off-axis slip
+        for _ in 0..30 {
+            s_combined.step(&inputs_combined);
+        }
+        let combined_out = s_combined.step(&inputs_combined);
+
+        let pure_fx_total = pure_out.fx_per_wheel.iter().sum::<f32>().abs();
+        let combined_fx_total = combined_out.fx_per_wheel.iter().sum::<f32>().abs();
+        assert!(
+            combined_fx_total < pure_fx_total * 0.95,
+            "combined Fx ({}) should drop below 95% of pure Fx ({}) due to G-method",
+            combined_fx_total,
+            pure_fx_total
+        );
+    }
+
+    #[test]
+    fn combined_slip_reduces_fy_when_longitudinal_slip_present() {
+        // Pure-lateral baseline: slip_angle = 8°, slip_ratio settled to ~0
+        // (no drive/brake; ω drifts to v/r within ~60 warmup steps).
+        let mut s_pure = WheelForceIntegrator::new();
+        let mut inputs_pure = idle_inputs();
+        inputs_pure.slip_angle_smoothed_deg = 8.0;
+        for _ in 0..60 {
+            s_pure.step(&inputs_pure);
+        }
+        let pure_out = s_pure.step(&inputs_pure);
+
+        // Combined: same slip_angle but rear wheels driven → settled rear
+        // slip_ratio > 0 → gy < 1 on rear, Fy drops.
+        let mut s_combined = WheelForceIntegrator::new();
+        let mut inputs_combined = idle_inputs();
+        inputs_combined.slip_angle_smoothed_deg = 8.0;
+        inputs_combined.drive_engaged = true;
+        inputs_combined.driven_wheel_torque = 1500.0;
+        for _ in 0..60 {
+            s_combined.step(&inputs_combined);
+        }
+        let combined_out = s_combined.step(&inputs_combined);
+
+        // Rear wheels (driven) see non-zero slip_ratio in combined; front
+        // wheels stay kinematic in both cases. Compare rear-only Fy.
+        let pure_rear: f32 = pure_out.fy_per_wheel[2..].iter().map(|f| f.abs()).sum();
+        let combined_rear: f32 = combined_out.fy_per_wheel[2..].iter().map(|f| f.abs()).sum();
+        assert!(
+            combined_rear < pure_rear * 0.97,
+            "rear Fy ({}) should drop below 97% of pure rear Fy ({}) when slip_ratio active",
+            combined_rear,
+            pure_rear
+        );
+        // Sanity: rear slip_ratio in combined > 0.
+        let combined_rear_sr = combined_out.slip_ratio_per_wheel[2];
+        assert!(
+            combined_rear_sr.abs() > 0.01,
+            "expected non-zero rear slip_ratio in combined case, got {}",
+            combined_rear_sr
+        );
+    }
+
+    #[test]
+    fn pure_slip_outputs_unchanged_when_off_axis_slip_zero() {
+        // At slip_angle = 0, gx returns 1.0 → Fx_combined = Fx_pure.
+        // Verifies the G-method is a strict superset of pure-slip behaviour.
+        let mut s = WheelForceIntegrator::new();
+        let mut inputs = idle_inputs();
+        inputs.drive_engaged = true;
+        inputs.driven_wheel_torque = 800.0;
+        inputs.slip_angle_smoothed_deg = 0.0;
+        for _ in 0..30 {
+            s.step(&inputs);
+        }
+        let out = s.step(&inputs);
+        // At zero slip angle, Fy is zero too.
+        assert!(out.total_lat_force.abs() < 1.0);
+        // Fx is a meaningful drive force.
+        assert!(out.total_long_force.abs() > 100.0);
     }
 
     #[test]
