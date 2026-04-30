@@ -42,6 +42,9 @@ fn assert_drift_within(label: &str, actual: f32, baseline: f32, max_drift: f32) 
 ///   80m radius lat-g dry    : ±15%
 ///   DRS 200-300 km/h dry    : ±10%
 ///   100 km/h -> 0 stop dry  : ±10%
+///   50 m/s -> 0 stop wet    : ±25%
+///   80m radius lat-g wet    : ±25%
+///   80m radius lat-g oil    : ±25%
 ///
 /// Stays separate from `calibration_strict.rs` so it doesn't gate the
 /// build during Phase 2-6 (which deliberately re-baseline). Phase 7

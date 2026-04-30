@@ -651,12 +651,11 @@ mod tests {
         // Compile-time guard: CombinedSlipCoeffs is intentionally a separate
         // type from PacejkaCoeffs. Pure-slip coeffs (b/c/d/e) shape the
         // Pacejka force curve; combined-slip coeffs (b_alpha/c_alpha/
-        // b_kappa/c_kappa) shape the G-functions.
+        // b_kappa/c_kappa) shape the G-functions. The explicit type
+        // annotations below are the assertion — if the structs were
+        // unified, one of these bindings would fail to compile.
         let _pure: PacejkaCoeffs = PacejkaCoeffs::LATERAL_DEFAULT;
         let _combined: CombinedSlipCoeffs = CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED;
-        // If these were the same type the call below wouldn't compile.
-        // (Trivial assertion; the test's value is the explicit type
-        // annotation above.)
     }
 
     #[test]
