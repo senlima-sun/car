@@ -345,7 +345,17 @@ pub struct ActiveAeroState {
     pub front_wing_angle: f32, // 0.0 = closed, 1.0 = open
     pub rear_wing_angle: f32,  // 0.0 = closed, 1.0 = open
     pub drag_multiplier: f32,
+    /// Combined downforce multiplier (front + rear average). Preserved
+    /// for telemetry / UI consumers; new physics paths (Wave 3 Phase 4)
+    /// should consume `front_downforce_multiplier` and
+    /// `rear_downforce_multiplier` directly.
     pub downforce_multiplier: f32,
+    /// Front-axle downforce multiplier. Wave 3 Phase 4: DRS opens only
+    /// the rear wing → front_mult stays high while rear_mult drops,
+    /// shifting balance forward (understeer signature).
+    pub front_downforce_multiplier: f32,
+    /// Rear-axle downforce multiplier.
+    pub rear_downforce_multiplier: f32,
     pub auto_mode: bool,
     /// Whether the car is currently inside a DRS-enabled zone.
     pub drs_zone_active: bool,

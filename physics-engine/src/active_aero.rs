@@ -4,15 +4,24 @@ use crate::types::{ActiveAeroState, AeroMode};
 
 // Corner Mode: Max downforce, high drag (default configuration)
 const CORNER_DRAG_MULT: f32 = 1.0;
-const CORNER_DOWNFORCE_MULT: f32 = 1.0;
+const CORNER_FRONT_DOWNFORCE_MULT: f32 = 1.0;
+const CORNER_REAR_DOWNFORCE_MULT: f32 = 1.0;
 
-// Straight Mode: Low drag, reduced downforce (wings open)
+// Straight Mode: Low drag, reduced downforce (wings open). Wave 3
+// Phase 4 keeps the per-axle drop symmetric (both wings flatten); the
+// drag slot drives the speed gain.
 const STRAIGHT_DRAG_MULT: f32 = 0.55; // 45% drag reduction
-const STRAIGHT_DOWNFORCE_MULT: f32 = 0.42; // 58% downforce reduction
+const STRAIGHT_FRONT_DOWNFORCE_MULT: f32 = 0.55;
+const STRAIGHT_REAR_DOWNFORCE_MULT: f32 = 0.55;
 
-// DRS Mode: Straight + additional drag slot (2026 F1 DRS zones)
-const DRS_DRAG_MULT: f32 = 0.40; // ~60% drag reduction vs Corner
-const DRS_DOWNFORCE_MULT: f32 = 0.30; // 70% downforce reduction
+// DRS Mode: Straight + additional drag slot. Wave 3 Phase 4: real DRS
+// opens only the rear wing — front_mult stays at Corner level, rear
+// drops sharply to flatten downforce on the straight while preserving
+// front grip for the optional follow-on corner-entry brake. Effect:
+// rear-end balance shifts to understeer in DRS-active corners.
+const DRS_DRAG_MULT: f32 = 0.40;
+const DRS_FRONT_DOWNFORCE_MULT: f32 = 1.0;
+pub const DRS_REAR_DOWNFORCE_MULT: f32 = 0.42;
 
 // Wing transition speed
 const WING_LERP_SPEED: f32 = 2.0; // ~0.5 seconds for full transition
@@ -43,7 +52,9 @@ impl ActiveAeroPhysicsState {
                 front_wing_angle: 0.0,
                 rear_wing_angle: 0.0,
                 drag_multiplier: CORNER_DRAG_MULT,
-                downforce_multiplier: CORNER_DOWNFORCE_MULT,
+                downforce_multiplier: CORNER_FRONT_DOWNFORCE_MULT,
+                front_downforce_multiplier: CORNER_FRONT_DOWNFORCE_MULT,
+                rear_downforce_multiplier: CORNER_REAR_DOWNFORCE_MULT,
                 auto_mode: true,
                 drs_zone_active: false,
                 drs_enabled: false,
@@ -117,23 +128,47 @@ impl ActiveAeroPhysicsState {
             * dt;
         self.current.rear_wing_angle = (self.current.rear_wing_angle + rear_delta).clamp(0.0, 1.0);
 
-        // Calculate average wing angle for multiplier interpolation
+        // Calculate average wing angle for drag interpolation (drag is
+        // approximately symmetric whether the front or rear wing is open).
         let avg_wing_angle = (self.current.front_wing_angle + self.current.rear_wing_angle) / 2.0;
 
         // DRS contributes an extra slot beyond Straight.
         let drs_applied = self.current.mode == AeroMode::Drs && self.current.drs_zone_active;
         self.current.drs_enabled = drs_applied;
-        let (base_drag, base_df) = if drs_applied {
-            (DRS_DRAG_MULT, DRS_DOWNFORCE_MULT)
+        let (base_drag, target_front_df, target_rear_df) = if drs_applied {
+            (
+                DRS_DRAG_MULT,
+                DRS_FRONT_DOWNFORCE_MULT,
+                DRS_REAR_DOWNFORCE_MULT,
+            )
         } else {
-            (STRAIGHT_DRAG_MULT, STRAIGHT_DOWNFORCE_MULT)
+            (
+                STRAIGHT_DRAG_MULT,
+                STRAIGHT_FRONT_DOWNFORCE_MULT,
+                STRAIGHT_REAR_DOWNFORCE_MULT,
+            )
         };
 
         // Interpolate drag multiplier: 1.0 (corner) -> base_drag (straight/DRS)
         self.current.drag_multiplier = lerp(CORNER_DRAG_MULT, base_drag, avg_wing_angle);
 
-        // Interpolate downforce multiplier: 1.0 (corner) -> base_df (straight/DRS)
-        self.current.downforce_multiplier = lerp(CORNER_DOWNFORCE_MULT, base_df, avg_wing_angle);
+        // Per-axle downforce uses per-axle wing angle so DRS (rear wing only)
+        // produces an asymmetric balance shift even mid-transition.
+        self.current.front_downforce_multiplier = lerp(
+            CORNER_FRONT_DOWNFORCE_MULT,
+            target_front_df,
+            self.current.front_wing_angle,
+        );
+        self.current.rear_downforce_multiplier = lerp(
+            CORNER_REAR_DOWNFORCE_MULT,
+            target_rear_df,
+            self.current.rear_wing_angle,
+        );
+
+        // Combined value preserved for telemetry / UI: average of the two.
+        self.current.downforce_multiplier =
+            (self.current.front_downforce_multiplier + self.current.rear_downforce_multiplier)
+                * 0.5;
 
         self.current
     }
@@ -253,7 +288,9 @@ mod tests {
         assert!(state.current.front_wing_angle > 0.9);
         assert!(state.current.rear_wing_angle > 0.95);
         assert!((state.current.drag_multiplier - STRAIGHT_DRAG_MULT).abs() < 0.1);
-        assert!((state.current.downforce_multiplier - STRAIGHT_DOWNFORCE_MULT).abs() < 0.1);
+        let expected_combined =
+            (STRAIGHT_FRONT_DOWNFORCE_MULT + STRAIGHT_REAR_DOWNFORCE_MULT) * 0.5;
+        assert!((state.current.downforce_multiplier - expected_combined).abs() < 0.1);
     }
 
     #[test]
@@ -272,7 +309,9 @@ mod tests {
         assert!(state.current.front_wing_angle < 0.1);
         assert!(state.current.rear_wing_angle < 0.05);
         assert!((state.current.drag_multiplier - CORNER_DRAG_MULT).abs() < 0.1);
-        assert!((state.current.downforce_multiplier - CORNER_DOWNFORCE_MULT).abs() < 0.1);
+        let expected_combined =
+            (CORNER_FRONT_DOWNFORCE_MULT + CORNER_REAR_DOWNFORCE_MULT) * 0.5;
+        assert!((state.current.downforce_multiplier - expected_combined).abs() < 0.1);
     }
 
     #[test]
@@ -313,6 +352,92 @@ mod tests {
         let straight_downforce = state.get_downforce_multiplier();
         assert!(straight_downforce < corner_downforce);
         assert!((straight_downforce - 0.55).abs() < 0.1);
+    }
+
+    // Phase 4 (Wave 3) — front/rear split + asymmetric DRS
+
+    #[test]
+    fn drs_unloads_rear_only() {
+        let mut state = ActiveAeroPhysicsState::new();
+        state.set_drs_zone(true);
+        state.set_mode(AeroMode::Drs);
+        for _ in 0..120 {
+            state.update(1.0 / 60.0, 0.0);
+        }
+        let s = state.get_state();
+        assert!(s.drs_enabled, "DRS should be enabled in active zone");
+        assert!(
+            (s.front_downforce_multiplier - DRS_FRONT_DOWNFORCE_MULT).abs() < 0.05,
+            "DRS front mult should stay at {}, got {}",
+            DRS_FRONT_DOWNFORCE_MULT,
+            s.front_downforce_multiplier
+        );
+        assert!(
+            (s.rear_downforce_multiplier - DRS_REAR_DOWNFORCE_MULT).abs() < 0.05,
+            "DRS rear mult should drop to {}, got {}",
+            DRS_REAR_DOWNFORCE_MULT,
+            s.rear_downforce_multiplier
+        );
+        assert!(
+            s.front_downforce_multiplier > s.rear_downforce_multiplier,
+            "DRS should unload rear more than front: front={}, rear={}",
+            s.front_downforce_multiplier,
+            s.rear_downforce_multiplier
+        );
+    }
+
+    #[test]
+    fn straight_unloads_both_axles_symmetrically() {
+        let mut state = ActiveAeroPhysicsState::new();
+        state.set_mode(AeroMode::Straight);
+        for _ in 0..120 {
+            state.update(1.0 / 60.0, 0.0);
+        }
+        let s = state.get_state();
+        assert!(
+            (s.front_downforce_multiplier - STRAIGHT_FRONT_DOWNFORCE_MULT).abs() < 0.05,
+            "Straight front mult should drop to {}, got {}",
+            STRAIGHT_FRONT_DOWNFORCE_MULT,
+            s.front_downforce_multiplier
+        );
+        assert!(
+            (s.rear_downforce_multiplier - STRAIGHT_REAR_DOWNFORCE_MULT).abs() < 0.05,
+            "Straight rear mult should drop to {}, got {}",
+            STRAIGHT_REAR_DOWNFORCE_MULT,
+            s.rear_downforce_multiplier
+        );
+        assert!(
+            (s.front_downforce_multiplier - s.rear_downforce_multiplier).abs() < 0.02,
+            "Straight should be symmetric: front={}, rear={}",
+            s.front_downforce_multiplier,
+            s.rear_downforce_multiplier
+        );
+    }
+
+    #[test]
+    fn corner_keeps_full_downforce_on_both_axles() {
+        let mut state = ActiveAeroPhysicsState::new();
+        let s = state.get_state();
+        assert!((s.front_downforce_multiplier - 1.0).abs() < 0.01);
+        assert!((s.rear_downforce_multiplier - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn combined_downforce_multiplier_is_axle_average() {
+        let mut state = ActiveAeroPhysicsState::new();
+        state.set_drs_zone(true);
+        state.set_mode(AeroMode::Drs);
+        for _ in 0..120 {
+            state.update(1.0 / 60.0, 0.0);
+        }
+        let s = state.get_state();
+        let expected = (s.front_downforce_multiplier + s.rear_downforce_multiplier) * 0.5;
+        assert!(
+            (s.downforce_multiplier - expected).abs() < 1e-4,
+            "combined = avg(front, rear): {} vs {}",
+            s.downforce_multiplier,
+            expected
+        );
     }
 
     #[test]

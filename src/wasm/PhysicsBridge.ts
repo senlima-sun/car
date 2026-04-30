@@ -314,7 +314,12 @@ export interface ActiveAeroState {
   front_wing_angle: number // 0.0-1.0
   rear_wing_angle: number // 0.0-1.0
   drag_multiplier: number
+  /** Combined (axle-averaged) downforce multiplier. Telemetry/UI only. */
   downforce_multiplier: number
+  /** Wave 3 Phase 4: front-axle downforce multiplier. DRS keeps this high. */
+  front_downforce_multiplier: number
+  /** Wave 3 Phase 4: rear-axle downforce multiplier. DRS drops this sharply. */
+  rear_downforce_multiplier: number
   auto_mode: boolean
   /** Whether the car is inside a DRS zone. */
   drs_zone_active: boolean
