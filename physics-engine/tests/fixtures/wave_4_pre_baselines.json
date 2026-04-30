@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-4-phase-0-pre",
+  "scenarios": {
+    "zero_to_100_kmh_seconds": 3.6583,
+    "fifty_ms_to_zero_stop_distance_m": 38.4548,
+    "steady_state_80m_radius_peak_lat_g": 9.9368,
+    "drs_active_200_to_300_kmh_seconds": 6.3167,
+    "hundred_kmh_to_zero_stop_distance_m": 14.4229,
+    "wet_fifty_ms_to_zero_stop_distance_m": 65.8063,
+    "wet_steady_state_80m_radius_peak_lat_g": 8.3361,
+    "oil_steady_state_80m_radius_peak_lat_g": 8.3706
+  },
+  "notes": "Pre-Wave-4 anchor. Should match wave_3_baselines.json within FP noise. Cumulative drift through Phases 1-6 is measured against this fixture."
+}
