@@ -892,7 +892,7 @@ impl PhysicsEngine {
         // torque feedback; double-applying the material multiplier
         // would collapse launch performance below the calibration
         // envelope.
-        let longitudinal_grip_modifier = surface_modifiers.grip_multiplier
+        let environmental_grip_modifier = surface_modifiers.grip_multiplier
             * weather_modifiers.friction_slip_multiplier
             * aquaplaning_grip
             * terrain_grip;
@@ -945,7 +945,7 @@ impl PhysicsEngine {
             &tire_degradation,
             &wind_modifiers,
             combined_grip,
-            longitudinal_grip_modifier,
+            environmental_grip_modifier,
             self.curb.is_on_curb(),
             surface_speed,
             ers_boost,

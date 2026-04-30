@@ -31,7 +31,7 @@ pub struct WheelSpinInputs {
     /// reduce cornering. Cold-tire material grip stays lateral-only —
     /// the wheel-spin integrator's tire-reaction feedback loop already
     /// couples to the cold-rubber state via prev_wheel_fx.
-    pub longitudinal_grip_modifier: f32,
+    pub environmental_grip_modifier: f32,
 }
 
 #[derive(Debug, Default)]
@@ -122,7 +122,7 @@ impl WheelSpinIntegrator {
             let fx = fx_capped
                 * BASE_TIRE_GRIP_COEFFICIENT
                 * i.downforce_grip_bonus
-                * i.longitudinal_grip_modifier;
+                * i.environmental_grip_modifier;
             wheel_fx_now[wheel] = fx;
             wheel_long_force += fx;
         }
@@ -151,7 +151,7 @@ mod tests {
             rear_brake_force: 0.0,
             resolved_wheel_loads: nominal_loads(),
             downforce_grip_bonus: 1.0,
-            longitudinal_grip_modifier: 1.0,
+            environmental_grip_modifier: 1.0,
         }
     }
 
