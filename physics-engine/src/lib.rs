@@ -756,6 +756,12 @@ impl PhysicsEngine {
     ///
     /// # Returns
     /// CarPhysicsOutput with new velocities and telemetry
+    ///
+    /// Wave 2 superseded: prefer `step_and_sync_packed`. This export
+    /// stays for the JS `stepPhysics()` wrapper but is dead-code-eliminated
+    /// by LTO when no JS caller uses it.
+    #[allow(deprecated)]
+    #[deprecated(note = "Use step_and_sync_packed instead (Wave 2 Phase 3)")]
     #[wasm_bindgen]
     pub fn step(
         &mut self,
@@ -793,8 +799,15 @@ impl PhysicsEngine {
     // Batched Step + Sync (fewer FFI calls per frame)
     // ========================================================================
 
-    /// Combined physics step + state sync in one FFI call
-    /// Returns physics output + wind state + aero state + brake state
+    /// Combined physics step + state sync in one FFI call.
+    ///
+    /// Wave 2 superseded: `step_and_sync_packed` replaces 6 separate
+    /// `serde_wasm_bindgen::from_value` deserializations with a single
+    /// Float32Array slice borrow. This positional-JsValue export is kept
+    /// for backward compat / direct WASM consumers; LTO + codegen-units=1
+    /// DCE it from the release binary if no JS path uses it.
+    #[allow(deprecated)]
+    #[deprecated(note = "Use step_and_sync_packed instead (Wave 2 Phase 3)")]
     #[wasm_bindgen]
     pub fn step_and_sync(
         &mut self,

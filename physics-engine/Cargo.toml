@@ -27,3 +27,7 @@ opt-level = 3
 lto = true
 codegen-units = 1
 panic = "abort"
+# `strip = "symbols"` was attempted but the bundled wasm-opt 0.13.1
+# rejects the resulting binary ("error validating input"). Re-test
+# after upgrading wasm-pack to 0.14+; in the meantime wasm-pack runs
+# wasm-opt -O which strips its own way.
