@@ -53,14 +53,14 @@ fn capture_step_and_sync_perf_baseline() {
     let json = format!(
         r#"{{
   "schema_version": 1,
-  "captured_at": "wave-2-entry",
+  "captured_at": "wave-2-exit",
   "samples": {},
   "step_and_sync_ns": {{
     "min": {},
     "p50": {},
     "p99": {}
   }},
-  "notes": "lib.rs::step_and_sync deserializes 6 separate JsValue args via serde-wasm-bindgen::from_value plus parse_wheel_loads helper; replacing this with Float32Array payload is Wave 2 Phase 3."
+  "notes": "Internal Rust step_and_sync — Wave 2 didn't change internal logic so this number is unchanged from entry. The Phase 3 win is at the WASM/JS FFI boundary (step_and_sync_packed replaces 6 from_value calls with one Float32Array slice borrow); measure via the dev server, not here."
 }}
 "#,
         SAMPLE_COUNT, min, p50, p99

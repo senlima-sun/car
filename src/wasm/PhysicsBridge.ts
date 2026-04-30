@@ -755,10 +755,14 @@ export function getTireWearPerWheel(): PerWheelWear {
 }
 
 /**
- * Set curb contact state
+ * Set curb contact state. Routes through the numeric-enum FFI variant
+ * (Wave 2 Phase 4) so the per-call boundary doesn't allocate strings.
  */
 export function setOnCurb(isOnCurb: boolean, side?: 'left' | 'right', curbType?: string): void {
-  getPhysicsEngine().set_on_curb(isOnCurb, side, curbType)
+  const sideCode = side === 'left' ? 1 : side === 'right' ? 2 : 0
+  const ct = curbType?.toLowerCase()
+  const curbCode = ct === 'exit' ? 1 : ct === 'flat' ? 2 : 0
+  getPhysicsEngine().set_on_curb_numeric(isOnCurb, sideCode, curbCode)
 }
 
 /**

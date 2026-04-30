@@ -447,31 +447,8 @@ impl PhysicsEngine {
     // Curb API
     // ========================================================================
 
-    /// Set whether the car is on a curb
-    #[wasm_bindgen]
-    pub fn set_on_curb(
-        &mut self,
-        is_on_curb: bool,
-        side: Option<String>,
-        curb_type: Option<String>,
-    ) {
-        let curb_side = side.and_then(|s| match s.as_str() {
-            "left" | "Left" => Some(CurbSide::Left),
-            "right" | "Right" => Some(CurbSide::Right),
-            _ => None,
-        });
-        let ct = curb_type
-            .map(|s| match s.as_str() {
-                "exit" | "Exit" => CurbType::Exit,
-                "flat" | "Flat" => CurbType::Flat,
-                _ => CurbType::Apex,
-            })
-            .unwrap_or(CurbType::Apex);
-        self.inner.set_on_curb(is_on_curb, curb_side, ct);
-    }
-
-    /// Numeric-enum variant of `set_on_curb` (Wave 2 Phase 4).
-    /// Avoids per-call `String` allocations on the FFI boundary.
+    /// Set whether the car is on a curb. Numeric-enum FFI; avoids
+    /// per-call `String` allocations on the boundary.
     /// `side`: 0 = none, 1 = left, 2 = right.
     /// `curb_type`: 0 = apex, 1 = exit, 2 = flat.
     /// Out-of-range values fall back to defaults (none / apex).
