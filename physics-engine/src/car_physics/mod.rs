@@ -4,25 +4,16 @@ pub mod powertrain;
 pub mod steering;
 pub mod tire_model;
 pub mod weight_transfer;
+pub mod wheel_spin;
 
 use crate::car_physics::powertrain::TIRE_RADIUS;
-use crate::car_physics::tire_model::{combined_slip, pacejka_longitudinal, peak_mu_at_fz, PacejkaCoeffs};
+use crate::car_physics::wheel_spin::{WheelSpinIntegrator, WheelSpinInputs, AXLE_TO_CORNER_SPLIT};
 use crate::constants::car::*;
-use crate::tires::is_front_wheel;
 use crate::types::{
     CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers, WindModifiers,
 };
 use crate::utils::{lerp, sanitize, Quat, Vec3};
 
-// Effective wheel-side rotational inertia. Includes gear-reflected engine
-// contribution (2026 F1 ICE I≈0.15 × gear²~20 ≈ 3 kg·m²) plus wheel/upright
-// (~1.5 kg·m²). Tuned in Phase 4 calibration.
-const WHEEL_INERTIA: f32 = 8.0;
-const SLIP_RATIO_VEL_FLOOR_MS: f32 = 0.5;
-const SLIP_RATIO_ABS_CLAMP: f32 = 2.0;
-const WHEEL_OMEGA_OVERSPEED_RATIO: f32 = 5.0;
-const WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S: f32 = 50.0;
-const AXLE_TO_CORNER_SPLIT: f32 = 0.5;
 // Linear damping rate (1/s) applied to body forward velocity below 1 m/s
 // while braking. Compensates for slip-ratio oscillation at near-zero speed.
 const LOW_SPEED_CREEP_DAMPING_RATE: f32 = 8.0;
@@ -47,8 +38,7 @@ pub struct CarPhysicsState {
     target_angular_velocity: f32,
     long_g_filtered: f32,
     lat_g_filtered: f32,
-    wheel_angvel: [f32; 4],
-    prev_wheel_fx: [f32; 4],
+    wheel_spin: WheelSpinIntegrator,
 }
 
 impl Default for CarPhysicsState {
@@ -68,8 +58,7 @@ impl Default for CarPhysicsState {
             target_angular_velocity: 0.0,
             long_g_filtered: 0.0,
             lat_g_filtered: 0.0,
-            wheel_angvel: [0.0; 4],
-            prev_wheel_fx: [0.0; 4],
+            wheel_spin: WheelSpinIntegrator::new(),
         }
     }
 }
@@ -316,10 +305,7 @@ impl CarPhysicsState {
             [front_corner, front_corner, rear_corner, rear_corner]
         });
 
-        // Wheel-spin integration. Route engine torque (rear axle, RWD) and
-        // brake torque per wheel through `pacejka_longitudinal` via slip
-        // ratio. Tire-reaction torque uses last frame's Fx (1-step lag at
-        // 120Hz) to avoid the implicit-couple chicken-and-egg.
+        // Wheel-spin integration: see `wheel_spin::WheelSpinIntegrator`.
         let drive_engaged = effective_throttle > 0.01
             && effective_brake < 0.01
             && !input.handbrake
@@ -338,75 +324,18 @@ impl CarPhysicsState {
         } else {
             0.0
         };
-        let omega_cap = (forward_speed.abs() / TIRE_RADIUS) * WHEEL_OMEGA_OVERSPEED_RATIO
-            + WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S;
-        let v_floor = forward_speed.abs().max(SLIP_RATIO_VEL_FLOOR_MS);
-        let mut wheel_long_force = 0.0_f32;
-        let mut wheel_fx_now = [0.0_f32; 4];
-        for wheel in 0..4 {
-            let is_driven = !is_front_wheel(wheel);
-            let per_axle_brake = if is_front_wheel(wheel) {
-                front_brake_force
-            } else {
-                rear_brake_force
-            };
-            let has_brake_torque = braking_active && per_axle_brake > 0.0;
-
-            // Non-driven wheels with no brake just roll kinematically; skip
-            // the integrate/clamp work that would be overwritten anyway.
-            if !is_driven && !has_brake_torque {
-                self.wheel_angvel[wheel] = forward_speed / TIRE_RADIUS;
-            } else {
-                let drive_torque = if is_driven { driven_wheel_torque } else { 0.0 };
-                let brake_torque_corner =
-                    per_axle_brake * AXLE_TO_CORNER_SPLIT * brake_torque_modifier * TIRE_RADIUS;
-                // Brake opposes the macro vehicle motion, not the instantaneous
-                // wheel ω. Using `wheel_angvel.signum()` causes a sign-flip
-                // oscillation when ω passes through zero (signum(0)=+1) which
-                // pumps spurious force into `prev_wheel_fx`. Indexing off
-                // `forward_speed` keeps the brake direction stable across the
-                // free-roll → braked → locked transition.
-                let brake_signed_torque = -brake_torque_corner * forward_speed.signum();
-                let tire_reaction_torque = self.prev_wheel_fx[wheel] * TIRE_RADIUS;
-                let net_torque = drive_torque + brake_signed_torque - tire_reaction_torque;
-                let omega_before = self.wheel_angvel[wheel];
-                let omega_after = omega_before + net_torque / WHEEL_INERTIA * dt;
-                // Anti-overshoot: when only brake torque is active and the
-                // step would carry ω across zero, clamp at zero so the wheel
-                // doesn't reverse-spin under braking.
-                self.wheel_angvel[wheel] = if drive_torque.abs() < f32::EPSILON
-                    && has_brake_torque
-                    && omega_before * omega_after < 0.0
-                {
-                    0.0
-                } else {
-                    omega_after
-                };
-                self.wheel_angvel[wheel] = self.wheel_angvel[wheel].clamp(-omega_cap, omega_cap);
-            }
-
-            let slip_ratio = ((self.wheel_angvel[wheel] * TIRE_RADIUS - forward_speed) / v_floor)
-                .clamp(-SLIP_RATIO_ABS_CLAMP, SLIP_RATIO_ABS_CLAMP);
-            let fz = resolved_wheel_loads[wheel].max(0.0);
-            // TODO(wave-1-phase-4): unify longitudinal grip stack with the
-            // lateral path. Currently scales by base μ only to preserve the
-            // existing integration-test envelope.
-            let fx_pacejka = sanitize(
-                pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT),
-                0.0,
-            );
-            // Friction-ellipse cap in raw-Newton units; apply grip scaling
-            // once after capping so the cap and the value share the same
-            // dimensions. Wave 1 has no per-wheel Fy yet, so this
-            // degenerates to a friction-line cap on |fx|. Wave 3 will pass a
-            // real lateral force and the full ellipse will engage.
-            let mu_fz_limit = peak_mu_at_fz(fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT) * fz;
-            let (fx_capped, _) = combined_slip(fx_pacejka, 0.0, mu_fz_limit);
-            let fx = fx_capped * BASE_TIRE_GRIP_COEFFICIENT * downforce_grip_bonus;
-            wheel_fx_now[wheel] = fx;
-            wheel_long_force += fx;
-        }
-        self.prev_wheel_fx = wheel_fx_now;
+        let wheel_long_force = self.wheel_spin.step(&WheelSpinInputs {
+            dt,
+            forward_speed,
+            drive_engaged,
+            driven_wheel_torque,
+            braking_active,
+            brake_torque_modifier,
+            front_brake_force,
+            rear_brake_force,
+            resolved_wheel_loads,
+            downforce_grip_bonus,
+        });
         longitudinal_force += wheel_long_force;
 
         let (front_grip, rear_grip) = tire_model::calculate_tire_grip(
