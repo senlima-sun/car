@@ -131,13 +131,6 @@ Calibration drift contracts (post-Wave-4 vs. pre-Wave-4 baseline):
 - Clamp `lap_deployed_mj` at the cap boundary (currently overshoots
   by ~15-20 kJ per tick).
 
-### Outcome
-
-Wave 4 closed with the new strict ±0.5% gate against the post-Phase-7
-baseline (`tests/fixtures/wave_4_baselines.json`, 8 scenarios).
-
-
-
 ### Phase scope and rebase contract
 
 | Phase | Behaviour-change? | Notes |
@@ -149,7 +142,7 @@ baseline (`tests/fixtures/wave_4_baselines.json`, 8 scenarios).
 | Phase 4 | **Yes** | `PEAK_TORQUE_NM` 380 → 480 (2026 ICE spec); top speed re-validates to 320-360 km/h envelope with Override Mode. |
 | Phase 5 | **Yes** — additive aero + powertrain mode | DRS replaced by Override Mode (350 kW MGU-K boost, no zone gate); `AeroMode` renamed to Z-mode (Corner) / X-mode (both wings movable straight); legacy `Drs` enum alias for one wave. |
 | Phase 6 | Gate-only | `LAP_RECOVERY_CAP_MJ` 8.5 → 9.0; new `LAP_DEPLOY_CAP_MJ` 9.0; cap-trigger test verifies budget exhaustion. |
-| Phase 7 | Calibration gate | New 9-scenario `wave_4_baselines.json` becomes strict ±0.5% gate. JS `axleRideHeights` swap to true chassis-bottom-to-ground meters. |
+| Phase 7 | Calibration gate | New 8-scenario `wave_4_baselines.json` becomes strict ±0.5% gate. JS `axleRideHeights` swap to true chassis-bottom-to-ground meters. |
 
 ### Calibration tolerance through Wave 4
 
@@ -191,42 +184,3 @@ JS touchpoints (already at 0.37; bump to 0.36 to align with Rust 2026 spec):
 - `src/components/canvas/Car/hooks/useRaycastSuspension.ts` — `REST_LENGTH` + `wheelBottomY`
 - `src/components/canvas/Preview/PreviewScene.tsx` — preview placement Y
 - `src/components/canvas/TrackObjects/StartGrid.tsx` — if present
-
-### Outcome
-
-Wave 3 closed with the new strict ±0.5% gate against the post-Phase-7
-baseline (`tests/fixtures/wave_3_baselines.json`, 8 scenarios).
-Verification at wave-end:
-
-- 453 lib + 8 strict_calibration + 9 calibration_drift + 4 soak
-  (incl. 10k combined-slip-stress) + 14 wheel_spin + 12 stability +
-  remaining suites all green
-- 301 JS tests pass
-- 82k-step NaN soak deterministic across 3 back-to-back runs
-- WASM release build clean
-- Wave-end review (`code-reviewer` agent) findings addressed; final
-  `/simplify` pass clean
-
-Calibration drift contracts (post-Wave-3 vs. pre-Wave-3 baseline):
-- 0-100 km/h          : 2.87 → 3.66 s   (+27%, engine inertia)
-- 50 m/s stop         : 40.16 → 38.45 m (-4%, engine braking via clutch)
-- 80m lat-g           : 9.92 → 9.94      (essentially unchanged)
-- DRS 200-300 km/h    : 4.94 → 6.32 s   (+28%, engine inertia in low gears)
-- 100 km/h stop       : 16.80 → 14.42 m (-14%)
-- Wet 50 m/s stop     : 70.23 → 65.81 m (-6%)
-- Wet 80m lat-g       : 7.54 → 8.34     (+11%, peer-load-grip interplay)
-- Oil 80m lat-g       : 7.40 → 8.37     (+13%)
-
-Wave 4 backlog (from Phase 7 wave-end review):
-- Normalise `material_grip_avg` to start at 1.0 (warm) so
-  `BASE_TIRE_GRIP_COEFFICIENT` retains physical meaning (currently
-  3.5, absorbs both baseline μ and inverse cold-rubber compensation).
-- Swap JS `axleRideHeights` from suspension compression to true
-  chassis-bottom-to-ground meters once the suspension model exposes
-  the absolute ride height.
-- G-method sign-coupling smoothness near `slip_ratio = 0` zero-cross.
-- DRS `drs_enabled` flag gating on actual rear-wing-angle threshold
-  vs. zone+mode flag.
-- Force-shaped `calculate_turn_dynamics_from_lateral_force` consumer
-  switch — needs chassis dynamics re-architecture to solve the
-  bootstrap chicken-and-egg.

@@ -9,8 +9,7 @@ use common::{
 // (= Wave 3 strict-gate values), which is the anchor for cumulative
 // Phase 1-6 drift reporting. The original Wave 3 phase-0-pre fixtures
 // stay in tree as historical records.
-const DRY_FIXTURE: &str = "tests/fixtures/wave_4_pre_baselines.json";
-const WET_FIXTURE: &str = "tests/fixtures/wave_4_pre_baselines.json";
+const FIXTURE: &str = "tests/fixtures/wave_4_pre_baselines.json";
 
 fn pct_drift(actual: f32, baseline: f32) -> f32 {
     ((actual - baseline) / baseline).abs()
@@ -58,39 +57,35 @@ fn assert_drift_within(label: &str, actual: f32, baseline: f32, max_drift: f32) 
 #[test]
 fn phase_n_dry_zero_to_100_drift_within_bounds() {
     let actual = measure_zero_to_100().expect("0-100 reachable");
-    let baseline = read_baseline_scenario_from(DRY_FIXTURE, "zero_to_100_kmh_seconds");
+    let baseline = read_baseline_scenario_from(FIXTURE, "zero_to_100_kmh_seconds");
     assert_drift_within("0-100 km/h", actual, baseline, 0.50);
 }
 
 #[test]
 fn phase_n_dry_50ms_stop_distance_drift_within_bounds() {
     let actual = measure_stop_distance().expect("stop reachable");
-    let baseline =
-        read_baseline_scenario_from(DRY_FIXTURE, "fifty_ms_to_zero_stop_distance_m");
+    let baseline = read_baseline_scenario_from(FIXTURE, "fifty_ms_to_zero_stop_distance_m");
     assert_drift_within("50 m/s stop", actual, baseline, 0.40);
 }
 
 #[test]
 fn phase_n_dry_80m_lat_g_drift_within_bounds() {
     let actual = measure_lat_g().expect("lat-g sampled");
-    let baseline =
-        read_baseline_scenario_from(DRY_FIXTURE, "steady_state_80m_radius_peak_lat_g");
+    let baseline = read_baseline_scenario_from(FIXTURE, "steady_state_80m_radius_peak_lat_g");
     assert_drift_within("80m lat-g", actual, baseline, 0.20);
 }
 
 #[test]
 fn phase_n_dry_drs_200_to_300_drift_within_bounds() {
     let actual = measure_drs_200_to_300().expect("DRS 200-300 reachable");
-    let baseline =
-        read_baseline_scenario_from(DRY_FIXTURE, "drs_active_200_to_300_kmh_seconds");
+    let baseline = read_baseline_scenario_from(FIXTURE, "drs_active_200_to_300_kmh_seconds");
     assert_drift_within("DRS 200-300", actual, baseline, 0.40);
 }
 
 #[test]
 fn phase_n_dry_100kmh_stop_distance_drift_within_bounds() {
     let actual = measure_stop_distance_100kmh().expect("100->0 stop reachable");
-    let baseline =
-        read_baseline_scenario_from(DRY_FIXTURE, "hundred_kmh_to_zero_stop_distance_m");
+    let baseline = read_baseline_scenario_from(FIXTURE, "hundred_kmh_to_zero_stop_distance_m");
     assert_drift_within("100 km/h stop", actual, baseline, 0.40);
 }
 
@@ -98,30 +93,23 @@ fn phase_n_dry_100kmh_stop_distance_drift_within_bounds() {
 fn phase_n_wet_50ms_stop_distance_drift_within_bounds() {
     let actual =
         measure_stop_distance_with(make_wet_road_engine(), 50.0).expect("wet stop reachable");
-    let baseline = read_baseline_scenario_from(
-        WET_FIXTURE,
-        "wet_fifty_ms_to_zero_stop_distance_m",
-    );
+    let baseline = read_baseline_scenario_from(FIXTURE, "wet_fifty_ms_to_zero_stop_distance_m");
     assert_drift_within("wet 50 m/s stop", actual, baseline, 0.40);
 }
 
 #[test]
 fn phase_n_wet_80m_lat_g_drift_within_bounds() {
     let actual = measure_lat_g_with(make_wet_road_engine()).expect("wet lat-g sampled");
-    let baseline = read_baseline_scenario_from(
-        WET_FIXTURE,
-        "wet_steady_state_80m_radius_peak_lat_g",
-    );
+    let baseline =
+        read_baseline_scenario_from(FIXTURE, "wet_steady_state_80m_radius_peak_lat_g");
     assert_drift_within("wet 80m lat-g", actual, baseline, 0.25);
 }
 
 #[test]
 fn phase_n_oil_80m_lat_g_drift_within_bounds() {
     let actual = measure_lat_g_with(make_oil_proxy_engine()).expect("oil lat-g sampled");
-    let baseline = read_baseline_scenario_from(
-        WET_FIXTURE,
-        "oil_steady_state_80m_radius_peak_lat_g",
-    );
+    let baseline =
+        read_baseline_scenario_from(FIXTURE, "oil_steady_state_80m_radius_peak_lat_g");
     assert_drift_within("oil 80m lat-g", actual, baseline, 0.25);
 }
 
