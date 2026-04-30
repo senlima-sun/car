@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-4-final",
+  "notes": "Captured at Wave 4 head (post Phase 0-7 incl. Pacejka research, BASE 3.5→2.5, 768kg mass, 1.9/1.8m track, 0.36m tire, 480Nm peak torque, Override Mode + symmetric X-mode, 9 MJ ERS caps, JS ride-height units fix). Replaces wave_3_baselines.json as the strict ±0.5% gate. 0-100 km/h on warm tires now 2.29s (real F1 ~2.6s).",
+  "scenarios": {
+    "zero_to_100_kmh_seconds": 2.2917,
+    "fifty_ms_to_zero_stop_distance_m": 48.6456,
+    "steady_state_80m_radius_peak_lat_g": 9.9391,
+    "drs_active_200_to_300_kmh_seconds": 4.8500,
+    "hundred_kmh_to_zero_stop_distance_m": 18.5895,
+    "wet_fifty_ms_to_zero_stop_distance_m": 82.2281,
+    "wet_steady_state_80m_radius_peak_lat_g": 8.8325,
+    "oil_steady_state_80m_radius_peak_lat_g": 8.5881
+  }
+}

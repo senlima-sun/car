@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-4-final",
+  "samples": 100000,
+  "step_and_sync_ns": {
+    "min": 333,
+    "p50": 541,
+    "p99": 1167
+  },
+  "notes": "Wave 4 final perf snapshot. Wave-end gate: p50 within 1.05× perf_wave_4_pre.json p50."
+}

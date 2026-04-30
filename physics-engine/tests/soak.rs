@@ -259,3 +259,48 @@ fn soak_step_and_sync_handles_adversarial_steps() {
         angvel = bundle.physics.angular_velocity;
     }
 }
+
+/// Wave 4 Phase 7: Override Mode toggle stress soak. 10000 steps with
+/// the override request toggled at high frequency, validating that
+/// the per-lap budget exhausts cleanly, the lap reset re-enables, and
+/// the boost path produces finite forces under all toggle patterns.
+#[test]
+fn soak_override_mode_toggle_stress() {
+    let mut engine = PhysicsEngine::new();
+    let mut linvel = [0.0_f32, 0.0, 60.0];
+    let mut angvel = [0.0_f32; 3];
+    let position = [0.0_f32, 1.0, 0.0];
+    let rotation = [0.0_f32, 0.0, 0.0, 1.0];
+
+    for frame in 0..10_000 {
+        // Toggle override every 30 frames; reset budget every 1500 frames
+        // (= one synthetic lap). Mix in occasional brake to exercise the
+        // brake-disables-override path.
+        let toggle = (frame / 30) % 2 == 0;
+        let braking = (frame / 60) % 7 == 0;
+        engine.set_override_requested(toggle);
+        if frame > 0 && frame % 1500 == 0 {
+            engine.reset_override_lap_budget();
+        }
+
+        let input = CarInput {
+            forward: true,
+            throttle: 0.7,
+            brake: braking,
+            ..Default::default()
+        };
+        let bundle = engine.step_and_sync(
+            FIXED_DT,
+            input,
+            position,
+            rotation,
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        assert_output_finite(&bundle.physics, frame);
+        linvel = bundle.physics.linear_velocity;
+        angvel = bundle.physics.angular_velocity;
+    }
+}

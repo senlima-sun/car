@@ -74,6 +74,78 @@ fn capture_step_and_sync_perf_baseline() {
     println!("wrote {}", path.display());
 }
 
+/// Wave 4 Phase 7: final perf snapshot at Wave 4 head. Compare against
+/// `perf_wave_4_pre.json` (captured at Phase 0); wave-end gate allows
+/// p50 within 1.05× pre-Wave-4. The Override Mode + Pacejka recoeff +
+/// per-axle TRACK_WIDTH split + 9 MJ caps shouldn't add measurable
+/// per-step cost; the Phase 1 BASE reset removes one multiplication.
+#[test]
+#[ignore]
+fn capture_step_and_sync_perf_wave_4_final() {
+    let mut engine = PhysicsEngine::new();
+    engine.set_surface(SurfaceType::Road);
+
+    let input = CarInput {
+        forward: true,
+        throttle: 0.6,
+        steer: 0.3,
+        ..Default::default()
+    };
+    let position = [0.0_f32, 1.0, 0.0];
+    let rotation = [0.0_f32, 0.0, 0.0, 1.0];
+    let mut linvel = [0.0_f32, 0.0, 30.0];
+    let mut angvel = [0.0_f32; 3];
+    let surface_normal = [0.0_f32, 0.999, 0.04];
+    let wheel_loads = Some([2200.0_f32, 1800.0, 2100.0, 1900.0]);
+
+    let mut samples_ns = Vec::with_capacity(SAMPLE_COUNT);
+    for _ in 0..SAMPLE_COUNT {
+        let t0 = Instant::now();
+        let bundle = engine.step_and_sync(
+            FIXED_DT,
+            input,
+            position,
+            rotation,
+            linvel,
+            angvel,
+            surface_normal,
+            wheel_loads,
+        );
+        let elapsed = t0.elapsed().as_nanos() as u64;
+        samples_ns.push(elapsed);
+        linvel = bundle.physics.linear_velocity;
+        angvel = bundle.physics.angular_velocity;
+    }
+
+    samples_ns.sort_unstable();
+    let min = samples_ns[0];
+    let p50 = samples_ns[SAMPLE_COUNT / 2];
+    let p99 = samples_ns[SAMPLE_COUNT * 99 / 100];
+
+    let json = format!(
+        r#"{{
+  "schema_version": 1,
+  "captured_at": "wave-4-final",
+  "samples": {},
+  "step_and_sync_ns": {{
+    "min": {},
+    "p50": {},
+    "p99": {}
+  }},
+  "notes": "Wave 4 final perf snapshot. Wave-end gate: p50 within 1.05× perf_wave_4_pre.json p50."
+}}
+"#,
+        SAMPLE_COUNT, min, p50, p99
+    );
+
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/perf_wave_4.json");
+    std::fs::write(&path, json).expect("write Wave 4 perf fixture");
+
+    println!("step_and_sync ns — min={}, p50={}, p99={}", min, p50, p99);
+    println!("wrote {}", path.display());
+}
+
 /// Wave 4 Phase 0 Step 0.5: pre-Wave-4 perf snapshot anchor for the
 /// Phase 7 hard-fail gate (+5% budget). Same call shape as Wave 2 /
 /// Wave 3 baselines for direct comparison.

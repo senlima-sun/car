@@ -5,13 +5,11 @@ use common::{
     measure_stop_distance_with, measure_zero_to_100, read_baseline_scenario_from,
 };
 
-/// Wave 3 final strict calibration gate, RELAXED during Wave 4
-/// behaviour-change phases. Phase 1 Pacejka recoeff + BASE reset
-/// shifts launch / stop distances heavily; ±50% accommodates the
-/// Wave 4 Phases 1-6 cumulative drift. Phase 7 re-promotes against
-/// `wave_4_baselines.json` and tightens to ±0.5%.
-const STRICT_TOLERANCE: f32 = 0.50;
-const FIXTURE: &str = "tests/fixtures/wave_3_baselines.json";
+/// Wave 4 final strict calibration gate. Promoted at Phase 7 against
+/// `wave_4_baselines.json` (8 scenarios captured post-Phase-1-6).
+/// Tolerance back to ±0.5% — Wave 4 head IS the new baseline.
+const STRICT_TOLERANCE: f32 = 0.005;
+const FIXTURE: &str = "tests/fixtures/wave_4_baselines.json";
 
 fn assert_strict(label: &str, actual: f32, baseline: f32) {
     let delta = (actual - baseline).abs();

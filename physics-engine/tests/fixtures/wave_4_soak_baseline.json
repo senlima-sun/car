@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-4-final",
+  "soak_runs": [
+    {
+      "run": 1,
+      "result": "pass",
+      "tests": [
+        "step_with_real_wheel_loads_produces_finite_output",
+        "soak_step_combined_slip_stress",
+        "soak_step_handles_adversarial_steps",
+        "soak_step_and_sync_handles_adversarial_steps",
+        "soak_override_mode_toggle_stress"
+      ],
+      "notes": "92k-step total: 72k adversarial + 10k combined-slip-stress + 10k Override toggle stress"
+    },
+    {"run": 2, "result": "pass"},
+    {"run": 3, "result": "pass"}
+  ]
+}

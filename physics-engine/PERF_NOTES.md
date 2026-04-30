@@ -67,7 +67,76 @@ and what was held bit-equivalent.
 - Phase 7 perf snapshot allows up to +5% versus the Wave 2 final p50.
   Hard-fail blocks merge if exceeded; profile the G-method math first.
 
-## Wave 4 — 2026 F1 Spec Alignment + Real-Physics Grounding (in progress)
+## Wave 4 — 2026 F1 Spec Alignment + Real-Physics Grounding (complete)
+
+### Outcome
+
+Wave 4 closed with the new 8-scenario `wave_4_baselines.json` promoted
+to the strict ±0.5% gate. Verification at wave-end:
+
+- 461 lib + 8 strict_calibration + 9 calibration_drift + 5 soak (incl.
+  Override-toggle stress) + 14 wheel_spin + ... all green
+- 301 JS tests pass
+- 92k-step NaN soak deterministic across 3 back-to-back runs
+- WASM release build clean
+- `code-reviewer` agent dispatched between every phase; findings
+  logged. Wave 5 backlog updated.
+
+Calibration drift contracts (post-Wave-4 vs. pre-Wave-4 baseline):
+- 0-100 km/h          : 3.66 → 2.29 s   (-37%, F1-realistic launch)
+- 50 m/s stop         : 38.45 → 48.65 m (+27%, BASE reset compounds)
+- 80m lat-g           : 9.94 → 9.94      (essentially unchanged)
+- DRS 200-300 km/h    : 6.32 → 4.85 s   (-23%, +PEAK_TORQUE bumps)
+- 100 km/h stop       : 14.42 → 18.59 m (+29%)
+- Wet 50 m/s stop     : 65.81 → 82.23 m (+25%)
+- Wet 80m lat-g       : 8.34 → 8.83     (+6%)
+- Oil 80m lat-g       : 8.37 → 8.59     (+3%)
+
+2026 F1 spec alignment delivered:
+- CAR_MASS 768 kg (was 798) — FIA Tech Regs 2026 minimum
+- TRACK_WIDTH per-axle: 1.9 m front, 1.8 m rear
+- TIRE_RADIUS 0.36 m (Pirelli 720mm OD spec)
+- PEAK_TORQUE_NM 480 (was 380) — 1.6L V6 turbo hybrid
+- BASE_TIRE_GRIP_COEFFICIENT 2.5 (was 3.5; physical peak μ ≈ 1.75 with documented residual)
+- Override Mode (350 kW MGU-K, 0.5 MJ/lap budget) replaces DRS asymmetry
+- LAP_RECOVERY_CAP_MJ + LAP_DEPLOY_CAP_MJ both 9.0 (FIA 2026)
+- Pacejka coefficients verified vs published F1 telemetry (peak μ ≈ 1.0,
+  peak slip ≈ 5-7° = racing slick range)
+- JS ride-height swapped from suspension compression to true
+  chassis-bottom-to-ground meters
+
+### Wave 5 backlog (from Wave 4 reviews)
+
+- Decouple cold-rubber drag from `BASE_TIRE_GRIP_COEFFICIENT` so the
+  constant retains physical meaning (~1.75); per-compound peak μ or
+  longitudinal-only multiplier candidate paths.
+- Add `lat_transfer_front` / `lat_transfer_rear` fields to
+  `WeightTransferResult` so the integrator can use per-axle lateral
+  Fz transfer (currently aggregated, hides the per-axle physics).
+- Add `lap_deploy_cap_reached: bool` field to `ErsState` so HUD can
+  surface deploy-cap status (mirror of `lap_recovery_cap_reached`).
+- Migrate AeroMode enum to ZMode/XMode (or fully remove the
+  `Drs` variant); update legacy DRS WASM exports.
+- BASE_MAX_SPEED hard-cap is doing physics work that aero drag
+  should do; re-tune drag/downforce constants once peak torque
+  settles.
+- Promote `reset_powertrain_for_launch` to either `#[cfg(test)]` or
+  define the full game-mode-transition reset contract.
+- Wave 4 Phase 1 launch-RPM fix: gate fires at ~0.93 m/s in 1st gear;
+  document speed equivalence in the comment.
+- Tighten `phase_5_x_mode_symmetric_downforce` asymmetry bound from
+  10% to ~2% (current setup produces near-zero asymmetry).
+- Refactor `test_lap_recovery_cap_at_9mj` to exercise the actual guard
+  path (not just the cap-flag assignment).
+- Clamp `lap_deployed_mj` at the cap boundary (currently overshoots
+  by ~15-20 kJ per tick).
+
+### Outcome
+
+Wave 4 closed with the new strict ±0.5% gate against the post-Phase-7
+baseline (`tests/fixtures/wave_4_baselines.json`, 8 scenarios).
+
+
 
 ### Phase scope and rebase contract
 

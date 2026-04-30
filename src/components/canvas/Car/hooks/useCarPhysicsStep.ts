@@ -6,7 +6,10 @@ import { useErsStore } from '../../../../stores/useErsStore'
 import { useActiveAeroStore } from '../../../../stores/useActiveAeroStore'
 import { type CarInput } from '../../../../wasm'
 import { type SuspensionOutput } from './useRaycastSuspension'
-import { WHEEL_POSITIONS as DIM_WHEEL_POS } from '../../../../constants/dimensions'
+import {
+  WHEEL_POSITIONS as DIM_WHEEL_POS,
+  WHEEL_RADIUS,
+} from '../../../../constants/dimensions'
 import type { CurbType } from '../../../../types/trackObjects'
 
 type PhysicsContext = ReturnType<typeof import('../../../../wasm').usePhysics>
@@ -157,22 +160,35 @@ export function useCarPhysicsStep({
       rawWheelForces && (!shouldValidate || rawWheelForces.every(Number.isFinite))
         ? rawWheelForces
         : undefined
-    // Wave 3 Phase 3: forward per-axle ride heights (front/rear average of
-    // wheel-spring compressions). Same 1-frame lag — Rust applies an EMA
-    // smoother on top so the curve doesn't thrash on bumps. First frame
-    // (cold cache): undefined → bridge uses RIDE_HEIGHT_OPTIMAL_M default.
+    // Wave 4 Phase 7: per-axle ride heights derived from true
+    // chassis-bottom-to-ground clearance. For each wheel:
     //
-    // Wave 3 review note: spring `compression` (REST_LENGTH - distFromAnchor)
-    // is in meters of suspension travel, not absolute ride height to ground.
-    // For nominal driving (compression 0.01-0.05 m) this lands inside the
-    // ground-effect curve's optimal/plateau band, which is the intended
-    // behaviour — the proxy works at the operating point. Wave 4+ will swap
-    // to true chassis-bottom-to-ground when the suspension model exposes it.
+    //   ride_height = chassis_bottom_y - hit_y
+    //               = (pos.y + WHEEL_POS_Y - WHEEL_RADIUS) - hit_y
+    //               = (pos.y - WHEEL_RADIUS) - hit_y   (WHEEL_POS_Y ≈ 0)
+    //
+    // Replaces the Wave 3 proxy that used spring compression (which was
+    // in suspension-travel units, not ground-clearance units; the proxy
+    // worked at the operating point but misrepresented the curve's
+    // intent at the boundaries). Same 1-frame lag — Rust EMA smooths.
     const prevWheels = suspensionOutputRef.current?.wheels
+    const chassisY = pos.y
     const axleRideHeights: [number, number] | undefined = prevWheels
       ? [
-          (prevWheels[0].compression + prevWheels[1].compression) * 0.5,
-          (prevWheels[2].compression + prevWheels[3].compression) * 0.5,
+          // Front axle: average of FL/FR ground clearances
+          Math.max(
+            0,
+            chassisY -
+              WHEEL_RADIUS -
+              (prevWheels[0].hitY + prevWheels[1].hitY) * 0.5,
+          ),
+          // Rear axle: average of RL/RR ground clearances
+          Math.max(
+            0,
+            chassisY -
+              WHEEL_RADIUS -
+              (prevWheels[2].hitY + prevWheels[3].hitY) * 0.5,
+          ),
         ]
       : undefined
     const syncResult = physics.stepAndSync(
