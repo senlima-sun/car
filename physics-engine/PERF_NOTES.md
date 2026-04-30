@@ -67,6 +67,28 @@ and what was held bit-equivalent.
 - Phase 7 perf snapshot allows up to +5% versus the Wave 2 final p50.
   Hard-fail blocks merge if exceeded; profile the G-method math first.
 
+## Wave 4 — 2026 F1 Spec Alignment + Real-Physics Grounding (in progress)
+
+### Phase scope and rebase contract
+
+| Phase | Behaviour-change? | Notes |
+| --- | --- | --- |
+| Phase 0 | No (additive) | Captures pre-Wave-4 baselines; documents migration footprint. |
+| Phase 1 | **Yes** — first deliberate behaviour change | Pacejka pure-slip coefficients re-derived to physical 2026 F1 dataset (peak μ ≈ 1.75); `material_grip_avg` normalised to warm-baseline (cold becomes a subtractive penalty); `BASE_TIRE_GRIP_COEFFICIENT` reset 3.5 → ~1.75 to match physical peak μ. |
+| Phase 2 | Behaviour-equivalent on flat dry-rest, **drift expected** in cornering | `CAR_MASS` 798 → 768 kg (2026 minimum); `TRACK_WIDTH` split into per-axle `_FRONT` (1.9 m) / `_REAR` (1.8 m); migrate `weight_transfer` and downstream consumers. |
+| Phase 3 | **Yes** — slip-ratio path | `TIRE_RADIUS` 0.33 → 0.36 m (Pirelli 2026 spec, 720mm OD); cascades into wheel-rpm, slip-ratio, drive-force, suspension geometry. |
+| Phase 4 | **Yes** | `PEAK_TORQUE_NM` 380 → 480 (2026 ICE spec); top speed re-validates to 320-360 km/h envelope with Override Mode. |
+| Phase 5 | **Yes** — additive aero + powertrain mode | DRS replaced by Override Mode (350 kW MGU-K boost, no zone gate); `AeroMode` renamed to Z-mode (Corner) / X-mode (both wings movable straight); legacy `Drs` enum alias for one wave. |
+| Phase 6 | Gate-only | `LAP_RECOVERY_CAP_MJ` 8.5 → 9.0; new `LAP_DEPLOY_CAP_MJ` 9.0; cap-trigger test verifies budget exhaustion. |
+| Phase 7 | Calibration gate | New 9-scenario `wave_4_baselines.json` becomes strict ±0.5% gate. JS `axleRideHeights` swap to true chassis-bottom-to-ground meters. |
+
+### Calibration tolerance through Wave 4
+
+- Phase 0: Wave 3 strict gate (±0.5%) preserved.
+- Phase 1: relaxed to ±20% on dry (Pacejka coefficient overhaul).
+- Phase 2-6: relaxed to ±25% on dry (cumulative drift through behaviour-change phases).
+- Phase 7: tightens back to ±0.5% against new Wave 4 baseline.
+
 ### Wave 4 migration footprint (Phase 0 Step 0.3)
 
 #### `TRACK_WIDTH` (car axle gauge — Phase 2 split into front/rear)
