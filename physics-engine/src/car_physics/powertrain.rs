@@ -1,7 +1,7 @@
 // Wave 4 Phase 3: 2026 F1 tire spec. Pirelli 720mm OD → 0.36 m radius
-// (was 0.33 m = 2025 660mm OD). Cascades into wheel-rpm calc, slip-ratio
-// path, drive-force scaling, and suspension geometry. ~9% increase in
-// rolling circumference; engine RPM at a given speed drops ~9%.
+// (was 0.33 m = 2025 660mm OD). Cascades into slip-ratio, drive-force
+// scaling, and suspension geometry. ~9% larger rolling circumference,
+// so engine RPM at a given road speed drops ~9%.
 pub const TIRE_RADIUS: f32 = 0.36;
 const TRANSMISSION_EFFICIENCY: f32 = 0.85;
 // Engine-side rotational inertia (kg·m²). Wave 3 Phase 5 reflects this
@@ -448,9 +448,9 @@ mod tests {
             pt.shift_state
         );
 
-        // Wave 4 Phase 3: TIRE_RADIUS 0.33 → 0.36 m drops drive_force at
-        // a fixed wheel-RPM by ~9% (drive_force = wheel_torque / radius).
-        // Baseline updated 6505 → 5919 to match new radius.
+        // Wave 4 Phase 3: TIRE_RADIUS 0.33 → 0.36 m. At the same gearbox
+        // output torque, drive_force = wheel_torque / radius drops ~9%.
+        // Baseline updated 6505 → 5919 to match the new radius.
         const BASELINE_DRIVE_FORCE_N: f32 = 5919.4355;
         const TOLERANCE_PCT: f32 = 0.01;
         let delta = (out.drive_force - BASELINE_DRIVE_FORCE_N).abs();
