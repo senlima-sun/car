@@ -5,7 +5,9 @@ export const CAR_LENGTH = 5.5
 export const CAR_WIDTH = 1.9
 export const CAR_HEIGHT = 1.0
 
-export const WHEEL_RADIUS = 0.37
+// Wave 4 Phase 3: Pirelli 2026 F1 tire spec — 720mm OD = 0.36 m radius.
+// Aligned with Rust `TIRE_RADIUS = 0.36`.
+export const WHEEL_RADIUS = 0.36
 export const WHEEL_WIDTH_FRONT = 0.381
 export const WHEEL_WIDTH_REAR = 0.4
 export const WHEELBASE = 3.38
