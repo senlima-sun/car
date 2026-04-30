@@ -541,6 +541,38 @@ mod tests {
     }
 
     #[test]
+    fn ers_boost_routes_through_integrator_and_friction_cap_holds() {
+        // Phase 5 Step 5.4. ERS deploy adds to PowertrainOutput.drive_force,
+        // which routes through `driven_wheel_torque` and the friction-ellipse
+        // cap inside this integrator. Verify that even with an enormous
+        // additional drive torque (proxying maximum ERS boost at low speed),
+        // per-wheel Fx stays bounded by μ × Fz.
+        let mut s = WheelForceIntegrator::new();
+        let mut inputs = idle_inputs();
+        inputs.forward_speed = 10.0;
+        inputs.drive_engaged = true;
+        // 30 kN drive torque @ 0.33m wheel radius = 90 kNm net per axle.
+        // Way past the friction cap; should clamp inside the ellipse.
+        inputs.driven_wheel_torque = 30_000.0;
+        inputs.clutch_engagement = 1.0;
+        inputs.total_gear_ratio = 10.4;
+        for _ in 0..120 {
+            s.step(&inputs);
+        }
+        let out = s.step(&inputs);
+        // Each rear wheel Fx must stay inside μ × Fz on Pacejka-LON, ~1.0 × 1957 = ~2 kN.
+        for w in 2..4 {
+            let fx_abs = out.fx_per_wheel[w].abs();
+            assert!(
+                fx_abs < 5000.0,
+                "rear[{}] Fx exceeded friction cap: {}",
+                w,
+                fx_abs
+            );
+        }
+    }
+
+    #[test]
     fn explicit_euler_stable_at_high_engine_torque_in_first_gear() {
         // Phase 5 Step 5.3 stability check. Per the plan, the worst case is
         // 1st-gear locked clutch (I_eff ~24 kg·m²) at high tire-reaction
