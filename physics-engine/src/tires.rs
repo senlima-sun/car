@@ -70,6 +70,12 @@ impl TireState {
         self.compound
     }
 
+    /// Cached tire config for the current compound. Avoids
+    /// `TireConfig::for_compound(...)` rebuilds on the per-frame hot path.
+    pub fn get_config(&self) -> &TireConfig {
+        &self.config
+    }
+
     /// Get per-wheel wear data
     pub fn get_per_wheel_wear(&self) -> PerWheelWear {
         PerWheelWear {

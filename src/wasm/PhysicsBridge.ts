@@ -1131,7 +1131,11 @@ export interface RubberFrameResult {
 /**
  * Batched rubber frame update — combines updateCarDriving, getRubberDepositMultiplier,
  * getTrackWetness, and updateRubberDeposits into a single FFI call.
+ * Wave 2 Phase 4: writes into a shared 2-element scratch buffer so the
+ * FFI boundary doesn't allocate per call.
  */
+const rubberFrameScratch = new Float32Array(2)
+
 export function updateRubberFrame(
   carX: number,
   carZ: number,
@@ -1140,17 +1144,16 @@ export function updateRubberFrame(
   wheelPositions: Float32Array,
   wheelIntensities: Float32Array,
 ): RubberFrameResult {
-  const result = new Float32Array(
-    getPhysicsEngine().update_rubber_frame(
-      carX,
-      carZ,
-      speedMs,
-      delta,
-      wheelPositions,
-      wheelIntensities,
-    ),
+  getPhysicsEngine().update_rubber_frame(
+    carX,
+    carZ,
+    speedMs,
+    delta,
+    wheelPositions,
+    wheelIntensities,
+    rubberFrameScratch,
   )
-  return { compoundMult: result[0], wetness: result[1] }
+  return { compoundMult: rubberFrameScratch[0], wetness: rubberFrameScratch[1] }
 }
 
 // ============================================================================

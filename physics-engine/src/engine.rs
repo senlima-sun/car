@@ -840,7 +840,7 @@ impl PhysicsEngine {
         let thermal_shock_penalty = self.tire_temperature.get_thermal_shock_penalty();
         let thermal_shock_grip = 1.0 - thermal_shock_penalty;
 
-        let tire_config = crate::types::TireConfig::for_compound(self.tires.get_compound());
+        let tire_config = self.tires.get_config();
         let base_compound_grip = tire_config.grip_multiplier;
         let weather_friction_mult = weather_modifiers.friction_slip_multiplier;
         let tire_wear_grip_mult = tire_degradation.grip_multiplier

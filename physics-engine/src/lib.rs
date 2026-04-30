@@ -462,6 +462,26 @@ impl PhysicsEngine {
         self.inner.set_on_curb(is_on_curb, curb_side, ct);
     }
 
+    /// Numeric-enum variant of `set_on_curb` (Wave 2 Phase 4).
+    /// Avoids per-call `String` allocations on the FFI boundary.
+    /// `side`: 0 = none, 1 = left, 2 = right.
+    /// `curb_type`: 0 = apex, 1 = exit, 2 = flat.
+    /// Out-of-range values fall back to defaults (none / apex).
+    #[wasm_bindgen]
+    pub fn set_on_curb_numeric(&mut self, is_on_curb: bool, side: u8, curb_type: u8) {
+        let curb_side = match side {
+            1 => Some(CurbSide::Left),
+            2 => Some(CurbSide::Right),
+            _ => None,
+        };
+        let ct = match curb_type {
+            1 => CurbType::Exit,
+            2 => CurbType::Flat,
+            _ => CurbType::Apex,
+        };
+        self.inner.set_on_curb(is_on_curb, curb_side, ct);
+    }
+
     /// Check if car is on curb
     #[wasm_bindgen]
     pub fn is_on_curb(&self) -> bool {
@@ -687,7 +707,9 @@ impl PhysicsEngine {
 
     /// Batched rubber frame update — combines updateCarDriving, getRubberDepositMultiplier,
     /// getTrackWetness, and updateRubberDeposits into a single FFI call.
-    /// Returns Float32Array [compoundMult, wetness]
+    /// Writes `[compoundMult, wetness]` into the caller-supplied 2-element
+    /// `out` buffer. The buffer is reused across frames on the JS side so
+    /// the FFI boundary never allocates.
     #[wasm_bindgen]
     pub fn update_rubber_frame(
         &mut self,
@@ -697,9 +719,15 @@ impl PhysicsEngine {
         delta: f32,
         wheel_positions: &[f32],
         wheel_intensities: &[f32],
-    ) -> Vec<f32> {
+        out: &mut [f32],
+    ) {
+        if out.len() < 2 {
+            return;
+        }
         if wheel_positions.len() < 8 || wheel_intensities.len() < 4 {
-            return vec![1.0, 0.0];
+            out[0] = 1.0;
+            out[1] = 0.0;
+            return;
         }
 
         let positions = [
@@ -718,7 +746,8 @@ impl PhysicsEngine {
         let (compound_mult, wetness) =
             self.inner
                 .update_rubber_frame(car_x, car_z, speed_ms, delta, &positions, &intensities);
-        vec![compound_mult, wetness]
+        out[0] = compound_mult;
+        out[1] = wetness;
     }
 
     // ========================================================================
