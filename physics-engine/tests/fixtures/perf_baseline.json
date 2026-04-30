@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-2-entry",
+  "samples": 100000,
+  "step_and_sync_ns": {
+    "min": 4500,
+    "p50": 4833,
+    "p99": 14791
+  },
+  "notes": "lib.rs::step_and_sync deserializes 6 separate JsValue args via serde-wasm-bindgen::from_value plus parse_wheel_loads helper; replacing this with Float32Array payload is Wave 2 Phase 3."
+}

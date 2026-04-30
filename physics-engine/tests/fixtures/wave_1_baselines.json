@@ -3,7 +3,7 @@
   "captured_at": "post-wave-1",
   "scenarios": {
     "zero_to_100_kmh_seconds": 2.8583,
-    "fifty_ms_to_zero_stop_distance_m": 40.0825,
-    "steady_state_80m_radius_peak_lat_g": 9.9269
+    "fifty_ms_to_zero_stop_distance_m": 40.4526,
+    "steady_state_80m_radius_peak_lat_g": 9.9271
   }
 }
