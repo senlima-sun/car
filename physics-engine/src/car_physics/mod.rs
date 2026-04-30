@@ -10,7 +10,8 @@ use crate::car_physics::powertrain::TIRE_RADIUS;
 use crate::car_physics::wheel_force::{WheelForceIntegrator, WheelForceInputs, AXLE_TO_CORNER_SPLIT};
 use crate::constants::car::*;
 use crate::types::{
-    CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers, WindModifiers,
+    CarInput, CarPhysicsOutput, PerWheelForces, TireDegradationModifiers, WeatherModifiers,
+    WindModifiers,
 };
 use crate::utils::{lerp, sanitize, Quat, Vec3};
 
@@ -462,7 +463,13 @@ impl CarPhysicsState {
             downforce_newtons: sanitize(downforce, 0.0),
             per_wheel_terrain: Default::default(),
             bottoming_out: Default::default(),
-            per_wheel_forces: Default::default(),
+            per_wheel_forces: PerWheelForces {
+                fx: wheel_force_out.fx_per_wheel,
+                fy: wheel_force_out.fy_per_wheel,
+                fz: resolved_wheel_loads,
+                slip_angle: [self.slip_angle_smoothed; 4],
+                slip_ratio: wheel_force_out.slip_ratio_per_wheel,
+            },
         }
     }
 
