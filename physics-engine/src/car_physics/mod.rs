@@ -96,6 +96,7 @@ impl CarPhysicsState {
         air_density: f32,
         surface_normal: [f32; 3],
         wheel_loads: Option<[f32; 4]>,
+        ride_height_m: f32,
     ) -> CarPhysicsOutput {
         let dt = delta.min(0.05); // Clamp delta time
 
@@ -274,10 +275,11 @@ impl CarPhysicsState {
         // Apply slope-induced longitudinal force (downhill = positive, uphill = negative)
         longitudinal_force += gravity_tangent;
 
-        let downforce = aerodynamics::get_downforce_with_density(
+        let downforce = aerodynamics::get_downforce_with_density_and_ride_height(
             self.speed_ms,
             active_aero_downforce_mult,
             air_density,
+            ride_height_m,
         );
         let quasi_static_total_load = gravity_normal + downforce;
         let load_sensitivity = 0.015;

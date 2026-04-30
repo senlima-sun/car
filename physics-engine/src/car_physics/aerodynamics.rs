@@ -112,9 +112,28 @@ pub fn get_downforce(speed_ms: f32, active_aero_mult: f32) -> f32 {
     get_downforce_with_density(speed_ms, active_aero_mult, DEFAULT_AIR_DENSITY)
 }
 
+/// Total downforce on the chassis. Wave 3 Phase 3 onward this also
+/// multiplies by the ride-height-dependent ground-effect curve. Pass
+/// `ride_height_m = RIDE_HEIGHT_OPTIMAL_M` to retain Wave 2 behaviour
+/// (multiplier = 1.0). Phase 4 splits the result into per-axle Fz.
 pub fn get_downforce_with_density(speed_ms: f32, active_aero_mult: f32, air_density: f32) -> f32 {
+    get_downforce_with_density_and_ride_height(
+        speed_ms,
+        active_aero_mult,
+        air_density,
+        RIDE_HEIGHT_OPTIMAL_M,
+    )
+}
+
+pub fn get_downforce_with_density_and_ride_height(
+    speed_ms: f32,
+    active_aero_mult: f32,
+    air_density: f32,
+    ride_height_m: f32,
+) -> f32 {
     let final_downforce_coeff = BASE_DOWNFORCE_COEFFICIENT * active_aero_mult;
-    0.5 * air_density * final_downforce_coeff * FRONTAL_AREA * speed_ms * speed_ms
+    let ground_effect = ground_effect_multiplier(ride_height_m);
+    0.5 * air_density * final_downforce_coeff * FRONTAL_AREA * speed_ms * speed_ms * ground_effect
 }
 
 #[cfg(test)]
@@ -157,6 +176,45 @@ mod tests {
     }
 
     // Phase 3 (Wave 3) — ground-effect ride-height curve tests
+
+    #[test]
+    fn downforce_at_optimal_ride_height_matches_legacy() {
+        // Backward-compat: get_downforce_with_density (no ride-height) and
+        // the new ride-height-aware variant at OPTIMAL must agree.
+        let legacy = get_downforce_with_density(50.0, 1.0, DEFAULT_AIR_DENSITY);
+        let with_optimal = get_downforce_with_density_and_ride_height(
+            50.0,
+            1.0,
+            DEFAULT_AIR_DENSITY,
+            RIDE_HEIGHT_OPTIMAL_M,
+        );
+        assert!((legacy - with_optimal).abs() < 1e-3);
+    }
+
+    #[test]
+    fn downforce_at_high_ride_height_drops() {
+        // Above falloff end (150 mm) the multiplier is 0.6 → downforce drops 40%.
+        let optimal = get_downforce_with_density_and_ride_height(
+            50.0,
+            1.0,
+            DEFAULT_AIR_DENSITY,
+            RIDE_HEIGHT_OPTIMAL_M,
+        );
+        let high = get_downforce_with_density_and_ride_height(
+            50.0,
+            1.0,
+            DEFAULT_AIR_DENSITY,
+            0.150,
+        );
+        let ratio = high / optimal;
+        assert!(
+            (ratio - 0.6).abs() < 0.01,
+            "downforce at 150mm ride height should be 60% of optimal, got {} ({}/{})",
+            ratio,
+            high,
+            optimal
+        );
+    }
 
     #[test]
     fn ground_effect_zero_ride_height_porpoising() {

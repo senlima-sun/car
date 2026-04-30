@@ -982,6 +982,7 @@ impl PhysicsEngine {
             air_density,
             surface_normal,
             wheel_loads,
+            self.ride_height.average(),
         );
 
         // Apply pit lane speed limiter braking
