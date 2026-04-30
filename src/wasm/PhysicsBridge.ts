@@ -490,7 +490,9 @@ function sanitizeWheelLoads(
 }
 
 /**
- * Run a single physics step
+ * Run a single physics step. Wave 2: routes through `stepAndSync` and
+ * extracts `.physics` so the legacy `eng.step` WASM export has no live
+ * caller and gets dead-code-eliminated by LTO in release.
  */
 export function stepPhysics(
   delta: number,
@@ -502,23 +504,16 @@ export function stepPhysics(
   surfaceNormal: [number, number, number] = [0, 1, 0],
   wheelLoads?: [number, number, number, number],
 ): CarPhysicsOutput {
-  const eng = getPhysicsEngine()
-
-  const safeLinvel = sanitizeVec3(linvel, undefined, "linvel")
-  const safeAngvel = sanitizeVec3(angvel, undefined, "angvel")
-  const safeDelta = sanitize(delta, 0.016)
-  const safeLoads = sanitizeWheelLoads(wheelLoads)
-
-  return eng.step(
-    safeDelta,
+  return stepAndSync(
+    delta,
     input,
     position,
     rotation,
-    safeLinvel,
-    safeAngvel,
+    linvel,
+    angvel,
     surfaceNormal,
-    safeLoads,
-  ) as CarPhysicsOutput
+    wheelLoads,
+  ).physics
 }
 
 /**
@@ -545,6 +540,8 @@ export function stepAndSync(
   const eng = getPhysicsEngine()
   const safeLinvel = sanitizeVec3(linvel, undefined, 'linvel')
   const safeAngvel = sanitizeVec3(angvel, undefined, 'angvel')
+  const safePosition = sanitizeVec3(position, undefined, 'position')
+  const safeNormal = sanitizeVec3(surfaceNormal, [0, 1, 0], 'surfaceNormal')
   const safeDelta = sanitize(delta, 0.016)
   const safeLoads = sanitizeWheelLoads(wheelLoads)
 
@@ -554,11 +551,17 @@ export function stepAndSync(
   buf[2] = sanitize(input.steer ?? 0, 0)
   buf[3] = sanitize(input.brake_analog ?? 0, 0)
   buf[4] = 0
-  buf[5] = position[0]; buf[6] = position[1]; buf[7] = position[2]
-  buf[8] = rotation[0]; buf[9] = rotation[1]; buf[10] = rotation[2]; buf[11] = rotation[3]
+  buf[5] = safePosition[0]; buf[6] = safePosition[1]; buf[7] = safePosition[2]
+  // Rotation: pre-existing serde path validated via from_value; the packed
+  // path bypasses that, so sanitize per-component to avoid a non-finite
+  // quaternion poisoning the physics step.
+  buf[8] = sanitize(rotation[0], 0, 'rotation.x')
+  buf[9] = sanitize(rotation[1], 0, 'rotation.y')
+  buf[10] = sanitize(rotation[2], 0, 'rotation.z')
+  buf[11] = sanitize(rotation[3], 1, 'rotation.w')
   buf[12] = safeLinvel[0]; buf[13] = safeLinvel[1]; buf[14] = safeLinvel[2]
   buf[15] = safeAngvel[0]; buf[16] = safeAngvel[1]; buf[17] = safeAngvel[2]
-  buf[18] = surfaceNormal[0]; buf[19] = surfaceNormal[1]; buf[20] = surfaceNormal[2]
+  buf[18] = safeNormal[0]; buf[19] = safeNormal[1]; buf[20] = safeNormal[2]
   if (safeLoads) {
     buf[21] = safeLoads[0]; buf[22] = safeLoads[1]; buf[23] = safeLoads[2]; buf[24] = safeLoads[3]
   } else {
@@ -1148,7 +1151,9 @@ export interface RubberFrameResult {
  * Batched rubber frame update — combines updateCarDriving, getRubberDepositMultiplier,
  * getTrackWetness, and updateRubberDeposits into a single FFI call.
  * Wave 2 Phase 4: writes into a shared 2-element scratch buffer so the
- * FFI boundary doesn't allocate per call.
+ * FFI boundary doesn't allocate per call. Single-owner buffer; safe
+ * under the current sequential 120Hz game loop. A future GhostCar or
+ * second tire-trail system would need its own scratch.
  */
 const rubberFrameScratch = new Float32Array(2)
 

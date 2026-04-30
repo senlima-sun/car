@@ -712,6 +712,13 @@ impl PhysicsEngine {
             out.len()
         );
         if out.len() < 2 {
+            // Best-effort default for direct WASM consumers in release
+            // (debug already panicked above). compoundMult defaults to
+            // 1.0 (no-op multiplier), wetness to 0.0 — same as the
+            // wheel_positions.len() < 8 branch below.
+            if let Some(slot) = out.first_mut() {
+                *slot = 1.0;
+            }
             return;
         }
         if wheel_positions.len() < 8 || wheel_intensities.len() < 4 {
@@ -867,6 +874,13 @@ impl PhysicsEngine {
     #[wasm_bindgen]
     pub fn step_and_sync_packed(&mut self, payload: &[f32], input_bits: u32) -> JsValue {
         if payload.len() < 25 {
+            return JsValue::NULL;
+        }
+        // Defense-in-depth: the JS bridge sanitizes via `sanitize`/`sanitizeVec3`
+        // but a direct WASM caller (or a future scratch-buffer reuse bug) could
+        // hand us a NaN. Reject the whole frame instead of letting NaN
+        // propagate into the physics step.
+        if !payload[..25].iter().all(|v| v.is_finite()) {
             return JsValue::NULL;
         }
         let input = CarInput {

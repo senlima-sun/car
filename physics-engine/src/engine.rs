@@ -895,7 +895,8 @@ impl PhysicsEngine {
         let environmental_grip_modifier = surface_modifiers.grip_multiplier
             * weather_modifiers.friction_slip_multiplier
             * aquaplaning_grip
-            * terrain_grip;
+            * terrain_grip
+            * curb_turn_grip;
 
         // Speed modifier from surface
         let surface_speed = surface_modifiers.speed_multiplier;
