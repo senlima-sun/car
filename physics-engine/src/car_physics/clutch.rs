@@ -6,11 +6,11 @@
 //! so the wheel-spin ODE doesn't see infinite mass at standstill.
 //!
 //! Engagement curve:
-//!   engine_rpm < 0.7 × FULL_RPM → engagement = 0.1 (slipping)
-//!   engine_rpm > FULL_RPM       → engagement = 1.0 (locked)
-//!   in between                  → smoothstep
+//!   engine_rpm ≤ THRESHOLD_FACTOR × FULL_RPM → engagement = SLIP_FLOOR (slipping)
+//!   engine_rpm ≥ FULL_RPM                    → engagement = 1.0 (locked)
+//!   in between                               → smoothstep
 //!
-//! The actual integrated value follows the target via a tanh-style
+//! The actual integrated value follows the target via a first-order
 //! lowpass with `CLUTCH_TIME_CONSTANT_S` so engagement doesn't snap
 //! when the engine crosses the threshold during a shift.
 
@@ -101,17 +101,18 @@ mod tests {
     #[test]
     fn engagement_for_tracks_step_change_via_lowpass() {
         let mut clutch = ClutchState::new();
-        // Start at slip floor; jump engine to full rpm, integrate ~5τ.
+        // Start at slip floor; jump engine to full rpm and integrate
+        // long enough (~6τ) for engagement to settle within 5% of target.
+        // τ = CLUTCH_TIME_CONSTANT_S = 50ms; 40 frames × (1/120) ≈ 333ms ≈ 6.7τ.
         let dt = 1.0 / 120.0;
         let target_rpm = 12_000.0;
-        // 5 × 50ms = 250ms = 30 frames at 120Hz.
         for _ in 0..40 {
             clutch.engagement_for(target_rpm, dt);
         }
         let final_eng = clutch.engagement();
         assert!(
             (final_eng - 1.0).abs() < 0.05,
-            "after 5τ engagement should be ~1.0, got {}",
+            "engagement should converge to ~1.0, got {}",
             final_eng
         );
     }
