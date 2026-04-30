@@ -1,8 +1,8 @@
 use car_physics_engine::engine::PhysicsEngine;
-use car_physics_engine::types::{CarInput, SurfaceType};
+use car_physics_engine::types::SurfaceType;
 
 mod common;
-use common::FIXED_DT;
+use common::{wheel_spin_test_input, FIXED_DT};
 
 const FRAMES: usize = 1000;
 
@@ -20,15 +20,7 @@ fn capture_pre_extraction_wheel_spin_fixture() {
     let mut long_g = Vec::with_capacity(FRAMES);
 
     for frame in 0..FRAMES {
-        let phase = (frame as f32 / 60.0).sin();
-        let input = CarInput {
-            forward: true,
-            throttle: (0.5 + 0.4 * phase).clamp(0.0, 1.0),
-            steer: phase * 0.3,
-            brake_analog: if (frame / 200) % 2 == 1 { 0.6 } else { 0.0 },
-            brake: (frame / 200) % 2 == 1,
-            ..Default::default()
-        };
+        let input = wheel_spin_test_input(frame);
         let bundle = engine.step_and_sync(
             FIXED_DT,
             input,

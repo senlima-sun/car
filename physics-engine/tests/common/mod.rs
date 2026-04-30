@@ -122,6 +122,23 @@ pub fn measure_stop_distance() -> Option<f32> {
     None
 }
 
+/// Deterministic input pattern shared by `wheel_spin_capture` (writes the
+/// fixture) and `wheel_spin_equivalence` (verifies post-extraction
+/// behaviour against the fixture). Keeping the two callers in lockstep
+/// lives here so future refactors update both at once.
+pub fn wheel_spin_test_input(frame: usize) -> CarInput {
+    let phase = (frame as f32 / 60.0).sin();
+    let braking_window = (frame / 200) % 2 == 1;
+    CarInput {
+        forward: true,
+        throttle: (0.5 + 0.4 * phase).clamp(0.0, 1.0),
+        steer: phase * 0.3,
+        brake_analog: if braking_window { 0.6 } else { 0.0 },
+        brake: braking_window,
+        ..Default::default()
+    }
+}
+
 pub fn read_baseline_scenario(key: &str) -> f32 {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/wave_1_baselines.json");
