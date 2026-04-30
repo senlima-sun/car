@@ -893,20 +893,16 @@ impl PhysicsEngine {
             1.0
         };
 
+        // Wave 3 Phase 6: unified grip-stack multiplier consumed by both
+        // Fx and Fy paths inside `WheelForceIntegrator`. Cold-rubber drop
+        // on launch is calibrated via `BASE_TIRE_GRIP_COEFFICIENT` rather
+        // than a per-axis split.
         let combined_grip = surface_modifiers.grip_multiplier
             * curb_turn_grip
             * material_grip_avg
             * aquaplaning_grip
             * thermal_shock_grip
             * terrain_grip;
-
-        // Wave 3 Phase 6: lateral grip-stack unification. The Wave 2
-        // split (`environmental_grip_modifier` for longitudinal vs full
-        // `combined_grip` for lateral) collapses into a single
-        // `combined_grip` chain consumed by both Fx and Fy paths inside
-        // `WheelForceIntegrator`. Cold-rubber drop on launch is now
-        // calibrated via `BASE_TIRE_GRIP_COEFFICIENT` rather than a
-        // double-application split.
 
         // Speed modifier from surface
         let surface_speed = surface_modifiers.speed_multiplier;

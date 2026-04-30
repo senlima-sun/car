@@ -27,18 +27,11 @@ pub struct WheelForceInputs {
     pub rear_brake_force: f32,
     pub resolved_wheel_loads: [f32; 4],
     pub downforce_grip_bonus: f32,
-    /// Environmental grip stack (surface × weather × aquaplaning ×
-    /// terrain). Multiplied into the longitudinal Pacejka output so
-    /// wet/oil/aqua reduce braking and acceleration the same way they
-    /// reduce cornering. Cold-tire material grip stays lateral-only —
-    /// the wheel-force integrator's tire-reaction feedback loop already
-    /// couples to the cold-rubber state via prev_wheel_fx.
-    /// Wave 3 Phase 6: full grip stack multiplier (surface × material ×
-    /// weather × aqua × terrain × curb × thermal_shock). Replaces the
-    /// Wave 2 `environmental_grip_modifier` split — both longitudinal
-    /// and lateral paths now multiply the same combined grip after
-    /// G-method weighting. Cold-rubber drop on launch is calibrated via
-    /// `BASE_TIRE_GRIP_COEFFICIENT` rather than a separate split.
+    /// Wave 3 Phase 6: full grip-stack multiplier (surface × material ×
+    /// weather × aqua × terrain × curb × thermal_shock). Both longitudinal
+    /// and lateral paths multiply this single value after G-method
+    /// weighting. Cold-rubber drop on launch is calibrated via
+    /// `BASE_TIRE_GRIP_COEFFICIENT` rather than a per-axis split.
     pub combined_grip_multiplier: f32,
     /// Chassis-level slip angle in degrees, after Wave 1 EMA smoothing.
     /// Phase 1 (Wave 3) feeds it as the per-wheel slip angle (no kinematic
@@ -56,9 +49,9 @@ pub struct WheelForceInputs {
 }
 
 /// Per-step output from the wheel-force integrator. Phase 1 (Wave 3)
-/// promotes Fy to per-wheel newtons alongside Fx; the body-frame yaw
-/// computation stays on the μ-scalar path through Phase 5 and switches
-/// in Phase 6.
+/// promotes Fy to per-wheel newtons alongside Fx. The body-frame yaw
+/// computation stays on the legacy μ-scalar path (Phase 6 deliberately
+/// kept it for bootstrap stability — see `car_physics::mod::step`).
 #[derive(Debug, Default, Clone, Copy)]
 pub struct WheelForceOutput {
     pub total_long_force: f32,
@@ -88,14 +81,12 @@ impl WheelForceIntegrator {
     }
 
     /// Integrate per-wheel angular velocity from drive + brake torque,
-    /// compute slip ratios, route through `pacejka_longitudinal` with a
-    /// friction-ellipse cap, and emit per-wheel Fx + Fy in newtons. Tire-
-    /// reaction torque uses last frame's Fx (1-step lag at 120Hz).
-    ///
-    /// Phase 1 (Wave 3): Fy is computed via `pacejka_lateral_per_wheel`
-    /// alongside Fx but the friction-ellipse cap stays as `(fx, 0.0)` so
-    /// the longitudinal output is bit-equivalent to Wave 2. The 2-axis
-    /// cap and Pacejka G-method weighting land in Phase 2.
+    /// compute slip ratios, route through `pacejka_longitudinal` /
+    /// `pacejka_lateral_per_wheel` with Pacejka G-method coupling and
+    /// a 2-axis friction-ellipse cap, then apply the unified grip chain
+    /// (`BASE_TIRE_GRIP_COEFFICIENT × downforce × combined_grip_mult`)
+    /// to both Fx and Fy. Tire-reaction torque uses last frame's Fx
+    /// (1-step lag at 120Hz).
     pub fn step(&mut self, i: &WheelForceInputs) -> WheelForceOutput {
         let omega_cap = (i.forward_speed.abs() / TIRE_RADIUS) * WHEEL_OMEGA_OVERSPEED_RATIO
             + WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S;
@@ -163,8 +154,6 @@ impl WheelForceIntegrator {
                     .clamp(-SLIP_RATIO_ABS_CLAMP, SLIP_RATIO_ABS_CLAMP);
             wheel_slip_ratio_now[wheel] = slip_ratio;
             let fz = i.resolved_wheel_loads[wheel].max(0.0);
-            // TODO(wave-3-phase-6): unify longitudinal grip stack with the
-            // lateral path once the steering consumer is force-shaped.
             let fx_pure = sanitize(
                 pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT),
                 0.0,

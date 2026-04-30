@@ -86,8 +86,9 @@ impl CarPhysicsState {
         wind_modifiers: &WindModifiers,
         // Wave 3 Phase 6: full grip-stack multiplier (surface × material
         // × weather × aqua × terrain × curb × thermal_shock). Replaces
-        // the Wave 2 split (separate `curb_grip_bonus` + `environmental_
-        // grip_modifier`). Both Fx and Fy paths multiply this single value.
+        // the Wave 2 split (separate `curb_grip_bonus` and
+        // `environmental_grip_modifier`). Both Fx and Fy paths multiply
+        // this single value.
         combined_grip_multiplier: f32,
         is_on_curb: bool,
         curb_speed_multiplier: f32,
@@ -378,11 +379,12 @@ impl CarPhysicsState {
         // sets ω directly from steering geometry + grip — wins on
         // bootstrap stability. Force-shaped variant remains available for
         // future use (Wave 4+ where chassis dynamics can be re-architected).
+        let yaw_grip = grip_coefficient * downforce_grip_bonus;
         let angular_velocity = if self.steer_angle.abs() > 0.005 && self.speed_ms > 0.3 {
             steering::calculate_turn_dynamics(
                 self.steer_angle,
                 self.speed_ms,
-                grip_coefficient * downforce_grip_bonus,
+                yaw_grip,
                 self.drift.is_drifting(),
             )
         } else {
@@ -406,10 +408,10 @@ impl CarPhysicsState {
 
         // Calculate lateral correction with tire degradation effects.
         // Phase 6 (Wave 3) replaces the legacy axle-averaged μ-scalar
-        // `combined_grip` with `grip_coefficient` (BASE × tire-deg ×
-        // weather × combined_grip_multiplier × downforce_grip_bonus).
+        // `combined_grip` with `yaw_grip` (BASE × tire-deg × weather ×
+        // combined_grip_multiplier × downforce_grip_bonus).
         let lateral_correction = self.drift.get_lateral_correction(
-            grip_coefficient * downforce_grip_bonus,
+            yaw_grip,
             weather_modifiers.drift_lateral_correction_multiplier,
             if is_on_curb { 1.1 } else { 1.0 },
             tire_degradation.lateral_correction_penalty,
