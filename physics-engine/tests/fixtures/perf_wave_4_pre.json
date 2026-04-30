@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-4-phase-0-pre",
+  "samples": 100000,
+  "step_and_sync_ns": {
+    "min": 375,
+    "p50": 500,
+    "p99": 2167
+  },
+  "notes": "Pre-Wave-4 perf anchor. Phase 7 wave-end snapshot must stay within 1.05× this p50."
+}
