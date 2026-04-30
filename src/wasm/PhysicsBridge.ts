@@ -433,11 +433,25 @@ export function isPhysicsEngineInitialized(): boolean {
 // Type-Safe Wrapper Functions
 // ============================================================================
 
+const sanitizeWarnedKeys = new Set<string>()
+const isDevBuild =
+  typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
+
 /**
- * Sanitize a number value - replace NaN/Infinity with fallback
+ * Sanitize a number value - replace NaN/Infinity with fallback.
+ * Wave 2 Phase 1 closed the three known Rust-side NaN sources (acos/asin
+ * input clamps in mod.rs and sigma_sq guard in tires.rs). Any NaN reaching
+ * here in dev is a real bug; warn once per call-site key and fall back.
  */
-function sanitize(value: number, fallback: number = 0): number {
-  return Number.isFinite(value) ? value : fallback
+function sanitize(value: number, fallback: number = 0, key?: string): number {
+  if (Number.isFinite(value)) return value
+  if (isDevBuild && key && !sanitizeWarnedKeys.has(key)) {
+    sanitizeWarnedKeys.add(key)
+    console.warn(
+      `[PhysicsBridge] sanitize fallback fired at "${key}" (got ${value}); replacing with ${fallback}. This indicates a Rust-side NaN root cause that should be fixed.`,
+    )
+  }
+  return fallback
 }
 
 /**
@@ -446,11 +460,12 @@ function sanitize(value: number, fallback: number = 0): number {
 function sanitizeVec3(
   vec: [number, number, number],
   fallback: [number, number, number] = [0, 0, 0],
+  key?: string,
 ): [number, number, number] {
   return [
-    sanitize(vec[0], fallback[0]),
-    sanitize(vec[1], fallback[1]),
-    sanitize(vec[2], fallback[2]),
+    sanitize(vec[0], fallback[0], key ? `${key}.x` : undefined),
+    sanitize(vec[1], fallback[1], key ? `${key}.y` : undefined),
+    sanitize(vec[2], fallback[2], key ? `${key}.z` : undefined),
   ]
 }
 
@@ -490,8 +505,8 @@ export function stepPhysics(
 ): CarPhysicsOutput {
   const eng = getPhysicsEngine()
 
-  const safeLinvel = sanitizeVec3(linvel)
-  const safeAngvel = sanitizeVec3(angvel)
+  const safeLinvel = sanitizeVec3(linvel, undefined, "linvel")
+  const safeAngvel = sanitizeVec3(angvel, undefined, "angvel")
   const safeDelta = sanitize(delta, 0.016)
   const safeLoads = sanitizeWheelLoads(wheelLoads)
 
@@ -521,8 +536,8 @@ export function stepAndSync(
   wheelLoads?: [number, number, number, number],
 ): StepAndSyncOutput {
   const eng = getPhysicsEngine()
-  const safeLinvel = sanitizeVec3(linvel)
-  const safeAngvel = sanitizeVec3(angvel)
+  const safeLinvel = sanitizeVec3(linvel, undefined, "linvel")
+  const safeAngvel = sanitizeVec3(angvel, undefined, "angvel")
   const safeDelta = sanitize(delta, 0.016)
   const safeLoads = sanitizeWheelLoads(wheelLoads)
   const result = eng.step_and_sync(

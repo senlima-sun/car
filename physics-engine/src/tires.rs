@@ -953,7 +953,11 @@ impl TireMaterialSystem {
         let state = &mut self.wheels[wheel];
 
         let delta_t = temp_celsius - props.optimal_temp_celsius;
-        let sigma_sq = props.temp_sigma_celsius * props.temp_sigma_celsius;
+        // Guard against zero-sigma compound configs that would divide by
+        // zero. The set_compound path debug-asserts sigma > 0 (see test in
+        // material-properties block); this floor keeps release runs safe
+        // if a future config ever slips through.
+        let sigma_sq = (props.temp_sigma_celsius * props.temp_sigma_celsius).max(0.001);
         let gaussian = (-delta_t * delta_t / (2.0 * sigma_sq)).exp();
         let min_grip_floor = props.peak_grip_amplitude * 0.4;
         state.viscoelastic_grip =

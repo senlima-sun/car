@@ -414,3 +414,69 @@ fn test_handbrake_at_speed() {
         angvel = output.angular_velocity;
     }
 }
+
+#[test]
+fn test_step_finite_under_drifted_surface_normal() {
+    let mut engine = PhysicsEngine::new();
+    let input = CarInput {
+        forward: true,
+        throttle: 0.5,
+        ..Default::default()
+    };
+
+    let mut linvel = [0.0_f32; 3];
+    let mut angvel = [0.0_f32; 3];
+
+    for frame in 0..1000 {
+        // FP-drifted surface_normal[1] above 1.0 — would NaN under
+        // the pre-Phase-1 acos call without a clamp.
+        let drift = (frame as f32) * 1e-6;
+        let surface_normal = [0.0, 1.0 + drift, 0.0];
+        let output = engine.step(
+            1.0 / 120.0,
+            input,
+            default_position(),
+            identity_rotation(),
+            linvel,
+            angvel,
+            surface_normal,
+            None,
+        );
+        assert_output_finite(&output, frame);
+        linvel = output.linear_velocity;
+        angvel = output.angular_velocity;
+    }
+}
+
+#[test]
+fn test_step_finite_under_steep_pitch() {
+    let mut engine = PhysicsEngine::new();
+    let input = CarInput {
+        forward: true,
+        ..Default::default()
+    };
+
+    let mut linvel = [0.0_f32, 0.0, 10.0];
+    let mut angvel = [0.0_f32; 3];
+
+    for frame in 0..200 {
+        // Adversarial: surface normal whose forward-projection goes past
+        // 1.0 in absolute value (caused asin to return NaN before the
+        // input clamp landed).
+        let nz = 0.9 + (frame as f32) * 0.001;
+        let surface_normal = [0.0, 0.5, nz];
+        let output = engine.step(
+            1.0 / 120.0,
+            input,
+            default_position(),
+            identity_rotation(),
+            linvel,
+            angvel,
+            surface_normal,
+            None,
+        );
+        assert_output_finite(&output, frame);
+        linvel = output.linear_velocity;
+        angvel = output.angular_velocity;
+    }
+}

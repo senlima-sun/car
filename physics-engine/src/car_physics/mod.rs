@@ -256,22 +256,27 @@ impl CarPhysicsState {
             longitudinal_force -= ers_harvest_decel * forward_speed.signum();
         }
 
-        // Surface normal gravity decomposition
-        let normal_y = surface_normal[1].max(0.01);
+        // Surface normal gravity decomposition.
+        // Clamp `acos`/`asin` inputs to their valid domain even though the
+        // surface normal is *supposed* to be unit-length: Rapier-derived
+        // normals can drift slightly past 1.0 from FP error, and acos/asin
+        // of an out-of-range value returns NaN that survives downstream
+        // clamps. Pre-clamp keeps the math finite at the source.
+        let normal_y = surface_normal[1].clamp(0.01, 1.0);
         let slope_angle = normal_y.acos();
         let gravity_normal = CAR_MASS * 9.81 * slope_angle.cos();
 
-        // Pitch component: project surface normal onto forward dir
-        let normal_forward = surface_normal[0] * forward_dir.x
+        let normal_forward = (surface_normal[0] * forward_dir.x
             + surface_normal[1] * forward_dir.y
-            + surface_normal[2] * forward_dir.z;
+            + surface_normal[2] * forward_dir.z)
+            .clamp(-1.0, 1.0);
         let pitch_angle = normal_forward.asin().clamp(-0.5, 0.5);
         let gravity_tangent = CAR_MASS * 9.81 * pitch_angle.sin();
 
-        // Banking component: project surface normal onto right dir
-        let normal_right = surface_normal[0] * right_dir.x
+        let normal_right = (surface_normal[0] * right_dir.x
             + surface_normal[1] * right_dir.y
-            + surface_normal[2] * right_dir.z;
+            + surface_normal[2] * right_dir.z)
+            .clamp(-1.0, 1.0);
         let banking_angle = normal_right.asin().clamp(-0.5, 0.5);
         let banking_lateral_force = CAR_MASS * 9.81 * banking_angle.sin();
 
