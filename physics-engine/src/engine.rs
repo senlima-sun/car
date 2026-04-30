@@ -893,11 +893,21 @@ impl PhysicsEngine {
             1.0
         };
 
-        // Wave 3 Phase 6: unified grip-stack multiplier consumed by both
-        // Fx and Fy paths inside `WheelForceIntegrator`. Cold-rubber drop
-        // on launch is calibrated via `BASE_TIRE_GRIP_COEFFICIENT` rather
-        // than a per-axis split.
+        // Wave 3 Phase 6 + Phase 7 review fix: unified grip-stack
+        // multiplier consumed by both Fx and Fy paths inside
+        // `WheelForceIntegrator`. Includes weather friction so the
+        // integrator's per-wheel forces correctly drop in rain (Phase 7
+        // wave-end review #1: `friction_slip_multiplier` was previously
+        // excluded from this product; the `weather_modifiers` arg
+        // applied it only to the legacy μ-scalar yaw path inside
+        // `mod.rs`). `tire_degradation.grip_multiplier` is intentionally
+        // *not* in this product because it already captures wet-tire
+        // penalty via `wrong_conditions_penalty`; folding it here would
+        // double-apply weather. Tire-deg flows into the yaw path via
+        // `mod.rs::grip_coefficient` instead. Cold-rubber drop on
+        // launch is calibrated via `BASE_TIRE_GRIP_COEFFICIENT`.
         let combined_grip = surface_modifiers.grip_multiplier
+            * weather_modifiers.friction_slip_multiplier
             * curb_turn_grip
             * material_grip_avg
             * aquaplaning_grip

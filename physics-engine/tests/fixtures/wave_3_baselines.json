@@ -8,8 +8,8 @@
     "steady_state_80m_radius_peak_lat_g": 9.9368,
     "drs_active_200_to_300_kmh_seconds": 6.3167,
     "hundred_kmh_to_zero_stop_distance_m": 14.4229,
-    "wet_fifty_ms_to_zero_stop_distance_m": 53.3018,
-    "wet_steady_state_80m_radius_peak_lat_g": 8.3566,
-    "oil_steady_state_80m_radius_peak_lat_g": 8.4029
+    "wet_fifty_ms_to_zero_stop_distance_m": 65.8063,
+    "wet_steady_state_80m_radius_peak_lat_g": 8.3361,
+    "oil_steady_state_80m_radius_peak_lat_g": 8.3706
   }
 }

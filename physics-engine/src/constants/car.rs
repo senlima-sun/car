@@ -12,6 +12,17 @@ pub const BASE_MAX_SPEED: f32 = 97.0;
 // Bumped from 1.85 → 3.5 to restore launch performance within the
 // wave-plan ±30% drift band on dry. Single-knob calibration adjustment
 // per the wave plan; no model change.
+//
+// Wave 3 wave-end review note: this constant now absorbs two
+// conceptually distinct quantities — the baseline normalised tire μ
+// AND the reciprocal of the cold-rubber material factor. When the
+// thermal model warms `material_grip_avg` toward 1.0, the full BASE=3.5
+// applies, which over-shoots the pre-Wave-2 calibration on warm tires.
+// Wave 4 should normalise the material factor to start at 1.0 (warm)
+// rather than the cold value, freeing this constant to retain its
+// physical meaning (~1.85 = 1.85 g of normalised peak μ). Tracked in
+// PERF_NOTES.md; do NOT compensate by tuning the material factor or
+// the calibration baselines.
 pub const BASE_TIRE_GRIP_COEFFICIENT: f32 = 3.5;
 pub const BASE_DRAG_COEFFICIENT: f32 = 0.74;
 pub const BASE_DOWNFORCE_COEFFICIENT: f32 = 3.2;

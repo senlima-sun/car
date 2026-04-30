@@ -136,9 +136,14 @@ impl CarPhysicsState {
         self.gear = pt_out.gear;
         self.rpm = pt_out.rpm;
 
-        // Calculate effective grip (tire_degradation.grip_multiplier already includes compound and weather)
+        // Effective grip. Wave 3 Phase 7 review fix:
+        // `weather_modifiers.friction_slip_multiplier` is folded into
+        // `combined_grip_multiplier` upstream (engine.rs) so the yaw and
+        // Fx/Fy paths share weather. `tire_degradation.grip_multiplier`
+        // stays here in the yaw-path-only chain because it already
+        // captures wet penalty via `wrong_conditions_penalty` — folding
+        // it upstream would double-apply weather to Fx/Fy.
         let grip_coefficient = BASE_TIRE_GRIP_COEFFICIENT
-            * weather_modifiers.friction_slip_multiplier
             * tire_degradation.grip_multiplier
             * combined_grip_multiplier;
         self.effective_grip = grip_coefficient;

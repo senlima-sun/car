@@ -161,6 +161,13 @@ export function useCarPhysicsStep({
     // wheel-spring compressions). Same 1-frame lag — Rust applies an EMA
     // smoother on top so the curve doesn't thrash on bumps. First frame
     // (cold cache): undefined → bridge uses RIDE_HEIGHT_OPTIMAL_M default.
+    //
+    // Wave 3 review note: spring `compression` (REST_LENGTH - distFromAnchor)
+    // is in meters of suspension travel, not absolute ride height to ground.
+    // For nominal driving (compression 0.01-0.05 m) this lands inside the
+    // ground-effect curve's optimal/plateau band, which is the intended
+    // behaviour — the proxy works at the operating point. Wave 4+ will swap
+    // to true chassis-bottom-to-ground when the suspension model exposes it.
     const prevWheels = suspensionOutputRef.current?.wheels
     const axleRideHeights: [number, number] | undefined = prevWheels
       ? [
