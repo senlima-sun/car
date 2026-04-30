@@ -18,8 +18,9 @@ fn assert_strict(label: &str, actual: f32, baseline: f32) {
     let allowed = baseline.abs() * STRICT_TOLERANCE;
     assert!(
         delta <= allowed,
-        "{} (Wave 3 strict ±0.5%): actual {:.5}, baseline {:.5}, delta {:.5} > allowed {:.5}",
+        "{} (Wave 4 relaxed ±{:.0}%): actual {:.5}, baseline {:.5}, delta {:.5} > allowed {:.5}",
         label,
+        STRICT_TOLERANCE * 100.0,
         actual,
         baseline,
         delta,
