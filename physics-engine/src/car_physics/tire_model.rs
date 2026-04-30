@@ -78,15 +78,50 @@ pub fn combined_slip(fx_pure: f32, fy_pure: f32, mu_fz_limit: f32) -> (f32, f32)
     (fx_pure * scale, fy_pure * scale)
 }
 
-/// Peak longitudinal/lateral μ available at this Fz, after the same load
-/// sensitivity factor used by `pacejka_grip_efficiency`. Use this to compute
-/// the friction-ellipse radius `peak_mu * effective_fz` for `combined_slip`.
+/// Peak μ available at this Fz under the supplied Pacejka coefficient set,
+/// after the same load sensitivity factor used by `pacejka_grip_efficiency`.
+/// Use this to compute the friction-ellipse radius `peak_mu * effective_fz`
+/// for `combined_slip`. Phase 1 (Wave 3) adds the convenience wrappers
+/// `peak_mu_lat_at_fz` / `peak_mu_lon_at_fz` for the default coefficient
+/// sets so the friction-ellipse cap can use the larger of the two.
 pub fn peak_mu_at_fz(fz: f32, coeffs: &PacejkaCoeffs) -> f32 {
     let effective_fz = effective_fz_with_load_sensitivity(fz, DEFAULT_LOAD_SENSITIVITY);
     let peak_slip = PEAK_LATERAL_SLIP_DEG.to_radians();
     let peak_force = pacejka_force(peak_slip, effective_fz, coeffs).abs();
     peak_force / effective_fz.max(100.0)
 }
+
+/// Peak lateral μ at this Fz under the default lateral coefficient set.
+pub fn peak_mu_lat_at_fz(fz: f32) -> f32 {
+    peak_mu_at_fz(fz, &PacejkaCoeffs::LATERAL_DEFAULT)
+}
+
+/// Peak longitudinal μ at this Fz under the default longitudinal coefficient
+/// set. Wave 1 / Wave 2 used `peak_mu_at_fz` with `LATERAL_DEFAULT` only;
+/// the longitudinal coefficient set has a slightly different peak μ which
+/// becomes observable when the Phase 2 G-method weights both axes.
+pub fn peak_mu_lon_at_fz(fz: f32) -> f32 {
+    peak_mu_at_fz(fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT)
+}
+
+/// Per-wheel lateral force in newtons. Phase 1 (Wave 3) routes lateral
+/// force through this function inside `WheelForceIntegrator` so combined
+/// slip can be expressed in newtons rather than μ scalars. Mirrors the
+/// lateral path in `calculate_per_wheel_forces` (load-sensitivity-aware Fz).
+pub fn pacejka_lateral_per_wheel(
+    slip_angle_rad: f32,
+    fz: f32,
+    lat_coeffs: &PacejkaCoeffs,
+    load_sensitivity: f32,
+) -> f32 {
+    let effective_fz = effective_fz_with_load_sensitivity(fz, load_sensitivity);
+    pacejka_lateral(slip_angle_rad, effective_fz, lat_coeffs)
+}
+
+/// Default load sensitivity for the per-wheel Pacejka path. Pulled from the
+/// crate-private constant so consumers can call `pacejka_lateral_per_wheel`
+/// without importing `DEFAULT_LOAD_SENSITIVITY` directly.
+pub const TIRE_DEFAULT_LOAD_SENSITIVITY: f32 = DEFAULT_LOAD_SENSITIVITY;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct WheelForces {
@@ -374,6 +409,97 @@ mod tests {
         base_grip_coeff: f32,
     ) -> f32 {
         pacejka_grip_efficiency(slip_angle, normal_load) * base_grip_coeff
+    }
+
+    #[test]
+    fn pacejka_lateral_per_wheel_zero_slip_zero_force() {
+        let lat_coeffs = PacejkaCoeffs::lateral_default();
+        let fy = pacejka_lateral_per_wheel(0.0, FZ_NOMINAL, &lat_coeffs, DEFAULT_LOAD_SENSITIVITY);
+        assert!(fy.abs() < EPSILON, "zero slip → zero Fy, got {}", fy);
+    }
+
+    #[test]
+    fn pacejka_lateral_per_wheel_small_slip_grows_with_load() {
+        let lat_coeffs = PacejkaCoeffs::lateral_default();
+        let slip = 3.0_f32.to_radians();
+        let fy_low = pacejka_lateral_per_wheel(
+            slip,
+            FZ_NOMINAL * 0.5,
+            &lat_coeffs,
+            DEFAULT_LOAD_SENSITIVITY,
+        )
+        .abs();
+        let fy_high =
+            pacejka_lateral_per_wheel(slip, FZ_NOMINAL, &lat_coeffs, DEFAULT_LOAD_SENSITIVITY)
+                .abs();
+        assert!(
+            fy_high > fy_low,
+            "Fy at high Fz ({}) should exceed Fy at low Fz ({})",
+            fy_high,
+            fy_low
+        );
+    }
+
+    #[test]
+    fn pacejka_lateral_per_wheel_peaks_near_default_slip() {
+        let lat_coeffs = PacejkaCoeffs::lateral_default();
+        let mut peak = 0.0_f32;
+        let mut peak_deg = 0.0_f32;
+        for i in 0..200 {
+            let deg = i as f32 * 0.1;
+            let fy = pacejka_lateral_per_wheel(
+                deg.to_radians(),
+                FZ_NOMINAL,
+                &lat_coeffs,
+                DEFAULT_LOAD_SENSITIVITY,
+            )
+            .abs();
+            if fy > peak {
+                peak = fy;
+                peak_deg = deg;
+            }
+        }
+        assert!(
+            peak_deg >= 7.0 && peak_deg <= 13.0,
+            "lateral peak should be 7-13 deg, got {} deg",
+            peak_deg
+        );
+    }
+
+    #[test]
+    fn pacejka_lateral_per_wheel_extreme_load_clamped_by_load_sensitivity() {
+        let lat_coeffs = PacejkaCoeffs::lateral_default();
+        let slip = 8.0_f32.to_radians();
+        let fy_nominal = pacejka_lateral_per_wheel(
+            slip,
+            FZ_NOMINAL,
+            &lat_coeffs,
+            DEFAULT_LOAD_SENSITIVITY,
+        )
+        .abs();
+        let fy_4x = pacejka_lateral_per_wheel(
+            slip,
+            FZ_NOMINAL * 4.0,
+            &lat_coeffs,
+            DEFAULT_LOAD_SENSITIVITY,
+        )
+        .abs();
+        assert!(
+            fy_4x < fy_nominal * 4.0,
+            "4x load should yield < 4x Fy due to load sensitivity ({} vs {})",
+            fy_4x,
+            fy_nominal * 4.0
+        );
+    }
+
+    #[test]
+    fn peak_mu_lat_and_lon_helpers_match_underlying() {
+        let lat = peak_mu_lat_at_fz(FZ_NOMINAL);
+        let lon = peak_mu_lon_at_fz(FZ_NOMINAL);
+        assert!((lat - peak_mu_at_fz(FZ_NOMINAL, &PacejkaCoeffs::LATERAL_DEFAULT)).abs() < 1e-6);
+        assert!(
+            (lon - peak_mu_at_fz(FZ_NOMINAL, &PacejkaCoeffs::LONGITUDINAL_DEFAULT)).abs() < 1e-6
+        );
     }
 
     #[test]
