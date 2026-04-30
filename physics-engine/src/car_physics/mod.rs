@@ -4,10 +4,10 @@ pub mod powertrain;
 pub mod steering;
 pub mod tire_model;
 pub mod weight_transfer;
-pub mod wheel_spin;
+pub mod wheel_force;
 
 use crate::car_physics::powertrain::TIRE_RADIUS;
-use crate::car_physics::wheel_spin::{WheelSpinIntegrator, WheelSpinInputs, AXLE_TO_CORNER_SPLIT};
+use crate::car_physics::wheel_force::{WheelForceIntegrator, WheelForceInputs, AXLE_TO_CORNER_SPLIT};
 use crate::constants::car::*;
 use crate::types::{
     CarInput, CarPhysicsOutput, TireDegradationModifiers, WeatherModifiers, WindModifiers,
@@ -38,7 +38,7 @@ pub struct CarPhysicsState {
     target_angular_velocity: f32,
     long_g_filtered: f32,
     lat_g_filtered: f32,
-    wheel_spin: WheelSpinIntegrator,
+    wheel_force: WheelForceIntegrator,
 }
 
 impl Default for CarPhysicsState {
@@ -58,7 +58,7 @@ impl Default for CarPhysicsState {
             target_angular_velocity: 0.0,
             long_g_filtered: 0.0,
             lat_g_filtered: 0.0,
-            wheel_spin: WheelSpinIntegrator::new(),
+            wheel_force: WheelForceIntegrator::new(),
         }
     }
 }
@@ -306,7 +306,7 @@ impl CarPhysicsState {
             [front_corner, front_corner, rear_corner, rear_corner]
         });
 
-        // Wheel-spin integration: see `wheel_spin::WheelSpinIntegrator`.
+        // Wheel-force integration: see `wheel_force::WheelForceIntegrator`.
         let drive_engaged = effective_throttle > 0.01
             && effective_brake < 0.01
             && !input.handbrake
@@ -325,7 +325,7 @@ impl CarPhysicsState {
         } else {
             0.0
         };
-        let wheel_long_force = self.wheel_spin.step(&WheelSpinInputs {
+        let wheel_long_force = self.wheel_force.step(&WheelForceInputs {
             dt,
             forward_speed,
             drive_engaged,

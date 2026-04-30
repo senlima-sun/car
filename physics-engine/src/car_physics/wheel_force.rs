@@ -14,7 +14,7 @@ const WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S: f32 = 50.0;
 pub const AXLE_TO_CORNER_SPLIT: f32 = 0.5;
 
 /// Per-step inputs to the wheel-spin integrator.
-pub struct WheelSpinInputs {
+pub struct WheelForceInputs {
     pub dt: f32,
     pub forward_speed: f32,
     pub drive_engaged: bool,
@@ -35,12 +35,12 @@ pub struct WheelSpinInputs {
 }
 
 #[derive(Debug, Default)]
-pub struct WheelSpinIntegrator {
+pub struct WheelForceIntegrator {
     wheel_angvel: [f32; 4],
     prev_wheel_fx: [f32; 4],
 }
 
-impl WheelSpinIntegrator {
+impl WheelForceIntegrator {
     pub fn new() -> Self {
         Self::default()
     }
@@ -57,7 +57,7 @@ impl WheelSpinIntegrator {
     /// compute slip ratios, route through `pacejka_longitudinal` with a
     /// friction-ellipse cap, and return the body-frame longitudinal force.
     /// Tire-reaction torque uses last frame's Fx (1-step lag at 120Hz).
-    pub fn step(&mut self, i: &WheelSpinInputs) -> f32 {
+    pub fn step(&mut self, i: &WheelForceInputs) -> f32 {
         let omega_cap = (i.forward_speed.abs() / TIRE_RADIUS) * WHEEL_OMEGA_OVERSPEED_RATIO
             + WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S;
         let v_floor = i.forward_speed.abs().max(SLIP_RATIO_VEL_FLOOR_MS);
@@ -139,8 +139,8 @@ mod tests {
         [1957.0; 4]
     }
 
-    fn idle_inputs() -> WheelSpinInputs {
-        WheelSpinInputs {
+    fn idle_inputs() -> WheelForceInputs {
+        WheelForceInputs {
             dt: 1.0 / 120.0,
             forward_speed: 10.0,
             drive_engaged: false,
@@ -162,7 +162,7 @@ mod tests {
         // and stay near their previous value (start at 0 here) — the
         // engine-brake path in `mod.rs` handles rear off-throttle decel,
         // not the integrator.
-        let mut s = WheelSpinIntegrator::new();
+        let mut s = WheelForceIntegrator::new();
         let _ = s.step(&idle_inputs());
         let target = 10.0 / TIRE_RADIUS;
         for w in 0..2 {
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn full_throttle_drive_torque_applies_to_rear_only() {
-        let mut s = WheelSpinIntegrator::new();
+        let mut s = WheelForceIntegrator::new();
         let mut inputs = idle_inputs();
         inputs.drive_engaged = true;
         inputs.driven_wheel_torque = 500.0;
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn full_brake_anti_overshoot_clamps_to_zero() {
-        let mut s = WheelSpinIntegrator::new();
+        let mut s = WheelForceIntegrator::new();
         // Seed a small positive ω so the next step would carry it past zero
         // under brake-only torque.
         s.wheel_angvel = [0.5, 0.5, 0.5, 0.5];
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn omega_cap_prevents_runaway() {
-        let mut s = WheelSpinIntegrator::new();
+        let mut s = WheelForceIntegrator::new();
         let mut inputs = idle_inputs();
         inputs.forward_speed = 1.0;
         inputs.drive_engaged = true;
