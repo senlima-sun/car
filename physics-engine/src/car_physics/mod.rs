@@ -1,4 +1,5 @@
 pub mod aerodynamics;
+pub mod clutch;
 pub mod drift;
 pub mod powertrain;
 pub mod steering;
