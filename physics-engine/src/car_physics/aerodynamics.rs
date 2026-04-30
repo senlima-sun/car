@@ -129,9 +129,13 @@ pub fn get_downforce_with_density_and_ride_height(
     air_density: f32,
     ride_height_m: f32,
 ) -> f32 {
-    let final_downforce_coeff = BASE_DOWNFORCE_COEFFICIENT * active_aero_mult;
-    let ground_effect = ground_effect_multiplier(ride_height_m);
-    0.5 * air_density * final_downforce_coeff * FRONTAL_AREA * speed_ms * speed_ms * ground_effect
+    get_axle_downforce(
+        speed_ms,
+        active_aero_mult,
+        BASE_DOWNFORCE_COEFFICIENT,
+        air_density,
+        ride_height_m,
+    )
 }
 
 /// Per-axle downforce with axle-specific multiplier and ride height.

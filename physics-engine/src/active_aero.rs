@@ -52,7 +52,8 @@ impl ActiveAeroPhysicsState {
                 front_wing_angle: 0.0,
                 rear_wing_angle: 0.0,
                 drag_multiplier: CORNER_DRAG_MULT,
-                downforce_multiplier: CORNER_FRONT_DOWNFORCE_MULT,
+                downforce_multiplier: (CORNER_FRONT_DOWNFORCE_MULT + CORNER_REAR_DOWNFORCE_MULT)
+                    * 0.5,
                 front_downforce_multiplier: CORNER_FRONT_DOWNFORCE_MULT,
                 rear_downforce_multiplier: CORNER_REAR_DOWNFORCE_MULT,
                 auto_mode: true,
@@ -86,16 +87,14 @@ impl ActiveAeroPhysicsState {
         let dt = delta.min(0.05);
         let speed_kmh = speed_ms * 3.6;
 
-        // In auto mode, determine target based on speed
+        // In auto mode, determine target based on speed. The transition
+        // zone uses Straight mode and lets the wing-angle lerp interpolate.
         if self.auto_mode {
-            if speed_kmh < AUTO_LOW_SPEED {
-                self.current.mode = AeroMode::Corner;
-            } else if speed_kmh > AUTO_HIGH_SPEED {
-                self.current.mode = AeroMode::Straight;
+            self.current.mode = if speed_kmh < AUTO_LOW_SPEED {
+                AeroMode::Corner
             } else {
-                // Transition zone: use Straight mode but wing angle will interpolate
-                self.current.mode = AeroMode::Straight;
-            }
+                AeroMode::Straight
+            };
         }
 
         // Determine target wing angle
