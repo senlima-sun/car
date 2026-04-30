@@ -57,6 +57,13 @@ pub struct PhysicsEngine {
     /// 25-float legacy FFI caller (no ride-height input) sees no
     /// behaviour change.
     ride_height: crate::car_physics::aerodynamics::RideHeightSmoother,
+    /// Override Mode (2026 F1 DRS replacement). Wave 4 Phase 5.
+    /// Driver-toggled 350 kW MGU-K boost with 0.5 MJ/lap budget.
+    /// Auto-deactivates on brake or budget exhaustion.
+    override_mode: crate::car_physics::override_mode::OverrideModeState,
+    /// Driver-requested Override activation, set via `set_override_requested`.
+    /// Polled each step.
+    override_requested: bool,
 }
 
 impl Default for PhysicsEngine {
@@ -90,6 +97,8 @@ impl PhysicsEngine {
             cached_center_terrain_height: 0.0,
             track_weather_accumulator: 0.0,
             ride_height: crate::car_physics::aerodynamics::RideHeightSmoother::new(),
+            override_mode: crate::car_physics::override_mode::OverrideModeState::new(),
+            override_requested: false,
         }
     }
 
@@ -201,6 +210,24 @@ impl PhysicsEngine {
     /// `PowertrainState::reset_for_launch` for rationale.
     pub fn reset_powertrain_for_launch(&mut self) {
         self.car.reset_powertrain_for_launch();
+    }
+
+    /// Wave 4 Phase 5: driver requests Override Mode (DRS replacement).
+    /// 350 kW MGU-K burst with 0.5 MJ/lap budget. Auto-deactivates on
+    /// brake or budget exhaustion. Holds the request between frames;
+    /// driver releases the bind by calling with `false`.
+    pub fn set_override_requested(&mut self, requested: bool) {
+        self.override_requested = requested;
+    }
+
+    /// Returns the percentage of the per-lap Override budget used (0..1).
+    pub fn get_override_energy_used_pct(&self) -> f32 {
+        self.override_mode.energy_used_pct()
+    }
+
+    /// Reset the Override Mode budget on lap rollover.
+    pub fn reset_override_lap_budget(&mut self) {
+        self.override_mode.reset_lap();
     }
 
     pub fn set_tire_wear(&mut self, wear: f32) {
@@ -796,6 +823,24 @@ impl PhysicsEngine {
             speed_ms,
             throttle_input,
         );
+
+        // Wave 4 Phase 5: Override Mode boost. Reuses the same
+        // grip-limited drive-torque path as ERS deploy. Auto-deactivates
+        // when braking or when the per-lap 0.5 MJ budget is exhausted.
+        let override_out = self.override_mode.update(
+            dt,
+            self.override_requested,
+            input.backward || input.brake,
+        );
+        // Convert the override 350 kW additional boost into a force at
+        // current speed, capped (matching the ERS effective_speed clamp).
+        let override_boost_n = if override_out.active && speed_ms > 5.0 {
+            let effective_speed = speed_ms.clamp(40.0, 90.0);
+            override_out.additional_power_w / effective_speed
+        } else {
+            0.0
+        };
+        let ers_boost = ers_boost + override_boost_n;
 
         // Update active aero wing positions (auto mode uses speed for adjustment)
         self.active_aero.update(dt, speed_ms);

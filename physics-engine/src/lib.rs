@@ -184,6 +184,26 @@ impl PhysicsEngine {
         self.inner.reset_tire_blowout();
     }
 
+    /// Wave 4 Phase 5: driver requests Override Mode (DRS replacement).
+    /// 350 kW MGU-K burst with 0.5 MJ/lap budget. Holds the request
+    /// between frames; pass `false` to release.
+    #[wasm_bindgen]
+    pub fn set_override_requested(&mut self, requested: bool) {
+        self.inner.set_override_requested(requested);
+    }
+
+    /// Override Mode budget used this lap (0.0..1.0).
+    #[wasm_bindgen]
+    pub fn get_override_energy_used_pct(&self) -> f32 {
+        self.inner.get_override_energy_used_pct()
+    }
+
+    /// Reset Override Mode budget on lap rollover.
+    #[wasm_bindgen]
+    pub fn reset_override_lap_budget(&mut self) {
+        self.inner.reset_override_lap_budget();
+    }
+
     /// Set tire wear for all wheels (for debug/testing)
     /// wear: 0.0 (new) to 1.0 (fully worn)
     #[wasm_bindgen]

@@ -1360,6 +1360,26 @@ export function setAeroMode(mode: AeroMode): void {
 }
 
 /**
+ * Wave 4 Phase 5: Override Mode (2026 F1 DRS replacement). Driver-
+ * activated 350 kW MGU-K boost with 0.5 MJ/lap budget. Auto-deactivates
+ * on brake or budget exhaustion. Hold the request across frames; pass
+ * `false` when the driver releases the bind.
+ */
+export function setOverrideRequested(requested: boolean): void {
+  getPhysicsEngine().set_override_requested(requested)
+}
+
+/** Override Mode budget used this lap (0.0..1.0). */
+export function getOverrideEnergyUsedPct(): number {
+  return getPhysicsEngine().get_override_energy_used_pct()
+}
+
+/** Reset Override Mode budget at lap rollover. */
+export function resetOverrideLapBudget(): void {
+  getPhysicsEngine().reset_override_lap_budget()
+}
+
+/**
  * Get current aero mode
  */
 export function getAeroMode(): AeroMode {

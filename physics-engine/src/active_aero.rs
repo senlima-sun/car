@@ -14,14 +14,16 @@ const STRAIGHT_DRAG_MULT: f32 = 0.55; // 45% drag reduction
 const STRAIGHT_FRONT_DOWNFORCE_MULT: f32 = 0.55;
 const STRAIGHT_REAR_DOWNFORCE_MULT: f32 = 0.55;
 
-// DRS Mode: Straight + additional drag slot. Wave 3 Phase 4: real DRS
-// opens only the rear wing — front_mult stays at Corner level, rear
-// drops sharply to flatten downforce on the straight while preserving
-// front grip for the optional follow-on corner-entry brake. Effect:
-// rear-end balance shifts to understeer in DRS-active corners.
-const DRS_DRAG_MULT: f32 = 0.40;
-const DRS_FRONT_DOWNFORCE_MULT: f32 = 1.0;
-pub const DRS_REAR_DOWNFORCE_MULT: f32 = 0.42;
+// Wave 4 Phase 5: 2026 X-mode (DRS replacement). Both wings flatten
+// symmetrically — the asymmetric Wave 3 DRS-rear unloading is removed.
+// 2026 regs split aero modes into Z-mode (max downforce, = Corner) and
+// X-mode (flat wings, = Straight). DRS as a separate "rear-only flap"
+// is replaced by Override Mode (a powertrain feature, not aero). The
+// `Drs` enum variant maps to symmetric X-mode behaviour for one wave
+// of backwards compatibility; consumers should migrate to Straight.
+const DRS_DRAG_MULT: f32 = 0.40; // Slightly lower drag than Straight (legacy "extra slot")
+const DRS_FRONT_DOWNFORCE_MULT: f32 = 0.55;
+pub const DRS_REAR_DOWNFORCE_MULT: f32 = 0.55;
 
 // Wing transition speed
 const WING_LERP_SPEED: f32 = 2.0; // ~0.5 seconds for full transition
