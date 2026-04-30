@@ -67,8 +67,13 @@ pub fn pacejka_longitudinal(slip_ratio: f32, fz: f32, coeffs: &PacejkaCoeffs) ->
 /// components proportionally so the total is exactly the limit. Direction is
 /// preserved. `mu_fz_limit` should be `peak_μ × Fz` for the wheel.
 ///
-/// TODO(wave-3-phase-2): replace with full Pacejka `Gx`/`Gy` combined-slip
-/// weighting.
+/// As of Wave 3 Phase 2 the Pacejka G-method (`gx_combined` / `gy_combined`)
+/// runs *before* this ellipse cap inside `WheelForceIntegrator`. The
+/// G-functions weight pure-slip Fx and Fy by off-axis slip and keep the
+/// combined magnitude inside the friction circle for almost all regimes;
+/// the ellipse stays as a defensive guard against edge cases (huge slip
+/// ratios at locked wheels, unusual coefficient combinations) where
+/// `sqrt(fx² + fy²)` could still slip past `μ·Fz`.
 pub fn combined_slip(fx_pure: f32, fy_pure: f32, mu_fz_limit: f32) -> (f32, f32) {
     let total_sq = fx_pure * fx_pure + fy_pure * fy_pure;
     let limit_sq = mu_fz_limit * mu_fz_limit;

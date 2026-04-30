@@ -138,8 +138,8 @@ impl WheelForceIntegrator {
                     .clamp(-SLIP_RATIO_ABS_CLAMP, SLIP_RATIO_ABS_CLAMP);
             wheel_slip_ratio_now[wheel] = slip_ratio;
             let fz = i.resolved_wheel_loads[wheel].max(0.0);
-            // TODO(wave-2-phase-5): unify longitudinal grip stack with the
-            // lateral path. Currently scales by base μ only.
+            // TODO(wave-3-phase-6): unify longitudinal grip stack with the
+            // lateral path once the steering consumer is force-shaped.
             let fx_pure = sanitize(
                 pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT),
                 0.0,
