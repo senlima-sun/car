@@ -534,14 +534,27 @@ export function stepPhysics(
 
 /**
  * Combined physics step + state sync (fewer FFI calls).
- * Wave 2 Phase 3: payload is packed into a single shared Float32Array(25)
+ * Wave 2 Phase 3: payload is packed into a single shared Float32Array
  * and CarInput booleans into a u32 bitfield, replacing 6 separate
  * `serde_wasm_bindgen::from_value` calls per frame with one slice
  * borrow on the Rust side. Single-owner buffer; safe under the current
  * sequential 120Hz game loop. A future ghost-replay path that calls
  * `stepAndSync` twice per frame would need its own scratch.
+ *
+ * Wave 3 Phase 3: payload extended from 25 to 27 floats — slots
+ * [25] = front_axle_ride_height_m and [26] = rear_axle_ride_height_m.
+ * Defaults to RIDE_HEIGHT_OPTIMAL_M (0.035) so a cold-cache call
+ * produces ground-effect multiplier = 1.0 (Wave 2 behaviour).
  */
-const stepPackedBuffer = new Float32Array(25)
+const RIDE_HEIGHT_OPTIMAL_M = 0.035
+const stepPackedBuffer = new Float32Array(27)
+
+function sanitizeRideHeight(value: number): number {
+  if (Number.isFinite(value)) {
+    return Math.min(0.5, Math.max(0.0, value))
+  }
+  return RIDE_HEIGHT_OPTIMAL_M
+}
 
 export function stepAndSync(
   delta: number,
@@ -552,6 +565,7 @@ export function stepAndSync(
   angvel: [number, number, number],
   surfaceNormal: [number, number, number] = [0, 1, 0],
   wheelLoads?: [number, number, number, number],
+  axleRideHeights?: [number, number],
 ): StepAndSyncOutput {
   const eng = getPhysicsEngine()
   const safeLinvel = sanitizeVec3(linvel, undefined, 'linvel')
@@ -583,6 +597,12 @@ export function stepAndSync(
   } else {
     buf[21] = 0; buf[22] = 0; buf[23] = 0; buf[24] = 0
   }
+  // Wave 3 Phase 3: per-axle ride heights. Cold-cache or omitted →
+  // RIDE_HEIGHT_OPTIMAL_M (0.035) so ground-effect multiplier = 1.0
+  // (Wave 2 behaviour preserved for callers that haven't wired
+  // suspension forwarding yet — Step 3.4 wires the canonical caller).
+  buf[25] = sanitizeRideHeight(axleRideHeights ? axleRideHeights[0] : RIDE_HEIGHT_OPTIMAL_M)
+  buf[26] = sanitizeRideHeight(axleRideHeights ? axleRideHeights[1] : RIDE_HEIGHT_OPTIMAL_M)
 
   const inputBits =
     (input.forward ? 0b0000_0001 : 0) |

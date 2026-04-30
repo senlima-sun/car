@@ -49,6 +49,12 @@ pub struct PhysicsEngine {
     cached_wheel_positions: Option<[[f32; 2]; 4]>,
     cached_center_terrain_height: f32,
     track_weather_accumulator: f32,
+    /// Per-axle ride height (Wave 3 Phase 3). Smoothed (Phase 3.3 EMA)
+    /// values consumed by `aerodynamics::ground_effect_multiplier` to
+    /// modulate downforce. Defaults to `RIDE_HEIGHT_OPTIMAL_M` so a
+    /// 25-float legacy FFI caller (no ride-height input) sees no
+    /// behaviour change.
+    ride_height: crate::car_physics::aerodynamics::RideHeightSmoother,
 }
 
 impl Default for PhysicsEngine {
@@ -81,6 +87,7 @@ impl PhysicsEngine {
             cached_wheel_positions: None,
             cached_center_terrain_height: 0.0,
             track_weather_accumulator: 0.0,
+            ride_height: crate::car_physics::aerodynamics::RideHeightSmoother::new(),
         }
     }
 
@@ -302,6 +309,21 @@ impl PhysicsEngine {
     /// Auto-disable DRS (call when driver applies brake).
     pub fn disable_drs_on_brake(&mut self) {
         self.active_aero.disable_drs_on_brake();
+    }
+
+    /// Wave 3 Phase 3: feed measured per-axle ride heights into the
+    /// aero EMA smoother. Called by the FFI wrapper before `step_and_sync`
+    /// so the smoothed values are available to the aero call. JS-side
+    /// suspension reads the raycast compression and forwards via the
+    /// extended packed payload (slots 25, 26).
+    pub fn update_ride_height(&mut self, front_h_m: f32, rear_h_m: f32, dt: f32) {
+        self.ride_height.update(front_h_m, rear_h_m, dt);
+    }
+
+    pub fn get_ride_height_smoothed(
+        &self,
+    ) -> &crate::car_physics::aerodynamics::RideHeightSmoother {
+        &self.ride_height
     }
 
     // ========================================================================

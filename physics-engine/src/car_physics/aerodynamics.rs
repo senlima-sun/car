@@ -1,6 +1,57 @@
 use crate::constants::aero::{DEFAULT_AIR_DENSITY, FRONTAL_AREA};
 use crate::constants::car::{BASE_DOWNFORCE_COEFFICIENT, BASE_DRAG_COEFFICIENT};
 
+/// Time constant for the per-axle ride-height EMA. Suspension noise floor
+/// at 120Hz is ~33ms (a few raycast steps); 80ms is high enough to filter
+/// without lagging actual aero events. Wave 3 Phase 3.
+pub const RIDE_HEIGHT_EMA_TIME_CONSTANT_S: f32 = 0.080;
+
+/// Per-axle ride-height EMA smoother. Filters suspension noise so the
+/// `ground_effect_multiplier` curve doesn't thrash on bumps. Defaults to
+/// `RIDE_HEIGHT_OPTIMAL_M` so the first frame produces a peak (1.0)
+/// multiplier — same as Wave 2 behaviour with no ride-height input.
+#[derive(Debug, Clone, Copy)]
+pub struct RideHeightSmoother {
+    front_ema: f32,
+    rear_ema: f32,
+}
+
+impl Default for RideHeightSmoother {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl RideHeightSmoother {
+    pub fn new() -> Self {
+        Self {
+            front_ema: RIDE_HEIGHT_OPTIMAL_M,
+            rear_ema: RIDE_HEIGHT_OPTIMAL_M,
+        }
+    }
+
+    /// Update both axles with new measured ride heights. Uses an
+    /// exponential lowpass with time constant
+    /// `RIDE_HEIGHT_EMA_TIME_CONSTANT_S`.
+    pub fn update(&mut self, front_h_m: f32, rear_h_m: f32, dt: f32) {
+        let alpha = (dt / (RIDE_HEIGHT_EMA_TIME_CONSTANT_S + dt)).clamp(0.0, 1.0);
+        self.front_ema += (front_h_m - self.front_ema) * alpha;
+        self.rear_ema += (rear_h_m - self.rear_ema) * alpha;
+    }
+
+    pub fn front(&self) -> f32 {
+        self.front_ema
+    }
+
+    pub fn rear(&self) -> f32 {
+        self.rear_ema
+    }
+
+    pub fn average(&self) -> f32 {
+        (self.front_ema + self.rear_ema) * 0.5
+    }
+}
+
 // Ride-height ground-effect curve constants. Wave 3 Phase 3.
 // Below floor: porpoising regime (underbody seal collapses against ground).
 // Floor → optimal: ramp up to peak.
@@ -176,6 +227,58 @@ mod tests {
         let m2 = ground_effect_multiplier(h2);
         let m3 = ground_effect_multiplier(h3);
         assert!(m1 > m2 && m2 > m3, "falloff region should be monotone: {} > {} > {}", m1, m2, m3);
+    }
+
+    #[test]
+    fn ride_height_smoother_default_is_optimal() {
+        let s = RideHeightSmoother::new();
+        assert!((s.front() - RIDE_HEIGHT_OPTIMAL_M).abs() < 1e-6);
+        assert!((s.rear() - RIDE_HEIGHT_OPTIMAL_M).abs() < 1e-6);
+        assert!((s.average() - RIDE_HEIGHT_OPTIMAL_M).abs() < 1e-6);
+    }
+
+    #[test]
+    fn ride_height_smoother_filters_oscillation() {
+        // Adversarial input: front ride height oscillates ±0.02m at 60 Hz.
+        // After a few hundred ms the EMA should settle within ±0.005m
+        // around the mean (0.035m) rather than tracking the swings.
+        let mut s = RideHeightSmoother::new();
+        let dt = 1.0 / 120.0;
+        let mean = RIDE_HEIGHT_OPTIMAL_M;
+        let amp = 0.02;
+        // 480 frames = 4 seconds, 60 Hz oscillation → 240 cycles.
+        let mut max_dev = 0.0_f32;
+        for n in 0..480 {
+            let phase = (n as f32 / 120.0) * 60.0 * 2.0 * std::f32::consts::PI;
+            let h = mean + amp * phase.sin();
+            s.update(h, h, dt);
+            // After warm-up (200 frames) check filtered deviation.
+            if n > 200 {
+                max_dev = max_dev.max((s.front() - mean).abs());
+            }
+        }
+        assert!(
+            max_dev < 0.005,
+            "EMA should suppress 60Hz ±20mm to within ±5mm, got max dev {} m",
+            max_dev
+        );
+    }
+
+    #[test]
+    fn ride_height_smoother_tracks_step_change() {
+        // After ~5 time-constants the EMA should reach >99% of a step input.
+        let mut s = RideHeightSmoother::new();
+        let dt = 1.0 / 120.0;
+        let target = 0.080_f32;
+        // 5 × 80ms = 400ms = 48 frames at 120Hz.
+        for _ in 0..60 {
+            s.update(target, target, dt);
+        }
+        assert!(
+            (s.front() - target).abs() < 0.01,
+            "EMA should track step input within 10mm after 5τ, got {}",
+            s.front()
+        );
     }
 
     #[test]

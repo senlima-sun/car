@@ -848,7 +848,8 @@ impl PhysicsEngine {
         to_value(&output).unwrap_or(JsValue::NULL)
     }
 
-    /// Packed-payload variant of `step_and_sync` (Wave 2 Phase 3).
+    /// Packed-payload variant of `step_and_sync` (Wave 2 Phase 3, extended
+    /// to 27 floats by Wave 3 Phase 3 with backward-compatible parsing).
     /// Reads all numeric per-step input from a single `Float32Array`
     /// instead of 6 individual `JsValue` deserializes. JS-side caller
     /// owns the buffer and writes into it once per frame; Rust reads as
@@ -856,7 +857,7 @@ impl PhysicsEngine {
     /// packed into `input_bits`:
     ///   bit 0 forward, bit 1 backward, bit 2 left, bit 3 right,
     ///   bit 4 brake,   bit 5 handbrake.
-    /// Payload layout (25 floats):
+    /// Payload layout (27 floats; legacy 25-float callers still work):
     ///   [0] dt
     ///   [1] throttle
     ///   [2] steer
@@ -868,9 +869,13 @@ impl PhysicsEngine {
     ///   [15..18] current_angvel xyz
     ///   [18..21] surface_normal xyz
     ///   [21..25] wheel_loads fl/fr/rl/rr
+    ///   [25] front_axle_ride_height_m  (Wave 3 Phase 3, optional)
+    ///   [26] rear_axle_ride_height_m   (Wave 3 Phase 3, optional)
     /// `wheel_loads` is treated as "no signal" (engine fallback) when
     /// the four-wheel sum < `WHEEL_LOADS_MIN_TOTAL_N` (matches the
-    /// legacy `parse_wheel_loads` semantics).
+    /// legacy `parse_wheel_loads` semantics). Missing or non-finite
+    /// per-axle ride heights default to `RIDE_HEIGHT_OPTIMAL_M` so the
+    /// ground-effect multiplier evaluates to 1.0 (Wave 2 behaviour).
     #[wasm_bindgen]
     pub fn step_and_sync_packed(&mut self, payload: &[f32], input_bits: u32) -> JsValue {
         if payload.len() < 25 {
@@ -880,7 +885,8 @@ impl PhysicsEngine {
         // but a direct WASM caller (or a future scratch-buffer reuse bug) could
         // hand us a NaN. Reject the whole frame instead of letting NaN
         // propagate into the physics step.
-        if !payload[..25].iter().all(|v| v.is_finite()) {
+        let finite_window = payload.len().min(27);
+        if !payload[..finite_window].iter().all(|v| v.is_finite()) {
             return JsValue::NULL;
         }
         let input = CarInput {
@@ -907,6 +913,18 @@ impl PhysicsEngine {
         } else {
             None
         };
+
+        // Wave 3 Phase 3: per-axle ride heights are optional FFI inputs.
+        // 25-float legacy callers default to RIDE_HEIGHT_OPTIMAL_M, which
+        // produces a ground-effect multiplier of 1.0 (no behaviour change).
+        let optimal = crate::car_physics::aerodynamics::RIDE_HEIGHT_OPTIMAL_M;
+        let (front_h, rear_h) = if payload.len() >= 27 {
+            (payload[25], payload[26])
+        } else {
+            (optimal, optimal)
+        };
+        self.inner
+            .update_ride_height(front_h, rear_h, payload[0]);
 
         let output = self.inner.step_and_sync(
             payload[0], input, position, rotation, linvel, angvel, normal, loads,
