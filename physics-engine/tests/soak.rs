@@ -156,6 +156,65 @@ fn step_with_real_wheel_loads_produces_finite_output() {
     }
 }
 
+/// Wave 3 Phase 7 Step 7.3: combined-slip stress soak. 10000 steps in
+/// the corner-exit-transition regime (rear under throttle while front
+/// turns in) — exactly the regime where Phase 2's G-method shifts
+/// behaviour most. Asserts no NaN propagation and bounded velocities.
+#[test]
+fn soak_step_combined_slip_stress() {
+    let mut engine = PhysicsEngine::new();
+    let mut linvel = [3.0_f32, 0.0, 30.0]; // lateral 3 m/s + forward 30 m/s
+    let mut angvel = [0.0_f32; 3];
+    let position = [0.0_f32, 1.0, 0.0];
+    let rotation = [0.0_f32, 0.0, 0.0, 1.0];
+
+    for frame in 0..10_000 {
+        // Modulate throttle and steer so slip_ratio AND slip_angle are both
+        // active. Sinusoidal pattern with a 3-second period.
+        let phase = (frame as f32 / 360.0) * 2.0 * std::f32::consts::PI;
+        let input = CarInput {
+            forward: true,
+            throttle: (0.6 + 0.4 * phase.sin()).clamp(0.0, 1.0),
+            steer: 0.7 * phase.cos(),
+            ..Default::default()
+        };
+        let bundle = engine.step_and_sync(
+            FIXED_DT,
+            input,
+            position,
+            rotation,
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        assert_output_finite(&bundle.physics, frame);
+        for w in 0..4 {
+            assert!(
+                bundle.physics.per_wheel_forces.fx[w].is_finite(),
+                "fx[{}] non-finite at frame {}",
+                w,
+                frame
+            );
+            assert!(
+                bundle.physics.per_wheel_forces.fy[w].is_finite(),
+                "fy[{}] non-finite at frame {}",
+                w,
+                frame
+            );
+        }
+        linvel = bundle.physics.linear_velocity;
+        angvel = bundle.physics.angular_velocity;
+        let lin_mag_sq = linvel[0] * linvel[0] + linvel[1] * linvel[1] + linvel[2] * linvel[2];
+        assert!(
+            lin_mag_sq < LIN_VEL_BLOWUP_LIMIT_SQ,
+            "linear velocity blow-up at frame {}: |v|^2={}",
+            frame,
+            lin_mag_sq
+        );
+    }
+}
+
 #[test]
 fn soak_step_and_sync_handles_adversarial_steps() {
     let mut engine = PhysicsEngine::new();

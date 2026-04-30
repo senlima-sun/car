@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-3-final",
+  "samples": 100000,
+  "step_and_sync_ns": {
+    "min": 291,
+    "p50": 500,
+    "p99": 667
+  },
+  "notes": "Wave 3 final perf snapshot. New physics surface area: per-axle ride-height EMA, G-method (4 trig calls per wheel per step), clutch engagement state, reflected engine inertia, per-axle downforce split, unified grip stack. Wave-end gate: p50 within 1.05× Wave 2 final p50 (see perf_baseline.json)."
+}

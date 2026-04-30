@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-3-final",
+  "soak_runs": [
+    {
+      "run": 1,
+      "result": "pass",
+      "tests": [
+        "step_with_real_wheel_loads_produces_finite_output",
+        "soak_step_combined_slip_stress",
+        "soak_step_handles_adversarial_steps",
+        "soak_step_and_sync_handles_adversarial_steps"
+      ],
+      "notes": "72k-step adversarial + 10k-step combined-slip-stress = 82k total NaN-free steps"
+    },
+    {
+      "run": 2,
+      "result": "pass"
+    },
+    {
+      "run": 3,
+      "result": "pass"
+    }
+  ]
+}
