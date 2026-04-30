@@ -5,6 +5,7 @@
 import init, { PhysicsEngine, TireCompound, SurfaceType } from './pkg/car_physics_engine'
 import { incrementWasmCalls } from '../debug/perfCounters'
 import { publishStepBundle } from './stepBundleSnapshot'
+import { IS_DEV } from '../utils/isDev'
 
 function recordWasmCall(): void {
   incrementWasmCalls(1)
@@ -434,8 +435,6 @@ export function isPhysicsEngineInitialized(): boolean {
 // ============================================================================
 
 const sanitizeWarnedKeys = new Set<string>()
-const isDevBuild =
-  typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
 
 /**
  * Sanitize a number value - replace NaN/Infinity with fallback.
@@ -445,7 +444,7 @@ const isDevBuild =
  */
 function sanitize(value: number, fallback: number = 0, key?: string): number {
   if (Number.isFinite(value)) return value
-  if (isDevBuild && key && !sanitizeWarnedKeys.has(key)) {
+  if (IS_DEV && key && !sanitizeWarnedKeys.has(key)) {
     sanitizeWarnedKeys.add(key)
     console.warn(
       `[PhysicsBridge] sanitize fallback fired at "${key}" (got ${value}); replacing with ${fallback}. This indicates a Rust-side NaN root cause that should be fixed.`,

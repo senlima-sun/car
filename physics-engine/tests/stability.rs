@@ -449,7 +449,7 @@ fn test_step_finite_under_drifted_surface_normal() {
 }
 
 #[test]
-fn test_step_finite_under_steep_pitch() {
+fn test_step_finite_under_steep_pitch_or_banking() {
     let mut engine = PhysicsEngine::new();
     let input = CarInput {
         forward: true,
@@ -459,12 +459,16 @@ fn test_step_finite_under_steep_pitch() {
     let mut linvel = [0.0_f32, 0.0, 10.0];
     let mut angvel = [0.0_f32; 3];
 
+    // Alternates between non-unit normals that drive forward-projection
+    // (pitch asin) and right-projection (banking asin) outside [-1, 1].
+    // Both NaN'd before the asin input clamps landed.
     for frame in 0..200 {
-        // Adversarial: surface normal whose forward-projection goes past
-        // 1.0 in absolute value (caused asin to return NaN before the
-        // input clamp landed).
-        let nz = 0.9 + (frame as f32) * 0.001;
-        let surface_normal = [0.0, 0.5, nz];
+        let drift = (frame as f32) * 0.001;
+        let surface_normal = if frame % 2 == 0 {
+            [0.0, 0.5, 0.9 + drift]
+        } else {
+            [0.9 + drift, 0.5, 0.0]
+        };
         let output = engine.step(
             1.0 / 120.0,
             input,
