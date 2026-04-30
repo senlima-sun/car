@@ -1,6 +1,7 @@
 use crate::car_physics::powertrain::TIRE_RADIUS;
 use crate::car_physics::tire_model::{
-    combined_slip, pacejka_longitudinal, peak_mu_at_fz, PacejkaCoeffs,
+    combined_slip, pacejka_lateral_per_wheel, pacejka_longitudinal, peak_mu_at_fz, PacejkaCoeffs,
+    TIRE_DEFAULT_LOAD_SENSITIVITY,
 };
 use crate::constants::car::BASE_TIRE_GRIP_COEFFICIENT;
 use crate::tires::is_front_wheel;
@@ -13,7 +14,7 @@ const WHEEL_OMEGA_OVERSPEED_RATIO: f32 = 5.0;
 const WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S: f32 = 50.0;
 pub const AXLE_TO_CORNER_SPLIT: f32 = 0.5;
 
-/// Per-step inputs to the wheel-spin integrator.
+/// Per-step inputs to the wheel-force integrator.
 pub struct WheelForceInputs {
     pub dt: f32,
     pub forward_speed: f32,
@@ -29,9 +30,27 @@ pub struct WheelForceInputs {
     /// terrain). Multiplied into the longitudinal Pacejka output so
     /// wet/oil/aqua reduce braking and acceleration the same way they
     /// reduce cornering. Cold-tire material grip stays lateral-only —
-    /// the wheel-spin integrator's tire-reaction feedback loop already
+    /// the wheel-force integrator's tire-reaction feedback loop already
     /// couples to the cold-rubber state via prev_wheel_fx.
     pub environmental_grip_modifier: f32,
+    /// Chassis-level slip angle in degrees, after Wave 1 EMA smoothing.
+    /// Phase 1 (Wave 3) feeds it as the per-wheel slip angle (no kinematic
+    /// yaw-rate × wheel-offset correction yet — see Wave 4 backlog).
+    /// Used to compute per-wheel Fy alongside the existing Fx.
+    pub slip_angle_smoothed_deg: f32,
+}
+
+/// Per-step output from the wheel-force integrator. Phase 1 (Wave 3)
+/// promotes Fy to per-wheel newtons alongside Fx; the body-frame yaw
+/// computation stays on the μ-scalar path through Phase 5 and switches
+/// in Phase 6.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct WheelForceOutput {
+    pub total_long_force: f32,
+    pub total_lat_force: f32,
+    pub fx_per_wheel: [f32; 4],
+    pub fy_per_wheel: [f32; 4],
+    pub slip_ratio_per_wheel: [f32; 4],
 }
 
 #[derive(Debug, Default)]
@@ -55,14 +74,23 @@ impl WheelForceIntegrator {
 
     /// Integrate per-wheel angular velocity from drive + brake torque,
     /// compute slip ratios, route through `pacejka_longitudinal` with a
-    /// friction-ellipse cap, and return the body-frame longitudinal force.
-    /// Tire-reaction torque uses last frame's Fx (1-step lag at 120Hz).
-    pub fn step(&mut self, i: &WheelForceInputs) -> f32 {
+    /// friction-ellipse cap, and emit per-wheel Fx + Fy in newtons. Tire-
+    /// reaction torque uses last frame's Fx (1-step lag at 120Hz).
+    ///
+    /// Phase 1 (Wave 3): Fy is computed via `pacejka_lateral_per_wheel`
+    /// alongside Fx but the friction-ellipse cap stays as `(fx, 0.0)` so
+    /// the longitudinal output is bit-equivalent to Wave 2. The 2-axis
+    /// cap and Pacejka G-method weighting land in Phase 2.
+    pub fn step(&mut self, i: &WheelForceInputs) -> WheelForceOutput {
         let omega_cap = (i.forward_speed.abs() / TIRE_RADIUS) * WHEEL_OMEGA_OVERSPEED_RATIO
             + WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S;
         let v_floor = i.forward_speed.abs().max(SLIP_RATIO_VEL_FLOOR_MS);
+        let slip_angle_rad = i.slip_angle_smoothed_deg.to_radians();
         let mut wheel_long_force = 0.0_f32;
+        let mut wheel_lat_force = 0.0_f32;
         let mut wheel_fx_now = [0.0_f32; 4];
+        let mut wheel_fy_now = [0.0_f32; 4];
+        let mut wheel_slip_ratio_now = [0.0_f32; 4];
         for wheel in 0..4 {
             let is_driven = !is_front_wheel(wheel);
             let per_axle_brake = if is_front_wheel(wheel) {
@@ -106,6 +134,7 @@ impl WheelForceIntegrator {
             let slip_ratio =
                 ((self.wheel_angvel[wheel] * TIRE_RADIUS - i.forward_speed) / v_floor)
                     .clamp(-SLIP_RATIO_ABS_CLAMP, SLIP_RATIO_ABS_CLAMP);
+            wheel_slip_ratio_now[wheel] = slip_ratio;
             let fz = i.resolved_wheel_loads[wheel].max(0.0);
             // TODO(wave-2-phase-5): unify longitudinal grip stack with the
             // lateral path. Currently scales by base μ only.
@@ -113,10 +142,19 @@ impl WheelForceIntegrator {
                 pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT),
                 0.0,
             );
-            // Friction-ellipse cap in raw-Newton units; apply grip scaling
-            // once after capping so cap and value share dimensions. Wave 1
-            // has no per-wheel Fy yet — degenerates to a friction-line cap
-            // on |fx|. Wave 3 will pass real lateral force.
+            let fy_pacejka = sanitize(
+                pacejka_lateral_per_wheel(
+                    slip_angle_rad,
+                    fz,
+                    &PacejkaCoeffs::LATERAL_DEFAULT,
+                    TIRE_DEFAULT_LOAD_SENSITIVITY,
+                ),
+                0.0,
+            );
+            // Phase 1 (Wave 3): friction-ellipse cap stays as (fx, 0) to
+            // preserve Wave 2 bit-equivalence on the longitudinal path.
+            // Phase 2 promotes the cap to (fx, fy) alongside Pacejka
+            // Gx/Gy weighting; until then Fy is telemetry-only.
             let mu_fz_limit = peak_mu_at_fz(fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT) * fz;
             let (fx_capped, _) = combined_slip(fx_pacejka, 0.0, mu_fz_limit);
             let fx = fx_capped
@@ -124,10 +162,18 @@ impl WheelForceIntegrator {
                 * i.downforce_grip_bonus
                 * i.environmental_grip_modifier;
             wheel_fx_now[wheel] = fx;
+            wheel_fy_now[wheel] = fy_pacejka;
             wheel_long_force += fx;
+            wheel_lat_force += fy_pacejka;
         }
         self.prev_wheel_fx = wheel_fx_now;
-        wheel_long_force
+        WheelForceOutput {
+            total_long_force: wheel_long_force,
+            total_lat_force: wheel_lat_force,
+            fx_per_wheel: wheel_fx_now,
+            fy_per_wheel: wheel_fy_now,
+            slip_ratio_per_wheel: wheel_slip_ratio_now,
+        }
     }
 }
 
@@ -152,6 +198,7 @@ mod tests {
             resolved_wheel_loads: nominal_loads(),
             downforce_grip_bonus: 1.0,
             environmental_grip_modifier: 1.0,
+            slip_angle_smoothed_deg: 0.0,
         }
     }
 
@@ -215,6 +262,43 @@ mod tests {
                 s.wheel_angvel()[w]
             );
         }
+    }
+
+    #[test]
+    fn fy_zero_at_zero_slip_angle() {
+        let mut s = WheelForceIntegrator::new();
+        let out = s.step(&idle_inputs());
+        assert!(out.total_lat_force.abs() < 1.0);
+        for w in 0..4 {
+            assert!(out.fy_per_wheel[w].abs() < 1.0);
+        }
+    }
+
+    #[test]
+    fn fy_per_wheel_nonzero_at_nonzero_slip_angle() {
+        let mut s = WheelForceIntegrator::new();
+        let mut inputs = idle_inputs();
+        inputs.slip_angle_smoothed_deg = 5.0;
+        let out = s.step(&inputs);
+        assert!(out.total_lat_force.abs() > 1.0);
+        for w in 0..4 {
+            assert!(out.fy_per_wheel[w].abs() > 1.0);
+        }
+    }
+
+    #[test]
+    fn fy_total_equals_sum_of_per_wheel() {
+        let mut s = WheelForceIntegrator::new();
+        let mut inputs = idle_inputs();
+        inputs.slip_angle_smoothed_deg = 8.0;
+        let out = s.step(&inputs);
+        let sum: f32 = out.fy_per_wheel.iter().sum();
+        assert!(
+            (out.total_lat_force - sum).abs() < 1e-3,
+            "total_lat_force {} != sum {}",
+            out.total_lat_force,
+            sum
+        );
     }
 
     #[test]

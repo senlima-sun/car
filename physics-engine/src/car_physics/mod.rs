@@ -325,7 +325,7 @@ impl CarPhysicsState {
         } else {
             0.0
         };
-        let wheel_long_force = self.wheel_force.step(&WheelForceInputs {
+        let wheel_force_out = self.wheel_force.step(&WheelForceInputs {
             dt,
             forward_speed,
             drive_engaged,
@@ -337,8 +337,9 @@ impl CarPhysicsState {
             resolved_wheel_loads,
             downforce_grip_bonus,
             environmental_grip_modifier,
+            slip_angle_smoothed_deg: self.slip_angle_smoothed,
         });
-        longitudinal_force += wheel_long_force;
+        longitudinal_force += wheel_force_out.total_long_force;
 
         let (front_grip, rear_grip) = tire_model::calculate_tire_grip(
             self.slip_angle_smoothed,
