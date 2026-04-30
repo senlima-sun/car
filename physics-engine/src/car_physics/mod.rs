@@ -461,6 +461,7 @@ impl CarPhysicsState {
             downforce_newtons: sanitize(downforce, 0.0),
             per_wheel_terrain: Default::default(),
             bottoming_out: Default::default(),
+            per_wheel_forces: Default::default(),
         }
     }
 

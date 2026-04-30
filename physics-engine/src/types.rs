@@ -655,6 +655,20 @@ pub struct PerWheelTerrain {
     pub bump_forces: [f32; 4],
 }
 
+/// Per-corner tire-force telemetry. Wave 3 surfaces this so the G-method,
+/// ride-height aero, and grip-stack unification changes are observable from
+/// tests and the dev panel without inspecting integrator internals. Wheel
+/// order: [FL, FR, RL, RR]. Pre-Phase-1, all arrays are zero-default; from
+/// Phase 1 the integrator populates them each step.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+pub struct PerWheelForces {
+    pub fx: [f32; 4],
+    pub fy: [f32; 4],
+    pub fz: [f32; 4],
+    pub slip_angle: [f32; 4],
+    pub slip_ratio: [f32; 4],
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct BottomingOutState {
     pub is_contact: bool,
@@ -689,6 +703,7 @@ pub struct CarPhysicsOutput {
     pub downforce_newtons: f32,
     pub per_wheel_terrain: PerWheelTerrain,
     pub bottoming_out: BottomingOutState,
+    pub per_wheel_forces: PerWheelForces,
 }
 
 /// Combined output for step + sync (reduces FFI calls per frame)

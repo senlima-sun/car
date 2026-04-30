@@ -88,6 +88,22 @@ export interface CarPhysicsOutput {
   grip_breakdown: GripBreakdown
   tire_material: TireMaterialOutput
   downforce_newtons: number
+  per_wheel_forces: PerWheelForces
+}
+
+/**
+ * Per-corner tire-force telemetry. Wave 3 surfaces this so the G-method,
+ * ride-height aero, and grip-stack unification changes are observable from
+ * tests and the dev panel without inspecting integrator internals. Wheel
+ * order: [FL, FR, RL, RR]. Pre-Phase-1, all arrays are zero-default; from
+ * Phase 1 the integrator populates them each step.
+ */
+export interface PerWheelForces {
+  fx: [number, number, number, number]
+  fy: [number, number, number, number]
+  fz: [number, number, number, number]
+  slip_angle: [number, number, number, number]
+  slip_ratio: [number, number, number, number]
 }
 
 export interface WeatherModifiers {
