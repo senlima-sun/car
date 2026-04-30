@@ -157,6 +157,17 @@ export function useCarPhysicsStep({
       rawWheelForces && (!shouldValidate || rawWheelForces.every(Number.isFinite))
         ? rawWheelForces
         : undefined
+    // Wave 3 Phase 3: forward per-axle ride heights (front/rear average of
+    // wheel-spring compressions). Same 1-frame lag — Rust applies an EMA
+    // smoother on top so the curve doesn't thrash on bumps. First frame
+    // (cold cache): undefined → bridge uses RIDE_HEIGHT_OPTIMAL_M default.
+    const prevWheels = suspensionOutputRef.current?.wheels
+    const axleRideHeights: [number, number] | undefined = prevWheels
+      ? [
+          (prevWheels[0].compression + prevWheels[1].compression) * 0.5,
+          (prevWheels[2].compression + prevWheels[3].compression) * 0.5,
+        ]
+      : undefined
     const syncResult = physics.stepAndSync(
       dt,
       input,
@@ -166,6 +177,7 @@ export function useCarPhysicsStep({
       angvelArr,
       surfaceNormalRef.current,
       prevWheelForces,
+      axleRideHeights,
     )
     const output = syncResult.physics
 
