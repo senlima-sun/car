@@ -41,6 +41,7 @@ pub struct CarPhysicsState {
     long_g_filtered: f32,
     lat_g_filtered: f32,
     wheel_force: WheelForceIntegrator,
+    clutch: clutch::ClutchState,
 }
 
 impl Default for CarPhysicsState {
@@ -61,6 +62,7 @@ impl Default for CarPhysicsState {
             long_g_filtered: 0.0,
             lat_g_filtered: 0.0,
             wheel_force: WheelForceIntegrator::new(),
+            clutch: clutch::ClutchState::new(),
         }
     }
 }
@@ -341,6 +343,11 @@ impl CarPhysicsState {
         } else {
             0.0
         };
+        // Wave 3 Phase 5: clutch engagement based on current engine RPM.
+        // The integrator uses this to (a) reflect engine inertia at the
+        // driven wheels and (b) gate the transmitted drive torque so the
+        // energy balance stays physical.
+        let clutch_engagement = self.clutch.engagement_for(self.rpm, dt);
         let wheel_force_out = self.wheel_force.step(&WheelForceInputs {
             dt,
             forward_speed,
@@ -354,6 +361,8 @@ impl CarPhysicsState {
             downforce_grip_bonus,
             environmental_grip_modifier,
             slip_angle_smoothed_deg: self.slip_angle_smoothed,
+            clutch_engagement,
+            total_gear_ratio: pt_out.total_gear_ratio,
         });
         longitudinal_force += wheel_force_out.total_long_force;
 

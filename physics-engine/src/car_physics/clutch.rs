@@ -16,9 +16,9 @@
 
 use crate::utils::smoothstep;
 
-pub const CLUTCH_FULL_ENGAGEMENT_RPM: f32 = 5500.0;
-const CLUTCH_SLIP_FLOOR: f32 = 0.1;
-const CLUTCH_SLIP_THRESHOLD_FACTOR: f32 = 0.7;
+pub const CLUTCH_FULL_ENGAGEMENT_RPM: f32 = 4500.0;
+const CLUTCH_SLIP_FLOOR: f32 = 0.4;
+const CLUTCH_SLIP_THRESHOLD_FACTOR: f32 = 0.5;
 const CLUTCH_TIME_CONSTANT_S: f32 = 0.05;
 
 #[derive(Debug, Clone, Copy)]

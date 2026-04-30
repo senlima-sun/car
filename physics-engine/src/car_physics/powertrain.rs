@@ -1,10 +1,10 @@
 pub const TIRE_RADIUS: f32 = 0.33;
 const TRANSMISSION_EFFICIENCY: f32 = 0.85;
-// Engine-side rotational inertia. Wave 1 keeps this unused; including it in
-// the per-wheel ODE requires gear-ratio² reflection through a clutch model
-// that's explicitly out of scope. Wave 2+ work.
-#[allow(dead_code)]
-const ENGINE_INERTIA: f32 = 0.15;
+// Engine-side rotational inertia (kg·m²). Wave 3 Phase 5 reflects this
+// through gear ratio² and clutch engagement into driven-wheel inertia
+// inside `WheelForceIntegrator`. Public so the integrator can consume it
+// without re-declaring the constant.
+pub const ENGINE_INERTIA: f32 = 0.15;
 const REDLINE_RPM: f32 = 15000.0;
 const IDLE_RPM: f32 = 4000.0;
 const PEAK_TORQUE_RPM: f32 = 10500.0;
@@ -104,6 +104,7 @@ impl PowertrainState {
             rpm: self.engine_rpm,
             gear: gear_display,
             gear_ratio,
+            total_gear_ratio: total_ratio,
             shift_state: self.shift_state,
         }
     }
@@ -205,7 +206,12 @@ pub struct PowertrainOutput {
     pub engine_brake_force: f32,
     pub rpm: f32,
     pub gear: i8,
+    /// Current gear ratio (without final drive).
     pub gear_ratio: f32,
+    /// Total transmission ratio: `gear_ratio × FINAL_DRIVE`. Wave 3
+    /// Phase 5 consumes this for engine-inertia reflection at the
+    /// driven wheels.
+    pub total_gear_ratio: f32,
     pub shift_state: ShiftState,
 }
 

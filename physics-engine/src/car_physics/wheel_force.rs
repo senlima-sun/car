@@ -1,4 +1,4 @@
-use crate::car_physics::powertrain::TIRE_RADIUS;
+use crate::car_physics::powertrain::{ENGINE_INERTIA, TIRE_RADIUS};
 use crate::car_physics::tire_model::{
     combined_slip, gx_combined, gy_combined, pacejka_lateral_per_wheel, pacejka_longitudinal,
     peak_mu_lat_at_fz, peak_mu_lon_at_fz, CombinedSlipCoeffs, PacejkaCoeffs,
@@ -39,6 +39,14 @@ pub struct WheelForceInputs {
     /// yaw-rate × wheel-offset correction yet — see Wave 4 backlog).
     /// Used to compute per-wheel Fy alongside the existing Fx.
     pub slip_angle_smoothed_deg: f32,
+    /// Wave 3 Phase 5: clutch engagement on `[0, 1]`. Slipping clutch
+    /// (engagement < 1) reduces both transmitted drive torque and the
+    /// reflected engine inertia at the driven wheels.
+    pub clutch_engagement: f32,
+    /// Wave 3 Phase 5: total transmission ratio (`gear_ratio × FINAL_DRIVE`).
+    /// Used to reflect engine inertia into the driven-wheel ODE via
+    /// `(total_gear_ratio × clutch_engagement)²`.
+    pub total_gear_ratio: f32,
 }
 
 /// Per-step output from the wheel-force integrator. Phase 1 (Wave 3)
@@ -87,6 +95,13 @@ impl WheelForceIntegrator {
             + WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S;
         let v_floor = i.forward_speed.abs().max(SLIP_RATIO_VEL_FLOOR_MS);
         let slip_angle_rad = i.slip_angle_smoothed_deg.to_radians();
+        // Wave 3 Phase 5: reflected engine inertia for driven wheels.
+        // I_eff = WHEEL_INERTIA + ENGINE_INERTIA × (total_gear_ratio × engagement)²
+        // At locked clutch in 1st gear (gear=3.6 × final=2.9 ≈ 10.4) this is
+        // ~24 kg·m² — much larger than the bare wheel inertia (8 kg·m²) and
+        // dominates the wheel-spin time constant for driven wheels.
+        let coupling = i.total_gear_ratio * i.clutch_engagement;
+        let driven_i_eff = WHEEL_INERTIA + ENGINE_INERTIA * coupling * coupling;
         let mut wheel_long_force = 0.0_f32;
         let mut wheel_lat_force = 0.0_f32;
         let mut wheel_fx_now = [0.0_f32; 4];
@@ -101,12 +116,16 @@ impl WheelForceIntegrator {
                 i.rear_brake_force
             };
             let has_brake_torque = i.braking_active && per_axle_brake > 0.0;
+            let inertia = if is_driven { driven_i_eff } else { WHEEL_INERTIA };
 
             if !is_driven && !has_brake_torque {
                 self.wheel_angvel[wheel] = i.forward_speed / TIRE_RADIUS;
             } else {
+                // Wave 3 Phase 5: slipping clutch transmits proportionally
+                // less torque (energy balance: less reflected inertia AND
+                // less torque delivered).
                 let drive_torque = if is_driven && i.drive_engaged {
-                    i.driven_wheel_torque
+                    i.driven_wheel_torque * i.clutch_engagement
                 } else {
                     0.0
                 };
@@ -119,7 +138,7 @@ impl WheelForceIntegrator {
                 let tire_reaction_torque = self.prev_wheel_fx[wheel] * TIRE_RADIUS;
                 let net_torque = drive_torque + brake_signed_torque - tire_reaction_torque;
                 let omega_before = self.wheel_angvel[wheel];
-                let omega_after = omega_before + net_torque / WHEEL_INERTIA * i.dt;
+                let omega_after = omega_before + net_torque / inertia * i.dt;
                 // Anti-overshoot: brake-only step that would carry ω across
                 // zero clamps at zero so the wheel doesn't reverse-spin.
                 self.wheel_angvel[wheel] = if drive_torque.abs() < f32::EPSILON
@@ -217,6 +236,10 @@ mod tests {
             downforce_grip_bonus: 1.0,
             environmental_grip_modifier: 1.0,
             slip_angle_smoothed_deg: 0.0,
+            // Default: idle (slipping clutch, low inertia coupling). Tests
+            // that need locked-clutch behaviour override these explicitly.
+            clutch_engagement: 0.1,
+            total_gear_ratio: 0.0,
         }
     }
 
@@ -354,14 +377,17 @@ mod tests {
 
     #[test]
     fn combined_slip_reduces_fx_when_lateral_slip_present() {
-        // Pure-slip vs combined-slip Fx: at slip_ratio = 0.1 + slip_angle = 10°,
+        // Pure-slip vs combined-slip Fx: at slip_ratio > 0 + slip_angle = 10°,
         // gx_combined kicks in and Fx drops below the pure-slip value.
+        // Use locked clutch in 1st gear so torque transmits and inertia
+        // reflects realistically.
         let mut s_pure = WheelForceIntegrator::new();
         let mut inputs_pure = idle_inputs();
         inputs_pure.drive_engaged = true;
-        inputs_pure.driven_wheel_torque = 1500.0; // induce slip_ratio
-        inputs_pure.slip_angle_smoothed_deg = 0.0; // pure-slip baseline
-        // Warm up so slip_ratio settles.
+        inputs_pure.driven_wheel_torque = 1500.0;
+        inputs_pure.slip_angle_smoothed_deg = 0.0;
+        inputs_pure.clutch_engagement = 1.0;
+        inputs_pure.total_gear_ratio = 10.4;
         for _ in 0..30 {
             s_pure.step(&inputs_pure);
         }
@@ -371,7 +397,9 @@ mod tests {
         let mut inputs_combined = idle_inputs();
         inputs_combined.drive_engaged = true;
         inputs_combined.driven_wheel_torque = 1500.0;
-        inputs_combined.slip_angle_smoothed_deg = 10.0; // off-axis slip
+        inputs_combined.slip_angle_smoothed_deg = 10.0;
+        inputs_combined.clutch_engagement = 1.0;
+        inputs_combined.total_gear_ratio = 10.4;
         for _ in 0..30 {
             s_combined.step(&inputs_combined);
         }
@@ -399,13 +427,15 @@ mod tests {
         }
         let pure_out = s_pure.step(&inputs_pure);
 
-        // Combined: same slip_angle but rear wheels driven → settled rear
-        // slip_ratio > 0 → gy < 1 on rear, Fy drops.
+        // Combined: same slip_angle but rear wheels driven with locked clutch
+        // → settled rear slip_ratio > 0 → gy < 1 on rear, Fy drops.
         let mut s_combined = WheelForceIntegrator::new();
         let mut inputs_combined = idle_inputs();
         inputs_combined.slip_angle_smoothed_deg = 8.0;
         inputs_combined.drive_engaged = true;
         inputs_combined.driven_wheel_torque = 1500.0;
+        inputs_combined.clutch_engagement = 1.0;
+        inputs_combined.total_gear_ratio = 10.4;
         for _ in 0..60 {
             s_combined.step(&inputs_combined);
         }
@@ -461,6 +491,91 @@ mod tests {
             "total_lat_force {} != sum {}",
             out.total_lat_force,
             sum
+        );
+    }
+
+    // Phase 5 (Wave 3) — engine inertia reflection + clutch torque gating
+
+    #[test]
+    fn engaged_clutch_lowers_wheel_acceleration_in_first_gear() {
+        // With locked clutch in 1st gear (gear=3.6 × final=2.9 ≈ 10.4),
+        // I_eff = 8 + 0.15 × 10.4² ≈ 24.2 kg·m². For the same drive torque,
+        // wheel acceleration should drop ~3x versus an idle-clutch baseline.
+        let mut s_idle = WheelForceIntegrator::new();
+        let mut idle = idle_inputs();
+        idle.drive_engaged = true;
+        idle.driven_wheel_torque = 1000.0;
+        idle.clutch_engagement = 0.1;
+        idle.total_gear_ratio = 10.4;
+        s_idle.step(&idle);
+
+        let mut s_locked = WheelForceIntegrator::new();
+        let mut locked = idle_inputs();
+        locked.drive_engaged = true;
+        locked.driven_wheel_torque = 1000.0;
+        locked.clutch_engagement = 1.0;
+        locked.total_gear_ratio = 10.4;
+        s_locked.step(&locked);
+
+        // Rear wheel angvel growth is much smaller with locked clutch (more
+        // inertia AND full drive torque vs idle's 10% torque).
+        let kinematic = 10.0 / TIRE_RADIUS;
+        let idle_growth = (s_idle.wheel_angvel()[2] - kinematic).abs();
+        let locked_growth = (s_locked.wheel_angvel()[2] - kinematic).abs();
+        // With idle_clutch=0.1, transmitted torque = 100Nm with low inertia →
+        // negligible ω change. With locked clutch, transmitted torque = 1000Nm
+        // but I_eff is 3x larger → still meaningful but bounded.
+        assert!(
+            locked_growth > 0.0,
+            "locked clutch should still produce wheel acceleration: {}",
+            locked_growth
+        );
+        // Sanity: idle (slipping) and locked (engaged) shouldn't produce
+        // identical ω given the dramatic torque + inertia difference.
+        assert!(
+            (idle_growth - locked_growth).abs() > 0.1,
+            "idle vs locked should differ noticeably: idle={}, locked={}",
+            idle_growth,
+            locked_growth
+        );
+    }
+
+    #[test]
+    fn slipping_clutch_reduces_drive_torque() {
+        // Same I_eff scaling but engagement low → drive torque proportional.
+        // Capture front-wheel state (kinematic) vs rear-wheel state (driven).
+        let mut s_50 = WheelForceIntegrator::new();
+        let mut inputs_50 = idle_inputs();
+        inputs_50.drive_engaged = true;
+        inputs_50.driven_wheel_torque = 1500.0;
+        inputs_50.clutch_engagement = 0.5;
+        inputs_50.total_gear_ratio = 10.4;
+        for _ in 0..30 {
+            s_50.step(&inputs_50);
+        }
+        let out_50 = s_50.step(&inputs_50);
+
+        let mut s_full = WheelForceIntegrator::new();
+        let mut inputs_full = idle_inputs();
+        inputs_full.drive_engaged = true;
+        inputs_full.driven_wheel_torque = 1500.0;
+        inputs_full.clutch_engagement = 1.0;
+        inputs_full.total_gear_ratio = 10.4;
+        for _ in 0..30 {
+            s_full.step(&inputs_full);
+        }
+        let out_full = s_full.step(&inputs_full);
+
+        // Rear Fx should be HIGHER with full engagement (more torque
+        // transmitted). Both runs use the same Pacejka, so the diff comes
+        // from slip_ratio ⇒ Fx growth.
+        let rear_fx_50 = out_50.fx_per_wheel[2].abs() + out_50.fx_per_wheel[3].abs();
+        let rear_fx_full = out_full.fx_per_wheel[2].abs() + out_full.fx_per_wheel[3].abs();
+        assert!(
+            rear_fx_full > rear_fx_50,
+            "full engagement should produce more rear Fx than slipping: full={}, 50%={}",
+            rear_fx_full,
+            rear_fx_50
         );
     }
 

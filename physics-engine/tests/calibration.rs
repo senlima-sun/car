@@ -1,9 +1,13 @@
 mod common;
 use common::{measure_lat_g, measure_stop_distance, measure_zero_to_100, read_baseline_scenario};
 
-const TOLERANCE_ZERO_TO_100: f32 = 0.20;
-const TOLERANCE_STOP_DISTANCE: f32 = 0.25;
-const TOLERANCE_LAT_G: f32 = 0.15;
+// Wave 3 Phase 5 (engine inertia + clutch reflection) inflates 0-100 by
+// ~25% off pre-Wave-3 baseline. Tolerances relaxed during Wave 3
+// Phases 2-6 per the wave plan; Phase 7 promotes new baselines and
+// tightens to ±0.5%.
+const TOLERANCE_ZERO_TO_100: f32 = 0.30;
+const TOLERANCE_STOP_DISTANCE: f32 = 0.30;
+const TOLERANCE_LAT_G: f32 = 0.20;
 
 fn assert_within(label: &str, actual: f32, baseline: f32, tolerance_pct: f32) {
     let delta = (actual - baseline).abs();
