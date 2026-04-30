@@ -721,6 +721,11 @@ impl PhysicsEngine {
         wheel_intensities: &[f32],
         out: &mut [f32],
     ) {
+        debug_assert!(
+            out.len() >= 2,
+            "update_rubber_frame: out buffer must hold at least 2 elements (got {})",
+            out.len()
+        );
         if out.len() < 2 {
             return;
         }
