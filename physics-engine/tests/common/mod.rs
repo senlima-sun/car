@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 
 use car_physics_engine::engine::PhysicsEngine;
-use car_physics_engine::types::{CarInput, CarPhysicsOutput, SurfaceType};
+use car_physics_engine::types::{
+    AeroMode, AmbientEnvironment, CarInput, CarPhysicsOutput, SurfaceType,
+};
 
 pub const FIXED_DT: f32 = 1.0 / 120.0;
 pub const MAX_SECONDS: usize = 240;
@@ -46,6 +48,21 @@ pub fn make_road_engine() -> PhysicsEngine {
     engine
 }
 
+pub fn make_wet_road_engine() -> PhysicsEngine {
+    let mut engine = make_road_engine();
+    engine.set_environment(AmbientEnvironment::new(15.0, 0.95, 20.0));
+    engine
+}
+
+/// Oil-like proxy: painted run-off + heavy rain. PaintedArea+wet drops grip to ~0.55.
+/// Closest available stand-in for "oil-patch" without introducing a new SurfaceType.
+pub fn make_oil_proxy_engine() -> PhysicsEngine {
+    let mut engine = PhysicsEngine::new();
+    engine.set_surface(SurfaceType::PaintedArea);
+    engine.set_environment(AmbientEnvironment::new(15.0, 0.95, 30.0));
+    engine
+}
+
 pub fn rotation_for_yaw(yaw: f32) -> [f32; 4] {
     let half = yaw * 0.5;
     [0.0, half.sin(), 0.0, half.cos()]
@@ -74,7 +91,10 @@ pub fn step_engine(
 }
 
 pub fn measure_zero_to_100() -> Option<f32> {
-    let mut engine = make_road_engine();
+    measure_zero_to_100_with(make_road_engine())
+}
+
+pub fn measure_zero_to_100_with(mut engine: PhysicsEngine) -> Option<f32> {
     let target_ms = 100.0 / 3.6;
     let input = CarInput {
         forward: true,
@@ -93,13 +113,16 @@ pub fn measure_zero_to_100() -> Option<f32> {
 }
 
 pub fn measure_stop_distance() -> Option<f32> {
-    let mut engine = make_road_engine();
+    measure_stop_distance_with(make_road_engine(), 50.0)
+}
+
+pub fn measure_stop_distance_with(mut engine: PhysicsEngine, start_speed_ms: f32) -> Option<f32> {
     let warmup = CarInput {
         forward: true,
         throttle: 1.0,
         ..Default::default()
     };
-    let mut linvel = [0.0_f32, 0.0, 50.0];
+    let mut linvel = [0.0_f32, 0.0, start_speed_ms];
     let mut angvel = [0.0_f32; 3];
     let mut z = 0.0_f32;
     for _ in 0..WARMUP_STEPS {
@@ -117,6 +140,41 @@ pub fn measure_stop_distance() -> Option<f32> {
         z += linvel[2] * FIXED_DT;
         if out.forward_speed_ms.abs() <= BRAKE_STOP_THRESHOLD_MS {
             return Some(z - start_z);
+        }
+    }
+    None
+}
+
+/// 100 km/h -> 0 emergency-brake stop distance. Pure longitudinal anchor for
+/// Phase 2 G-method comparison (no combined slip during this measurement).
+pub fn measure_stop_distance_100kmh() -> Option<f32> {
+    measure_stop_distance_with(make_road_engine(), 100.0 / 3.6)
+}
+
+/// DRS-active 200 -> 300 km/h time on a flat straight. Captures rear-aero
+/// balance baseline. The aero mode is forced to Drs and the DRS zone is set
+/// active (test-only helper bypassing zone-eligibility gate).
+pub fn measure_drs_200_to_300() -> Option<f32> {
+    let mut engine = make_road_engine();
+    engine.set_drs_zone(true);
+    engine.set_aero_mode(AeroMode::Drs);
+
+    let input = CarInput {
+        forward: true,
+        throttle: 1.0,
+        ..Default::default()
+    };
+    let start_ms = 200.0 / 3.6;
+    let target_ms = 300.0 / 3.6;
+    let mut linvel = [0.0_f32, 0.0, start_ms];
+    let mut angvel = [0.0_f32; 3];
+    // Re-assert aero mode every step so any auto downgrade is countered.
+    for n in 0..MAX_STEPS {
+        engine.set_drs_zone(true);
+        engine.set_aero_mode(AeroMode::Drs);
+        let out = step_engine(&mut engine, input, &mut linvel, &mut angvel, [0.0, 0.0, 0.0, 1.0]);
+        if out.forward_speed_ms >= target_ms {
+            return Some((n as f32 + 1.0) * FIXED_DT);
         }
     }
     None
@@ -140,8 +198,11 @@ pub fn wheel_spin_test_input(frame: usize) -> CarInput {
 }
 
 pub fn read_baseline_scenario(key: &str) -> f32 {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/wave_1_baselines.json");
+    read_baseline_scenario_from("tests/fixtures/wave_1_baselines.json", key)
+}
+
+pub fn read_baseline_scenario_from(fixture_path: &str, key: &str) -> f32 {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(fixture_path);
     let json = std::fs::read_to_string(&path).expect("baseline fixture exists");
     let value: serde_json::Value = serde_json::from_str(&json).expect("baseline fixture parses");
     value["scenarios"][key]
@@ -150,7 +211,10 @@ pub fn read_baseline_scenario(key: &str) -> f32 {
 }
 
 pub fn measure_lat_g() -> Option<f32> {
-    let mut engine = make_road_engine();
+    measure_lat_g_with(make_road_engine())
+}
+
+pub fn measure_lat_g_with(mut engine: PhysicsEngine) -> Option<f32> {
     let radius = 80.0_f32;
     let target_speed = 50.0_f32;
     let yaw_rate = target_speed / radius;

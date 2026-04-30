@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-3-phase-0-pre",
+  "scenarios": {
+    "zero_to_100_kmh_seconds": 2.8667,
+    "fifty_ms_to_zero_stop_distance_m": 40.1608,
+    "steady_state_80m_radius_peak_lat_g": 9.9176,
+    "drs_active_200_to_300_kmh_seconds": 4.9417,
+    "hundred_kmh_to_zero_stop_distance_m": 16.7956
+  }
+}
