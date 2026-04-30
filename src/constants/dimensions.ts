@@ -9,8 +9,10 @@ export const WHEEL_RADIUS = 0.37
 export const WHEEL_WIDTH_FRONT = 0.381
 export const WHEEL_WIDTH_REAR = 0.4
 export const WHEELBASE = 3.38
-export const TRACK_GAUGE_FRONT = 1.52
-export const TRACK_GAUGE_REAR = 1.53
+// Wave 4 Phase 2: 2026 F1 widened track. Front axle 1.9m, rear 1.8m.
+// `TRACK_GAUGE` alias = front gauge (legacy single-value callers).
+export const TRACK_GAUGE_FRONT = 1.9
+export const TRACK_GAUGE_REAR = 1.8
 export const TRACK_GAUGE = TRACK_GAUGE_FRONT
 export const CG_HEIGHT = 0.35
 

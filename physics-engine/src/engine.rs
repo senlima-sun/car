@@ -2,7 +2,9 @@ use crate::active_aero::ActiveAeroPhysicsState;
 use crate::brakes::BrakePhysicsState;
 use crate::car_physics::weight_transfer::calculate_weight_transfer;
 use crate::car_physics::CarPhysicsState;
-use crate::constants::car::{BASE_BRAKE_FORCE, CAR_MASS, TRACK_WIDTH, WHEELBASE};
+use crate::constants::car::{
+    BASE_BRAKE_FORCE, CAR_MASS, TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, WHEELBASE,
+};
 use crate::curb::CurbState;
 use crate::engine_temp::EngineTemperatureState;
 use crate::ers::ErsPhysicsState;
@@ -1053,10 +1055,13 @@ impl PhysicsEngine {
                 let inertia_factor = CAR_MASS * 0.5;
                 output.linear_velocity[1] += avg_bump / inertia_factor;
 
-                let half_track = TRACK_WIDTH / 2.0;
-                let roll_moment = ((bump_forces[1] + bump_forces[3])
-                    - (bump_forces[0] + bump_forces[2]))
-                    * half_track;
+                // Wave 4 Phase 2: per-axle half-track for roll moment.
+                // FL/FR bumps lever about the front half-track; RL/RR
+                // about the rear half-track.
+                let half_track_front = TRACK_WIDTH_FRONT / 2.0;
+                let half_track_rear = TRACK_WIDTH_REAR / 2.0;
+                let roll_moment = (bump_forces[1] - bump_forces[0]) * half_track_front
+                    + (bump_forces[3] - bump_forces[2]) * half_track_rear;
                 output.angular_velocity[2] += roll_moment / inertia_factor;
 
                 let half_wheelbase = WHEELBASE / 2.0;

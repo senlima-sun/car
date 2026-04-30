@@ -1,4 +1,6 @@
-use crate::constants::car::{CAR_MASS, CG_HEIGHT, TRACK_WIDTH, WEIGHT_DIST_FRONT, WHEELBASE};
+use crate::constants::car::{
+    CAR_MASS, CG_HEIGHT, TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, WEIGHT_DIST_FRONT, WHEELBASE,
+};
 
 const LONGITUDINAL_TRANSFER_FACTOR: f32 = 0.85;
 const LATERAL_TRANSFER_FACTOR: f32 = 0.80;
@@ -38,10 +40,21 @@ pub fn calculate_weight_transfer(longitudinal_g: f32, lateral_g: f32) -> WeightT
     let long_transfer =
         (longitudinal_g * CAR_MASS * CG_HEIGHT / WHEELBASE) * LONGITUDINAL_TRANSFER_FACTOR;
 
-    // Lateral weight transfer (cornering)
-    // Positive G = turning right = weight shifts to left
-    // Negative G = turning left = weight shifts to right
-    let lat_transfer = (lateral_g * CAR_MASS * CG_HEIGHT / TRACK_WIDTH) * LATERAL_TRANSFER_FACTOR;
+    // Lateral weight transfer (cornering). Wave 4 Phase 2: per-axle
+    // track widths. Each axle carries its share of the total mass and
+    // sees its own roll-moment arm. Front/rear lateral transfer:
+    //   ΔFz_front = (lat_g × M_front × h) / track_front
+    //   ΔFz_rear  = (lat_g × M_rear  × h) / track_rear
+    // The aggregated `lat_transfer` is the average shift used by the
+    // existing left/right consumers; per-axle splits are reported via
+    // `lat_transfer_front` / `lat_transfer_rear` for the integrator.
+    let mass_front = CAR_MASS * WEIGHT_DIST_FRONT;
+    let mass_rear = CAR_MASS * (1.0 - WEIGHT_DIST_FRONT);
+    let lat_transfer_front =
+        (lateral_g * mass_front * CG_HEIGHT / TRACK_WIDTH_FRONT) * LATERAL_TRANSFER_FACTOR;
+    let lat_transfer_rear =
+        (lateral_g * mass_rear * CG_HEIGHT / TRACK_WIDTH_REAR) * LATERAL_TRANSFER_FACTOR;
+    let lat_transfer = lat_transfer_front + lat_transfer_rear;
 
     let front_load = static_front_load - long_transfer;
     let rear_load = static_rear_load + long_transfer;

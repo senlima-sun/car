@@ -1,7 +1,17 @@
 // Wave 4 Phase 2: minimum mass dropped 798 → 768 kg per 2026 F1 regs.
 pub const CAR_MASS: f32 = 768.0;
 pub const WHEELBASE: f32 = 3.38;
-pub const TRACK_WIDTH: f32 = 1.525;
+
+// Wave 4 Phase 2: 2026 F1 widened track per FIA Technical Regs.
+// Front axle 1.9 m, rear 1.8 m (2025 was a single 1.525 m). Lateral
+// roll-moment arms differ per axle, so weight_transfer.rs splits the
+// computation. The single `TRACK_WIDTH` constant stays for one wave
+// as a backwards-compat alias (= front gauge) for any external WASM
+// caller; Wave 5 removes it after the deprecation window.
+pub const TRACK_WIDTH_FRONT: f32 = 1.9;
+pub const TRACK_WIDTH_REAR: f32 = 1.8;
+#[deprecated(note = "use TRACK_WIDTH_FRONT or TRACK_WIDTH_REAR (Wave 4 Phase 2)")]
+pub const TRACK_WIDTH: f32 = TRACK_WIDTH_FRONT;
 pub const CG_HEIGHT: f32 = 0.35;
 pub const WEIGHT_DIST_FRONT: f32 = 0.47;
 
