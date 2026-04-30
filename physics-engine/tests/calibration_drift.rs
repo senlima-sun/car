@@ -125,21 +125,21 @@ fn phase_n_oil_80m_lat_g_drift_within_bounds() {
     assert_drift_within("oil 80m lat-g", actual, baseline, 0.25);
 }
 
-/// Phase 4 contract: DRS-active rear-axle Fz should be significantly lower
-/// than Corner-mode rear-axle Fz at the same speed (rear-only unloading is
-/// the contract). Body-frame lat_g saturates at the friction limit so it
-/// doesn't show the asymmetry; per-wheel Fz from `per_wheel_forces`
-/// telemetry is the cleaner signal.
+/// Wave 4 Phase 5 contract: 2026 X-mode flattens BOTH wings symmetrically
+/// (Wave 3 Phase 4 had asymmetric DRS rear-only unloading; that's been
+/// removed per 2026 regs). The DRS AeroMode variant is preserved for
+/// serde compat but now behaves identically to Straight. The test now
+/// asserts SYMMETRY: front and rear loads scale together, NOT a rear-only
+/// drop.
 #[test]
-fn phase_4_drs_unloads_rear_axle_at_speed() {
+fn phase_5_x_mode_symmetric_downforce() {
     use car_physics_engine::engine::PhysicsEngine;
     use car_physics_engine::types::{AeroMode, CarInput, SurfaceType};
-    let measure_rear_fz = |drs: bool| -> f32 {
+    let measure_axle_fz = |straight: bool| -> (f32, f32) {
         let mut engine = PhysicsEngine::new();
         engine.set_surface(SurfaceType::Road);
-        if drs {
-            engine.set_drs_zone(true);
-            engine.set_aero_mode(AeroMode::Drs);
+        if straight {
+            engine.set_aero_mode(AeroMode::Straight);
         }
         let input = CarInput {
             forward: true,
@@ -148,11 +148,9 @@ fn phase_4_drs_unloads_rear_axle_at_speed() {
         };
         let mut linvel = [0.0_f32, 0.0, 60.0];
         let mut angvel = [0.0_f32; 3];
-        // Drive long enough for downforce to settle (60 frames at 120Hz).
         for _ in 0..120 {
-            if drs {
-                engine.set_drs_zone(true);
-                engine.set_aero_mode(AeroMode::Drs);
+            if straight {
+                engine.set_aero_mode(AeroMode::Straight);
             }
             let out = engine.step(
                 FIXED_DT,
@@ -177,24 +175,31 @@ fn phase_4_drs_unloads_rear_axle_at_speed() {
             [0.0, 1.0, 0.0],
             None,
         );
-        out.per_wheel_forces.fz[2] + out.per_wheel_forces.fz[3]
+        let front = out.per_wheel_forces.fz[0] + out.per_wheel_forces.fz[1];
+        let rear = out.per_wheel_forces.fz[2] + out.per_wheel_forces.fz[3];
+        (front, rear)
     };
-    // Use the const we just consumed — pull dt from common.
     use common::FIXED_DT;
-    let corner_rear_fz = measure_rear_fz(false);
-    let drs_rear_fz = measure_rear_fz(true);
-    let drop_pct = ((corner_rear_fz - drs_rear_fz) / corner_rear_fz) * 100.0;
+    let (corner_front, corner_rear) = measure_axle_fz(false);
+    let (x_front, x_rear) = measure_axle_fz(true);
+    let front_drop = (corner_front - x_front) / corner_front;
+    let rear_drop = (corner_rear - x_rear) / corner_rear;
     eprintln!(
-        "DRS rear-axle Fz drop: corner={:.1} N, drs={:.1} N, drop {:.2}%",
-        corner_rear_fz, drs_rear_fz, drop_pct
+        "X-mode axle drops: front={:.2}%, rear={:.2}%",
+        front_drop * 100.0,
+        rear_drop * 100.0
     );
-    // Acceptance: rear Fz should drop measurably (DRS rear mult = 0.42 vs
-    // 1.0 in Corner). At 60 m/s the rear-aero contribution is ~50% of total
-    // rear load, so a 58% rear-mult drop should produce ~25-35% rear-axle Fz
-    // reduction. Bounds set wide (5-50%) to avoid flake.
+    // X-mode flattens both wings symmetrically (front_mult = rear_mult = 0.55).
+    // Per-axle Fz drops should be similar, not asymmetric.
+    let asymmetry = (front_drop - rear_drop).abs();
     assert!(
-        drop_pct >= 5.0 && drop_pct <= 50.0,
-        "DRS rear Fz drop {}% outside [5%, 50%] — tune DRS_REAR_DOWNFORCE_MULT",
-        drop_pct
+        asymmetry < 0.10,
+        "X-mode should be symmetric: front_drop={:.2}%, rear_drop={:.2}% (asymmetry {:.2}%)",
+        front_drop * 100.0,
+        rear_drop * 100.0,
+        asymmetry * 100.0
     );
+    // And both axles should drop measurably (X-mode flattens vs Z-mode).
+    assert!(front_drop > 0.0, "X-mode front should unload vs Z-mode");
+    assert!(rear_drop > 0.0, "X-mode rear should unload vs Z-mode");
 }
