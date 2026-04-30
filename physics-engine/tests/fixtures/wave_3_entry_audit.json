@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "captured_at": "wave-3-entry-audit",
+  "wave_2_head_commit": "d6cd027",
+  "calibration_strict": "pass",
+  "soak_runs": [
+    {
+      "run": 1,
+      "step_count": 72000,
+      "result": "pass",
+      "tests": [
+        "step_with_real_wheel_loads_produces_finite_output",
+        "soak_step_handles_adversarial_steps",
+        "soak_step_and_sync_handles_adversarial_steps"
+      ]
+    },
+    {
+      "run": 2,
+      "step_count": 72000,
+      "result": "pass"
+    },
+    {
+      "run": 3,
+      "step_count": 72000,
+      "result": "pass"
+    }
+  ],
+  "wheel_spin_equivalence": "pass",
+  "notes": "Wave 2 exit invariants confirmed at HEAD d6cd027 (Wave 2 wave-end review). Three back-to-back soak runs deterministic; calibration_strict ±0.5% on dry passes; wheel_spin_equivalence consumes wheel_spin_pre_extraction.json successfully."
+}
