@@ -122,6 +122,16 @@ pub fn measure_stop_distance() -> Option<f32> {
     None
 }
 
+pub fn read_baseline_scenario(key: &str) -> f32 {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/wave_1_baselines.json");
+    let json = std::fs::read_to_string(&path).expect("baseline fixture exists");
+    let value: serde_json::Value = serde_json::from_str(&json).expect("baseline fixture parses");
+    value["scenarios"][key]
+        .as_f64()
+        .unwrap_or_else(|| panic!("scenarios.{} missing or not numeric", key)) as f32
+}
+
 pub fn measure_lat_g() -> Option<f32> {
     let mut engine = make_road_engine();
     let radius = 80.0_f32;
