@@ -530,19 +530,7 @@ export function stepPhysics(
  * sequential 120Hz game loop. A future ghost-replay path that calls
  * `stepAndSync` twice per frame would need its own scratch.
  */
-const STEP_PACKED_LEN = 25
-const stepPackedBuffer = new Float32Array(STEP_PACKED_LEN)
-
-function encodeInputBits(input: CarInput): number {
-  return (
-    (input.forward ? 0b0000_0001 : 0) |
-    (input.backward ? 0b0000_0010 : 0) |
-    (input.left ? 0b0000_0100 : 0) |
-    (input.right ? 0b0000_1000 : 0) |
-    (input.brake ? 0b0001_0000 : 0) |
-    (input.handbrake ? 0b0010_0000 : 0)
-  )
-}
+const stepPackedBuffer = new Float32Array(25)
 
 export function stepAndSync(
   delta: number,
@@ -577,7 +565,14 @@ export function stepAndSync(
     buf[21] = 0; buf[22] = 0; buf[23] = 0; buf[24] = 0
   }
 
-  const result = eng.step_and_sync_packed(buf, encodeInputBits(input)) as StepAndSyncOutput
+  const inputBits =
+    (input.forward ? 0b0000_0001 : 0) |
+    (input.backward ? 0b0000_0010 : 0) |
+    (input.left ? 0b0000_0100 : 0) |
+    (input.right ? 0b0000_1000 : 0) |
+    (input.brake ? 0b0001_0000 : 0) |
+    (input.handbrake ? 0b0010_0000 : 0)
+  const result = eng.step_and_sync_packed(buf, inputBits) as StepAndSyncOutput
 
   recordWasmCall()
   publishStepBundle(result)
