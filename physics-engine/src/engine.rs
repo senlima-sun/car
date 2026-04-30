@@ -973,7 +973,8 @@ impl PhysicsEngine {
             surface_speed,
             ers_boost,
             active_aero_state.drag_multiplier,
-            active_aero_state.downforce_multiplier,
+            active_aero_state.front_downforce_multiplier,
+            active_aero_state.rear_downforce_multiplier,
             engine_braking_force,
             engine_power_multiplier,
             front_brake_force,
@@ -982,7 +983,8 @@ impl PhysicsEngine {
             air_density,
             surface_normal,
             wheel_loads,
-            self.ride_height.average(),
+            self.ride_height.front(),
+            self.ride_height.rear(),
         );
 
         // Apply pit lane speed limiter braking

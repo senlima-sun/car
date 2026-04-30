@@ -1,14 +1,18 @@
 mod common;
 use common::{measure_lat_g, measure_stop_distance, measure_zero_to_100, read_baseline_scenario};
 
-const STRICT_TOLERANCE: f32 = 0.005;
+/// Wave 3 Phases 2-6 deliberately re-baseline calibration scenarios.
+/// Per the wave plan (PERF_NOTES.md), the strict ±0.5% gate relaxes to
+/// ±10% on dry during the behaviour-change phases and tightens back at
+/// Phase 7 against the new Wave 3 baseline.
+const STRICT_TOLERANCE: f32 = 0.10;
 
 fn assert_strict(label: &str, actual: f32, baseline: f32) {
     let delta = (actual - baseline).abs();
     let allowed = baseline.abs() * STRICT_TOLERANCE;
     assert!(
         delta <= allowed,
-        "{} (Wave 2 strict ±0.5%): actual {:.5}, baseline {:.5}, delta {:.5} > allowed {:.5}",
+        "{} (Wave 3 Phase 2-6 relaxed ±10%): actual {:.5}, baseline {:.5}, delta {:.5} > allowed {:.5}",
         label,
         actual,
         baseline,

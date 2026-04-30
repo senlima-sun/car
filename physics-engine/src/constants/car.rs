@@ -8,6 +8,10 @@ pub const BASE_MAX_SPEED: f32 = 97.0;
 pub const BASE_TIRE_GRIP_COEFFICIENT: f32 = 1.85;
 pub const BASE_DRAG_COEFFICIENT: f32 = 0.74;
 pub const BASE_DOWNFORCE_COEFFICIENT: f32 = 3.2;
+/// Wave 3 Phase 4: front-axle share of the base downforce coefficient.
+/// 40/60 F/R matches typical 2026 F1 setup. Sums to BASE_DOWNFORCE_COEFFICIENT.
+pub const BASE_DOWNFORCE_COEFFICIENT_FRONT: f32 = 1.28;
+pub const BASE_DOWNFORCE_COEFFICIENT_REAR: f32 = 1.92;
 pub const BASE_BRAKE_FORCE: f32 = 42000.0;
 pub const BASE_ENGINE_BRAKE: f32 = 2500.0;
 

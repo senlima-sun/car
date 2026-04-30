@@ -1,5 +1,8 @@
 use crate::constants::aero::{DEFAULT_AIR_DENSITY, FRONTAL_AREA};
-use crate::constants::car::{BASE_DOWNFORCE_COEFFICIENT, BASE_DRAG_COEFFICIENT};
+use crate::constants::car::{
+    BASE_DOWNFORCE_COEFFICIENT, BASE_DOWNFORCE_COEFFICIENT_FRONT, BASE_DOWNFORCE_COEFFICIENT_REAR,
+    BASE_DRAG_COEFFICIENT,
+};
 use crate::utils::smoothstep;
 
 /// Time constant for the per-axle ride-height EMA. Suspension noise floor
@@ -131,6 +134,47 @@ pub fn get_downforce_with_density_and_ride_height(
     0.5 * air_density * final_downforce_coeff * FRONTAL_AREA * speed_ms * speed_ms * ground_effect
 }
 
+/// Per-axle downforce with axle-specific multiplier and ride height.
+/// Wave 3 Phase 4. Sum of `front + rear` reproduces the combined-axle
+/// path at symmetric multipliers/ride-heights.
+pub fn get_axle_downforce(
+    speed_ms: f32,
+    axle_aero_mult: f32,
+    axle_coefficient: f32,
+    air_density: f32,
+    ride_height_m: f32,
+) -> f32 {
+    let final_coeff = axle_coefficient * axle_aero_mult;
+    let ground_effect = ground_effect_multiplier(ride_height_m);
+    0.5 * air_density * final_coeff * FRONTAL_AREA * speed_ms * speed_ms * ground_effect
+}
+
+/// Total chassis downforce as the per-axle sum. Wave 3 Phase 4.
+pub fn get_split_downforce(
+    speed_ms: f32,
+    front_aero_mult: f32,
+    rear_aero_mult: f32,
+    air_density: f32,
+    front_ride_height_m: f32,
+    rear_ride_height_m: f32,
+) -> (f32, f32) {
+    let front = get_axle_downforce(
+        speed_ms,
+        front_aero_mult,
+        BASE_DOWNFORCE_COEFFICIENT_FRONT,
+        air_density,
+        front_ride_height_m,
+    );
+    let rear = get_axle_downforce(
+        speed_ms,
+        rear_aero_mult,
+        BASE_DOWNFORCE_COEFFICIENT_REAR,
+        air_density,
+        rear_ride_height_m,
+    );
+    (front, rear)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,6 +215,66 @@ mod tests {
     }
 
     // Phase 3 (Wave 3) — ground-effect ride-height curve tests
+
+    #[test]
+    fn split_downforce_sums_to_combined_at_corner_mode() {
+        // Corner mode (1.0/1.0) at OPTIMAL ride height: front + rear should
+        // sum to the same total as the combined-axle path.
+        let combined = get_downforce_with_density_and_ride_height(
+            50.0,
+            1.0,
+            DEFAULT_AIR_DENSITY,
+            RIDE_HEIGHT_OPTIMAL_M,
+        );
+        let (front, rear) = get_split_downforce(
+            50.0,
+            1.0,
+            1.0,
+            DEFAULT_AIR_DENSITY,
+            RIDE_HEIGHT_OPTIMAL_M,
+            RIDE_HEIGHT_OPTIMAL_M,
+        );
+        assert!(
+            (combined - (front + rear)).abs() < 1.0,
+            "front + rear ({} + {} = {}) should sum to combined ({})",
+            front,
+            rear,
+            front + rear,
+            combined
+        );
+    }
+
+    #[test]
+    fn split_downforce_drs_unloads_rear_only() {
+        // DRS-mode multipliers (front=1.0, rear=0.42): front stays high,
+        // rear drops sharply, total drops.
+        let (corner_f, corner_r) = get_split_downforce(
+            50.0,
+            1.0,
+            1.0,
+            DEFAULT_AIR_DENSITY,
+            RIDE_HEIGHT_OPTIMAL_M,
+            RIDE_HEIGHT_OPTIMAL_M,
+        );
+        let (drs_f, drs_r) = get_split_downforce(
+            50.0,
+            1.0,
+            0.42,
+            DEFAULT_AIR_DENSITY,
+            RIDE_HEIGHT_OPTIMAL_M,
+            RIDE_HEIGHT_OPTIMAL_M,
+        );
+        assert!(
+            (drs_f - corner_f).abs() < 1.0,
+            "DRS should leave front downforce unchanged"
+        );
+        let rear_drop = drs_r / corner_r;
+        assert!(
+            (rear_drop - 0.42).abs() < 0.02,
+            "DRS rear should drop to ~42% of Corner rear, got {}",
+            rear_drop
+        );
+    }
 
     #[test]
     fn downforce_at_optimal_ride_height_matches_legacy() {

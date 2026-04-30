@@ -119,3 +119,77 @@ fn phase_2_oil_80m_lat_g_drift_within_bounds() {
     );
     assert_drift_within("oil 80m lat-g", actual, baseline, 0.25);
 }
+
+/// Phase 4 contract: DRS-active rear-axle Fz should be significantly lower
+/// than Corner-mode rear-axle Fz at the same speed (rear-only unloading is
+/// the contract). Body-frame lat_g saturates at the friction limit so it
+/// doesn't show the asymmetry; per-wheel Fz from `per_wheel_forces`
+/// telemetry is the cleaner signal.
+#[test]
+fn phase_4_drs_unloads_rear_axle_at_speed() {
+    use car_physics_engine::engine::PhysicsEngine;
+    use car_physics_engine::types::{AeroMode, CarInput, SurfaceType};
+    let measure_rear_fz = |drs: bool| -> f32 {
+        let mut engine = PhysicsEngine::new();
+        engine.set_surface(SurfaceType::Road);
+        if drs {
+            engine.set_drs_zone(true);
+            engine.set_aero_mode(AeroMode::Drs);
+        }
+        let input = CarInput {
+            forward: true,
+            throttle: 0.6,
+            ..Default::default()
+        };
+        let mut linvel = [0.0_f32, 0.0, 60.0];
+        let mut angvel = [0.0_f32; 3];
+        // Drive long enough for downforce to settle (60 frames at 120Hz).
+        for _ in 0..120 {
+            if drs {
+                engine.set_drs_zone(true);
+                engine.set_aero_mode(AeroMode::Drs);
+            }
+            let out = engine.step(
+                FIXED_DT,
+                input,
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                linvel,
+                angvel,
+                [0.0, 1.0, 0.0],
+                None,
+            );
+            linvel = out.linear_velocity;
+            angvel = out.angular_velocity;
+        }
+        let out = engine.step(
+            FIXED_DT,
+            input,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        out.per_wheel_forces.fz[2] + out.per_wheel_forces.fz[3]
+    };
+    // Use the const we just consumed — pull dt from common.
+    use common::FIXED_DT;
+    let corner_rear_fz = measure_rear_fz(false);
+    let drs_rear_fz = measure_rear_fz(true);
+    let drop_pct = ((corner_rear_fz - drs_rear_fz) / corner_rear_fz) * 100.0;
+    eprintln!(
+        "DRS rear-axle Fz drop: corner={:.1} N, drs={:.1} N, drop {:.2}%",
+        corner_rear_fz, drs_rear_fz, drop_pct
+    );
+    // Acceptance: rear Fz should drop measurably (DRS rear mult = 0.42 vs
+    // 1.0 in Corner). At 60 m/s the rear-aero contribution is ~50% of total
+    // rear load, so a 58% rear-mult drop should produce ~25-35% rear-axle Fz
+    // reduction. Bounds set wide (5-50%) to avoid flake.
+    assert!(
+        drop_pct >= 5.0 && drop_pct <= 50.0,
+        "DRS rear Fz drop {}% outside [5%, 50%] — tune DRS_REAR_DOWNFORCE_MULT",
+        drop_pct
+    );
+}

@@ -87,7 +87,8 @@ impl CarPhysicsState {
         curb_speed_multiplier: f32,
         ers_boost: f32,
         active_aero_drag_mult: f32,
-        active_aero_downforce_mult: f32,
+        active_aero_front_downforce_mult: f32,
+        active_aero_rear_downforce_mult: f32,
         engine_braking_force: f32,
         engine_power_multiplier: f32,
         front_brake_force: f32,
@@ -96,7 +97,8 @@ impl CarPhysicsState {
         air_density: f32,
         surface_normal: [f32; 3],
         wheel_loads: Option<[f32; 4]>,
-        ride_height_m: f32,
+        front_ride_height_m: f32,
+        rear_ride_height_m: f32,
     ) -> CarPhysicsOutput {
         let dt = delta.min(0.05); // Clamp delta time
 
@@ -275,12 +277,15 @@ impl CarPhysicsState {
         // Apply slope-induced longitudinal force (downhill = positive, uphill = negative)
         longitudinal_force += gravity_tangent;
 
-        let downforce = aerodynamics::get_downforce_with_density_and_ride_height(
+        let (front_downforce, rear_downforce) = aerodynamics::get_split_downforce(
             self.speed_ms,
-            active_aero_downforce_mult,
+            active_aero_front_downforce_mult,
+            active_aero_rear_downforce_mult,
             air_density,
-            ride_height_m,
+            front_ride_height_m,
+            rear_ride_height_m,
         );
+        let downforce = front_downforce + rear_downforce;
         let quasi_static_total_load = gravity_normal + downforce;
         let load_sensitivity = 0.015;
         let load_ratio = quasi_static_total_load / gravity_normal.max(1.0);
@@ -303,9 +308,16 @@ impl CarPhysicsState {
             weight_transfer::calculate_weight_transfer(sanitize(long_g, 0.0), sanitize(lat_g, 0.0));
 
         let resolved_wheel_loads = wheel_loads.unwrap_or_else(|| {
-            let base = quasi_static_total_load * 0.25;
-            let front_corner = base + weight_transfer.front_load_change * 0.5;
-            let rear_corner = base + weight_transfer.rear_load_change * 0.5;
+            // Wave 3 Phase 4: per-axle downforce flows into the fallback Fz
+            // reconstruction so DRS-mode rear unloading is visible at the
+            // wheel level. Static gravity split uses WEIGHT_DIST_FRONT.
+            let gravity_front_axle = gravity_normal * WEIGHT_DIST_FRONT;
+            let gravity_rear_axle = gravity_normal * (1.0 - WEIGHT_DIST_FRONT);
+            let front_axle_load = gravity_front_axle + front_downforce;
+            let rear_axle_load = gravity_rear_axle + rear_downforce;
+            // Per-corner split: half axle load + half weight-transfer change.
+            let front_corner = front_axle_load * 0.5 + weight_transfer.front_load_change * 0.5;
+            let rear_corner = rear_axle_load * 0.5 + weight_transfer.rear_load_change * 0.5;
             [front_corner, front_corner, rear_corner, rear_corner]
         });
 
