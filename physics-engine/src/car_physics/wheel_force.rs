@@ -1,7 +1,7 @@
 use crate::car_physics::powertrain::TIRE_RADIUS;
 use crate::car_physics::tire_model::{
-    combined_slip, pacejka_lateral_per_wheel, pacejka_longitudinal, peak_mu_at_fz, PacejkaCoeffs,
-    TIRE_DEFAULT_LOAD_SENSITIVITY,
+    combined_slip, pacejka_lateral_per_wheel, pacejka_longitudinal, peak_mu_lon_at_fz,
+    PacejkaCoeffs, TIRE_DEFAULT_LOAD_SENSITIVITY,
 };
 use crate::constants::car::BASE_TIRE_GRIP_COEFFICIENT;
 use crate::tires::is_front_wheel;
@@ -92,8 +92,9 @@ impl WheelForceIntegrator {
         let mut wheel_fy_now = [0.0_f32; 4];
         let mut wheel_slip_ratio_now = [0.0_f32; 4];
         for wheel in 0..4 {
-            let is_driven = !is_front_wheel(wheel);
-            let per_axle_brake = if is_front_wheel(wheel) {
+            let is_front = is_front_wheel(wheel);
+            let is_driven = !is_front;
+            let per_axle_brake = if is_front {
                 i.front_brake_force
             } else {
                 i.rear_brake_force
@@ -155,7 +156,7 @@ impl WheelForceIntegrator {
             // preserve Wave 2 bit-equivalence on the longitudinal path.
             // Phase 2 promotes the cap to (fx, fy) alongside Pacejka
             // Gx/Gy weighting; until then Fy is telemetry-only.
-            let mu_fz_limit = peak_mu_at_fz(fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT) * fz;
+            let mu_fz_limit = peak_mu_lon_at_fz(fz) * fz;
             let (fx_capped, _) = combined_slip(fx_pacejka, 0.0, mu_fz_limit);
             let fx = fx_capped
                 * BASE_TIRE_GRIP_COEFFICIENT
@@ -293,7 +294,6 @@ mod tests {
         // that `pacejka_lateral` would produce on the axle-averaged Fz times
         // 4 (within 5%). Establishes that the per-wheel decomposition isn't
         // a re-derivation drift.
-        use crate::car_physics::tire_model::pacejka_lateral_per_wheel;
         let mut s = WheelForceIntegrator::new();
         let mut inputs = idle_inputs();
         inputs.slip_angle_smoothed_deg = 6.0;
@@ -304,7 +304,7 @@ mod tests {
             slip_rad,
             nominal_loads()[0],
             &PacejkaCoeffs::LATERAL_DEFAULT,
-            crate::car_physics::tire_model::TIRE_DEFAULT_LOAD_SENSITIVITY,
+            TIRE_DEFAULT_LOAD_SENSITIVITY,
         )
         .abs();
         let expected_total = one_corner_fy * 4.0;

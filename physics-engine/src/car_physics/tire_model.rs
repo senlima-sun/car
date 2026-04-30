@@ -67,7 +67,8 @@ pub fn pacejka_longitudinal(slip_ratio: f32, fz: f32, coeffs: &PacejkaCoeffs) ->
 /// components proportionally so the total is exactly the limit. Direction is
 /// preserved. `mu_fz_limit` should be `peak_μ × Fz` for the wheel.
 ///
-/// TODO(wave-3): replace with full Pacejka `Gx`/`Gy` combined-slip weighting.
+/// TODO(wave-3-phase-2): replace with full Pacejka `Gx`/`Gy` combined-slip
+/// weighting.
 pub fn combined_slip(fx_pure: f32, fy_pure: f32, mu_fz_limit: f32) -> (f32, f32) {
     let total_sq = fx_pure * fx_pure + fy_pure * fy_pure;
     let limit_sq = mu_fz_limit * mu_fz_limit;
@@ -147,8 +148,8 @@ pub fn calculate_per_wheel_forces(
     let fx_pure = pacejka_longitudinal(slip_ratio, effective_fz, lon_coeffs);
 
     // Conservative-permissive cap: use the larger of lateral / longitudinal
-    // peak μ for the ellipse radius. Wave 3 will replace with full Pacejka
-    // Gx/Gy combined-slip weighting that respects distinct semi-axes.
+    // peak μ for the ellipse radius. Wave 3 phase 2 replaces this with full
+    // Pacejka Gx/Gy combined-slip weighting that respects distinct semi-axes.
     let mu_fz_limit =
         peak_mu_at_fz(fz, lat_coeffs).max(peak_mu_at_fz(fz, lon_coeffs)) * effective_fz;
     let (fx, fy) = combined_slip(fx_pure, fy_pure, mu_fz_limit);
