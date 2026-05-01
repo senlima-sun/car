@@ -30,6 +30,7 @@ export {
   getTireWear,
   resetTireWear,
   getEffectiveGrip,
+  getBoostPressureBar,
   setOnCurb,
   isOnCurb,
   setSurface,

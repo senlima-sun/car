@@ -217,6 +217,12 @@ impl PhysicsEngine {
         self.inner.get_effective_grip()
     }
 
+    /// Get current intake-manifold boost pressure (bar absolute, [1.0, 4.8]).
+    #[wasm_bindgen]
+    pub fn get_boost_pressure_bar(&self) -> f32 {
+        self.inner.get_boost_pressure_bar()
+    }
+
     /// Get per-wheel tire wear as JavaScript object
     #[wasm_bindgen]
     pub fn get_tire_wear_per_wheel(&self) -> JsValue {

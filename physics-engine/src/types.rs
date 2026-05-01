@@ -714,6 +714,14 @@ pub struct CarPhysicsOutput {
     pub per_wheel_terrain: PerWheelTerrain,
     pub bottoming_out: BottomingOutState,
     pub per_wheel_forces: PerWheelForces,
+    /// Intake-manifold boost pressure in bar absolute. `1.0` = atmospheric;
+    /// `~4.8` = full boost (FIA Art 5.5 ceiling). Driven by `TurboState`.
+    #[serde(default = "boost_pressure_bar_default")]
+    pub boost_pressure_bar: f32,
+}
+
+fn boost_pressure_bar_default() -> f32 {
+    1.0
 }
 
 /// Combined output for step + sync (reduces FFI calls per frame)

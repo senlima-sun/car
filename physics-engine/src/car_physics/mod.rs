@@ -513,6 +513,7 @@ impl CarPhysicsState {
                 slip_angle: [self.slip_angle_smoothed; 4],
                 slip_ratio: wheel_force_out.slip_ratio_per_wheel,
             },
+            boost_pressure_bar: sanitize(pt_out.boost_pressure_bar, 1.0),
         }
     }
 

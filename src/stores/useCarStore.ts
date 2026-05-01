@@ -11,6 +11,7 @@ interface CarState {
   lateralG: number
   longitudinalG: number
   skidIntensity: number
+  boostPressure: number
 
   updateTelemetry: (data: Partial<Omit<CarState, 'updateTelemetry' | 'reset' | 'resetForPreview'>>) => void
   reset: () => void
@@ -28,6 +29,7 @@ const initialState = {
   lateralG: 0,
   longitudinalG: 0,
   skidIntensity: 0,
+  boostPressure: 1.0,
 }
 
 export const useCarStore = create<CarState>(set => ({

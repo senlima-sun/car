@@ -89,6 +89,7 @@ export function useCarTelemetryLogging() {
         lateralG: output.lateral_g ?? 0,
         longitudinalG: output.longitudinal_g ?? 0,
         skidIntensity: output.skid_intensity ?? 0,
+        boostPressure: output.boost_pressure_bar ?? 1.0,
       })
       lastTelemetryTime.current = now
       prevSpeedRef.current = output.speed_kmh

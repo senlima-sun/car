@@ -89,6 +89,7 @@ export interface CarPhysicsOutput {
   tire_material: TireMaterialOutput
   downforce_newtons: number
   per_wheel_forces: PerWheelForces
+  boost_pressure_bar: number
 }
 
 /**
@@ -789,6 +790,15 @@ export function setTireWear(wearPercentage: number): void {
  */
 export function getEffectiveGrip(): number {
   return getPhysicsEngine().get_effective_grip()
+}
+
+/**
+ * Intake-manifold boost pressure in bar absolute (atmospheric = 1.0,
+ * full boost ≈ 4.8). Sanitised to atmospheric on NaN/Infinity.
+ */
+export function getBoostPressureBar(): number {
+  const value = getPhysicsEngine().get_boost_pressure_bar()
+  return Number.isFinite(value) ? value : 1.0
 }
 
 /**
