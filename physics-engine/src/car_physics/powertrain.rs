@@ -31,6 +31,39 @@ pub enum ShiftState {
     Shifting,
 }
 
+/// Per-step inputs to `PowertrainState::update`. Bundled to avoid a
+/// growing list of positional `f32` parameters (added during turbo
+/// integration; fuel-flow factor lands as a named field next).
+#[derive(Debug, Clone, Copy)]
+pub struct PowertrainInput {
+    pub dt: f32,
+    pub speed_ms: f32,
+    pub max_speed_ms: f32,
+    pub is_throttle: bool,
+    pub ers_boost_n: f32,
+    pub engine_efficiency: f32,
+    pub engine_power_mult: f32,
+    pub boost_multiplier: f32,
+}
+
+impl PowertrainInput {
+    /// Build a minimal input with the multiplier knobs at their no-op
+    /// defaults (`1.0`). Tests use this as a baseline, then tweak named
+    /// fields rather than re-listing all parameters.
+    pub fn baseline(dt: f32, speed_ms: f32, max_speed_ms: f32, is_throttle: bool) -> Self {
+        Self {
+            dt,
+            speed_ms,
+            max_speed_ms,
+            is_throttle,
+            ers_boost_n: 0.0,
+            engine_efficiency: 1.0,
+            engine_power_mult: 1.0,
+            boost_multiplier: 1.0,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct PowertrainState {
     current_gear: u8,
@@ -65,17 +98,17 @@ impl PowertrainState {
         *self = Self::default();
     }
 
-    pub fn update(
-        &mut self,
-        dt: f32,
-        speed_ms: f32,
-        max_speed_ms: f32,
-        is_throttle: bool,
-        ers_boost_n: f32,
-        engine_efficiency: f32,
-        engine_power_mult: f32,
-        boost_multiplier: f32,
-    ) -> PowertrainOutput {
+    pub fn update(&mut self, input: &PowertrainInput) -> PowertrainOutput {
+        let PowertrainInput {
+            dt,
+            speed_ms,
+            max_speed_ms,
+            is_throttle,
+            ers_boost_n,
+            engine_efficiency,
+            engine_power_mult,
+            boost_multiplier,
+        } = *input;
         let boost_multiplier = if boost_multiplier.is_finite() {
             boost_multiplier.clamp(
                 crate::car_physics::turbo::MULTIPLIER_FLOOR,
@@ -309,11 +342,11 @@ mod tests {
     fn test_gear_1_more_force_than_gear_8() {
         let mut pt1 = PowertrainState::new();
         pt1.current_gear = 0;
-        let out1 = pt1.update(1.0 / 60.0, 10.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        let out1 = pt1.update(&PowertrainInput::baseline(1.0 / 60.0, 10.0, 97.0, true));
 
         let mut pt8 = PowertrainState::new();
         pt8.current_gear = 7;
-        let out8 = pt8.update(1.0 / 60.0, 10.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        let out8 = pt8.update(&PowertrainInput::baseline(1.0 / 60.0, 10.0, 97.0, true));
 
         assert!(
             out1.drive_force > out8.drive_force,
@@ -344,10 +377,10 @@ mod tests {
         let mut pt = PowertrainState::new();
         pt.current_gear = 3;
         pt.engine_rpm = UPSHIFT_RPM_THRESHOLD + 100.0;
-        pt.update(1.0 / 60.0, 95.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        pt.update(&PowertrainInput::baseline(1.0 / 60.0, 95.0, 97.0, true));
         assert_eq!(pt.shift_state, ShiftState::Shifting);
 
-        let out = pt.update(1.0 / 60.0, 95.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        let out = pt.update(&PowertrainInput::baseline(1.0 / 60.0, 95.0, 97.0, true));
         assert!(
             out.drive_force.abs() < 1.0,
             "Drive force should be ~0 during shift, got {}",
@@ -359,7 +392,7 @@ mod tests {
     fn test_rpm_from_wheel_speed() {
         let mut pt = PowertrainState::new();
         pt.current_gear = 3;
-        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        let out = pt.update(&PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true));
         assert!(
             out.rpm > IDLE_RPM,
             "RPM at 30m/s in 4th gear should be above idle, got {}",
@@ -377,12 +410,12 @@ mod tests {
         let mut pt_low = PowertrainState::new();
         pt_low.current_gear = 5;
         pt_low.engine_rpm = 7000.0;
-        let out_low = pt_low.update(1.0 / 60.0, 40.0, 97.0, false, 0.0, 1.0, 1.0, 1.0);
+        let out_low = pt_low.update(&PowertrainInput::baseline(1.0 / 60.0, 40.0, 97.0, false));
 
         let mut pt_high = PowertrainState::new();
         pt_high.current_gear = 2;
         pt_high.engine_rpm = 12000.0;
-        let out_high = pt_high.update(1.0 / 60.0, 40.0, 97.0, false, 0.0, 1.0, 1.0, 1.0);
+        let out_high = pt_high.update(&PowertrainInput::baseline(1.0 / 60.0, 40.0, 97.0, false));
 
         assert!(
             out_high.engine_brake_force > out_low.engine_brake_force,
@@ -396,11 +429,14 @@ mod tests {
     fn test_ers_boost_adds_to_drive_force() {
         let mut pt = PowertrainState::new();
         pt.current_gear = 3;
-        let out_no_ers = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        let out_no_ers = pt.update(&PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true));
 
         let mut pt2 = PowertrainState::new();
         pt2.current_gear = 3;
-        let out_ers = pt2.update(1.0 / 60.0, 30.0, 97.0, true, 2000.0, 1.0, 1.0, 1.0);
+        let out_ers = pt2.update(&PowertrainInput {
+            ers_boost_n: 2000.0,
+            ..PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true)
+        });
 
         assert!(
             (out_ers.drive_force - out_no_ers.drive_force - 2000.0).abs() < 1.0,
@@ -411,7 +447,7 @@ mod tests {
     #[test]
     fn test_idle_rpm_when_stationary() {
         let mut pt = PowertrainState::new();
-        let out = pt.update(1.0, 0.0, 97.0, false, 0.0, 1.0, 1.0, 1.0);
+        let out = pt.update(&PowertrainInput::baseline(1.0, 0.0, 97.0, false));
         assert!(
             (out.rpm - IDLE_RPM).abs() < 500.0,
             "RPM when stationary should be near idle ({}), got {}",
@@ -426,7 +462,7 @@ mod tests {
         pt.current_gear = 3;
         pt.engine_rpm = 12700.0;
 
-        pt.update(1.0 / 60.0, 94.5, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        pt.update(&PowertrainInput::baseline(1.0 / 60.0, 94.5, 97.0, true));
 
         assert_eq!(
             pt.get_gear(),
@@ -442,7 +478,7 @@ mod tests {
         pt.current_gear = 6;
         pt.engine_rpm = 7000.0;
 
-        pt.update(1.0 / 60.0, 81.5, 81.5, true, 0.0, 1.0, 1.0, 1.0);
+        pt.update(&PowertrainInput::baseline(1.0 / 60.0, 81.5, 81.5, true));
 
         assert_eq!(pt.get_gear(), 6);
         assert_eq!(pt.shift_state, ShiftState::Engaged);
@@ -456,7 +492,7 @@ mod tests {
         let mut pt = PowertrainState::new();
         pt.current_gear = 1;
         pt.engine_rpm = 8500.0;
-        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        let out = pt.update(&PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true));
 
         assert_eq!(
             pt.shift_state,
@@ -485,7 +521,10 @@ mod tests {
         let mut pt = PowertrainState::new();
         pt.current_gear = 1;
         pt.engine_rpm = 8500.0;
-        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 0.5);
+        let out = pt.update(&PowertrainInput {
+            boost_multiplier: 0.5,
+            ..PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true)
+        });
         let baseline_at_unit_boost: f32 = 7477.1807;
         let expected = baseline_at_unit_boost * 0.5;
         let delta = (out.drive_force - expected).abs();
@@ -502,7 +541,7 @@ mod tests {
         let mut pt = PowertrainState::new();
         pt.current_gear = 1;
         pt.engine_rpm = 8500.0;
-        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        let out = pt.update(&PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true));
         let baseline: f32 = 7477.1807;
         let delta = (out.drive_force - baseline).abs();
         assert!(
@@ -518,7 +557,10 @@ mod tests {
         let mut pt = PowertrainState::new();
         pt.current_gear = 1;
         pt.engine_rpm = 8500.0;
-        let out_nan = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, f32::NAN);
+        let out_nan = pt.update(&PowertrainInput {
+            boost_multiplier: f32::NAN,
+            ..PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true)
+        });
         let baseline: f32 = 7477.1807;
         let delta = (out_nan.drive_force - baseline).abs();
         assert!(
@@ -534,11 +576,11 @@ mod tests {
         pt.current_gear = 3;
         pt.engine_rpm = 12700.0;
 
-        pt.update(1.0 / 60.0, 94.5, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        pt.update(&PowertrainInput::baseline(1.0 / 60.0, 94.5, 97.0, true));
         assert_eq!(pt.get_gear(), 4);
 
         for _ in 0..8 {
-            pt.update(1.0 / 60.0, 94.5, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+            pt.update(&PowertrainInput::baseline(1.0 / 60.0, 94.5, 97.0, true));
         }
 
         assert_eq!(pt.get_gear(), 4);

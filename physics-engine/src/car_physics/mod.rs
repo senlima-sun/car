@@ -141,16 +141,16 @@ impl CarPhysicsState {
         let (boost_pressure_bar, boost_multiplier) =
             self.turbo.update(effective_throttle, self.rpm, dt);
 
-        let pt_out = self.powertrain.update(
+        let pt_out = self.powertrain.update(&powertrain::PowertrainInput {
             dt,
-            self.speed_ms,
-            max_speed,
-            effective_throttle_for_pt,
-            ers_boost,
-            weather_modifiers.engine_efficiency_multiplier * engine_power_multiplier,
-            1.0,
+            speed_ms: self.speed_ms,
+            max_speed_ms: max_speed,
+            is_throttle: effective_throttle_for_pt,
+            ers_boost_n: ers_boost,
+            engine_efficiency: weather_modifiers.engine_efficiency_multiplier * engine_power_multiplier,
+            engine_power_mult: 1.0,
             boost_multiplier,
-        );
+        });
         self.gear = pt_out.gear;
         self.rpm = pt_out.rpm;
 
