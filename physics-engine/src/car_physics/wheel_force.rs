@@ -1,3 +1,4 @@
+use crate::car_physics::differential::DifferentialConfig;
 use crate::car_physics::powertrain::{ENGINE_INERTIA, TIRE_RADIUS};
 use crate::car_physics::tire_model::{
     combined_slip, gx_combined, gy_combined, pacejka_lateral_per_wheel, pacejka_longitudinal,
@@ -20,7 +21,11 @@ pub struct WheelForceInputs {
     pub dt: f32,
     pub forward_speed: f32,
     pub drive_engaged: bool,
-    pub driven_wheel_torque: f32,
+    /// Total rear-axle drive torque (Nm). Component #3 (LSD) introduced
+    /// this in place of the per-corner value: the differential splits it
+    /// into RL/RR torques inside the integrator using live wheel angvel.
+    pub driven_axle_torque: f32,
+    pub differential: DifferentialConfig,
     pub braking_active: bool,
     pub brake_torque_modifier: f32,
     pub front_brake_force: f32,
@@ -59,6 +64,10 @@ pub struct WheelForceOutput {
     pub fx_per_wheel: [f32; 4],
     pub fy_per_wheel: [f32; 4],
     pub slip_ratio_per_wheel: [f32; 4],
+    /// Drive torque (Nm) actually applied at each wheel after the LSD
+    /// split. Front entries are always 0.0. Useful for debug + future
+    /// driveshaft-compliance work (component #4).
+    pub driven_torque_per_wheel: [f32; 4],
 }
 
 #[derive(Debug, Default)]
@@ -99,11 +108,27 @@ impl WheelForceIntegrator {
         // dominates the wheel-spin time constant for driven wheels.
         let coupling = i.total_gear_ratio * i.clutch_engagement;
         let driven_i_eff = WHEEL_INERTIA + ENGINE_INERTIA * coupling * coupling;
+
+        // LSD splits the rear-axle drive torque between RL (index 2) and
+        // RR (index 3) using current wheel speeds. Clutch attenuation
+        // applies to the axle total before the split.
+        let axle_drive_torque = if i.drive_engaged {
+            i.driven_axle_torque * i.clutch_engagement
+        } else {
+            0.0
+        };
+        let (rear_torque_rl, rear_torque_rr) = i.differential.distribute_axle_torque(
+            axle_drive_torque,
+            self.wheel_angvel[2],
+            self.wheel_angvel[3],
+        );
+
         let mut wheel_long_force = 0.0_f32;
         let mut wheel_lat_force = 0.0_f32;
         let mut wheel_fx_now = [0.0_f32; 4];
         let mut wheel_fy_now = [0.0_f32; 4];
         let mut wheel_slip_ratio_now = [0.0_f32; 4];
+        let mut driven_torque_per_wheel = [0.0_f32; 4];
         for wheel in 0..4 {
             let is_front = is_front_wheel(wheel);
             let is_driven = !is_front;
@@ -121,11 +146,14 @@ impl WheelForceIntegrator {
                 // Wave 3 Phase 5: slipping clutch transmits proportionally
                 // less torque (energy balance: less reflected inertia AND
                 // less torque delivered).
-                let drive_torque = if is_driven && i.drive_engaged {
-                    i.driven_wheel_torque * i.clutch_engagement
+                let drive_torque = if is_driven {
+                    if wheel == 2 { rear_torque_rl } else { rear_torque_rr }
                 } else {
                     0.0
                 };
+                if is_driven {
+                    driven_torque_per_wheel[wheel] = drive_torque;
+                }
                 let brake_torque_corner =
                     per_axle_brake * AXLE_TO_CORNER_SPLIT * i.brake_torque_modifier * TIRE_RADIUS;
                 // Brake opposes macro vehicle motion. Using ω.signum() causes
@@ -210,6 +238,7 @@ impl WheelForceIntegrator {
             fx_per_wheel: wheel_fx_now,
             fy_per_wheel: wheel_fy_now,
             slip_ratio_per_wheel: wheel_slip_ratio_now,
+            driven_torque_per_wheel,
         }
     }
 }
@@ -227,7 +256,8 @@ mod tests {
             dt: 1.0 / 120.0,
             forward_speed: 10.0,
             drive_engaged: false,
-            driven_wheel_torque: 0.0,
+            driven_axle_torque: 0.0,
+            differential: DifferentialConfig::new(),
             braking_active: false,
             brake_torque_modifier: 0.0,
             front_brake_force: 0.0,
@@ -269,7 +299,7 @@ mod tests {
         let mut s = WheelForceIntegrator::new();
         let mut inputs = idle_inputs();
         inputs.drive_engaged = true;
-        inputs.driven_wheel_torque = 500.0;
+        inputs.driven_axle_torque = 1000.0;
         for _ in 0..30 {
             s.step(&inputs);
         }
@@ -386,7 +416,7 @@ mod tests {
         let mut s_pure = WheelForceIntegrator::new();
         let mut inputs_pure = idle_inputs();
         inputs_pure.drive_engaged = true;
-        inputs_pure.driven_wheel_torque = 1500.0;
+        inputs_pure.driven_axle_torque = 3000.0;
         inputs_pure.slip_angle_smoothed_deg = 0.0;
         inputs_pure.clutch_engagement = 1.0;
         inputs_pure.total_gear_ratio = 10.4;
@@ -398,7 +428,7 @@ mod tests {
         let mut s_combined = WheelForceIntegrator::new();
         let mut inputs_combined = idle_inputs();
         inputs_combined.drive_engaged = true;
-        inputs_combined.driven_wheel_torque = 1500.0;
+        inputs_combined.driven_axle_torque = 3000.0;
         inputs_combined.slip_angle_smoothed_deg = 10.0;
         inputs_combined.clutch_engagement = 1.0;
         inputs_combined.total_gear_ratio = 10.4;
@@ -435,7 +465,7 @@ mod tests {
         let mut inputs_combined = idle_inputs();
         inputs_combined.slip_angle_smoothed_deg = 8.0;
         inputs_combined.drive_engaged = true;
-        inputs_combined.driven_wheel_torque = 1500.0;
+        inputs_combined.driven_axle_torque = 3000.0;
         inputs_combined.clutch_engagement = 1.0;
         inputs_combined.total_gear_ratio = 10.4;
         for _ in 0..60 {
@@ -469,7 +499,7 @@ mod tests {
         let mut s = WheelForceIntegrator::new();
         let mut inputs = idle_inputs();
         inputs.drive_engaged = true;
-        inputs.driven_wheel_torque = 800.0;
+        inputs.driven_axle_torque = 1600.0;
         inputs.slip_angle_smoothed_deg = 0.0;
         for _ in 0..30 {
             s.step(&inputs);
@@ -506,7 +536,7 @@ mod tests {
         let mut s_idle = WheelForceIntegrator::new();
         let mut idle = idle_inputs();
         idle.drive_engaged = true;
-        idle.driven_wheel_torque = 1000.0;
+        idle.driven_axle_torque = 2000.0;
         idle.clutch_engagement = 0.1;
         idle.total_gear_ratio = 10.4;
         s_idle.step(&idle);
@@ -514,7 +544,7 @@ mod tests {
         let mut s_locked = WheelForceIntegrator::new();
         let mut locked = idle_inputs();
         locked.drive_engaged = true;
-        locked.driven_wheel_torque = 1000.0;
+        locked.driven_axle_torque = 2000.0;
         locked.clutch_engagement = 1.0;
         locked.total_gear_ratio = 10.4;
         s_locked.step(&locked);
@@ -555,7 +585,7 @@ mod tests {
         inputs.drive_engaged = true;
         // 30 kN drive torque @ 0.33m wheel radius = 90 kNm net per axle.
         // Way past the friction cap; should clamp inside the ellipse.
-        inputs.driven_wheel_torque = 30_000.0;
+        inputs.driven_axle_torque = 60_000.0;
         inputs.clutch_engagement = 1.0;
         inputs.total_gear_ratio = 10.4;
         for _ in 0..120 {
@@ -587,7 +617,7 @@ mod tests {
         inputs.dt = 1.0 / 60.0;
         inputs.forward_speed = 5.0;
         inputs.drive_engaged = true;
-        inputs.driven_wheel_torque = 5000.0;
+        inputs.driven_axle_torque = 10_000.0;
         inputs.clutch_engagement = 1.0;
         inputs.total_gear_ratio = 10.4;
         for n in 0..10_000 {
@@ -619,7 +649,7 @@ mod tests {
         let mut s_50 = WheelForceIntegrator::new();
         let mut inputs_50 = idle_inputs();
         inputs_50.drive_engaged = true;
-        inputs_50.driven_wheel_torque = 1500.0;
+        inputs_50.driven_axle_torque = 3000.0;
         inputs_50.clutch_engagement = 0.5;
         inputs_50.total_gear_ratio = 10.4;
         for _ in 0..30 {
@@ -630,7 +660,7 @@ mod tests {
         let mut s_full = WheelForceIntegrator::new();
         let mut inputs_full = idle_inputs();
         inputs_full.drive_engaged = true;
-        inputs_full.driven_wheel_torque = 1500.0;
+        inputs_full.driven_axle_torque = 3000.0;
         inputs_full.clutch_engagement = 1.0;
         inputs_full.total_gear_ratio = 10.4;
         for _ in 0..30 {
@@ -657,7 +687,7 @@ mod tests {
         let mut inputs = idle_inputs();
         inputs.forward_speed = 1.0;
         inputs.drive_engaged = true;
-        inputs.driven_wheel_torque = 1.0e6;
+        inputs.driven_axle_torque = 2.0e6;
         for _ in 0..120 {
             s.step(&inputs);
         }
@@ -672,5 +702,56 @@ mod tests {
                 cap
             );
         }
+    }
+
+    #[test]
+    fn lsd_split_equals_open_when_rear_wheels_synced() {
+        let mut s = WheelForceIntegrator::new();
+        let mut inputs = idle_inputs();
+        inputs.drive_engaged = true;
+        inputs.driven_axle_torque = 4000.0;
+        inputs.clutch_engagement = 1.0;
+        inputs.total_gear_ratio = 1.0;
+        let out = s.step(&inputs);
+        let rl = out.driven_torque_per_wheel[2];
+        let rr = out.driven_torque_per_wheel[3];
+        assert!((rl - rr).abs() < 1.0, "synced wheels should split evenly: rl {}, rr {}", rl, rr);
+        assert!(out.driven_torque_per_wheel[0].abs() < 1e-6, "front-left has no drive torque");
+        assert!(out.driven_torque_per_wheel[1].abs() < 1e-6, "front-right has no drive torque");
+    }
+
+    #[test]
+    fn lsd_redirects_torque_when_rear_wheels_disagree() {
+        let mut s = WheelForceIntegrator::new();
+        // Pre-load asymmetric wheel speeds: RL on grass, spinning faster.
+        // The integrator's `wheel_angvel` is private; reach through the
+        // public ω accessor by stepping once with imbalanced loads to seed.
+        let mut seed = idle_inputs();
+        seed.drive_engaged = true;
+        seed.driven_axle_torque = 4000.0;
+        seed.clutch_engagement = 1.0;
+        seed.total_gear_ratio = 10.0;
+        // RL has much lower vertical load: the spin integrator will drive
+        // it past the grip envelope, building Δω.
+        seed.resolved_wheel_loads[2] = 100.0;
+        seed.resolved_wheel_loads[3] = 4000.0;
+        for _ in 0..30 {
+            s.step(&seed);
+        }
+        let omegas = s.wheel_angvel();
+        assert!(omegas[2] > omegas[3], "RL should be spinning faster: {:?}", omegas);
+
+        // Now apply the LSD with a tight power ramp.
+        let mut diff = DifferentialConfig::new();
+        diff.set_power_ramp_deg(20.0);
+        diff.set_preload_nm(80.0);
+        let mut inputs = seed;
+        inputs.differential = diff;
+        let out = s.step(&inputs);
+        let rl = out.driven_torque_per_wheel[2];
+        let rr = out.driven_torque_per_wheel[3];
+        // LSD must transfer torque to the slower (gripping) wheel.
+        assert!(rr > rl, "tight LSD should give RR more torque: rl {}, rr {}", rl, rr);
+        assert!((rl + rr - inputs.driven_axle_torque).abs() < 1.0, "conservation: {} + {} ≠ {}", rl, rr, inputs.driven_axle_torque);
     }
 }

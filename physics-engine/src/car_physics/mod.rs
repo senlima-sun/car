@@ -50,6 +50,7 @@ pub struct CarPhysicsState {
     turbo: turbo::TurboState,
     fuel: fuel::FuelState,
     fuel_flow_factor_prev: f32,
+    differential: differential::DifferentialConfig,
 }
 
 impl Default for CarPhysicsState {
@@ -74,6 +75,7 @@ impl Default for CarPhysicsState {
             turbo: turbo::TurboState::new(),
             fuel: fuel::FuelState::new(),
             fuel_flow_factor_prev: 1.0,
+            differential: differential::DifferentialConfig::new(),
         }
     }
 }
@@ -371,8 +373,11 @@ impl CarPhysicsState {
             && effective_brake < 0.01
             && !input.handbrake
             && pt_out.shift_state == powertrain::ShiftState::Engaged;
-        let driven_wheel_torque = if drive_engaged {
-            pt_out.drive_force * TIRE_RADIUS * AXLE_TO_CORNER_SPLIT * effective_throttle
+        // Total rear-axle drive torque. LSD inside the integrator splits
+        // it into RL/RR. The earlier × AXLE_TO_CORNER_SPLIT was an
+        // open-diff approximation; the differential now does the work.
+        let driven_axle_torque = if drive_engaged {
+            pt_out.drive_force * TIRE_RADIUS * effective_throttle
         } else {
             0.0
         };
@@ -394,7 +399,8 @@ impl CarPhysicsState {
             dt,
             forward_speed,
             drive_engaged,
-            driven_wheel_torque,
+            driven_axle_torque,
+            differential: self.differential,
             braking_active,
             brake_torque_modifier,
             front_brake_force,
@@ -581,6 +587,30 @@ impl CarPhysicsState {
 
     pub fn live_mass_kg(&self) -> f32 {
         crate::constants::car::CAR_MASS_DRY + self.fuel.fuel_mass_kg()
+    }
+
+    pub fn get_diff_preload_nm(&self) -> f32 {
+        self.differential.preload_nm()
+    }
+
+    pub fn get_diff_power_ramp_deg(&self) -> f32 {
+        self.differential.power_ramp_deg()
+    }
+
+    pub fn get_diff_coast_ramp_deg(&self) -> f32 {
+        self.differential.coast_ramp_deg()
+    }
+
+    pub fn set_diff_preload_nm(&mut self, nm: f32) {
+        self.differential.set_preload_nm(nm);
+    }
+
+    pub fn set_diff_power_ramp_deg(&mut self, deg: f32) {
+        self.differential.set_power_ramp_deg(deg);
+    }
+
+    pub fn set_diff_coast_ramp_deg(&mut self, deg: f32) {
+        self.differential.set_coast_ramp_deg(deg);
     }
 
     pub fn get_rpm(&self) -> f32 {
