@@ -92,6 +92,7 @@ export interface CarPhysicsOutput {
   boost_pressure_bar: number
   fuel_mass_kg: number
   fuel_flow_factor: number
+  driven_torque_per_wheel: [number, number, number, number]
 }
 
 /**
@@ -829,6 +830,36 @@ export function getFuelMixMode(): FuelMixMode {
 
 export function setFuelMixMode(mode: FuelMixMode): void {
   getPhysicsEngine().set_fuel_mix_mode(mode)
+}
+
+/** LSD preload torque (Nm). Resists Δω even at zero input torque. */
+export function getDiffPreloadNm(): number {
+  const v = getPhysicsEngine().get_diff_preload_nm()
+  return Number.isFinite(v) ? v : 60
+}
+
+export function setDiffPreloadNm(nm: number): void {
+  getPhysicsEngine().set_diff_preload_nm(Number.isFinite(nm) ? nm : 60)
+}
+
+/** LSD power-side ramp angle (deg). Smaller = tighter lock under power. */
+export function getDiffPowerRampDeg(): number {
+  const v = getPhysicsEngine().get_diff_power_ramp_deg()
+  return Number.isFinite(v) ? v : 75
+}
+
+export function setDiffPowerRampDeg(deg: number): void {
+  getPhysicsEngine().set_diff_power_ramp_deg(Number.isFinite(deg) ? deg : 75)
+}
+
+/** LSD coast-side ramp angle (deg). Smaller = tighter lock on overrun. */
+export function getDiffCoastRampDeg(): number {
+  const v = getPhysicsEngine().get_diff_coast_ramp_deg()
+  return Number.isFinite(v) ? v : 60
+}
+
+export function setDiffCoastRampDeg(deg: number): void {
+  getPhysicsEngine().set_diff_coast_ramp_deg(Number.isFinite(deg) ? deg : 60)
 }
 
 /**

@@ -38,6 +38,12 @@ import {
   setFuelMassKg,
   getFuelMixMode,
   setFuelMixMode,
+  getDiffPreloadNm,
+  setDiffPreloadNm,
+  getDiffPowerRampDeg,
+  setDiffPowerRampDeg,
+  getDiffCoastRampDeg,
+  setDiffCoastRampDeg,
   setOnCurb,
   isOnCurb,
   setSurface,
@@ -168,6 +174,12 @@ interface PhysicsContextValue {
   setFuelMassKg: typeof setFuelMassKg
   getFuelMixMode: typeof getFuelMixMode
   setFuelMixMode: typeof setFuelMixMode
+  getDiffPreloadNm: typeof getDiffPreloadNm
+  setDiffPreloadNm: typeof setDiffPreloadNm
+  getDiffPowerRampDeg: typeof getDiffPowerRampDeg
+  setDiffPowerRampDeg: typeof setDiffPowerRampDeg
+  getDiffCoastRampDeg: typeof getDiffCoastRampDeg
+  setDiffCoastRampDeg: typeof setDiffCoastRampDeg
   setOnCurb: typeof setOnCurb
   isOnCurb: typeof isOnCurb
   setSurface: typeof setSurface
@@ -303,6 +315,12 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       setFuelMassKg,
       getFuelMixMode,
       setFuelMixMode,
+      getDiffPreloadNm,
+      setDiffPreloadNm,
+      getDiffPowerRampDeg,
+      setDiffPowerRampDeg,
+      getDiffCoastRampDeg,
+      setDiffCoastRampDeg,
       setOnCurb,
       isOnCurb,
       setSurface,

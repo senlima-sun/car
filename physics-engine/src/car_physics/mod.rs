@@ -549,6 +549,7 @@ impl CarPhysicsState {
             boost_pressure_bar: sanitize(boost_pressure_bar, 1.0),
             fuel_mass_kg: sanitize(self.fuel.fuel_mass_kg(), 0.0),
             fuel_flow_factor: sanitize(self.fuel_flow_factor_prev, 1.0),
+            driven_torque_per_wheel: wheel_force_out.driven_torque_per_wheel,
         }
     }
 

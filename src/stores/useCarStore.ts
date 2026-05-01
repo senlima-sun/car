@@ -14,6 +14,7 @@ interface CarState {
   boostPressure: number
   fuelMassKg: number
   fuelFlowFactor: number
+  drivenTorquePerWheel: [number, number, number, number]
 
   updateTelemetry: (data: Partial<Omit<CarState, 'updateTelemetry' | 'reset' | 'resetForPreview'>>) => void
   reset: () => void
@@ -34,6 +35,7 @@ const initialState = {
   boostPressure: 1.0,
   fuelMassKg: 100.0,
   fuelFlowFactor: 1.0,
+  drivenTorquePerWheel: [0, 0, 0, 0] as [number, number, number, number],
 }
 
 export const useCarStore = create<CarState>(set => ({

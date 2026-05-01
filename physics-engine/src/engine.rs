@@ -237,6 +237,30 @@ impl PhysicsEngine {
             .set_fuel_mix_mode(crate::car_physics::fuel::FuelMixMode::from_u8(mode));
     }
 
+    pub fn get_diff_preload_nm(&self) -> f32 {
+        self.car.get_diff_preload_nm()
+    }
+
+    pub fn get_diff_power_ramp_deg(&self) -> f32 {
+        self.car.get_diff_power_ramp_deg()
+    }
+
+    pub fn get_diff_coast_ramp_deg(&self) -> f32 {
+        self.car.get_diff_coast_ramp_deg()
+    }
+
+    pub fn set_diff_preload_nm(&mut self, nm: f32) {
+        self.car.set_diff_preload_nm(nm);
+    }
+
+    pub fn set_diff_power_ramp_deg(&mut self, deg: f32) {
+        self.car.set_diff_power_ramp_deg(deg);
+    }
+
+    pub fn set_diff_coast_ramp_deg(&mut self, deg: f32) {
+        self.car.set_diff_coast_ramp_deg(deg);
+    }
+
     /// Wave 4 Phase 5: driver requests Override Mode (DRS replacement).
     /// 350 kW MGU-K burst with 0.5 MJ/lap budget. Auto-deactivates on
     /// brake or budget exhaustion. Holds the request between frames;

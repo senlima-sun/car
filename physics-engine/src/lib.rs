@@ -253,6 +253,42 @@ impl PhysicsEngine {
         self.inner.set_fuel_mix_mode_u8(mode);
     }
 
+    /// LSD preload torque in Nm (resists Δω at zero input torque).
+    #[wasm_bindgen]
+    pub fn get_diff_preload_nm(&self) -> f32 {
+        self.inner.get_diff_preload_nm()
+    }
+
+    /// LSD power-side ramp angle in degrees (smaller = tighter lock).
+    #[wasm_bindgen]
+    pub fn get_diff_power_ramp_deg(&self) -> f32 {
+        self.inner.get_diff_power_ramp_deg()
+    }
+
+    /// LSD coast-side ramp angle in degrees (smaller = tighter lock).
+    #[wasm_bindgen]
+    pub fn get_diff_coast_ramp_deg(&self) -> f32 {
+        self.inner.get_diff_coast_ramp_deg()
+    }
+
+    /// Set LSD preload torque (Nm). Clamped to [0, 300].
+    #[wasm_bindgen]
+    pub fn set_diff_preload_nm(&mut self, nm: f32) {
+        self.inner.set_diff_preload_nm(nm);
+    }
+
+    /// Set LSD power-side ramp angle (deg). Clamped to [5, 89].
+    #[wasm_bindgen]
+    pub fn set_diff_power_ramp_deg(&mut self, deg: f32) {
+        self.inner.set_diff_power_ramp_deg(deg);
+    }
+
+    /// Set LSD coast-side ramp angle (deg). Clamped to [5, 89].
+    #[wasm_bindgen]
+    pub fn set_diff_coast_ramp_deg(&mut self, deg: f32) {
+        self.inner.set_diff_coast_ramp_deg(deg);
+    }
+
     /// Get per-wheel tire wear as JavaScript object
     #[wasm_bindgen]
     pub fn get_tire_wear_per_wheel(&self) -> JsValue {

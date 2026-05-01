@@ -726,6 +726,10 @@ pub struct CarPhysicsOutput {
     /// demand fits under the regulation; `0.0` on empty tank.
     #[serde(default = "fuel_flow_factor_default")]
     pub fuel_flow_factor: f32,
+    /// Drive torque applied at each wheel (Nm) after the LSD split.
+    /// Front entries are 0.0; rears sum to the axle drive torque.
+    #[serde(default)]
+    pub driven_torque_per_wheel: [f32; 4],
 }
 
 fn boost_pressure_bar_default() -> f32 {

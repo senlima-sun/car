@@ -44,7 +44,19 @@ export function useCarStateSync() {
       const fuelFlowFactor = Number.isFinite(output.fuel_flow_factor)
         ? output.fuel_flow_factor
         : 1.0
-      useCarStore.setState({ boostPressure: boost, fuelMassKg, fuelFlowFactor })
+      const dt = output.driven_torque_per_wheel
+      const drivenTorquePerWheel: [number, number, number, number] = [
+        Number.isFinite(dt[0]) ? dt[0] : 0,
+        Number.isFinite(dt[1]) ? dt[1] : 0,
+        Number.isFinite(dt[2]) ? dt[2] : 0,
+        Number.isFinite(dt[3]) ? dt[3] : 0,
+      ]
+      useCarStore.setState({
+        boostPressure: boost,
+        fuelMassKg,
+        fuelFlowFactor,
+        drivenTorquePerWheel,
+      })
     }
 
     if (windSyncNeeded) {
