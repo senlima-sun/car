@@ -1,6 +1,7 @@
 pub mod aerodynamics;
 pub mod clutch;
 pub mod drift;
+pub mod fuel;
 pub mod override_mode;
 pub mod powertrain;
 pub mod steering;
