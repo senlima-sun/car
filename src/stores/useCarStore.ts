@@ -12,6 +12,8 @@ interface CarState {
   longitudinalG: number
   skidIntensity: number
   boostPressure: number
+  fuelMassKg: number
+  fuelFlowFactor: number
 
   updateTelemetry: (data: Partial<Omit<CarState, 'updateTelemetry' | 'reset' | 'resetForPreview'>>) => void
   reset: () => void
@@ -30,6 +32,8 @@ const initialState = {
   longitudinalG: 0,
   skidIntensity: 0,
   boostPressure: 1.0,
+  fuelMassKg: 100.0,
+  fuelFlowFactor: 1.0,
 }
 
 export const useCarStore = create<CarState>(set => ({

@@ -223,6 +223,36 @@ impl PhysicsEngine {
         self.inner.get_boost_pressure_bar()
     }
 
+    /// Residual fuel mass (kg). Decreases as the ICE consumes fuel.
+    #[wasm_bindgen]
+    pub fn get_fuel_mass_kg(&self) -> f32 {
+        self.inner.get_fuel_mass_kg()
+    }
+
+    /// Last frame's FIA-cap fuel-flow factor (`[0, 1]`).
+    #[wasm_bindgen]
+    pub fn get_fuel_flow_factor(&self) -> f32 {
+        self.inner.get_fuel_flow_factor()
+    }
+
+    /// Set fuel mass (refuel / scenario reset). Clamped to tank capacity.
+    #[wasm_bindgen]
+    pub fn set_fuel_mass_kg(&mut self, kg: f32) {
+        self.inner.set_fuel_mass_kg(kg);
+    }
+
+    /// Get current fuel mix mode (0=lean, 1=standard, 2=rich).
+    #[wasm_bindgen]
+    pub fn get_fuel_mix_mode(&self) -> u8 {
+        self.inner.get_fuel_mix_mode_u8()
+    }
+
+    /// Set fuel mix mode (0=lean, 1=standard, 2=rich). Invalid → standard.
+    #[wasm_bindgen]
+    pub fn set_fuel_mix_mode(&mut self, mode: u8) {
+        self.inner.set_fuel_mix_mode_u8(mode);
+    }
+
     /// Get per-wheel tire wear as JavaScript object
     #[wasm_bindgen]
     pub fn get_tire_wear_per_wheel(&self) -> JsValue {

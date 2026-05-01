@@ -33,6 +33,11 @@ import {
   resetTireBlowout,
   getEffectiveGrip,
   getBoostPressureBar,
+  getFuelMassKg,
+  getFuelFlowFactor,
+  setFuelMassKg,
+  getFuelMixMode,
+  setFuelMixMode,
   setOnCurb,
   isOnCurb,
   setSurface,
@@ -158,6 +163,11 @@ interface PhysicsContextValue {
   resetTireBlowout: typeof resetTireBlowout
   getEffectiveGrip: typeof getEffectiveGrip
   getBoostPressureBar: typeof getBoostPressureBar
+  getFuelMassKg: typeof getFuelMassKg
+  getFuelFlowFactor: typeof getFuelFlowFactor
+  setFuelMassKg: typeof setFuelMassKg
+  getFuelMixMode: typeof getFuelMixMode
+  setFuelMixMode: typeof setFuelMixMode
   setOnCurb: typeof setOnCurb
   isOnCurb: typeof isOnCurb
   setSurface: typeof setSurface
@@ -288,6 +298,11 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       resetTireBlowout,
       getEffectiveGrip,
       getBoostPressureBar,
+      getFuelMassKg,
+      getFuelFlowFactor,
+      setFuelMassKg,
+      getFuelMixMode,
+      setFuelMixMode,
       setOnCurb,
       isOnCurb,
       setSurface,

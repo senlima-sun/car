@@ -90,6 +90,8 @@ export interface CarPhysicsOutput {
   downforce_newtons: number
   per_wheel_forces: PerWheelForces
   boost_pressure_bar: number
+  fuel_mass_kg: number
+  fuel_flow_factor: number
 }
 
 /**
@@ -799,6 +801,34 @@ export function getEffectiveGrip(): number {
 export function getBoostPressureBar(): number {
   const value = getPhysicsEngine().get_boost_pressure_bar()
   return Number.isFinite(value) ? value : 1.0
+}
+
+/** Residual fuel mass in the tank (kg). Sanitised to 0 on NaN. */
+export function getFuelMassKg(): number {
+  const value = getPhysicsEngine().get_fuel_mass_kg()
+  return Number.isFinite(value) ? value : 0
+}
+
+/** Last frame's FIA-cap fuel-flow factor `[0, 1]`. Sanitised to 1 on NaN. */
+export function getFuelFlowFactor(): number {
+  const value = getPhysicsEngine().get_fuel_flow_factor()
+  return Number.isFinite(value) ? value : 1.0
+}
+
+/** Refuel / scenario reset. Clamped to the FIA tank capacity. */
+export function setFuelMassKg(kg: number): void {
+  getPhysicsEngine().set_fuel_mass_kg(Number.isFinite(kg) ? kg : 0)
+}
+
+/** Driver fuel-mix selector. 0=lean, 1=standard, 2=rich. */
+export type FuelMixMode = 0 | 1 | 2
+
+export function getFuelMixMode(): FuelMixMode {
+  return getPhysicsEngine().get_fuel_mix_mode() as FuelMixMode
+}
+
+export function setFuelMixMode(mode: FuelMixMode): void {
+  getPhysicsEngine().set_fuel_mix_mode(mode)
 }
 
 /**

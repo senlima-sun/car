@@ -718,9 +718,21 @@ pub struct CarPhysicsOutput {
     /// `~4.8` = full boost (FIA Art 5.5 ceiling). Driven by `TurboState`.
     #[serde(default = "boost_pressure_bar_default")]
     pub boost_pressure_bar: f32,
+    /// Residual fuel mass in the tank (kg). Decreases at the integrated
+    /// mass-flow rate as the ICE consumes fuel.
+    #[serde(default)]
+    pub fuel_mass_kg: f32,
+    /// Fuel-flow factor `[0, 1]` from the FIA Art 5.4 cap. `1.0` when
+    /// demand fits under the regulation; `0.0` on empty tank.
+    #[serde(default = "fuel_flow_factor_default")]
+    pub fuel_flow_factor: f32,
 }
 
 fn boost_pressure_bar_default() -> f32 {
+    1.0
+}
+
+fn fuel_flow_factor_default() -> f32 {
     1.0
 }
 

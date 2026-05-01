@@ -38,8 +38,18 @@ export function useCarStateSync() {
       syncAeroState(syncResult.aero_state)
       syncBrakeState(syncResult.brake_state)
       const boost = output.boost_pressure_bar
-      if (Number.isFinite(boost)) {
-        useCarStore.setState({ boostPressure: boost })
+      const fuelMass = output.fuel_mass_kg
+      const fuelFactor = output.fuel_flow_factor
+      const patch: Partial<{
+        boostPressure: number
+        fuelMassKg: number
+        fuelFlowFactor: number
+      }> = {}
+      if (Number.isFinite(boost)) patch.boostPressure = boost
+      if (Number.isFinite(fuelMass)) patch.fuelMassKg = fuelMass
+      if (Number.isFinite(fuelFactor)) patch.fuelFlowFactor = fuelFactor
+      if (Object.keys(patch).length > 0) {
+        useCarStore.setState(patch)
       }
     }
 

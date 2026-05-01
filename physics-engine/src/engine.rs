@@ -216,6 +216,27 @@ impl PhysicsEngine {
         self.car.get_boost_pressure_bar()
     }
 
+    pub fn get_fuel_mass_kg(&self) -> f32 {
+        self.car.get_fuel_mass_kg()
+    }
+
+    pub fn get_fuel_flow_factor(&self) -> f32 {
+        self.car.get_fuel_flow_factor()
+    }
+
+    pub fn set_fuel_mass_kg(&mut self, kg: f32) {
+        self.car.set_fuel_mass_kg(kg);
+    }
+
+    pub fn get_fuel_mix_mode_u8(&self) -> u8 {
+        self.car.get_fuel_mix_mode().to_u8()
+    }
+
+    pub fn set_fuel_mix_mode_u8(&mut self, mode: u8) {
+        self.car
+            .set_fuel_mix_mode(crate::car_physics::fuel::FuelMixMode::from_u8(mode));
+    }
+
     /// Wave 4 Phase 5: driver requests Override Mode (DRS replacement).
     /// 350 kW MGU-K burst with 0.5 MJ/lap budget. Auto-deactivates on
     /// brake or budget exhaustion. Holds the request between frames;
