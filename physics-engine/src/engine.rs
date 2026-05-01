@@ -3,7 +3,7 @@ use crate::brakes::BrakePhysicsState;
 use crate::car_physics::weight_transfer::calculate_weight_transfer;
 use crate::car_physics::CarPhysicsState;
 use crate::constants::car::{
-    BASE_BRAKE_FORCE, CAR_MASS, TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, WHEELBASE,
+    BASE_BRAKE_FORCE, TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, WHEELBASE,
 };
 use crate::curb::CurbState;
 use crate::engine_temp::EngineTemperatureState;
@@ -1101,7 +1101,7 @@ impl PhysicsEngine {
 
                 let avg_bump =
                     (bump_forces[0] + bump_forces[1] + bump_forces[2] + bump_forces[3]) / 4.0;
-                let inertia_factor = CAR_MASS * 0.5;
+                let inertia_factor = self.car.live_mass_kg() * 0.5;
                 output.linear_velocity[1] += avg_bump / inertia_factor;
 
                 // Wave 4 Phase 2: per-axle half-track for roll moment.
@@ -1130,7 +1130,7 @@ impl PhysicsEngine {
                     let drag = output.bottoming_out.drag_force;
                     let spd = output.forward_speed_ms;
                     if spd.abs() > 0.1 {
-                        let drag_decel = drag / CAR_MASS;
+                        let drag_decel = drag / self.car.live_mass_kg();
                         let speed_sign = if spd >= 0.0 { 1.0 } else { -1.0 };
                         let drag_delta = drag_decel * dt * speed_sign;
                         output.linear_velocity[0] -= fwd.x * drag_delta;
@@ -1144,7 +1144,7 @@ impl PhysicsEngine {
 
         // Post-step heating pass — use actual G-forces from car.step() output
         let weight_transfer_post =
-            calculate_weight_transfer(output.longitudinal_g, output.lateral_g);
+            calculate_weight_transfer(output.longitudinal_g, output.lateral_g, self.car.live_mass_kg());
         let heating_input = TempInput {
             delta_seconds: dt,
             speed_ms: self.car.get_speed_ms(),

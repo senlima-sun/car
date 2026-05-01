@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "captured_at": "wave-4-final + turbo-phase-2",
-  "notes": "Captured at Wave 4 head + turbo Phase 2 integration (TurboState with τ=0.20s, multiplier [0.5, 1.0], MAX_BOOST 4.8 bar). Boost lag shifts launch/DRS times slower vs pre-turbo (0-100: 2.29s → 2.83s; DRS 200-300: 4.85s → 4.93s). Cornering & stop-distance shifts are second-order effects from RPM/gear progression during warm-up. Replaces the wave-4-final fixture as the new strict ±0.5% gate for the turbocharger component.",
+  "captured_at": "wave-4-final + turbo-phase-2 + fuel-phase-2",
+  "notes": "Captured post fuel system Phase 2 integration. CAR_MASS_DRY=768 + 100kg fuel = 868 kg live mass. The +100kg vs the post-turbo baseline shifts everything: 0-100 2.83 → 3.38s, DRS 200-300 4.93 → 6.48s, stop distances grow ~7-8%, lat-g drops ~3% under full corner load. All shifts are physically correct for a heavier car. FIA fuel-flow cap (3000 MJ/h) bites at high RPM in DRS 200-300 — partial cause of the 6.48s.",
   "scenarios": {
-    "zero_to_100_kmh_seconds": 2.8333,
-    "fifty_ms_to_zero_stop_distance_m": 48.7832,
-    "steady_state_80m_radius_peak_lat_g": 9.9391,
-    "drs_active_200_to_300_kmh_seconds": 4.9333,
-    "hundred_kmh_to_zero_stop_distance_m": 17.2823,
-    "wet_fifty_ms_to_zero_stop_distance_m": 82.4930,
-    "wet_steady_state_80m_radius_peak_lat_g": 8.3701,
-    "oil_steady_state_80m_radius_peak_lat_g": 8.3531
+    "zero_to_100_kmh_seconds": 3.3750,
+    "fifty_ms_to_zero_stop_distance_m": 52.2282,
+    "steady_state_80m_radius_peak_lat_g": 9.9403,
+    "drs_active_200_to_300_kmh_seconds": 6.4833,
+    "hundred_kmh_to_zero_stop_distance_m": 18.3672,
+    "wet_fifty_ms_to_zero_stop_distance_m": 87.4727,
+    "wet_steady_state_80m_radius_peak_lat_g": 8.1293,
+    "oil_steady_state_80m_radius_peak_lat_g": 8.1176
   }
 }

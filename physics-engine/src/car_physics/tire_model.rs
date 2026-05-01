@@ -1,4 +1,4 @@
-use crate::constants::car::CAR_MASS;
+use crate::constants::car::CAR_MASS_DRY as CAR_MASS;
 
 const DEFAULT_LOAD_SENSITIVITY: f32 = 0.015;
 // Sample point for `peak_mu_at_fz`: evaluates the Pacejka curve at this

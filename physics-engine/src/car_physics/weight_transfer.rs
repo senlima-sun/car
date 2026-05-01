@@ -1,5 +1,5 @@
 use crate::constants::car::{
-    CAR_MASS, CG_HEIGHT, TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, WEIGHT_DIST_FRONT, WHEELBASE,
+    CG_HEIGHT, TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, WEIGHT_DIST_FRONT, WHEELBASE,
 };
 
 const LONGITUDINAL_TRANSFER_FACTOR: f32 = 0.85;
@@ -28,9 +28,14 @@ impl Default for WeightTransferResult {
     }
 }
 
-/// Calculate weight transfer based on longitudinal and lateral G-forces
-pub fn calculate_weight_transfer(longitudinal_g: f32, lateral_g: f32) -> WeightTransferResult {
-    let total_weight = CAR_MASS * 9.81;
+/// Calculate weight transfer based on longitudinal and lateral G-forces.
+/// `total_mass_kg` is the live vehicle mass (dry chassis + current fuel).
+pub fn calculate_weight_transfer(
+    longitudinal_g: f32,
+    lateral_g: f32,
+    total_mass_kg: f32,
+) -> WeightTransferResult {
+    let total_weight = total_mass_kg * 9.81;
     let static_front_load = WEIGHT_DIST_FRONT * total_weight;
     let static_rear_load = (1.0 - WEIGHT_DIST_FRONT) * total_weight;
 
@@ -38,7 +43,7 @@ pub fn calculate_weight_transfer(longitudinal_g: f32, lateral_g: f32) -> WeightT
     // Positive G = accelerating = weight shifts to rear
     // Negative G = braking = weight shifts to front
     let long_transfer =
-        (longitudinal_g * CAR_MASS * CG_HEIGHT / WHEELBASE) * LONGITUDINAL_TRANSFER_FACTOR;
+        (longitudinal_g * total_mass_kg * CG_HEIGHT / WHEELBASE) * LONGITUDINAL_TRANSFER_FACTOR;
 
     // Lateral weight transfer (cornering). Wave 4 Phase 2: per-axle
     // track widths. Each axle carries its share of the total mass and
@@ -48,8 +53,8 @@ pub fn calculate_weight_transfer(longitudinal_g: f32, lateral_g: f32) -> WeightT
     // The two are summed into the aggregate `lat_transfer` consumed by
     // `left_load_change` / `right_load_change`. Positive lat_g = right
     // turn → load shifts left.
-    let mass_front = CAR_MASS * WEIGHT_DIST_FRONT;
-    let mass_rear = CAR_MASS * (1.0 - WEIGHT_DIST_FRONT);
+    let mass_front = total_mass_kg * WEIGHT_DIST_FRONT;
+    let mass_rear = total_mass_kg * (1.0 - WEIGHT_DIST_FRONT);
     let lat_transfer_front =
         (lateral_g * mass_front * CG_HEIGHT / TRACK_WIDTH_FRONT) * LATERAL_TRANSFER_FACTOR;
     let lat_transfer_rear =
@@ -72,10 +77,11 @@ pub fn calculate_weight_transfer(longitudinal_g: f32, lateral_g: f32) -> WeightT
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::car::CAR_MASS_DRY;
 
     #[test]
     fn test_no_g_no_transfer() {
-        let result = calculate_weight_transfer(0.0, 0.0);
+        let result = calculate_weight_transfer(0.0, 0.0, CAR_MASS_DRY);
 
         assert!((result.front_load_change - 0.0).abs() < 0.001);
         assert!((result.rear_load_change - 0.0).abs() < 0.001);
@@ -85,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_acceleration_transfers_to_rear() {
-        let result = calculate_weight_transfer(1.0, 0.0); // 1G acceleration
+        let result = calculate_weight_transfer(1.0, 0.0, CAR_MASS_DRY); // 1G acceleration
 
         assert!(result.rear_load_change > 0.0);
         assert!(result.front_load_change < 0.0);
@@ -94,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_braking_transfers_to_front() {
-        let result = calculate_weight_transfer(-1.0, 0.0); // 1G braking
+        let result = calculate_weight_transfer(-1.0, 0.0, CAR_MASS_DRY); // 1G braking
 
         assert!(result.front_load_change > 0.0);
         assert!(result.rear_load_change < 0.0);
@@ -102,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_right_turn_transfers_to_left() {
-        let result = calculate_weight_transfer(0.0, 1.0); // 1G right turn
+        let result = calculate_weight_transfer(0.0, 1.0, CAR_MASS_DRY); // 1G right turn
 
         assert!(result.left_load_change > 0.0);
         assert!(result.right_load_change < 0.0);
@@ -111,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_left_turn_transfers_to_right() {
-        let result = calculate_weight_transfer(0.0, -1.0); // 1G left turn
+        let result = calculate_weight_transfer(0.0, -1.0, CAR_MASS_DRY); // 1G left turn
 
         assert!(result.right_load_change > 0.0);
         assert!(result.left_load_change < 0.0);
@@ -119,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_combined_g_forces() {
-        let result = calculate_weight_transfer(0.5, 0.5);
+        let result = calculate_weight_transfer(0.5, 0.5, CAR_MASS_DRY);
 
         // Should have both longitudinal and lateral transfer
         assert!(result.rear_load_change > 0.0);
@@ -128,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_static_weight_distribution_47_53() {
-        let result = calculate_weight_transfer(0.0, 0.0);
+        let result = calculate_weight_transfer(0.0, 0.0, CAR_MASS_DRY);
 
         assert!(
             (result.front_load_pct - 0.47).abs() < 0.001,
@@ -144,8 +150,8 @@ mod tests {
 
     #[test]
     fn test_weight_distribution_asymmetric_under_braking() {
-        let static_result = calculate_weight_transfer(0.0, 0.0);
-        let braking_result = calculate_weight_transfer(-1.5, 0.0);
+        let static_result = calculate_weight_transfer(0.0, 0.0, CAR_MASS_DRY);
+        let braking_result = calculate_weight_transfer(-1.5, 0.0, CAR_MASS_DRY);
 
         assert!(
             braking_result.front_load_pct > static_result.front_load_pct,

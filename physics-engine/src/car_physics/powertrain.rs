@@ -44,6 +44,10 @@ pub struct PowertrainInput {
     pub engine_efficiency: f32,
     pub engine_power_mult: f32,
     pub boost_multiplier: f32,
+    /// Multiplier on ICE torque from the fuel system (`[0, 1]`). `1.0`
+    /// when demanded fuel flow fits under the FIA cap; below `1.0` when
+    /// the cap clips the demand. `0.0` when the tank is empty.
+    pub fuel_flow_factor: f32,
 }
 
 impl PowertrainInput {
@@ -60,6 +64,7 @@ impl PowertrainInput {
             engine_efficiency: 1.0,
             engine_power_mult: 1.0,
             boost_multiplier: 1.0,
+            fuel_flow_factor: 1.0,
         }
     }
 }
@@ -108,12 +113,18 @@ impl PowertrainState {
             engine_efficiency,
             engine_power_mult,
             boost_multiplier,
+            fuel_flow_factor,
         } = *input;
         let boost_multiplier = if boost_multiplier.is_finite() {
             boost_multiplier.clamp(
                 crate::car_physics::turbo::MULTIPLIER_FLOOR,
                 crate::car_physics::turbo::MULTIPLIER_CEILING,
             )
+        } else {
+            1.0
+        };
+        let fuel_flow_factor = if fuel_flow_factor.is_finite() {
+            fuel_flow_factor.clamp(0.0, 1.0)
         } else {
             1.0
         };
@@ -149,7 +160,11 @@ impl PowertrainState {
         let torque = if self.shift_state == ShiftState::Shifting {
             0.0
         } else if is_throttle {
-            self.torque_curve(self.engine_rpm) * engine_efficiency * engine_power_mult * boost_multiplier
+            self.torque_curve(self.engine_rpm)
+                * engine_efficiency
+                * engine_power_mult
+                * boost_multiplier
+                * fuel_flow_factor
         } else {
             0.0
         };
@@ -178,6 +193,7 @@ impl PowertrainState {
             total_gear_ratio: total_ratio,
             shift_state: self.shift_state,
             boost_multiplier,
+            fuel_flow_factor,
         }
     }
 
@@ -290,6 +306,10 @@ pub struct PowertrainOutput {
     /// 0.5 at atmospheric pressure during spool-up. `1.0` is also the
     /// default when boost is not turbo-driven.
     pub boost_multiplier: f32,
+    /// Multiplier on ICE torque from the fuel system (`[0, 1]`). `1.0`
+    /// when demanded flow is under the FIA cap; below `1.0` when the cap
+    /// clips. `0.0` when the tank is empty.
+    pub fuel_flow_factor: f32,
 }
 
 #[inline]

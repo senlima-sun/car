@@ -1,5 +1,8 @@
-// Wave 4 Phase 2: minimum mass dropped 798 → 768 kg per 2026 F1 regs.
-pub const CAR_MASS: f32 = 768.0;
+// FIA 2026 minimum mass without fuel: 768 kg (with driver).
+// Live in-race mass = CAR_MASS_DRY + fuel_mass_kg (see fuel.rs).
+pub const CAR_MASS_DRY: f32 = 768.0;
+#[deprecated(note = "use CAR_MASS_DRY + live fuel mass via CarPhysicsState::live_mass_kg()")]
+pub const CAR_MASS: f32 = CAR_MASS_DRY;
 pub const WHEELBASE: f32 = 3.38;
 
 // Wave 4 Phase 2: 2026 F1 widened track per FIA Technical Regs.

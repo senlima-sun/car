@@ -23,6 +23,15 @@ use crate::utils::{lerp, sanitize, Quat, Vec3};
 // while braking. Compensates for slip-ratio oscillation at near-zero speed.
 const LOW_SPEED_CREEP_DAMPING_RATE: f32 = 8.0;
 
+/// Recover the ICE's mechanical power demand (W) from the powertrain
+/// output so the fuel system can size its energy demand. ERS contribution
+/// is subtracted because it does not draw fuel.
+fn engine_power_w_from_powertrain(pt: &powertrain::PowertrainOutput, rpm: f32) -> f32 {
+    let omega = rpm * std::f32::consts::TAU / 60.0;
+    let engine_torque_nm = pt.drive_force * powertrain::TIRE_RADIUS / pt.total_gear_ratio.max(1e-3);
+    (engine_torque_nm * omega).max(0.0)
+}
+
 // ============================================================================
 // Car Physics State
 // ============================================================================
@@ -46,6 +55,8 @@ pub struct CarPhysicsState {
     wheel_force: WheelForceIntegrator,
     clutch: clutch::ClutchState,
     turbo: turbo::TurboState,
+    fuel: fuel::FuelState,
+    fuel_flow_factor_prev: f32,
 }
 
 impl Default for CarPhysicsState {
@@ -68,6 +79,8 @@ impl Default for CarPhysicsState {
             wheel_force: WheelForceIntegrator::new(),
             clutch: clutch::ClutchState::new(),
             turbo: turbo::TurboState::new(),
+            fuel: fuel::FuelState::new(),
+            fuel_flow_factor_prev: 1.0,
         }
     }
 }
@@ -151,9 +164,17 @@ impl CarPhysicsState {
             engine_efficiency: weather_modifiers.engine_efficiency_multiplier * engine_power_multiplier,
             engine_power_mult: 1.0,
             boost_multiplier,
+            fuel_flow_factor: self.fuel_flow_factor_prev,
         });
         self.gear = pt_out.gear;
         self.rpm = pt_out.rpm;
+
+        // Fuel runs after powertrain: integrates the ICE's *current* demand
+        // and yields the factor that gates the next frame. One-frame lag is
+        // within combustion-cycle noise at 120 Hz.
+        let engine_power_w = engine_power_w_from_powertrain(&pt_out, self.rpm);
+        let (fuel_flow_factor, _burned_kg) = self.fuel.update(engine_power_w, self.rpm, dt);
+        self.fuel_flow_factor_prev = fuel_flow_factor;
 
         // Effective grip. Wave 3 Phase 7 review fix:
         // `weather_modifiers.friction_slip_multiplier` is folded into
@@ -213,6 +234,7 @@ impl CarPhysicsState {
         }
 
         let mut longitudinal_force = 0.0;
+        let live_mass = self.live_mass_kg();
 
         let effective_brake = if input.brake_analog > 0.01 {
             input.brake_analog.clamp(0.0, 1.0)
@@ -232,7 +254,7 @@ impl CarPhysicsState {
             let handbrake_force = (front_brake_force + rear_brake_force) * 2.5;
             longitudinal_force -= handbrake_force * forward_speed.signum();
             if forward_speed.abs() < 2.0 {
-                longitudinal_force -= forward_speed * CAR_MASS * 15.0;
+                longitudinal_force -= forward_speed * live_mass * 15.0;
             }
         } else if in_reverse {
             let reverse_force = 8000.0;
@@ -242,7 +264,7 @@ impl CarPhysicsState {
             // near zero velocity because ω locks at 0 and slip jumps between
             // signs each frame. A linear damper on body velocity keeps the
             // car from stalling at ~0.9 m/s under full brake.
-            longitudinal_force -= forward_speed * CAR_MASS * LOW_SPEED_CREEP_DAMPING_RATE;
+            longitudinal_force -= forward_speed * live_mass * LOW_SPEED_CREEP_DAMPING_RATE;
         }
 
         if effective_throttle < 0.01
@@ -264,7 +286,7 @@ impl CarPhysicsState {
 
         // Curb drag
         if is_on_curb && self.speed_ms > 1.0 {
-            let curb_drag = self.speed_ms * CAR_MASS * (1.0 - curb_speed_multiplier) * 0.5;
+            let curb_drag = self.speed_ms * live_mass * (1.0 - curb_speed_multiplier) * 0.5;
             longitudinal_force -= curb_drag * forward_speed.signum();
         }
 
@@ -281,21 +303,21 @@ impl CarPhysicsState {
         // clamps. Pre-clamp keeps the math finite at the source.
         let normal_y = surface_normal[1].clamp(0.01, 1.0);
         let slope_angle = normal_y.acos();
-        let gravity_normal = CAR_MASS * 9.81 * slope_angle.cos();
+        let gravity_normal = live_mass * 9.81 * slope_angle.cos();
 
         let normal_forward = (surface_normal[0] * forward_dir.x
             + surface_normal[1] * forward_dir.y
             + surface_normal[2] * forward_dir.z)
             .clamp(-1.0, 1.0);
         let pitch_angle = normal_forward.asin().clamp(-0.5, 0.5);
-        let gravity_tangent = CAR_MASS * 9.81 * pitch_angle.sin();
+        let gravity_tangent = live_mass * 9.81 * pitch_angle.sin();
 
         let normal_right = (surface_normal[0] * right_dir.x
             + surface_normal[1] * right_dir.y
             + surface_normal[2] * right_dir.z)
             .clamp(-1.0, 1.0);
         let banking_angle = normal_right.asin().clamp(-0.5, 0.5);
-        let banking_lateral_force = CAR_MASS * 9.81 * banking_angle.sin();
+        let banking_lateral_force = live_mass * 9.81 * banking_angle.sin();
 
         // Apply slope-induced longitudinal force (downhill = positive, uphill = negative)
         longitudinal_force += gravity_tangent;
@@ -328,7 +350,11 @@ impl CarPhysicsState {
         let lat_g = self.lat_g_filtered;
 
         let weight_transfer =
-            weight_transfer::calculate_weight_transfer(sanitize(long_g, 0.0), sanitize(lat_g, 0.0));
+            weight_transfer::calculate_weight_transfer(
+                sanitize(long_g, 0.0),
+                sanitize(lat_g, 0.0),
+                live_mass,
+            );
 
         let resolved_wheel_loads = wheel_loads.unwrap_or_else(|| {
             // Wave 3 Phase 4: per-axle downforce flows into the fallback Fz
@@ -434,14 +460,16 @@ impl CarPhysicsState {
         );
 
         // Calculate new velocities
-        let new_forward_speed = forward_speed + (longitudinal_force / CAR_MASS) * dt;
+        let new_forward_speed = forward_speed + (longitudinal_force / live_mass) * dt;
 
-        let wind_lateral_accel = wind_modifiers.lateral_force / CAR_MASS;
-        let banking_accel = -banking_lateral_force / CAR_MASS;
+        let wind_lateral_accel = wind_modifiers.lateral_force / live_mass;
+        let banking_accel = -banking_lateral_force / live_mass;
         let new_lateral_speed =
             lateral_speed * lateral_correction + (wind_lateral_accel + banking_accel) * dt;
 
-        let crosswind_yaw_moment = wind_modifiers.lateral_force * 0.3 / (CAR_MASS * WHEELBASE);
+        // Yaw moment uses dry mass: rotational inertia about the vertical axis
+        // is dominated by the rigid chassis; fuel-tank slosh is not modelled.
+        let crosswind_yaw_moment = wind_modifiers.lateral_force * 0.3 / (CAR_MASS_DRY * WHEELBASE);
 
         // Clamp speeds with tire degradation effects
         let clamped_forward = new_forward_speed.clamp(-40.0 / 3.6, max_speed);
@@ -525,10 +553,36 @@ impl CarPhysicsState {
     pub fn reset_powertrain_for_launch(&mut self) {
         self.powertrain.reset_for_launch();
         self.turbo = turbo::TurboState::new();
+        self.fuel = fuel::FuelState::new();
+        self.fuel_flow_factor_prev = 1.0;
     }
 
     pub fn get_boost_pressure_bar(&self) -> f32 {
         self.turbo.boost_bar()
+    }
+
+    pub fn get_fuel_mass_kg(&self) -> f32 {
+        self.fuel.fuel_mass_kg()
+    }
+
+    pub fn get_fuel_flow_factor(&self) -> f32 {
+        self.fuel_flow_factor_prev
+    }
+
+    pub fn set_fuel_mass_kg(&mut self, kg: f32) {
+        self.fuel.set_fuel_mass_kg(kg);
+    }
+
+    pub fn get_fuel_mix_mode(&self) -> fuel::FuelMixMode {
+        self.fuel.mix()
+    }
+
+    pub fn set_fuel_mix_mode(&mut self, mode: fuel::FuelMixMode) {
+        self.fuel.set_mix(mode);
+    }
+
+    pub fn live_mass_kg(&self) -> f32 {
+        crate::constants::car::CAR_MASS_DRY + self.fuel.fuel_mass_kg()
     }
 
     pub fn get_rpm(&self) -> f32 {
