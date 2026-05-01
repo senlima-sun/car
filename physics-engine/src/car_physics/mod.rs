@@ -25,6 +25,13 @@ use crate::utils::{lerp, sanitize, Quat, Vec3};
 // while braking. Compensates for slip-ratio oscillation at near-zero speed.
 const LOW_SPEED_CREEP_DAMPING_RATE: f32 = 8.0;
 
+/// Gearbox-output angular velocity (rad/s) — the engine-side speed
+/// reference shared by both rear half-shafts. Crank ω ÷ total ratio.
+fn gearbox_output_omega_rad_s(pt: &powertrain::PowertrainOutput) -> f32 {
+    let crank_omega = pt.rpm * std::f32::consts::TAU / 60.0;
+    crank_omega / pt.total_gear_ratio.max(1e-3)
+}
+
 
 // ============================================================================
 // Car Physics State
@@ -52,6 +59,7 @@ pub struct CarPhysicsState {
     fuel: fuel::FuelState,
     fuel_flow_factor_prev: f32,
     differential: differential::DifferentialConfig,
+    shaft: driveshaft::ShaftConfig,
 }
 
 impl Default for CarPhysicsState {
@@ -77,6 +85,7 @@ impl Default for CarPhysicsState {
             fuel: fuel::FuelState::new(),
             fuel_flow_factor_prev: 1.0,
             differential: differential::DifferentialConfig::new(),
+            shaft: driveshaft::ShaftConfig::new(),
         }
     }
 }
@@ -412,6 +421,8 @@ impl CarPhysicsState {
             slip_angle_smoothed_deg: self.slip_angle_smoothed,
             clutch_engagement,
             total_gear_ratio: pt_out.total_gear_ratio,
+            engine_side_omega_rad_s: gearbox_output_omega_rad_s(&pt_out),
+            shaft: self.shaft,
         });
         longitudinal_force += wheel_force_out.total_long_force;
 
@@ -563,6 +574,23 @@ impl CarPhysicsState {
         self.turbo = turbo::TurboState::new();
         self.fuel = fuel::FuelState::new();
         self.fuel_flow_factor_prev = 1.0;
+        self.wheel_force.reset_shaft_twist();
+    }
+
+    pub fn get_shaft_stiffness_nm_rad(&self) -> f32 {
+        self.shaft.stiffness_nm_rad()
+    }
+
+    pub fn get_shaft_damping_nm_s_rad(&self) -> f32 {
+        self.shaft.damping_nm_s_rad()
+    }
+
+    pub fn set_shaft_stiffness_nm_rad(&mut self, k: f32) {
+        self.shaft.set_stiffness_nm_rad(k);
+    }
+
+    pub fn set_shaft_damping_nm_s_rad(&mut self, c: f32) {
+        self.shaft.set_damping_nm_s_rad(c);
     }
 
     pub fn get_boost_pressure_bar(&self) -> f32 {

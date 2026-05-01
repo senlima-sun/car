@@ -1,4 +1,5 @@
 use crate::car_physics::differential::DifferentialConfig;
+use crate::car_physics::driveshaft::{decay_twist, delivered_torque, ShaftConfig};
 use crate::car_physics::powertrain::{ENGINE_INERTIA, TIRE_RADIUS};
 use crate::car_physics::tire_model::{
     combined_slip, gx_combined, gy_combined, pacejka_lateral_per_wheel, pacejka_longitudinal,
@@ -53,7 +54,14 @@ pub struct WheelForceInputs {
     /// Used to reflect engine inertia into the driven-wheel ODE via
     /// `(total_gear_ratio × clutch_engagement)²`.
     pub total_gear_ratio: f32,
+    /// Component #4: gearbox-output angular velocity (rad/s) seen by both
+    /// rear half-shafts. Equals `engine_omega_rad_s / total_gear_ratio`
+    /// when the clutch is locked. Drives the shaft Δω.
+    pub engine_side_omega_rad_s: f32,
+    pub shaft: ShaftConfig,
 }
+
+const SHAFT_DISENGAGE_DECAY_TAU_S: f32 = 0.05;
 
 /// Per-step output from the wheel-force integrator. Phase 1 (Wave 3)
 /// promotes Fy to per-wheel newtons alongside Fx. The body-frame yaw
@@ -76,6 +84,8 @@ pub struct WheelForceOutput {
 pub struct WheelForceIntegrator {
     wheel_angvel: [f32; 4],
     prev_wheel_fx: [f32; 4],
+    /// Per-half-axle driveshaft twist (rad). [0] = RL, [1] = RR.
+    shaft_twist: [f32; 2],
 }
 
 impl WheelForceIntegrator {
@@ -85,6 +95,14 @@ impl WheelForceIntegrator {
 
     pub fn wheel_angvel(&self) -> [f32; 4] {
         self.wheel_angvel
+    }
+
+    pub fn shaft_twist(&self) -> [f32; 2] {
+        self.shaft_twist
+    }
+
+    pub fn reset_shaft_twist(&mut self) {
+        self.shaft_twist = [0.0; 2];
     }
 
     pub fn prev_wheel_fx(&self) -> [f32; 4] {
@@ -145,11 +163,31 @@ impl WheelForceIntegrator {
             if !is_driven && !has_brake_torque {
                 self.wheel_angvel[wheel] = i.forward_speed / TIRE_RADIUS;
             } else {
-                // Wave 3 Phase 5: slipping clutch transmits proportionally
-                // less torque (energy balance: less reflected inertia AND
-                // less torque delivered).
+                // Component #4: rear drive torque flows through the
+                // half-shaft compliance, modelled as a first-order torque
+                // lag. The shaft's twist state holds the *currently
+                // delivered* torque; it tracks the LSD allocation with
+                // time constant τ = I_eff / c. At τ ≈ 0.4 s for default
+                // (I=8, c=20) this gives a noticeable but bounded delay.
                 let drive_torque = if is_driven {
-                    if wheel == 2 { rear_torque_rl } else { rear_torque_rr }
+                    let shaft_idx = wheel - 2;
+                    let lsd_torque = if wheel == 2 { rear_torque_rl } else { rear_torque_rr };
+                    if i.drive_engaged {
+                        let tau = (WHEEL_INERTIA / i.shaft.damping_nm_s_rad().max(1.0))
+                            .clamp(0.001, 1.0);
+                        let alpha = i.dt / (tau + i.dt);
+                        let prev = self.shaft_twist[shaft_idx];
+                        let next = prev + (lsd_torque - prev) * alpha;
+                        self.shaft_twist[shaft_idx] = next;
+                        next
+                    } else {
+                        self.shaft_twist[shaft_idx] = decay_twist(
+                            self.shaft_twist[shaft_idx],
+                            i.dt,
+                            SHAFT_DISENGAGE_DECAY_TAU_S,
+                        );
+                        0.0
+                    }
                 } else {
                     0.0
                 };
@@ -272,6 +310,8 @@ mod tests {
             // that need locked-clutch behaviour override these explicitly.
             clutch_engagement: 0.1,
             total_gear_ratio: 0.0,
+            engine_side_omega_rad_s: 0.0,
+            shaft: ShaftConfig::new(),
         }
     }
 
@@ -299,10 +339,16 @@ mod tests {
     #[test]
     fn full_throttle_drive_torque_applies_to_rear_only() {
         let mut s = WheelForceIntegrator::new();
+        // Seed wheels at the rolling-kinematic ω so we measure drive
+        // torque's effect on top of cruise, not the integrator spool-up.
+        let kinematic = 10.0 / TIRE_RADIUS;
+        s.wheel_angvel = [kinematic; 4];
         let mut inputs = idle_inputs();
         inputs.drive_engaged = true;
-        inputs.driven_axle_torque = 1000.0;
-        for _ in 0..30 {
+        inputs.driven_axle_torque = 4000.0;
+        inputs.clutch_engagement = 1.0;
+        inputs.engine_side_omega_rad_s = 200.0;
+        for _ in 0..120 {
             s.step(&inputs);
         }
         let target_kinematic = 10.0 / TIRE_RADIUS;
@@ -310,8 +356,18 @@ mod tests {
         assert!((s.wheel_angvel()[0] - target_kinematic).abs() < 1e-3);
         assert!((s.wheel_angvel()[1] - target_kinematic).abs() < 1e-3);
         // Rear diverges (spins faster under drive torque).
-        assert!(s.wheel_angvel()[2] > target_kinematic);
-        assert!(s.wheel_angvel()[3] > target_kinematic);
+        assert!(
+            s.wheel_angvel()[2] > target_kinematic,
+            "RL {} not > {}",
+            s.wheel_angvel()[2],
+            target_kinematic
+        );
+        assert!(
+            s.wheel_angvel()[3] > target_kinematic,
+            "RR {} not > {}",
+            s.wheel_angvel()[3],
+            target_kinematic
+        );
     }
 
     #[test]
@@ -536,20 +592,29 @@ mod tests {
         // I_eff = 8 + 0.15 × 10.4² ≈ 24.2 kg·m². For the same drive torque,
         // wheel acceleration should drop ~3x versus an idle-clutch baseline.
         let mut s_idle = WheelForceIntegrator::new();
+        let kinematic = 10.0 / TIRE_RADIUS;
+        s_idle.wheel_angvel = [kinematic; 4];
         let mut idle = idle_inputs();
         idle.drive_engaged = true;
         idle.driven_axle_torque = 2000.0;
         idle.clutch_engagement = 0.1;
         idle.total_gear_ratio = 10.4;
-        s_idle.step(&idle);
+        idle.engine_side_omega_rad_s = 200.0;
+        for _ in 0..120 {
+            s_idle.step(&idle);
+        }
 
         let mut s_locked = WheelForceIntegrator::new();
+        s_locked.wheel_angvel = [kinematic; 4];
         let mut locked = idle_inputs();
         locked.drive_engaged = true;
         locked.driven_axle_torque = 2000.0;
         locked.clutch_engagement = 1.0;
         locked.total_gear_ratio = 10.4;
-        s_locked.step(&locked);
+        locked.engine_side_omega_rad_s = 200.0;
+        for _ in 0..120 {
+            s_locked.step(&locked);
+        }
 
         // Rear wheel angvel growth is much smaller with locked clutch (more
         // inertia AND full drive torque vs idle's 10% torque).
@@ -654,6 +719,7 @@ mod tests {
         inputs_50.driven_axle_torque = 3000.0;
         inputs_50.clutch_engagement = 0.5;
         inputs_50.total_gear_ratio = 10.4;
+        inputs_50.engine_side_omega_rad_s = 200.0;
         for _ in 0..30 {
             s_50.step(&inputs_50);
         }
@@ -665,6 +731,7 @@ mod tests {
         inputs_full.driven_axle_torque = 3000.0;
         inputs_full.clutch_engagement = 1.0;
         inputs_full.total_gear_ratio = 10.4;
+        inputs_full.engine_side_omega_rad_s = 200.0;
         for _ in 0..30 {
             s_full.step(&inputs_full);
         }
@@ -714,6 +781,7 @@ mod tests {
         inputs.driven_axle_torque = 4000.0;
         inputs.clutch_engagement = 1.0;
         inputs.total_gear_ratio = 1.0;
+        inputs.engine_side_omega_rad_s = 200.0;
         let out = s.step(&inputs);
         let rl = out.driven_torque_per_wheel[2];
         let rr = out.driven_torque_per_wheel[3];
@@ -728,16 +796,19 @@ mod tests {
         // Pre-load asymmetric wheel speeds: RL on grass, spinning faster.
         // The integrator's `wheel_angvel` is private; reach through the
         // public ω accessor by stepping once with imbalanced loads to seed.
+        let kinematic = 10.0 / TIRE_RADIUS;
+        s.wheel_angvel = [kinematic; 4];
         let mut seed = idle_inputs();
         seed.drive_engaged = true;
         seed.driven_axle_torque = 4000.0;
         seed.clutch_engagement = 1.0;
         seed.total_gear_ratio = 10.0;
+        seed.engine_side_omega_rad_s = 200.0;
         // RL has much lower vertical load: the spin integrator will drive
         // it past the grip envelope, building Δω.
         seed.resolved_wheel_loads[2] = 100.0;
         seed.resolved_wheel_loads[3] = 4000.0;
-        for _ in 0..30 {
+        for _ in 0..120 {
             s.step(&seed);
         }
         let omegas = s.wheel_angvel();
@@ -754,6 +825,9 @@ mod tests {
         let rr = out.driven_torque_per_wheel[3];
         // LSD must transfer torque to the slower (gripping) wheel.
         assert!(rr > rl, "tight LSD should give RR more torque: rl {}, rr {}", rl, rr);
-        assert!((rl + rr - inputs.driven_axle_torque).abs() < 1.0, "conservation: {} + {} ≠ {}", rl, rr, inputs.driven_axle_torque);
+        // Driveshaft lag: per-frame delivery may trail the LSD allocation.
+        // Sum is bounded above by axle_torque (cap) and grows toward it.
+        assert!(rl + rr <= inputs.driven_axle_torque + 1.0);
+        assert!(rl + rr > inputs.driven_axle_torque * 0.5);
     }
 }

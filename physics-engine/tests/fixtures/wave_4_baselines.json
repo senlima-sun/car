@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "captured_at": "wave-4-final + turbo-phase-2 + fuel-phase-2-fix",
-  "notes": "Captured post fuel system wave-end fix: PowertrainOutput now surfaces engine_power_demand_w directly (pre-cap, pre-η, pre-ERS), replacing a faulty post-cap inversion in mod.rs. The corrected demand is ~15% higher than the inversion result, so the FIA fuel-flow cap bites harder. 0-100 3.38 → 3.46s, DRS 200-300 6.48 → 6.59s, lat-g shifts +1% in oil/wet (less ICE drag from FIA cap during corner exit). Live mass 868 kg.",
+  "captured_at": "wave-4 + turbo + fuel + LSD + driveshaft",
+  "notes": "Captured post driveshaft Phase 2. First-order torque lag (τ ≈ 0.4s for default I/c) on rear-axle drive. Adds ~6% to 0-100 (3.48 → 3.68s), ~9% to DRS 200-300 (6.59 → 7.19s), ~5% drop in low-grip lat-g (oil/wet). Stop distances barely affected. All shifts physically consistent with delayed throttle response.",
   "scenarios": {
-    "zero_to_100_kmh_seconds": 3.4583,
-    "fifty_ms_to_zero_stop_distance_m": 52.2282,
+    "zero_to_100_kmh_seconds": 3.6833,
+    "fifty_ms_to_zero_stop_distance_m": 52.6731,
     "steady_state_80m_radius_peak_lat_g": 9.9403,
-    "drs_active_200_to_300_kmh_seconds": 6.5917,
-    "hundred_kmh_to_zero_stop_distance_m": 18.3672,
-    "wet_fifty_ms_to_zero_stop_distance_m": 87.4727,
-    "wet_steady_state_80m_radius_peak_lat_g": 8.2295,
-    "oil_steady_state_80m_radius_peak_lat_g": 8.2112
+    "drs_active_200_to_300_kmh_seconds": 7.1917,
+    "hundred_kmh_to_zero_stop_distance_m": 18.5445,
+    "wet_fifty_ms_to_zero_stop_distance_m": 88.2055,
+    "wet_steady_state_80m_radius_peak_lat_g": 7.8545,
+    "oil_steady_state_80m_radius_peak_lat_g": 7.8130
   }
 }
