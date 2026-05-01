@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "captured_at": "wave-4-final",
-  "notes": "Captured at Wave 4 head (post Phase 0-7 incl. Pacejka research, BASE 3.5→2.5, 768kg mass, 1.9/1.8m track, 0.36m tire, 480Nm peak torque, Override Mode + symmetric X-mode, 9 MJ ERS caps, JS ride-height units fix). Replaces wave_3_baselines.json as the strict ±0.5% gate. 0-100 km/h on warm tires now 2.29s (real F1 ~2.6s).",
+  "captured_at": "wave-4-final + turbo-phase-2",
+  "notes": "Captured at Wave 4 head + turbo Phase 2 integration (TurboState with τ=0.20s, multiplier [0.5, 1.0], MAX_BOOST 4.8 bar). Boost lag shifts launch/DRS times slower vs pre-turbo (0-100: 2.29s → 2.83s; DRS 200-300: 4.85s → 4.93s). Cornering & stop-distance shifts are second-order effects from RPM/gear progression during warm-up. Replaces the wave-4-final fixture as the new strict ±0.5% gate for the turbocharger component.",
   "scenarios": {
-    "zero_to_100_kmh_seconds": 2.2917,
-    "fifty_ms_to_zero_stop_distance_m": 48.6456,
+    "zero_to_100_kmh_seconds": 2.8333,
+    "fifty_ms_to_zero_stop_distance_m": 48.7832,
     "steady_state_80m_radius_peak_lat_g": 9.9391,
-    "drs_active_200_to_300_kmh_seconds": 4.8500,
-    "hundred_kmh_to_zero_stop_distance_m": 18.5895,
-    "wet_fifty_ms_to_zero_stop_distance_m": 82.2281,
-    "wet_steady_state_80m_radius_peak_lat_g": 8.8325,
-    "oil_steady_state_80m_radius_peak_lat_g": 8.5881
+    "drs_active_200_to_300_kmh_seconds": 4.9333,
+    "hundred_kmh_to_zero_stop_distance_m": 17.2823,
+    "wet_fifty_ms_to_zero_stop_distance_m": 82.4930,
+    "wet_steady_state_80m_radius_peak_lat_g": 8.3701,
+    "oil_steady_state_80m_radius_peak_lat_g": 8.3531
   }
 }

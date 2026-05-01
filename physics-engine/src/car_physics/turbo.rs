@@ -14,11 +14,13 @@
 //! exhaust-mass-flow envelope (0.15-0.25 s) for a 150,000-rpm-class shaft;
 //! upper end of the band corresponds to the no-MGU-H 2026 spec.
 //!
-//! Multiplier endpoints `[0.5, 1.4]`:
-//!   * 0.5 floor — naturally-aspirated 1.6 L V6 BMEP at zero relative boost.
-//!   * 1.4 ceiling — full-boost BMEP scales ~2× NA, but the calibrated
-//!     `PEAK_TORQUE_NM = 480 Nm` already anchors a mid-boost state, so the
-//!     headroom above that is +40 %.
+//! Multiplier endpoints `[0.5, 1.0]`:
+//!   * 1.0 ceiling — `PEAK_TORQUE_NM = 480 Nm` is the FIA-spec full-boost
+//!     figure, so the calibrated torque curve already represents the
+//!     fully-spooled state. The multiplier therefore caps at 1.0 and only
+//!     subtracts during spool-up; at saturation it is a no-op.
+//!   * 0.5 floor — naturally-aspirated 1.6 L V6 BMEP at zero relative boost
+//!     is roughly half of the boosted spec.
 
 use crate::utils::smoothstep;
 
@@ -38,7 +40,7 @@ const ANTI_LAG_THROTTLE_THRESHOLD: f32 = 0.05;
 const ANTI_LAG_FLOOR_FRACTION: f32 = 0.4;
 
 const MULTIPLIER_FLOOR: f32 = 0.5;
-const MULTIPLIER_CEILING: f32 = 1.4;
+const MULTIPLIER_CEILING: f32 = 1.0;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TurboState {

@@ -44,6 +44,7 @@ pub struct CarPhysicsState {
     lat_g_filtered: f32,
     wheel_force: WheelForceIntegrator,
     clutch: clutch::ClutchState,
+    turbo: turbo::TurboState,
 }
 
 impl Default for CarPhysicsState {
@@ -65,6 +66,7 @@ impl Default for CarPhysicsState {
             lat_g_filtered: 0.0,
             wheel_force: WheelForceIntegrator::new(),
             clutch: clutch::ClutchState::new(),
+            turbo: turbo::TurboState::new(),
         }
     }
 }
@@ -126,7 +128,17 @@ impl CarPhysicsState {
 
         let effective_throttle_for_pt = input.throttle > 0.01 || (input.forward && !input.brake);
 
-        let pt_out = self.powertrain.update(
+        let effective_throttle = if input.throttle > 0.01 {
+            input.throttle.clamp(0.0, 1.0)
+        } else if input.forward {
+            1.0
+        } else {
+            0.0
+        };
+        let (boost_pressure_bar, boost_multiplier) =
+            self.turbo.update(effective_throttle, self.rpm, dt);
+
+        let mut pt_out = self.powertrain.update(
             dt,
             self.speed_ms,
             max_speed,
@@ -134,7 +146,9 @@ impl CarPhysicsState {
             ers_boost,
             weather_modifiers.engine_efficiency_multiplier * engine_power_multiplier,
             1.0,
+            boost_multiplier,
         );
+        pt_out.boost_pressure_bar = boost_pressure_bar;
         self.gear = pt_out.gear;
         self.rpm = pt_out.rpm;
 
@@ -196,14 +210,6 @@ impl CarPhysicsState {
         }
 
         let mut longitudinal_force = 0.0;
-
-        let effective_throttle = if input.throttle > 0.01 {
-            input.throttle.clamp(0.0, 1.0)
-        } else if input.forward {
-            1.0
-        } else {
-            0.0
-        };
 
         let effective_brake = if input.brake_analog > 0.01 {
             input.brake_analog.clamp(0.0, 1.0)
@@ -514,6 +520,11 @@ impl CarPhysicsState {
     /// Wave 4: used by formation-lap-warmup test scenarios.
     pub fn reset_powertrain_for_launch(&mut self) {
         self.powertrain.reset_for_launch();
+        self.turbo = turbo::TurboState::new();
+    }
+
+    pub fn get_boost_pressure_bar(&self) -> f32 {
+        self.turbo.boost_bar()
     }
 
     pub fn get_rpm(&self) -> f32 {

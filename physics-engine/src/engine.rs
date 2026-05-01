@@ -212,6 +212,10 @@ impl PhysicsEngine {
         self.car.reset_powertrain_for_launch();
     }
 
+    pub fn get_boost_pressure_bar(&self) -> f32 {
+        self.car.get_boost_pressure_bar()
+    }
+
     /// Wave 4 Phase 5: driver requests Override Mode (DRS replacement).
     /// 350 kW MGU-K burst with 0.5 MJ/lap budget. Auto-deactivates on
     /// brake or budget exhaustion. Holds the request between frames;
@@ -1649,5 +1653,136 @@ mod tests {
         assert!(
             (scraping_output.linear_velocity[2] - baseline_output.linear_velocity[2]).abs() < 1e-3
         );
+    }
+
+    #[test]
+    fn test_boost_starts_at_atmospheric() {
+        let engine = PhysicsEngine::new();
+        let bar = engine.get_boost_pressure_bar();
+        assert!((bar - 1.0).abs() < 1e-3, "fresh engine boost = {}", bar);
+    }
+
+    #[test]
+    fn test_boost_climbs_under_sustained_throttle() {
+        let mut engine = PhysicsEngine::new();
+        let mut linvel = [0.0_f32; 3];
+        let angvel = [0.0_f32; 3];
+        let input = CarInput {
+            forward: true,
+            ..Default::default()
+        };
+        for _ in 0..120 {
+            let out = engine.step(
+                1.0 / 120.0,
+                input,
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                linvel,
+                angvel,
+                [0.0, 1.0, 0.0],
+                None,
+            );
+            linvel = out.linear_velocity;
+        }
+        let bar = engine.get_boost_pressure_bar();
+        assert!(bar > 2.0, "boost should climb above 2.0 bar, got {}", bar);
+    }
+
+    #[test]
+    fn test_boost_decays_after_throttle_release() {
+        let mut engine = PhysicsEngine::new();
+        let mut linvel = [0.0_f32; 3];
+        let angvel = [0.0_f32; 3];
+        let on = CarInput {
+            forward: true,
+            ..Default::default()
+        };
+        for _ in 0..120 {
+            let out = engine.step(
+                1.0 / 120.0,
+                on,
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                linvel,
+                angvel,
+                [0.0, 1.0, 0.0],
+                None,
+            );
+            linvel = out.linear_velocity;
+        }
+        let peak = engine.get_boost_pressure_bar();
+        let off = CarInput::default();
+        for _ in 0..240 {
+            let out = engine.step(
+                1.0 / 120.0,
+                off,
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                linvel,
+                angvel,
+                [0.0, 1.0, 0.0],
+                None,
+            );
+            linvel = out.linear_velocity;
+        }
+        let after = engine.get_boost_pressure_bar();
+        assert!(
+            after < peak * 0.5,
+            "boost should decay materially after lift; peak={} after={}",
+            peak,
+            after
+        );
+    }
+
+    #[test]
+    fn test_boost_never_exceeds_max() {
+        let mut engine = PhysicsEngine::new();
+        let mut linvel = [0.0_f32; 3];
+        let angvel = [0.0_f32; 3];
+        let input = CarInput {
+            forward: true,
+            ..Default::default()
+        };
+        for _ in 0..600 {
+            let out = engine.step(
+                1.0 / 120.0,
+                input,
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                linvel,
+                angvel,
+                [0.0, 1.0, 0.0],
+                None,
+            );
+            linvel = out.linear_velocity;
+            assert!(engine.get_boost_pressure_bar() <= 4.8 + 1e-3);
+        }
+    }
+
+    #[test]
+    fn test_reset_powertrain_for_launch_resets_boost() {
+        let mut engine = PhysicsEngine::new();
+        let mut linvel = [0.0_f32; 3];
+        let angvel = [0.0_f32; 3];
+        let input = CarInput {
+            forward: true,
+            ..Default::default()
+        };
+        for _ in 0..120 {
+            let out = engine.step(
+                1.0 / 120.0,
+                input,
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+                linvel,
+                angvel,
+                [0.0, 1.0, 0.0],
+                None,
+            );
+            linvel = out.linear_velocity;
+        }
+        assert!(engine.get_boost_pressure_bar() > 1.5);
+        engine.reset_powertrain_for_launch();
+        assert!((engine.get_boost_pressure_bar() - 1.0).abs() < 1e-3);
     }
 }

@@ -74,7 +74,13 @@ impl PowertrainState {
         ers_boost_n: f32,
         engine_efficiency: f32,
         engine_power_mult: f32,
+        boost_multiplier: f32,
     ) -> PowertrainOutput {
+        let boost_multiplier = if boost_multiplier.is_finite() {
+            boost_multiplier.clamp(0.5, 1.0)
+        } else {
+            1.0
+        };
         self.update_shift(dt, speed_ms, is_throttle, max_speed_ms);
         let gear_ratio = GEAR_RATIOS[self.current_gear as usize];
         let total_ratio = gear_ratio * FINAL_DRIVE;
@@ -107,7 +113,7 @@ impl PowertrainState {
         let torque = if self.shift_state == ShiftState::Shifting {
             0.0
         } else if is_throttle {
-            self.torque_curve(self.engine_rpm) * engine_efficiency * engine_power_mult
+            self.torque_curve(self.engine_rpm) * engine_efficiency * engine_power_mult * boost_multiplier
         } else {
             0.0
         };
@@ -135,6 +141,8 @@ impl PowertrainState {
             gear_ratio,
             total_gear_ratio: total_ratio,
             shift_state: self.shift_state,
+            boost_multiplier,
+            boost_pressure_bar: 1.0,
         }
     }
 
@@ -242,6 +250,15 @@ pub struct PowertrainOutput {
     /// driven wheels.
     pub total_gear_ratio: f32,
     pub shift_state: ShiftState,
+    /// Multiplier on ICE torque from the turbo subsystem (`[0.5, 1.0]`).
+    /// `1.0` at full boost (= calibrated peak-torque baseline); drops to
+    /// 0.5 at atmospheric pressure during spool-up. `1.0` is also the
+    /// default when boost is not turbo-driven.
+    pub boost_multiplier: f32,
+    /// Intake pressure in bar absolute. Powertrain itself does not own
+    /// boost state — it writes `1.0` (atmospheric default). The car-level
+    /// caller overwrites this with the live `TurboState` reading.
+    pub boost_pressure_bar: f32,
 }
 
 #[inline]
@@ -294,11 +311,11 @@ mod tests {
     fn test_gear_1_more_force_than_gear_8() {
         let mut pt1 = PowertrainState::new();
         pt1.current_gear = 0;
-        let out1 = pt1.update(1.0 / 60.0, 10.0, 97.0, true, 0.0, 1.0, 1.0);
+        let out1 = pt1.update(1.0 / 60.0, 10.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
 
         let mut pt8 = PowertrainState::new();
         pt8.current_gear = 7;
-        let out8 = pt8.update(1.0 / 60.0, 10.0, 97.0, true, 0.0, 1.0, 1.0);
+        let out8 = pt8.update(1.0 / 60.0, 10.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
 
         assert!(
             out1.drive_force > out8.drive_force,
@@ -329,10 +346,10 @@ mod tests {
         let mut pt = PowertrainState::new();
         pt.current_gear = 3;
         pt.engine_rpm = UPSHIFT_RPM_THRESHOLD + 100.0;
-        pt.update(1.0 / 60.0, 95.0, 97.0, true, 0.0, 1.0, 1.0);
+        pt.update(1.0 / 60.0, 95.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
         assert_eq!(pt.shift_state, ShiftState::Shifting);
 
-        let out = pt.update(1.0 / 60.0, 95.0, 97.0, true, 0.0, 1.0, 1.0);
+        let out = pt.update(1.0 / 60.0, 95.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
         assert!(
             out.drive_force.abs() < 1.0,
             "Drive force should be ~0 during shift, got {}",
@@ -344,7 +361,7 @@ mod tests {
     fn test_rpm_from_wheel_speed() {
         let mut pt = PowertrainState::new();
         pt.current_gear = 3;
-        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0);
+        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
         assert!(
             out.rpm > IDLE_RPM,
             "RPM at 30m/s in 4th gear should be above idle, got {}",
@@ -362,12 +379,12 @@ mod tests {
         let mut pt_low = PowertrainState::new();
         pt_low.current_gear = 5;
         pt_low.engine_rpm = 7000.0;
-        let out_low = pt_low.update(1.0 / 60.0, 40.0, 97.0, false, 0.0, 1.0, 1.0);
+        let out_low = pt_low.update(1.0 / 60.0, 40.0, 97.0, false, 0.0, 1.0, 1.0, 1.0);
 
         let mut pt_high = PowertrainState::new();
         pt_high.current_gear = 2;
         pt_high.engine_rpm = 12000.0;
-        let out_high = pt_high.update(1.0 / 60.0, 40.0, 97.0, false, 0.0, 1.0, 1.0);
+        let out_high = pt_high.update(1.0 / 60.0, 40.0, 97.0, false, 0.0, 1.0, 1.0, 1.0);
 
         assert!(
             out_high.engine_brake_force > out_low.engine_brake_force,
@@ -381,11 +398,11 @@ mod tests {
     fn test_ers_boost_adds_to_drive_force() {
         let mut pt = PowertrainState::new();
         pt.current_gear = 3;
-        let out_no_ers = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0);
+        let out_no_ers = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
 
         let mut pt2 = PowertrainState::new();
         pt2.current_gear = 3;
-        let out_ers = pt2.update(1.0 / 60.0, 30.0, 97.0, true, 2000.0, 1.0, 1.0);
+        let out_ers = pt2.update(1.0 / 60.0, 30.0, 97.0, true, 2000.0, 1.0, 1.0, 1.0);
 
         assert!(
             (out_ers.drive_force - out_no_ers.drive_force - 2000.0).abs() < 1.0,
@@ -396,7 +413,7 @@ mod tests {
     #[test]
     fn test_idle_rpm_when_stationary() {
         let mut pt = PowertrainState::new();
-        let out = pt.update(1.0, 0.0, 97.0, false, 0.0, 1.0, 1.0);
+        let out = pt.update(1.0, 0.0, 97.0, false, 0.0, 1.0, 1.0, 1.0);
         assert!(
             (out.rpm - IDLE_RPM).abs() < 500.0,
             "RPM when stationary should be near idle ({}), got {}",
@@ -411,7 +428,7 @@ mod tests {
         pt.current_gear = 3;
         pt.engine_rpm = 12700.0;
 
-        pt.update(1.0 / 60.0, 94.5, 97.0, true, 0.0, 1.0, 1.0);
+        pt.update(1.0 / 60.0, 94.5, 97.0, true, 0.0, 1.0, 1.0, 1.0);
 
         assert_eq!(
             pt.get_gear(),
@@ -427,7 +444,7 @@ mod tests {
         pt.current_gear = 6;
         pt.engine_rpm = 7000.0;
 
-        pt.update(1.0 / 60.0, 81.5, 81.5, true, 0.0, 1.0, 1.0);
+        pt.update(1.0 / 60.0, 81.5, 81.5, true, 0.0, 1.0, 1.0, 1.0);
 
         assert_eq!(pt.get_gear(), 6);
         assert_eq!(pt.shift_state, ShiftState::Engaged);
@@ -441,7 +458,7 @@ mod tests {
         let mut pt = PowertrainState::new();
         pt.current_gear = 1;
         pt.engine_rpm = 8500.0;
-        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0);
+        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
 
         assert_eq!(
             pt.shift_state,
@@ -466,16 +483,64 @@ mod tests {
     }
 
     #[test]
+    fn test_drive_force_with_zero_boost_at_30ms_gear2() {
+        let mut pt = PowertrainState::new();
+        pt.current_gear = 1;
+        pt.engine_rpm = 8500.0;
+        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 0.5);
+        let baseline_at_unit_boost: f32 = 7477.1807;
+        let expected = baseline_at_unit_boost * 0.5;
+        let delta = (out.drive_force - expected).abs();
+        assert!(
+            delta <= expected.abs() * 0.01,
+            "zero-boost drive_force: got {}, want {}",
+            out.drive_force,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_drive_force_invariant_at_unit_boost_at_30ms_gear2() {
+        let mut pt = PowertrainState::new();
+        pt.current_gear = 1;
+        pt.engine_rpm = 8500.0;
+        let out = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, 1.0);
+        let baseline: f32 = 7477.1807;
+        let delta = (out.drive_force - baseline).abs();
+        assert!(
+            delta <= baseline.abs() * 0.01,
+            "unit-boost drive_force should equal mechanical baseline: got {}, want {}",
+            out.drive_force,
+            baseline
+        );
+    }
+
+    #[test]
+    fn test_boost_multiplier_is_finite_or_one() {
+        let mut pt = PowertrainState::new();
+        pt.current_gear = 1;
+        pt.engine_rpm = 8500.0;
+        let out_nan = pt.update(1.0 / 60.0, 30.0, 97.0, true, 0.0, 1.0, 1.0, f32::NAN);
+        let baseline: f32 = 7477.1807;
+        let delta = (out_nan.drive_force - baseline).abs();
+        assert!(
+            delta <= baseline.abs() * 0.01,
+            "NaN boost_multiplier should fall back to 1.0; got drive_force {}",
+            out_nan.drive_force
+        );
+    }
+
+    #[test]
     fn test_cap_assist_upshift_does_not_chain_immediately() {
         let mut pt = PowertrainState::new();
         pt.current_gear = 3;
         pt.engine_rpm = 12700.0;
 
-        pt.update(1.0 / 60.0, 94.5, 97.0, true, 0.0, 1.0, 1.0);
+        pt.update(1.0 / 60.0, 94.5, 97.0, true, 0.0, 1.0, 1.0, 1.0);
         assert_eq!(pt.get_gear(), 4);
 
         for _ in 0..8 {
-            pt.update(1.0 / 60.0, 94.5, 97.0, true, 0.0, 1.0, 1.0);
+            pt.update(1.0 / 60.0, 94.5, 97.0, true, 0.0, 1.0, 1.0, 1.0);
         }
 
         assert_eq!(pt.get_gear(), 4);
