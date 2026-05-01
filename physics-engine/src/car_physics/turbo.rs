@@ -1,6 +1,6 @@
 //! 2026-spec turbocharger / boost-pressure model.
 //!
-//! Output: a `boost_multiplier ∈ [0.5, 1.4]` that scales ICE torque inside
+//! Output: a `boost_multiplier ∈ [0.5, 1.0]` that scales ICE torque inside
 //! `powertrain.rs`. State: a single boost-pressure value in bar absolute,
 //! integrated by a first-order lowpass toward an exhaust-flow-driven target.
 //!
@@ -39,8 +39,8 @@ const TURBO_SPOOL_RPM_HIGH: f32 = 10500.0;
 const ANTI_LAG_THROTTLE_THRESHOLD: f32 = 0.05;
 const ANTI_LAG_FLOOR_FRACTION: f32 = 0.4;
 
-const MULTIPLIER_FLOOR: f32 = 0.5;
-const MULTIPLIER_CEILING: f32 = 1.0;
+pub const MULTIPLIER_FLOOR: f32 = 0.5;
+pub const MULTIPLIER_CEILING: f32 = 1.0;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TurboState {

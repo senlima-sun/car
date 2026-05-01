@@ -77,7 +77,10 @@ impl PowertrainState {
         boost_multiplier: f32,
     ) -> PowertrainOutput {
         let boost_multiplier = if boost_multiplier.is_finite() {
-            boost_multiplier.clamp(0.5, 1.0)
+            boost_multiplier.clamp(
+                crate::car_physics::turbo::MULTIPLIER_FLOOR,
+                crate::car_physics::turbo::MULTIPLIER_CEILING,
+            )
         } else {
             1.0
         };
@@ -142,7 +145,6 @@ impl PowertrainState {
             total_gear_ratio: total_ratio,
             shift_state: self.shift_state,
             boost_multiplier,
-            boost_pressure_bar: 1.0,
         }
     }
 
@@ -255,10 +257,6 @@ pub struct PowertrainOutput {
     /// 0.5 at atmospheric pressure during spool-up. `1.0` is also the
     /// default when boost is not turbo-driven.
     pub boost_multiplier: f32,
-    /// Intake pressure in bar absolute. Powertrain itself does not own
-    /// boost state — it writes `1.0` (atmospheric default). The car-level
-    /// caller overwrites this with the live `TurboState` reading.
-    pub boost_pressure_bar: f32,
 }
 
 #[inline]

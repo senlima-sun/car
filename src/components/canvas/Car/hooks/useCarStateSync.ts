@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { useCarStore } from '../../../../stores/useCarStore'
 import { useTireStore } from '../../../../stores/useTireStore'
 import { useTemperatureStore } from '../../../../stores/useTemperatureStore'
 import { useErsStore } from '../../../../stores/useErsStore'
@@ -36,6 +37,10 @@ export function useCarStateSync() {
     if (uiSync) {
       syncAeroState(syncResult.aero_state)
       syncBrakeState(syncResult.brake_state)
+      const boost = output.boost_pressure_bar
+      if (Number.isFinite(boost)) {
+        useCarStore.setState({ boostPressure: boost })
+      }
     }
 
     if (windSyncNeeded) {

@@ -135,10 +135,13 @@ impl CarPhysicsState {
         } else {
             0.0
         };
+        // Turbo runs before powertrain so this frame's combustion sees the
+        // already-integrated boost. RPM is last frame's value (one-frame
+        // lag); at 120 Hz that's < 5% of τ — within model noise.
         let (boost_pressure_bar, boost_multiplier) =
             self.turbo.update(effective_throttle, self.rpm, dt);
 
-        let mut pt_out = self.powertrain.update(
+        let pt_out = self.powertrain.update(
             dt,
             self.speed_ms,
             max_speed,
@@ -148,7 +151,6 @@ impl CarPhysicsState {
             1.0,
             boost_multiplier,
         );
-        pt_out.boost_pressure_bar = boost_pressure_bar;
         self.gear = pt_out.gear;
         self.rpm = pt_out.rpm;
 
@@ -513,7 +515,7 @@ impl CarPhysicsState {
                 slip_angle: [self.slip_angle_smoothed; 4],
                 slip_ratio: wheel_force_out.slip_ratio_per_wheel,
             },
-            boost_pressure_bar: sanitize(pt_out.boost_pressure_bar, 1.0),
+            boost_pressure_bar: sanitize(boost_pressure_bar, 1.0),
         }
     }
 
