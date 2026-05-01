@@ -574,7 +574,7 @@ impl CarPhysicsState {
         self.turbo = turbo::TurboState::new();
         self.fuel = fuel::FuelState::new();
         self.fuel_flow_factor_prev = 1.0;
-        self.wheel_force.reset_shaft_twist();
+        self.wheel_force.reset_shaft_torque();
     }
 
     pub fn get_shaft_stiffness_nm_rad(&self) -> f32 {

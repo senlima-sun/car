@@ -1,5 +1,5 @@
 use crate::car_physics::differential::DifferentialConfig;
-use crate::car_physics::driveshaft::{decay_twist, delivered_torque, ShaftConfig};
+use crate::car_physics::driveshaft::{decay_first_order, ShaftConfig};
 use crate::car_physics::powertrain::{ENGINE_INERTIA, TIRE_RADIUS};
 use crate::car_physics::tire_model::{
     combined_slip, gx_combined, gy_combined, pacejka_lateral_per_wheel, pacejka_longitudinal,
@@ -85,7 +85,10 @@ pub struct WheelForceIntegrator {
     wheel_angvel: [f32; 4],
     prev_wheel_fx: [f32; 4],
     /// Per-half-axle driveshaft twist (rad). [0] = RL, [1] = RR.
-    shaft_twist: [f32; 2],
+    /// 1st-order delivered drive torque per rear shaft (Nm). Tracks the
+    /// LSD allocation with τ = WHEEL_INERTIA / damping. Was named
+    /// `shaft_twist` during the spring-damper draft of this component.
+    shaft_torque_delivered_nm: [f32; 2],
 }
 
 impl WheelForceIntegrator {
@@ -97,12 +100,12 @@ impl WheelForceIntegrator {
         self.wheel_angvel
     }
 
-    pub fn shaft_twist(&self) -> [f32; 2] {
-        self.shaft_twist
+    pub fn shaft_torque_delivered_nm(&self) -> [f32; 2] {
+        self.shaft_torque_delivered_nm
     }
 
-    pub fn reset_shaft_twist(&mut self) {
-        self.shaft_twist = [0.0; 2];
+    pub fn reset_shaft_torque(&mut self) {
+        self.shaft_torque_delivered_nm = [0.0; 2];
     }
 
     pub fn prev_wheel_fx(&self) -> [f32; 4] {
@@ -176,13 +179,13 @@ impl WheelForceIntegrator {
                         let tau = (WHEEL_INERTIA / i.shaft.damping_nm_s_rad().max(1.0))
                             .clamp(0.001, 1.0);
                         let alpha = i.dt / (tau + i.dt);
-                        let prev = self.shaft_twist[shaft_idx];
+                        let prev = self.shaft_torque_delivered_nm[shaft_idx];
                         let next = prev + (lsd_torque - prev) * alpha;
-                        self.shaft_twist[shaft_idx] = next;
+                        self.shaft_torque_delivered_nm[shaft_idx] = next;
                         next
                     } else {
-                        self.shaft_twist[shaft_idx] = decay_twist(
-                            self.shaft_twist[shaft_idx],
+                        self.shaft_torque_delivered_nm[shaft_idx] = decay_first_order(
+                            self.shaft_torque_delivered_nm[shaft_idx],
                             i.dt,
                             SHAFT_DISENGAGE_DECAY_TAU_S,
                         );
