@@ -1,3 +1,6 @@
+// Pacejka Fz0 nominal load is a per-tire design property, not a live
+// vehicle mass. Stays at dry mass even with fuel onboard — actual loads
+// come from suspension raycasts.
 use crate::constants::car::CAR_MASS_DRY as CAR_MASS;
 
 const DEFAULT_LOAD_SENSITIVITY: f32 = 0.015;

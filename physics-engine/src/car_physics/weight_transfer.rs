@@ -80,6 +80,21 @@ mod tests {
     use crate::constants::car::CAR_MASS_DRY;
 
     #[test]
+    fn test_full_tank_increases_transfer_proportionally() {
+        let dry = calculate_weight_transfer(1.0, 0.0, CAR_MASS_DRY);
+        let loaded = calculate_weight_transfer(1.0, 0.0, CAR_MASS_DRY + 100.0);
+        let ratio = loaded.rear_load_change / dry.rear_load_change;
+        let expected = (CAR_MASS_DRY + 100.0) / CAR_MASS_DRY;
+        assert!(
+            (ratio - expected).abs() < 0.01,
+            "rear-load transfer should scale with mass: ratio {}, expected {}",
+            ratio,
+            expected
+        );
+    }
+
+
+    #[test]
     fn test_no_g_no_transfer() {
         let result = calculate_weight_transfer(0.0, 0.0, CAR_MASS_DRY);
 

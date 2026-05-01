@@ -157,20 +157,27 @@ impl PowertrainState {
         self.engine_rpm = lerp_f32(self.engine_rpm, target_rpm, dt * rpm_response);
         self.engine_rpm = self.engine_rpm.clamp(IDLE_RPM, REDLINE_RPM);
 
-        let torque = if self.shift_state == ShiftState::Shifting {
+        // ICE crankshaft torque before the FIA fuel cap clips it. The fuel
+        // system sizes its demand against this — surfacing the *post-cap*
+        // torque would feed the cap its own clipped output, never raising
+        // demand above the regulation.
+        let engine_torque_demand_nm = if self.shift_state == ShiftState::Shifting {
             0.0
         } else if is_throttle {
             self.torque_curve(self.engine_rpm)
                 * engine_efficiency
                 * engine_power_mult
                 * boost_multiplier
-                * fuel_flow_factor
         } else {
             0.0
         };
+        let engine_torque_actual_nm = engine_torque_demand_nm * fuel_flow_factor;
 
-        let wheel_torque = torque * total_ratio * TRANSMISSION_EFFICIENCY;
+        let wheel_torque = engine_torque_actual_nm * total_ratio * TRANSMISSION_EFFICIENCY;
         let drive_force = wheel_torque / TIRE_RADIUS;
+
+        let omega_rad_s = self.engine_rpm * std::f32::consts::TAU / 60.0;
+        let engine_power_demand_w = (engine_torque_demand_nm * omega_rad_s).max(0.0);
 
         let engine_brake = if !is_throttle && speed_ms > 1.0 {
             ENGINE_BRAKE_COEFFICIENT * self.engine_rpm * gear_ratio
@@ -194,6 +201,7 @@ impl PowertrainState {
             shift_state: self.shift_state,
             boost_multiplier,
             fuel_flow_factor,
+            engine_power_demand_w,
         }
     }
 
@@ -310,6 +318,10 @@ pub struct PowertrainOutput {
     /// when demanded flow is under the FIA cap; below `1.0` when the cap
     /// clips. `0.0` when the tank is empty.
     pub fuel_flow_factor: f32,
+    /// ICE crankshaft power demand (W) BEFORE the FIA cap clips it.
+    /// Pre-η, pre-ERS — the right input for the fuel system's energy
+    /// demand calculation. Zero when off-throttle or shifting.
+    pub engine_power_demand_w: f32,
 }
 
 #[inline]

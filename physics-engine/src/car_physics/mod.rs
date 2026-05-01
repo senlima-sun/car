@@ -23,14 +23,6 @@ use crate::utils::{lerp, sanitize, Quat, Vec3};
 // while braking. Compensates for slip-ratio oscillation at near-zero speed.
 const LOW_SPEED_CREEP_DAMPING_RATE: f32 = 8.0;
 
-/// Recover the ICE's mechanical power demand (W) from the powertrain
-/// output so the fuel system can size its energy demand. ERS contribution
-/// is subtracted because it does not draw fuel.
-fn engine_power_w_from_powertrain(pt: &powertrain::PowertrainOutput, rpm: f32) -> f32 {
-    let omega = rpm * std::f32::consts::TAU / 60.0;
-    let engine_torque_nm = pt.drive_force * powertrain::TIRE_RADIUS / pt.total_gear_ratio.max(1e-3);
-    (engine_torque_nm * omega).max(0.0)
-}
 
 // ============================================================================
 // Car Physics State
@@ -171,9 +163,12 @@ impl CarPhysicsState {
 
         // Fuel runs after powertrain: integrates the ICE's *current* demand
         // and yields the factor that gates the next frame. One-frame lag is
-        // within combustion-cycle noise at 120 Hz.
-        let engine_power_w = engine_power_w_from_powertrain(&pt_out, self.rpm);
-        let (fuel_flow_factor, _burned_kg) = self.fuel.update(engine_power_w, self.rpm, dt);
+        // within combustion-cycle noise at 120 Hz. The demand value comes
+        // directly from `PowertrainOutput.engine_power_demand_w` — pre-cap,
+        // pre-ERS, pre-transmission-loss, so the fuel cap measures the true
+        // ICE demand.
+        let (fuel_flow_factor, _burned_kg) =
+            self.fuel.update(pt_out.engine_power_demand_w, self.rpm, dt);
         self.fuel_flow_factor_prev = fuel_flow_factor;
 
         // Effective grip. Wave 3 Phase 7 review fix:
