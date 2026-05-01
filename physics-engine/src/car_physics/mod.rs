@@ -12,7 +12,7 @@ pub mod weight_transfer;
 pub mod wheel_force;
 
 use crate::car_physics::powertrain::TIRE_RADIUS;
-use crate::car_physics::wheel_force::{WheelForceIntegrator, WheelForceInputs, AXLE_TO_CORNER_SPLIT};
+use crate::car_physics::wheel_force::{WheelForceIntegrator, WheelForceInputs};
 use crate::constants::car::*;
 use crate::types::{
     CarInput, CarPhysicsOutput, PerWheelForces, TireDegradationModifiers, WeatherModifiers,
@@ -549,7 +549,9 @@ impl CarPhysicsState {
             boost_pressure_bar: sanitize(boost_pressure_bar, 1.0),
             fuel_mass_kg: sanitize(self.fuel.fuel_mass_kg(), 0.0),
             fuel_flow_factor: sanitize(self.fuel_flow_factor_prev, 1.0),
-            driven_torque_per_wheel: wheel_force_out.driven_torque_per_wheel,
+            driven_torque_per_wheel: wheel_force_out
+                .driven_torque_per_wheel
+                .map(|v| sanitize(v, 0.0)),
         }
     }
 

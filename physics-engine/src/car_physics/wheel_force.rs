@@ -14,7 +14,9 @@ const SLIP_RATIO_VEL_FLOOR_MS: f32 = 0.5;
 const SLIP_RATIO_ABS_CLAMP: f32 = 2.0;
 const WHEEL_OMEGA_OVERSPEED_RATIO: f32 = 5.0;
 const WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S: f32 = 50.0;
-pub const AXLE_TO_CORNER_SPLIT: f32 = 0.5;
+/// Brake torque is configured per-axle but applied per-corner. The drive
+/// path no longer uses this — the LSD does that split via `differential.rs`.
+pub const BRAKE_AXLE_TO_CORNER_SPLIT: f32 = 0.5;
 
 /// Per-step inputs to the wheel-force integrator.
 pub struct WheelForceInputs {
@@ -155,7 +157,7 @@ impl WheelForceIntegrator {
                     driven_torque_per_wheel[wheel] = drive_torque;
                 }
                 let brake_torque_corner =
-                    per_axle_brake * AXLE_TO_CORNER_SPLIT * i.brake_torque_modifier * TIRE_RADIUS;
+                    per_axle_brake * BRAKE_AXLE_TO_CORNER_SPLIT * i.brake_torque_modifier * TIRE_RADIUS;
                 // Brake opposes macro vehicle motion. Using ω.signum() causes
                 // a sign-flip oscillation when ω crosses zero (signum(0)=+1)
                 // which pumps spurious force into prev_wheel_fx.
