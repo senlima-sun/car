@@ -5,6 +5,7 @@ pub mod override_mode;
 pub mod powertrain;
 pub mod steering;
 pub mod tire_model;
+pub mod turbo;
 pub mod weight_transfer;
 pub mod wheel_force;
 
