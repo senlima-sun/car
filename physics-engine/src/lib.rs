@@ -289,6 +289,30 @@ impl PhysicsEngine {
         self.inner.set_diff_coast_ramp_deg(deg);
     }
 
+    /// Driveshaft torsional stiffness (Nm/rad).
+    #[wasm_bindgen]
+    pub fn get_shaft_stiffness_nm_rad(&self) -> f32 {
+        self.inner.get_shaft_stiffness_nm_rad()
+    }
+
+    /// Driveshaft torsional damping (Nm·s/rad).
+    #[wasm_bindgen]
+    pub fn get_shaft_damping_nm_s_rad(&self) -> f32 {
+        self.inner.get_shaft_damping_nm_s_rad()
+    }
+
+    /// Set driveshaft stiffness (Nm/rad). Clamped to [1k, 50k].
+    #[wasm_bindgen]
+    pub fn set_shaft_stiffness_nm_rad(&mut self, k: f32) {
+        self.inner.set_shaft_stiffness_nm_rad(k);
+    }
+
+    /// Set driveshaft damping (Nm·s/rad). Clamped to [0, 500].
+    #[wasm_bindgen]
+    pub fn set_shaft_damping_nm_s_rad(&mut self, c: f32) {
+        self.inner.set_shaft_damping_nm_s_rad(c);
+    }
+
     /// Get per-wheel tire wear as JavaScript object
     #[wasm_bindgen]
     pub fn get_tire_wear_per_wheel(&self) -> JsValue {

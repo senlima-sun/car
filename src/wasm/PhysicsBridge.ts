@@ -862,6 +862,26 @@ export function setDiffCoastRampDeg(deg: number): void {
   getPhysicsEngine().set_diff_coast_ramp_deg(Number.isFinite(deg) ? deg : 60)
 }
 
+/** Driveshaft torsional stiffness (Nm/rad). */
+export function getShaftStiffnessNmRad(): number {
+  const v = getPhysicsEngine().get_shaft_stiffness_nm_rad()
+  return Number.isFinite(v) ? v : 15000
+}
+
+export function setShaftStiffnessNmRad(k: number): void {
+  getPhysicsEngine().set_shaft_stiffness_nm_rad(Number.isFinite(k) ? k : 15000)
+}
+
+/** Driveshaft torsional damping (Nm·s/rad). */
+export function getShaftDampingNmSRad(): number {
+  const v = getPhysicsEngine().get_shaft_damping_nm_s_rad()
+  return Number.isFinite(v) ? v : 20
+}
+
+export function setShaftDampingNmSRad(c: number): void {
+  getPhysicsEngine().set_shaft_damping_nm_s_rad(Number.isFinite(c) ? c : 20)
+}
+
 /**
  * Get per-wheel tire wear (0.0 to 1.0 per wheel)
  */

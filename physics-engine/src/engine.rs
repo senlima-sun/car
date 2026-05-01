@@ -261,6 +261,22 @@ impl PhysicsEngine {
         self.car.set_diff_coast_ramp_deg(deg);
     }
 
+    pub fn get_shaft_stiffness_nm_rad(&self) -> f32 {
+        self.car.get_shaft_stiffness_nm_rad()
+    }
+
+    pub fn get_shaft_damping_nm_s_rad(&self) -> f32 {
+        self.car.get_shaft_damping_nm_s_rad()
+    }
+
+    pub fn set_shaft_stiffness_nm_rad(&mut self, k: f32) {
+        self.car.set_shaft_stiffness_nm_rad(k);
+    }
+
+    pub fn set_shaft_damping_nm_s_rad(&mut self, c: f32) {
+        self.car.set_shaft_damping_nm_s_rad(c);
+    }
+
     /// Wave 4 Phase 5: driver requests Override Mode (DRS replacement).
     /// 350 kW MGU-K burst with 0.5 MJ/lap budget. Auto-deactivates on
     /// brake or budget exhaustion. Holds the request between frames;

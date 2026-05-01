@@ -44,6 +44,10 @@ import {
   setDiffPowerRampDeg,
   getDiffCoastRampDeg,
   setDiffCoastRampDeg,
+  getShaftStiffnessNmRad,
+  setShaftStiffnessNmRad,
+  getShaftDampingNmSRad,
+  setShaftDampingNmSRad,
   setOnCurb,
   isOnCurb,
   setSurface,
@@ -180,6 +184,10 @@ interface PhysicsContextValue {
   setDiffPowerRampDeg: typeof setDiffPowerRampDeg
   getDiffCoastRampDeg: typeof getDiffCoastRampDeg
   setDiffCoastRampDeg: typeof setDiffCoastRampDeg
+  getShaftStiffnessNmRad: typeof getShaftStiffnessNmRad
+  setShaftStiffnessNmRad: typeof setShaftStiffnessNmRad
+  getShaftDampingNmSRad: typeof getShaftDampingNmSRad
+  setShaftDampingNmSRad: typeof setShaftDampingNmSRad
   setOnCurb: typeof setOnCurb
   isOnCurb: typeof isOnCurb
   setSurface: typeof setSurface
@@ -321,6 +329,10 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       setDiffPowerRampDeg,
       getDiffCoastRampDeg,
       setDiffCoastRampDeg,
+      getShaftStiffnessNmRad,
+      setShaftStiffnessNmRad,
+      getShaftDampingNmSRad,
+      setShaftDampingNmSRad,
       setOnCurb,
       isOnCurb,
       setSurface,
