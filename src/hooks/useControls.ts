@@ -50,10 +50,11 @@ export function useControls(): () => ControlsState {
 
     const forward = keyboard.forward || touch.forward
     const backward = keyboard.backward || touch.backward
-    const left = keyboard.left || touch.left
-    const right = keyboard.right || touch.right
 
     const mouseSteeringEnabled = useGameStore.getState().mouseSteeringEnabled
+    const left = mouseSteeringEnabled ? false : keyboard.left || touch.left
+    const right = mouseSteeringEnabled ? false : keyboard.right || touch.right
+
     if (prevMouseSteeringEnabled !== mouseSteeringEnabled) {
       smoothedSteer = 0
       prevMouseSteeringEnabled = mouseSteeringEnabled
