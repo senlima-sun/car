@@ -1,6 +1,7 @@
 import { useRef, useEffect, MutableRefObject } from 'react'
 import { RapierRigidBody } from '@react-three/rapier'
 import { useGameStore } from '../../../../stores/useGameStore'
+import { isRunningSessionPhase, useSessionStore } from '../../../../stores/useSessionStore'
 import { resetTireBlowout } from '../../../../wasm/PhysicsBridge'
 
 interface CarLifecycleOptions {
@@ -13,10 +14,12 @@ const SPAWN_PROTECT_FRAMES = 30
 export function useCarLifecycle({ chassisRef, startPosition }: CarLifecycleOptions) {
   const gameStatus = useGameStore(state => state.status)
   const cameraMode = useGameStore(state => state.cameraMode)
+  const sessionPhase = useSessionStore(state => state.phase)
 
   const spawnFrameRef = useRef(0)
   const prevGameStatusRef = useRef(gameStatus)
   const prevCameraModeRef = useRef(cameraMode)
+  const prevPausedRef = useRef(false)
   const tabResumeRef = useRef(false)
 
   useEffect(() => {
@@ -62,6 +65,8 @@ export function useCarLifecycle({ chassisRef, startPosition }: CarLifecycleOptio
     const chassis = chassisRef.current
     if (!chassis) return true
 
+    const isSessionPaused = gameStatus === 'session' && !isRunningSessionPhase(sessionPhase)
+
     if (cameraMode === 'free' || gameStatus === 'customize') {
       chassis.setGravityScale(0, true)
 
@@ -76,6 +81,16 @@ export function useCarLifecycle({ chassisRef, startPosition }: CarLifecycleOptio
       }
 
       prevCameraModeRef.current = cameraMode
+      prevPausedRef.current = isSessionPaused
+      return true
+    }
+
+    if (isSessionPaused) {
+      if (!prevPausedRef.current) {
+        chassis.setLinvel({ x: 0, y: 0, z: 0 }, true)
+        chassis.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      }
+      prevPausedRef.current = true
       return true
     }
 
@@ -83,6 +98,7 @@ export function useCarLifecycle({ chassisRef, startPosition }: CarLifecycleOptio
       chassis.setGravityScale(1, true)
     }
     prevCameraModeRef.current = cameraMode
+    prevPausedRef.current = false
 
     return false
   }
