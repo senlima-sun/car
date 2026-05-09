@@ -5,6 +5,7 @@ import {
   applyGammaCurve,
   applyVariableRatio,
   DEFAULT_MOUSE_STEERING_CONFIG,
+  validateSteeringConfig,
   wheelAngleToSteer,
 } from './steeringMath'
 
@@ -125,6 +126,35 @@ describe('full pipeline composition', () => {
     const wheel = accumulateWheelAngle(0, 200, cfg.sensitivityRadPerPx, maxRad)
     const normalised = Math.abs(wheelAngleToSteer(wheel, maxRad))
     expect(normalised).toBeGreaterThanOrEqual(0.4)
+  })
+})
+
+describe('validateSteeringConfig', () => {
+  test('returns defaults for non-object input', () => {
+    expect(validateSteeringConfig(null)).toEqual(DEFAULT_MOUSE_STEERING_CONFIG)
+    expect(validateSteeringConfig(undefined)).toEqual(DEFAULT_MOUSE_STEERING_CONFIG)
+    expect(validateSteeringConfig(42)).toEqual(DEFAULT_MOUSE_STEERING_CONFIG)
+  })
+
+  test('replaces non-positive sensitivity with default', () => {
+    const out = validateSteeringConfig({
+      ...DEFAULT_MOUSE_STEERING_CONFIG,
+      sensitivityRadPerPx: -1,
+    })
+    expect(out.sensitivityRadPerPx).toBe(DEFAULT_MOUSE_STEERING_CONFIG.sensitivityRadPerPx)
+  })
+
+  test('drops legacy/unknown fields', () => {
+    const stale = { ratioAtRestKmh: 2.0, ratioAtRest: 0.8, gamma: 1.5 }
+    const out = validateSteeringConfig(stale)
+    expect(out.ratioAtRest).toBe(0.8)
+    expect(out.gamma).toBe(1.5)
+    expect((out as unknown as Record<string, unknown>).ratioAtRestKmh).toBeUndefined()
+  })
+
+  test('keeps decayRatePerSec = 0 (zero is a valid disable value)', () => {
+    const out = validateSteeringConfig({ ...DEFAULT_MOUSE_STEERING_CONFIG, decayRatePerSec: 0 })
+    expect(out.decayRatePerSec).toBe(0)
   })
 })
 

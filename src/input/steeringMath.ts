@@ -16,6 +16,28 @@ export const DEFAULT_MOUSE_STEERING_CONFIG: MouseSteeringConfig = {
   ratioAtTopSpeed: 0.5,
 }
 
+export function validateSteeringConfig(input: unknown): MouseSteeringConfig {
+  const fallback = DEFAULT_MOUSE_STEERING_CONFIG
+  if (!input || typeof input !== 'object') return { ...fallback }
+  const candidate = input as Partial<Record<keyof MouseSteeringConfig, unknown>>
+  const pickPositive = (key: keyof MouseSteeringConfig): number => {
+    const v = candidate[key]
+    return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : fallback[key]
+  }
+  const pickFinite = (key: keyof MouseSteeringConfig): number => {
+    const v = candidate[key]
+    return typeof v === 'number' && Number.isFinite(v) ? v : fallback[key]
+  }
+  return {
+    gamma: pickPositive('gamma'),
+    maxWheelAngleDeg: pickPositive('maxWheelAngleDeg'),
+    decayRatePerSec: pickFinite('decayRatePerSec'),
+    sensitivityRadPerPx: pickPositive('sensitivityRadPerPx'),
+    ratioAtRest: pickPositive('ratioAtRest'),
+    ratioAtTopSpeed: pickPositive('ratioAtTopSpeed'),
+  }
+}
+
 const SNAP_TO_ZERO_RAD = 1e-4
 const RATIO_TOP_SPEED_KMH = 220
 

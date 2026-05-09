@@ -2,7 +2,7 @@ import { useKeyboardControls } from '@react-three/drei'
 import { useTouchControlsStore } from '../stores/useTouchControlsStore'
 import { useGameStore } from '../stores/useGameStore'
 import { useCarStore } from '../stores/useCarStore'
-import { isLockActive, readSteer } from '../input/mouseSteeringState'
+import { consumeAndSteer, isLockActive } from '../input/mouseSteeringState'
 
 interface ControlsState {
   forward: boolean
@@ -54,9 +54,13 @@ export function useControls(): () => ControlsState {
 
     const mouseSteeringEnabled = useGameStore.getState().mouseSteeringEnabled
     let steer: number
-    if (mouseSteeringEnabled && isLockActive()) {
-      const speedKmh = useCarStore.getState().speed
-      steer = readSteer(speedKmh, dt)
+    if (mouseSteeringEnabled) {
+      if (isLockActive()) {
+        const speedKmh = useCarStore.getState().speed
+        steer = consumeAndSteer(speedKmh, dt)
+      } else {
+        steer = 0
+      }
       smoothedSteer = steer
     } else {
       const rawSteer = left ? -1 : right ? 1 : 0
