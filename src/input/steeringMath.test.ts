@@ -38,6 +38,11 @@ describe('applyGammaCurve', () => {
       expect(curr).toBeGreaterThan(prev)
     }
   })
+
+  test('out-of-range input is clamped to ±1 (documented contract)', () => {
+    expect(applyGammaCurve(1.5, 1.7)).toBeCloseTo(1, 9)
+    expect(applyGammaCurve(-1.5, 1.7)).toBeCloseTo(-1, 9)
+  })
 })
 
 describe('accumulateWheelAngle', () => {
@@ -68,6 +73,10 @@ describe('applyDecay', () => {
   test('snaps tiny values to 0', () => {
     expect(applyDecay(0.00001, 1, 6)).toBe(0)
   })
+
+  test('large dt (tab resume, 5s) snaps to 0', () => {
+    expect(applyDecay(Math.PI, 5.0, 6)).toBe(0)
+  })
 })
 
 describe('applyVariableRatio', () => {
@@ -91,19 +100,31 @@ describe('applyVariableRatio', () => {
 })
 
 describe('full pipeline composition', () => {
-  test('+5 px mouse delta at rest produces expected steer', () => {
+  test('+5 px mouse delta at rest with one decay tick produces expected steer', () => {
     const cfg = DEFAULT_MOUSE_STEERING_CONFIG
+    const dt = 1 / 120
     const maxRad = (cfg.maxWheelAngleDeg * Math.PI) / 180
-    const wheel = accumulateWheelAngle(0, 5, cfg.sensitivityRadPerPx, maxRad)
-    expect(wheel).toBeCloseTo(5 * cfg.sensitivityRadPerPx, 9)
-    const normalised = wheelAngleToSteer(wheel, maxRad)
+    const accumulated = accumulateWheelAngle(0, 5, cfg.sensitivityRadPerPx, maxRad)
+    const decayed = applyDecay(accumulated, dt, cfg.decayRatePerSec)
+    const normalised = wheelAngleToSteer(decayed, maxRad)
     const curved = applyGammaCurve(normalised, cfg.gamma)
-    const final = applyVariableRatio(curved, 0, cfg.ratioAtRestKmh, cfg.ratioAtTopKmh)
-    const expectedNormalised = (5 * cfg.sensitivityRadPerPx) / maxRad
+    const final = applyVariableRatio(curved, 0, cfg.ratioAtRest, cfg.ratioAtTopSpeed)
+
+    const expectedAccumulated = 5 * cfg.sensitivityRadPerPx
+    const expectedDecayed = expectedAccumulated * Math.exp(-cfg.decayRatePerSec * dt)
+    const expectedNormalised = expectedDecayed / maxRad
     const expectedCurved =
       Math.sign(expectedNormalised) * Math.pow(Math.abs(expectedNormalised), cfg.gamma)
-    const expectedFinal = expectedCurved * cfg.ratioAtRestKmh
+    const expectedFinal = expectedCurved * cfg.ratioAtRest
     expect(final).toBeCloseTo(expectedFinal, 9)
+  })
+
+  test('default config is calibrated: 200 px reaches >= 0.4 normalised before gamma', () => {
+    const cfg = DEFAULT_MOUSE_STEERING_CONFIG
+    const maxRad = (cfg.maxWheelAngleDeg * Math.PI) / 180
+    const wheel = accumulateWheelAngle(0, 200, cfg.sensitivityRadPerPx, maxRad)
+    const normalised = Math.abs(wheelAngleToSteer(wheel, maxRad))
+    expect(normalised).toBeGreaterThanOrEqual(0.4)
   })
 })
 
