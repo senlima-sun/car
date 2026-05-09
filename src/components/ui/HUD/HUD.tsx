@@ -154,12 +154,13 @@ export default function HUD() {
               <div className='absolute bottom-5 right-5'>
                 <TemperaturePanel />
               </div>
-              {mouseSteeringEnabled && (
-                <div className='absolute bottom-[200px] left-1/2 -translate-x-1/2'>
-                  <SteeringWheelIndicator />
-                </div>
-              )}
             </>
+          )}
+
+          {isRunningSession && !isMobile && mouseSteeringEnabled && (
+            <div className='absolute bottom-[200px] left-1/2 -translate-x-1/2'>
+              <SteeringWheelIndicator />
+            </div>
           )}
 
           {isRunningSession && isInPitBox && (
