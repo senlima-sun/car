@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { getWheelAngleRad, peekSteer } from '@/input/mouseSteeringState'
+import { getSteeringConfig, getWheelAngleRad } from '@/input/mouseSteeringState'
 
 const WHEEL_PX = 56
 const BAR_WIDTH = 110
@@ -14,22 +14,21 @@ export default function SteeringWheelIndicator() {
     let raf = 0
     const tick = () => {
       const wheelRad = getWheelAngleRad()
-      const steer = peekSteer()
+      const deg = (wheelRad * 180) / Math.PI
+      const maxDeg = getSteeringConfig().maxWheelAngleDeg
+      const normalised = maxDeg > 0 ? Math.max(-1, Math.min(1, deg / maxDeg)) : 0
       if (wheelRef.current) {
-        const deg = (wheelRad * 180) / Math.PI
         wheelRef.current.setAttribute('transform', `rotate(${deg.toFixed(2)})`)
       }
       if (fillRef.current) {
-        const clamped = Math.max(-1, Math.min(1, steer))
-        const width = Math.abs(clamped) * BAR_HALF
-        const left = clamped >= 0 ? BAR_HALF : BAR_HALF - width
+        const width = Math.abs(normalised) * BAR_HALF
+        const left = normalised >= 0 ? BAR_HALF : BAR_HALF - width
         fillRef.current.style.width = `${width.toFixed(1)}px`
         fillRef.current.style.left = `${left.toFixed(1)}px`
         fillRef.current.style.background =
-          Math.abs(clamped) > 0.7 ? 'rgba(245, 158, 11, 0.85)' : 'rgba(34, 197, 94, 0.85)'
+          Math.abs(normalised) > 0.7 ? 'rgba(245, 158, 11, 0.85)' : 'rgba(34, 197, 94, 0.85)'
       }
       if (labelRef.current) {
-        const deg = (wheelRad * 180) / Math.PI
         labelRef.current.textContent = `${deg >= 0 ? '+' : ''}${deg.toFixed(0)}°`
       }
       raf = requestAnimationFrame(tick)
