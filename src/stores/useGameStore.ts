@@ -3,7 +3,6 @@ import { persist } from 'zustand/middleware'
 import { useCarStore } from './useCarStore'
 import { useActiveAeroStore } from './useActiveAeroStore'
 import { useSessionStore } from './useSessionStore'
-import { setLookSensitivity as syncLookSensitivity } from '@/input/cameraLookState'
 import {
   resetSteering as resetMouseSteering,
   setSteeringConfig as syncMouseSteeringConfig,
@@ -26,7 +25,6 @@ interface GameState {
   cameraMode: CameraMode
   previousCameraMode: CameraMode
   isSettingsOpen: boolean
-  lookSensitivity: number
   showFPS: boolean
   mouseSteeringEnabled: boolean
   mouseSteeringConfig: MouseSteeringConfig
@@ -47,7 +45,6 @@ interface GameState {
   toggleSettings: () => void
   openSettings: () => void
   closeSettings: () => void
-  setLookSensitivity: (sensitivity: number) => void
   toggleShowFPS: () => void
   setMouseSteeringEnabled: (enabled: boolean) => void
   setMouseSteeringConfig: (config: Partial<MouseSteeringConfig>) => void
@@ -62,7 +59,6 @@ export const useGameStore = create<GameState>()(
       cameraMode: 'third-person',
       previousCameraMode: 'third-person',
       isSettingsOpen: false,
-      lookSensitivity: 0.002,
       showFPS: true,
       mouseSteeringEnabled: false,
       mouseSteeringConfig: { ...DEFAULT_MOUSE_STEERING_CONFIG },
@@ -128,10 +124,6 @@ export const useGameStore = create<GameState>()(
       toggleSettings: () => set(state => ({ isSettingsOpen: !state.isSettingsOpen })),
       openSettings: () => set({ isSettingsOpen: true }),
       closeSettings: () => set({ isSettingsOpen: false }),
-      setLookSensitivity: sensitivity => {
-        syncLookSensitivity(sensitivity)
-        set({ lookSensitivity: sensitivity })
-      },
       toggleShowFPS: () => set(state => ({ showFPS: !state.showFPS })),
       setMouseSteeringEnabled: enabled => {
         if (enabled) {
@@ -160,14 +152,12 @@ export const useGameStore = create<GameState>()(
       partialize: state => ({
         cameraMode: state.cameraMode,
         previousCameraMode: state.previousCameraMode,
-        lookSensitivity: state.lookSensitivity,
         showFPS: state.showFPS,
         mouseSteeringEnabled: state.mouseSteeringEnabled,
         mouseSteeringConfig: state.mouseSteeringConfig,
       }),
       onRehydrateStorage: () => state => {
         if (!state) return
-        syncLookSensitivity(state.lookSensitivity)
         syncMouseSteeringConfig(state.mouseSteeringConfig)
       },
     },

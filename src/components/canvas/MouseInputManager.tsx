@@ -3,7 +3,6 @@ import { useThree } from '@react-three/fiber'
 import { usePointerLock } from '@/hooks/usePointerLock'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
-import { resetLookState } from '@/input/cameraLookState'
 
 export default function MouseInputManager() {
   const { requestLock, exitLock } = usePointerLock()
@@ -17,10 +16,12 @@ export default function MouseInputManager() {
   const mouseSteeringEnabled = useGameStore(s => s.mouseSteeringEnabled)
   const sessionPhase = useSessionStore(s => s.phase)
 
-  const baseGate = shellStatus === 'session' && sessionPhase === 'running' && !isSettingsOpen
-  const shouldLockForLook = baseGate && cameraMode === 'first-person'
-  const shouldLockForSteering = baseGate && mouseSteeringEnabled && cameraMode !== 'free'
-  const shouldLock = shouldLockForLook || shouldLockForSteering
+  const shouldLock =
+    shellStatus === 'session' &&
+    sessionPhase === 'running' &&
+    !isSettingsOpen &&
+    mouseSteeringEnabled &&
+    cameraMode !== 'free'
 
   useEffect(() => {
     clearTimeout(lockDelayRef.current)
@@ -28,7 +29,6 @@ export default function MouseInputManager() {
       lockDelayRef.current = setTimeout(requestLock, 100)
     } else {
       exitLock()
-      resetLookState()
     }
     return () => clearTimeout(lockDelayRef.current)
   }, [shouldLock, requestLock, exitLock])

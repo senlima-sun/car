@@ -1,6 +1,5 @@
 import { useEffect, useCallback } from 'react'
 import { useThree } from '@react-three/fiber'
-import { setPointerLocked, resetLookState, handleLookMouseMove } from '@/input/cameraLookState'
 import { handleSteeringMouseMove, setSteeringLocked } from '@/input/mouseSteeringState'
 import { useGameStore } from '@/stores/useGameStore'
 
@@ -21,23 +20,16 @@ export function usePointerLock() {
   useEffect(() => {
     const onLockChange = () => {
       const locked = document.pointerLockElement === canvas
-      setPointerLocked(locked)
       const steeringEnabled = useGameStore.getState().mouseSteeringEnabled
       setSteeringLocked(locked && steeringEnabled)
-      if (!locked) resetLookState()
-    }
-
-    const onMouseMove = (e: MouseEvent) => {
-      handleLookMouseMove(e)
-      handleSteeringMouseMove(e)
     }
 
     document.addEventListener('pointerlockchange', onLockChange)
-    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mousemove', handleSteeringMouseMove)
 
     return () => {
       document.removeEventListener('pointerlockchange', onLockChange)
-      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mousemove', handleSteeringMouseMove)
     }
   }, [canvas])
 

@@ -4,13 +4,10 @@ import { useFrame } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { CAMERA_NEAR, CAMERA_FAR, FLIP_ROTATION } from './constants'
 import { extractYawQuaternion, slerpOrSnap } from './utils'
-import { getLookYaw, getLookPitch } from '@/input/cameraLookState'
 import type { CameraTargetProps } from './types'
 
 const ROTATION_LERP = 0.4
-const DRIVER_OFFSET = new Vector3(0, 1.2, 2.95)
-const Y_AXIS = new Vector3(0, 1, 0)
-const X_AXIS = new Vector3(1, 0, 0)
+const DRIVER_OFFSET = new Vector3(0, 1.2, 3.35)
 
 export default function FirstPersonCamera({ target }: CameraTargetProps) {
   const cameraRef = useRef<ThreePerspectiveCamera>(null)
@@ -20,8 +17,6 @@ export default function FirstPersonCamera({ target }: CameraTargetProps) {
   const _pos = useRef(new Vector3())
   const _worldPos = useRef(new Vector3())
   const _targetQuat = useRef(new Quaternion())
-  const _lookYaw = useRef(new Quaternion())
-  const _lookPitch = useRef(new Quaternion())
   const initialized = useRef(false)
 
   useFrame(() => {
@@ -37,10 +32,6 @@ export default function FirstPersonCamera({ target }: CameraTargetProps) {
     _pos.current.add(_worldPos.current)
 
     _targetQuat.current.copy(_yawQuat.current).multiply(FLIP_ROTATION)
-
-    _lookYaw.current.setFromAxisAngle(Y_AXIS, getLookYaw())
-    _lookPitch.current.setFromAxisAngle(X_AXIS, getLookPitch())
-    _targetQuat.current.multiply(_lookYaw.current).multiply(_lookPitch.current)
 
     slerpOrSnap(cameraRef.current, _targetQuat.current, ROTATION_LERP, initialized)
     cameraRef.current.position.copy(_pos.current)

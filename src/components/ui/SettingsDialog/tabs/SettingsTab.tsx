@@ -2,8 +2,6 @@ import { useGameStore } from '@/stores/useGameStore'
 import { MouseSteeringAdvanced } from '../components/MouseSteeringAdvanced'
 
 export function SettingsTab() {
-  const lookSensitivity = useGameStore(s => s.lookSensitivity)
-  const setLookSensitivity = useGameStore(s => s.setLookSensitivity)
   const showFPS = useGameStore(s => s.showFPS)
   const toggleShowFPS = useGameStore(s => s.toggleShowFPS)
   const mouseSteeringEnabled = useGameStore(s => s.mouseSteeringEnabled)
@@ -12,29 +10,6 @@ export function SettingsTab() {
 
   return (
     <div>
-      <div className='flex justify-between items-center py-2 mb-4'>
-        <div>
-          <div className='text-white text-[13px] font-medium'>Look Sensitivity</div>
-          <div className='text-white/40 text-[11px] mt-0.5'>
-            Mouse look speed in first-person view
-          </div>
-        </div>
-        <div className='flex items-center gap-2'>
-          <input
-            type='range'
-            min={0.0005}
-            max={0.005}
-            step={0.0005}
-            value={lookSensitivity}
-            onChange={e => setLookSensitivity(Number(e.target.value))}
-            className='w-[120px] accent-white/60'
-          />
-          <span className='text-white/70 text-[12px] font-mono w-[44px] text-right'>
-            {lookSensitivity.toFixed(4)}
-          </span>
-        </div>
-      </div>
-
       <div className='flex justify-between items-center py-2 mb-4'>
         <div>
           <div className='text-white text-[13px] font-medium'>Mouse Steering Wheel</div>
