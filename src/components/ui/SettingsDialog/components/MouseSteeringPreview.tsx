@@ -15,6 +15,7 @@ export function MouseSteeringPreview() {
   configRef.current = config
 
   const [hovering, setHovering] = useState(false)
+  const [holding, setHolding] = useState(false)
   const wheelAngleRef = useRef(0)
   const pendingDeltaRef = useRef(0)
   const lastSteerRef = useRef(0)
@@ -25,20 +26,18 @@ export function MouseSteeringPreview() {
     const onMouseMove = (e: MouseEvent) => {
       pendingDeltaRef.current += e.movementX
     }
-    const onMouseDown = (e: MouseEvent) => {
-      if (e.button === 0) holdRef.current = true
-    }
     const onMouseUp = (e: MouseEvent) => {
-      if (e.button === 0) holdRef.current = false
+      if (e.button === 0) {
+        holdRef.current = false
+        setHolding(false)
+      }
     }
     const area = areaRef.current
     if (!area || !hovering) return
     area.addEventListener('mousemove', onMouseMove)
-    area.addEventListener('mousedown', onMouseDown)
     window.addEventListener('mouseup', onMouseUp)
     return () => {
       area.removeEventListener('mousemove', onMouseMove)
-      area.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mouseup', onMouseUp)
       holdRef.current = false
     }
@@ -84,11 +83,29 @@ export function MouseSteeringPreview() {
           ref={areaRef}
           onMouseEnter={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}
+          onMouseDown={e => {
+            if (e.button === 0) {
+              e.preventDefault()
+              holdRef.current = true
+              setHolding(true)
+            }
+          }}
+          onContextMenu={e => e.preventDefault()}
           className={`flex-1 h-[88px] rounded border ${
-            hovering ? 'border-white/30 bg-white/5' : 'border-white/10 bg-white/2'
-          } flex items-center justify-center text-[10px] text-white/40 transition-colors cursor-crosshair`}
+            holding
+              ? 'border-amber-400/60 bg-amber-400/10'
+              : hovering
+                ? 'border-white/30 bg-white/5'
+                : 'border-white/10 bg-white/2'
+          } flex items-center justify-center text-[10px] transition-colors cursor-crosshair select-none ${
+            holding ? 'text-amber-200/85' : 'text-white/40'
+          }`}
         >
-          {hovering ? 'move ← → · hold click to lock' : 'hover here to test'}
+          {holding
+            ? 'locked — release to recenter'
+            : hovering
+              ? 'move ← → · hold click to lock'
+              : 'hover here to test'}
         </div>
         <div className='shrink-0'>
           <SteeringWheelIndicator source={() => wheelAngleRef.current} size={64} barWidth={120} />
