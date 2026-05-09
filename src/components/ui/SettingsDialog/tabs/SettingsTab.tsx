@@ -5,6 +5,8 @@ export function SettingsTab() {
   const setLookSensitivity = useGameStore(s => s.setLookSensitivity)
   const showFPS = useGameStore(s => s.showFPS)
   const toggleShowFPS = useGameStore(s => s.toggleShowFPS)
+  const mouseSteeringEnabled = useGameStore(s => s.mouseSteeringEnabled)
+  const setMouseSteeringEnabled = useGameStore(s => s.setMouseSteeringEnabled)
   const enterMenu = useGameStore(s => s.enterMenu)
 
   return (
@@ -30,6 +32,27 @@ export function SettingsTab() {
             {lookSensitivity.toFixed(4)}
           </span>
         </div>
+      </div>
+
+      <div className='flex justify-between items-center py-2 mb-4'>
+        <div>
+          <div className='text-white text-[13px] font-medium'>Mouse Steering Wheel</div>
+          <div className='text-white/40 text-[11px] mt-0.5'>
+            Steer with the mouse instead of A/D keys. Click the canvas to capture.
+          </div>
+        </div>
+        <button
+          onClick={() => setMouseSteeringEnabled(!mouseSteeringEnabled)}
+          className={`w-11 h-6 rounded-full relative cursor-pointer transition-colors ${
+            mouseSteeringEnabled ? 'bg-white/40' : 'bg-white/20'
+          }`}
+        >
+          <div
+            className={`w-[18px] h-[18px] bg-white rounded-full absolute top-[3px] transition-[left] ${
+              mouseSteeringEnabled ? 'left-[23px]' : 'left-[3px]'
+            }`}
+          />
+        </button>
       </div>
 
       <div className='flex justify-between items-center py-2 mb-4 border-b border-white/5 pb-4'>

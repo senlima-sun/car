@@ -14,13 +14,13 @@ export default function MouseInputManager() {
   const isSettingsOpen = useGameStore(s => s.isSettingsOpen)
   const shellStatus = useGameStore(s => s.status)
   const cameraMode = useGameStore(s => s.cameraMode)
+  const mouseSteeringEnabled = useGameStore(s => s.mouseSteeringEnabled)
   const sessionPhase = useSessionStore(s => s.phase)
 
-  const shouldLock =
-    shellStatus === 'session' &&
-    sessionPhase === 'running' &&
-    cameraMode === 'first-person' &&
-    !isSettingsOpen
+  const baseGate = shellStatus === 'session' && sessionPhase === 'running' && !isSettingsOpen
+  const shouldLockForLook = baseGate && cameraMode === 'first-person'
+  const shouldLockForSteering = baseGate && mouseSteeringEnabled && cameraMode !== 'free'
+  const shouldLock = shouldLockForLook || shouldLockForSteering
 
   useEffect(() => {
     clearTimeout(lockDelayRef.current)
