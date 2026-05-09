@@ -7,6 +7,7 @@ import { setLookSensitivity as syncLookSensitivity } from '@/input/cameraLookSta
 import {
   resetSteering as resetMouseSteering,
   setSteeringConfig as syncMouseSteeringConfig,
+  setSteeringLocked as syncMouseSteeringLocked,
 } from '@/input/mouseSteeringState'
 import { DEFAULT_MOUSE_STEERING_CONFIG, type MouseSteeringConfig } from '@/input/steeringMath'
 
@@ -132,7 +133,13 @@ export const useGameStore = create<GameState>()(
       },
       toggleShowFPS: () => set(state => ({ showFPS: !state.showFPS })),
       setMouseSteeringEnabled: enabled => {
-        if (!enabled) resetMouseSteering()
+        if (enabled) {
+          if (typeof document !== 'undefined' && document.pointerLockElement) {
+            syncMouseSteeringLocked(true)
+          }
+        } else {
+          resetMouseSteering()
+        }
         set({ mouseSteeringEnabled: enabled })
       },
       setMouseSteeringConfig: partial =>

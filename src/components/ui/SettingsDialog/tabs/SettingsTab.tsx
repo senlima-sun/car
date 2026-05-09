@@ -38,7 +38,7 @@ export function SettingsTab() {
         <div>
           <div className='text-white text-[13px] font-medium'>Mouse Steering Wheel</div>
           <div className='text-white/40 text-[11px] mt-0.5'>
-            Steer with the mouse instead of A/D keys. Click the canvas to capture.
+            Steer with the mouse instead of A/D keys. Pointer is captured during racing.
           </div>
         </div>
         <button
