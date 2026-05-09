@@ -8,10 +8,10 @@ export interface MouseSteeringConfig {
 }
 
 export const DEFAULT_MOUSE_STEERING_CONFIG: MouseSteeringConfig = {
-  gamma: 1.7,
-  maxWheelAngleDeg: 270,
+  gamma: 1.2,
+  maxWheelAngleDeg: 180,
   decayRatePerSec: 6,
-  sensitivityRadPerPx: 0.01,
+  sensitivityRadPerPx: 0.022,
   ratioAtRest: 1.0,
   ratioAtTopSpeed: 0.5,
 }

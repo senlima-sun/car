@@ -149,6 +149,17 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'game-settings',
+      version: 2,
+      migrate: (state: unknown, version) => {
+        if (!state || typeof state !== 'object') return state as never
+        if (version < 2) {
+          return {
+            ...(state as Record<string, unknown>),
+            mouseSteeringConfig: { ...DEFAULT_MOUSE_STEERING_CONFIG },
+          } as never
+        }
+        return state as never
+      },
       partialize: state => ({
         cameraMode: state.cameraMode,
         previousCameraMode: state.previousCameraMode,
