@@ -1,6 +1,8 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useCarStore } from '../../../../stores/useCarStore'
+import { useGameStore } from '../../../../stores/useGameStore'
+import { getWheelAngleRad, isLockActive } from '../../../../input/mouseSteeringState'
 import { SteeringWheel } from './SteeringWheel'
 
 interface CockpitProps {
@@ -8,11 +10,18 @@ interface CockpitProps {
   showDisplay: boolean
 }
 
+const SW_ANGLE_GAIN = 1.5
+
 export function Cockpit({ showDisplay }: CockpitProps) {
   const steerRef = useRef(0)
 
   useFrame(() => {
-    steerRef.current = useCarStore.getState().steerAngle
+    const mouseEnabled = useGameStore.getState().mouseSteeringEnabled
+    if (mouseEnabled && isLockActive()) {
+      steerRef.current = getWheelAngleRad() / SW_ANGLE_GAIN
+    } else {
+      steerRef.current = useCarStore.getState().steerAngle
+    }
   })
 
   return (

@@ -22,15 +22,6 @@ const ROWS: SliderRow[] = [
     format: v => v.toFixed(1),
   },
   {
-    field: 'maxWheelAngleDeg',
-    label: 'Max Wheel Angle',
-    hint: 'Total wheel rotation from center to full lock',
-    min: 90,
-    max: 720,
-    step: 30,
-    format: v => `${v.toFixed(0)}°`,
-  },
-  {
     field: 'decayRatePerSec',
     label: 'Center Decay',
     hint: 'How fast the wheel returns to center when idle',
