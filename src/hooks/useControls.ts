@@ -33,6 +33,7 @@ const STEER_CENTER_SMOOTHING = 12.0
 
 let smoothedSteer = 0
 let lastSteerTime = 0
+let prevMouseSteeringEnabled = false
 
 export function useControls(): () => ControlsState {
   const [, getKeyboardKeys] = useKeyboardControls()
@@ -53,6 +54,10 @@ export function useControls(): () => ControlsState {
     const right = keyboard.right || touch.right
 
     const mouseSteeringEnabled = useGameStore.getState().mouseSteeringEnabled
+    if (prevMouseSteeringEnabled !== mouseSteeringEnabled) {
+      smoothedSteer = 0
+      prevMouseSteeringEnabled = mouseSteeringEnabled
+    }
     let steer: number
     if (mouseSteeringEnabled) {
       if (isLockActive()) {

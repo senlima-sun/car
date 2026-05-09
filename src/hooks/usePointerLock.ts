@@ -23,9 +23,7 @@ export function usePointerLock() {
       const locked = document.pointerLockElement === canvas
       setPointerLocked(locked)
       const steeringEnabled = useGameStore.getState().mouseSteeringEnabled
-      if (!locked || steeringEnabled) {
-        setSteeringLocked(locked)
-      }
+      setSteeringLocked(locked && steeringEnabled)
       if (!locked) resetLookState()
     }
 

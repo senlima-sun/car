@@ -49,6 +49,15 @@ const ROWS: SliderRow[] = [
     format: v => v.toFixed(3),
   },
   {
+    field: 'ratioAtRest',
+    label: 'Low-Speed Ratio',
+    hint: 'Steering scaling at low speed (1.0 = full mouse → full lock)',
+    min: 0.5,
+    max: 1.5,
+    step: 0.05,
+    format: v => v.toFixed(2),
+  },
+  {
     field: 'ratioAtTopSpeed',
     label: 'High-Speed Ratio',
     hint: 'Steering scaling at top speed (lower = stabler at speed)',

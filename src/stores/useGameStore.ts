@@ -68,6 +68,7 @@ export const useGameStore = create<GameState>()(
       mouseSteeringConfig: { ...DEFAULT_MOUSE_STEERING_CONFIG },
 
       enterMenu: () => {
+        resetMouseSteering()
         useSessionStore.getState().resetSession()
         set({ status: 'menu', isSettingsOpen: false })
       },
