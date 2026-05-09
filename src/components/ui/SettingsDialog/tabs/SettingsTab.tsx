@@ -1,4 +1,5 @@
 import { useGameStore } from '@/stores/useGameStore'
+import { MouseSteeringAdvanced } from '../components/MouseSteeringAdvanced'
 
 export function SettingsTab() {
   const lookSensitivity = useGameStore(s => s.lookSensitivity)
@@ -54,6 +55,8 @@ export function SettingsTab() {
           />
         </button>
       </div>
+
+      {mouseSteeringEnabled && <MouseSteeringAdvanced />}
 
       <div className='flex justify-between items-center py-2 mb-4 border-b border-white/5 pb-4'>
         <div>
