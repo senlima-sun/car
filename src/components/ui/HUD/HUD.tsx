@@ -48,7 +48,6 @@ import { TelemetryOverlay } from '../TelemetryOverlay'
 import { TelemetryAnalysis } from '../TelemetryAnalysis'
 import FPSCounter from './FPSCounter'
 import SteeringWheelIndicator from './SteeringWheelIndicator'
-import FpCameraTuningPanel from './FpCameraTuningPanel'
 
 export default function HUD() {
   const isMobile = useMobileDetection()
@@ -191,9 +190,6 @@ export default function HUD() {
           {isRunningSession && <PitLaneSpeedIndicator />}
           {isRunningSession && isTestingMode && <PhysicsDebugOverlay />}
           {isRunningSession && isTestingMode && <TrackSwitcher />}
-          {isRunningSession && isTestingMode && cameraMode === 'first-person' && (
-            <FpCameraTuningPanel />
-          )}
           {isRunningSession && <TelemetryOverlay />}
           {isRunningSession && <TelemetryAnalysis />}
         </>
