@@ -47,6 +47,7 @@ import { useMobileDetection } from '@/utils/isMobile'
 import { TelemetryOverlay } from '../TelemetryOverlay'
 import { TelemetryAnalysis } from '../TelemetryAnalysis'
 import FPSCounter from './FPSCounter'
+import SteeringWheelIndicator from './SteeringWheelIndicator'
 
 export default function HUD() {
   const isMobile = useMobileDetection()
@@ -55,6 +56,7 @@ export default function HUD() {
   const isTestingMode = useSessionStore(s => s.config?.testingMode ?? false)
   const sessionPhase = useSessionStore(s => s.phase)
   const isInPitBox = usePitStore(s => s.isInPitBox)
+  const mouseSteeringEnabled = useGameStore(s => s.mouseSteeringEnabled)
   const isMenuMode = isMenuStatus(shellStatus)
   const isCustomizeMode = isCustomizeStatus(shellStatus)
   const isPreviewMode = isPreviewStatus(shellStatus)
@@ -152,6 +154,11 @@ export default function HUD() {
               <div className='absolute bottom-5 right-5'>
                 <TemperaturePanel />
               </div>
+              {mouseSteeringEnabled && (
+                <div className='absolute bottom-[200px] left-1/2 -translate-x-1/2'>
+                  <SteeringWheelIndicator />
+                </div>
+              )}
             </>
           )}
 
