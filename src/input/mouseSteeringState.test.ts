@@ -8,6 +8,7 @@ import {
   peekSteer,
   resetSteering,
   setSteeringConfig,
+  setSteeringHold,
   setSteeringLocked,
 } from './mouseSteeringState'
 import { DEFAULT_MOUSE_STEERING_CONFIG } from './steeringMath'
@@ -90,5 +91,52 @@ describe('mouseSteeringState', () => {
     const cfg = getSteeringConfig()
     expect(cfg.sensitivityRadPerPx).toBe(DEFAULT_MOUSE_STEERING_CONFIG.sensitivityRadPerPx)
     expect(cfg.gamma).toBe(DEFAULT_MOUSE_STEERING_CONFIG.gamma)
+  })
+
+  test('hold prevents decay until released', () => {
+    setSteeringLocked(true)
+    handleSteeringMouseMove(fakeMouseEvent(80))
+    consumeAndSteer(0, 1 / 120)
+    const held = getWheelAngleRad()
+    expect(Math.abs(held)).toBeGreaterThan(0)
+
+    setSteeringHold(true)
+    for (let i = 0; i < 600; i++) {
+      consumeAndSteer(0, 1 / 120)
+    }
+    expect(getWheelAngleRad()).toBe(held)
+
+    setSteeringHold(false)
+    for (let i = 0; i < 600; i++) {
+      consumeAndSteer(0, 1 / 120)
+    }
+    expect(getWheelAngleRad()).toBe(0)
+  })
+
+  test('mouse movement during hold still updates angle', () => {
+    setSteeringLocked(true)
+    setSteeringHold(true)
+    handleSteeringMouseMove(fakeMouseEvent(50))
+    consumeAndSteer(0, 1 / 120)
+    expect(getWheelAngleRad()).toBeCloseTo(
+      50 * DEFAULT_MOUSE_STEERING_CONFIG.sensitivityRadPerPx,
+      9,
+    )
+  })
+
+  test('resetSteering clears hold flag', () => {
+    setSteeringLocked(true)
+    setSteeringHold(true)
+    resetSteering()
+    setSteeringLocked(true)
+    handleSteeringMouseMove(fakeMouseEvent(50))
+    consumeAndSteer(0, 1 / 120)
+    const after = getWheelAngleRad()
+    let v = after
+    for (let i = 0; i < 600; i++) {
+      v = consumeAndSteer(0, 1 / 120)
+      void v
+    }
+    expect(getWheelAngleRad()).toBe(0)
   })
 })

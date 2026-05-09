@@ -12,6 +12,7 @@ import {
 let wheelAngleRad = 0
 let pendingDeltaPx = 0
 let lockActive = false
+let holdActive = false
 let config: MouseSteeringConfig = { ...DEFAULT_MOUSE_STEERING_CONFIG }
 let lastSteer = 0
 
@@ -39,8 +40,13 @@ export function setSteeringLocked(locked: boolean): void {
   if (!locked) {
     wheelAngleRad = 0
     pendingDeltaPx = 0
+    holdActive = false
     lastSteer = 0
   }
+}
+
+export function setSteeringHold(held: boolean): void {
+  holdActive = held
 }
 
 export function handleSteeringMouseMove(e: MouseEvent): void {
@@ -58,7 +64,7 @@ export function consumeAndSteer(speedKmh: number, dt: number): number {
       max,
     )
     pendingDeltaPx = 0
-  } else {
+  } else if (!holdActive) {
     wheelAngleRad = applyDecay(wheelAngleRad, dt, config.decayRatePerSec)
   }
   const normalised = wheelAngleToSteer(wheelAngleRad, max)
@@ -80,5 +86,6 @@ export function resetSteering(): void {
   wheelAngleRad = 0
   pendingDeltaPx = 0
   lockActive = false
+  holdActive = false
   lastSteer = 0
 }

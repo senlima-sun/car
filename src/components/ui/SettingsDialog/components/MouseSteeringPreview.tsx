@@ -18,20 +18,31 @@ export function MouseSteeringPreview() {
   const wheelAngleRef = useRef(0)
   const pendingDeltaRef = useRef(0)
   const lastSteerRef = useRef(0)
+  const holdRef = useRef(false)
+  const areaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       pendingDeltaRef.current += e.movementX
     }
-    const area = areaRef.current
-    if (!area) return
-    if (hovering) {
-      area.addEventListener('mousemove', onMouseMove)
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button === 0) holdRef.current = true
     }
-    return () => area.removeEventListener('mousemove', onMouseMove)
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.button === 0) holdRef.current = false
+    }
+    const area = areaRef.current
+    if (!area || !hovering) return
+    area.addEventListener('mousemove', onMouseMove)
+    area.addEventListener('mousedown', onMouseDown)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      area.removeEventListener('mousemove', onMouseMove)
+      area.removeEventListener('mousedown', onMouseDown)
+      window.removeEventListener('mouseup', onMouseUp)
+      holdRef.current = false
+    }
   }, [hovering])
-
-  const areaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let raf = 0
@@ -50,7 +61,7 @@ export function MouseSteeringPreview() {
           maxRad,
         )
         pendingDeltaRef.current = 0
-      } else {
+      } else if (!holdRef.current) {
         wheelAngleRef.current = applyDecay(wheelAngleRef.current, dt, cfg.decayRatePerSec)
       }
       const normalised = wheelAngleToSteer(wheelAngleRef.current, maxRad)
@@ -66,7 +77,7 @@ export function MouseSteeringPreview() {
     <div className='border-l-2 border-white/8 pl-4 ml-2 mb-4'>
       <div className='text-white/85 text-[12px] font-medium mb-1'>Live Preview</div>
       <div className='text-white/35 text-[10px] mb-3'>
-        Move the mouse over the area below to test the current settings.
+        Move the mouse over the area below to test. Hold left-click to lock the wheel.
       </div>
       <div className='flex items-center gap-4'>
         <div
@@ -77,7 +88,7 @@ export function MouseSteeringPreview() {
             hovering ? 'border-white/30 bg-white/5' : 'border-white/10 bg-white/2'
           } flex items-center justify-center text-[10px] text-white/40 transition-colors cursor-crosshair`}
         >
-          {hovering ? 'move mouse left/right' : 'hover here to test'}
+          {hovering ? 'move ← → · hold click to lock' : 'hover here to test'}
         </div>
         <div className='shrink-0'>
           <SteeringWheelIndicator source={() => wheelAngleRef.current} size={64} barWidth={120} />
