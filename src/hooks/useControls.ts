@@ -1,5 +1,8 @@
 import { useKeyboardControls } from '@react-three/drei'
 import { useTouchControlsStore } from '../stores/useTouchControlsStore'
+import { useGameStore } from '../stores/useGameStore'
+import { useCarStore } from '../stores/useCarStore'
+import { isLockActive, readSteer } from '../input/mouseSteeringState'
 
 interface ControlsState {
   forward: boolean
@@ -49,12 +52,20 @@ export function useControls(): () => ControlsState {
     const left = keyboard.left || touch.left
     const right = keyboard.right || touch.right
 
-    const rawSteer = left ? -1 : right ? 1 : 0
-    const rate = rawSteer === 0 ? STEER_CENTER_SMOOTHING : STEER_SMOOTHING
-    smoothedSteer += (rawSteer - smoothedSteer) * Math.min(dt * rate, 1)
-    if (Math.abs(smoothedSteer) < 0.001) smoothedSteer = 0
-
-    const steer = smoothedSteer
+    const mouseSteeringEnabled = useGameStore.getState().mouseSteeringEnabled
+    let steer: number
+    if (mouseSteeringEnabled && isLockActive()) {
+      const speedKmh = useCarStore.getState().speed
+      steer = readSteer(speedKmh, dt)
+      smoothedSteer = steer
+    } else {
+      const rawSteer = left ? -1 : right ? 1 : 0
+      const rate = rawSteer === 0 ? STEER_CENTER_SMOOTHING : STEER_SMOOTHING
+      smoothedSteer += (rawSteer - smoothedSteer) * Math.min(dt * rate, 1)
+      if (Math.abs(smoothedSteer) < 0.001) smoothedSteer = 0
+      steer = smoothedSteer
+    }
+    if (!Number.isFinite(steer)) steer = 0
     const throttle = forward ? 1 : 0
     const brakeAnalog = backward ? 1 : 0
 

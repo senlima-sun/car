@@ -4,6 +4,11 @@ import { useCarStore } from './useCarStore'
 import { useActiveAeroStore } from './useActiveAeroStore'
 import { useSessionStore } from './useSessionStore'
 import { setLookSensitivity as syncLookSensitivity } from '@/input/cameraLookState'
+import {
+  resetSteering as resetMouseSteering,
+  setSteeringConfig as syncMouseSteeringConfig,
+} from '@/input/mouseSteeringState'
+import { DEFAULT_MOUSE_STEERING_CONFIG, type MouseSteeringConfig } from '@/input/steeringMath'
 
 export type GameStatus = 'menu' | 'session' | 'customize' | 'preview'
 export type CameraMode = 'third-person' | 'first-person' | 'free'
@@ -22,6 +27,8 @@ interface GameState {
   isSettingsOpen: boolean
   lookSensitivity: number
   showFPS: boolean
+  mouseSteeringEnabled: boolean
+  mouseSteeringConfig: MouseSteeringConfig
 
   enterMenu: () => void
   openTrackEditor: () => void
@@ -41,6 +48,9 @@ interface GameState {
   closeSettings: () => void
   setLookSensitivity: (sensitivity: number) => void
   toggleShowFPS: () => void
+  setMouseSteeringEnabled: (enabled: boolean) => void
+  setMouseSteeringConfig: (config: Partial<MouseSteeringConfig>) => void
+  resetMouseSteeringConfig: () => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -53,6 +63,8 @@ export const useGameStore = create<GameState>()(
       isSettingsOpen: false,
       lookSensitivity: 0.002,
       showFPS: true,
+      mouseSteeringEnabled: false,
+      mouseSteeringConfig: { ...DEFAULT_MOUSE_STEERING_CONFIG },
 
       enterMenu: () => {
         useSessionStore.getState().resetSession()
@@ -119,6 +131,21 @@ export const useGameStore = create<GameState>()(
         set({ lookSensitivity: sensitivity })
       },
       toggleShowFPS: () => set(state => ({ showFPS: !state.showFPS })),
+      setMouseSteeringEnabled: enabled => {
+        if (!enabled) resetMouseSteering()
+        set({ mouseSteeringEnabled: enabled })
+      },
+      setMouseSteeringConfig: partial =>
+        set(state => {
+          const merged = { ...state.mouseSteeringConfig, ...partial }
+          syncMouseSteeringConfig(merged)
+          return { mouseSteeringConfig: merged }
+        }),
+      resetMouseSteeringConfig: () => {
+        const fresh = { ...DEFAULT_MOUSE_STEERING_CONFIG }
+        syncMouseSteeringConfig(fresh)
+        set({ mouseSteeringConfig: fresh })
+      },
     }),
     {
       name: 'game-settings',
@@ -127,9 +154,13 @@ export const useGameStore = create<GameState>()(
         previousCameraMode: state.previousCameraMode,
         lookSensitivity: state.lookSensitivity,
         showFPS: state.showFPS,
+        mouseSteeringEnabled: state.mouseSteeringEnabled,
+        mouseSteeringConfig: state.mouseSteeringConfig,
       }),
       onRehydrateStorage: () => state => {
-        if (state) syncLookSensitivity(state.lookSensitivity)
+        if (!state) return
+        syncLookSensitivity(state.lookSensitivity)
+        syncMouseSteeringConfig(state.mouseSteeringConfig)
       },
     },
   ),
