@@ -154,6 +154,26 @@ impl PhysicsEngine {
         self.weather.get_rain_intensity()
     }
 
+    pub fn add_weather_source(&mut self, source: crate::weather::WeatherSource) -> bool {
+        self.weather.add_weather_source(source)
+    }
+
+    pub fn clear_weather_sources(&mut self) {
+        self.weather.clear_weather_sources();
+    }
+
+    pub fn replace_weather_sources(&mut self, sources: &[crate::weather::WeatherSource]) {
+        self.weather.replace_weather_sources(sources);
+    }
+
+    pub fn get_weather_sources(&self) -> &[crate::weather::WeatherSource] {
+        self.weather.get_weather_sources()
+    }
+
+    pub fn sample_weather_intensity_at(&self, x: f32, z: f32) -> f32 {
+        self.weather.sample_weather_intensity_at(x, z)
+    }
+
     // ========================================================================
     // Wind API
     // ========================================================================

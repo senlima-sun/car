@@ -104,6 +104,68 @@ impl PhysicsEngine {
     }
 
     #[wasm_bindgen]
+    pub fn add_weather_source(
+        &mut self,
+        x: f32,
+        z: f32,
+        radius: f32,
+        intensity: f32,
+        vx: f32,
+        vz: f32,
+    ) -> bool {
+        self.inner
+            .add_weather_source(crate::weather::WeatherSource::new(
+                x, z, radius, intensity, vx, vz,
+            ))
+    }
+
+    #[wasm_bindgen]
+    pub fn clear_weather_sources(&mut self) {
+        self.inner.clear_weather_sources();
+    }
+
+    #[wasm_bindgen]
+    pub fn replace_weather_sources(&mut self, flat: &[f32]) {
+        let mut sources: Vec<crate::weather::WeatherSource> = Vec::new();
+        for chunk in flat.chunks_exact(6) {
+            sources.push(crate::weather::WeatherSource::new(
+                chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5],
+            ));
+        }
+        self.inner.replace_weather_sources(&sources);
+    }
+
+    #[wasm_bindgen]
+    pub fn get_weather_source_count(&self) -> usize {
+        self.inner.get_weather_sources().len()
+    }
+
+    #[wasm_bindgen]
+    pub fn get_weather_source_data(&self) -> Vec<f32> {
+        let sources = self.inner.get_weather_sources();
+        let mut out = Vec::with_capacity(sources.len() * 6);
+        for s in sources {
+            out.push(s.position.0);
+            out.push(s.position.1);
+            out.push(s.radius);
+            out.push(s.intensity);
+            out.push(s.velocity.0);
+            out.push(s.velocity.1);
+        }
+        out
+    }
+
+    #[wasm_bindgen]
+    pub fn sample_weather_intensity(&self, x: f32, z: f32) -> f32 {
+        self.inner.sample_weather_intensity_at(x, z)
+    }
+
+    #[wasm_bindgen]
+    pub fn get_weather_source_max() -> usize {
+        crate::weather::MAX_WEATHER_SOURCES
+    }
+
+    #[wasm_bindgen]
     pub fn get_surface_friction_breakdown(&self) -> JsValue {
         to_value(&self.inner.get_surface_friction_breakdown()).unwrap_or(JsValue::NULL)
     }

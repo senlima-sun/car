@@ -8,6 +8,128 @@ const REFERENCE_PRESSURE: f32 = 1013.25;
 const REFERENCE_TEMP_K: f32 = 288.15;
 const REFERENCE_AIR_DENSITY: f32 = 1.225;
 
+pub const MAX_WEATHER_SOURCES: usize = 8;
+pub const WEATHER_SOURCE_BOUND: f32 = 2000.0;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WeatherSource {
+    pub position: (f32, f32),
+    pub radius: f32,
+    pub intensity: f32,
+    pub velocity: (f32, f32),
+}
+
+impl WeatherSource {
+    pub fn new(x: f32, z: f32, radius: f32, intensity: f32, vx: f32, vz: f32) -> Self {
+        Self {
+            position: (x, z),
+            radius: radius.max(1.0),
+            intensity: intensity.clamp(0.0, 1.0),
+            velocity: (vx, vz),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct WeatherSourceField {
+    sources: Vec<WeatherSource>,
+    max_sources: usize,
+}
+
+impl Default for WeatherSourceField {
+    fn default() -> Self {
+        Self {
+            sources: Vec::with_capacity(MAX_WEATHER_SOURCES),
+            max_sources: MAX_WEATHER_SOURCES,
+        }
+    }
+}
+
+impl WeatherSourceField {
+    pub fn new(max_sources: usize) -> Self {
+        Self {
+            sources: Vec::with_capacity(max_sources),
+            max_sources,
+        }
+    }
+
+    pub fn push(&mut self, source: WeatherSource) -> bool {
+        if self.sources.len() >= self.max_sources {
+            return false;
+        }
+        self.sources.push(source);
+        true
+    }
+
+    pub fn clear(&mut self) {
+        self.sources.clear();
+    }
+
+    pub fn replace_all(&mut self, sources: &[WeatherSource]) {
+        self.sources.clear();
+        for src in sources.iter().take(self.max_sources) {
+            self.sources.push(*src);
+        }
+    }
+
+    pub fn sources(&self) -> &[WeatherSource] {
+        &self.sources
+    }
+
+    pub fn len(&self) -> usize {
+        self.sources.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sources.is_empty()
+    }
+
+    pub fn step(&mut self, dt: f32) {
+        for src in &mut self.sources {
+            src.position.0 += src.velocity.0 * dt;
+            src.position.1 += src.velocity.1 * dt;
+
+            let bound = WEATHER_SOURCE_BOUND;
+            if src.position.0.abs() > bound || src.position.1.abs() > bound {
+                respawn_at_opposite_edge(src, bound);
+            }
+        }
+    }
+
+    pub fn sample_intensity(&self, x: f32, z: f32) -> f32 {
+        let mut total = 0.0;
+        for src in &self.sources {
+            let dx = x - src.position.0;
+            let dz = z - src.position.1;
+            let dist = (dx * dx + dz * dz).sqrt();
+            let inner = src.radius * 0.7;
+            if dist >= src.radius {
+                continue;
+            }
+            let t = if dist <= inner {
+                1.0
+            } else {
+                let span = (src.radius - inner).max(0.0001);
+                let local = (src.radius - dist) / span;
+                local * local * (3.0 - 2.0 * local)
+            };
+            total += src.intensity * t;
+        }
+        total.clamp(0.0, 1.0)
+    }
+}
+
+fn respawn_at_opposite_edge(src: &mut WeatherSource, bound: f32) {
+    let speed = (src.velocity.0 * src.velocity.0 + src.velocity.1 * src.velocity.1).sqrt();
+    if speed < 0.0001 {
+        src.position = (-src.position.0.signum() * bound, -src.position.1.signum() * bound);
+        return;
+    }
+    let nx = src.velocity.0 / speed;
+    let nz = src.velocity.1 / speed;
+    src.position = (-nx * bound, -nz * bound);
+}
+
 #[derive(Debug)]
 pub struct WeatherState {
     current_modifiers: WeatherModifiers,
@@ -18,6 +140,7 @@ pub struct WeatherState {
     ice_thickness_mm: f32,
     air_density: f32,
     brake_disc_damp_factor: f32,
+    source_field: WeatherSourceField,
 }
 
 impl Default for WeatherState {
@@ -33,6 +156,7 @@ impl Default for WeatherState {
             ice_thickness_mm: 0.0,
             air_density: REFERENCE_AIR_DENSITY,
             brake_disc_damp_factor: 0.0,
+            source_field: WeatherSourceField::default(),
         };
         state.air_density = state.compute_air_density();
         state.current_modifiers = state.compute_modifiers_from_physics();
@@ -48,6 +172,27 @@ impl WeatherState {
     pub fn update(&mut self, delta_seconds: f32) {
         self.update_surface_state(delta_seconds);
         self.update_brake_dampness(delta_seconds);
+        self.source_field.step(delta_seconds);
+    }
+
+    pub fn add_weather_source(&mut self, source: WeatherSource) -> bool {
+        self.source_field.push(source)
+    }
+
+    pub fn clear_weather_sources(&mut self) {
+        self.source_field.clear();
+    }
+
+    pub fn replace_weather_sources(&mut self, sources: &[WeatherSource]) {
+        self.source_field.replace_all(sources);
+    }
+
+    pub fn get_weather_sources(&self) -> &[WeatherSource] {
+        self.source_field.sources()
+    }
+
+    pub fn sample_weather_intensity_at(&self, x: f32, z: f32) -> f32 {
+        self.source_field.sample_intensity(x, z)
     }
 
     pub fn get_modifiers(&self) -> &WeatherModifiers {
@@ -614,5 +759,108 @@ mod tests {
             ice_friction,
             rain_friction
         );
+    }
+
+    #[test]
+    fn test_weather_source_clamps_intensity_and_radius() {
+        let s = WeatherSource::new(0.0, 0.0, 0.0, 5.0, 0.0, 0.0);
+        assert!(s.radius >= 1.0);
+        assert!(s.intensity <= 1.0 && s.intensity >= 0.0);
+    }
+
+    #[test]
+    fn test_source_field_sampling_at_center() {
+        let mut field = WeatherSourceField::default();
+        field.push(WeatherSource::new(0.0, 0.0, 100.0, 1.0, 0.0, 0.0));
+        let v = field.sample_intensity(0.0, 0.0);
+        assert!((v - 1.0).abs() < 1e-4, "expected ~1.0 at center, got {v}");
+    }
+
+    #[test]
+    fn test_source_field_sampling_outside_radius() {
+        let mut field = WeatherSourceField::default();
+        field.push(WeatherSource::new(0.0, 0.0, 100.0, 1.0, 0.0, 0.0));
+        let v = field.sample_intensity(200.0, 0.0);
+        assert_eq!(v, 0.0);
+    }
+
+    #[test]
+    fn test_source_field_sampling_in_falloff_zone() {
+        let mut field = WeatherSourceField::default();
+        field.push(WeatherSource::new(0.0, 0.0, 100.0, 1.0, 0.0, 0.0));
+        let v = field.sample_intensity(85.0, 0.0);
+        assert!(v > 0.0 && v < 1.0, "expected falloff value, got {v}");
+    }
+
+    #[test]
+    fn test_source_field_capacity_cap() {
+        let mut field = WeatherSourceField::new(2);
+        assert!(field.push(WeatherSource::new(0.0, 0.0, 10.0, 1.0, 0.0, 0.0)));
+        assert!(field.push(WeatherSource::new(1.0, 0.0, 10.0, 1.0, 0.0, 0.0)));
+        assert!(!field.push(WeatherSource::new(2.0, 0.0, 10.0, 1.0, 0.0, 0.0)));
+        assert_eq!(field.len(), 2);
+    }
+
+    #[test]
+    fn test_source_field_drift() {
+        let mut field = WeatherSourceField::default();
+        field.push(WeatherSource::new(0.0, 0.0, 100.0, 1.0, 10.0, 0.0));
+        for _ in 0..10 {
+            field.step(1.0);
+        }
+        let pos = field.sources()[0].position;
+        assert!((pos.0 - 100.0).abs() < 0.001, "expected x≈100, got {}", pos.0);
+        assert!(pos.1.abs() < 0.001, "expected z≈0, got {}", pos.1);
+    }
+
+    #[test]
+    fn test_source_field_respawn_on_oob() {
+        let mut field = WeatherSourceField::default();
+        field.push(WeatherSource::new(
+            WEATHER_SOURCE_BOUND - 1.0,
+            0.0,
+            100.0,
+            1.0,
+            10.0,
+            0.0,
+        ));
+        for _ in 0..2 {
+            field.step(1.0);
+        }
+        let pos = field.sources()[0].position;
+        assert!(
+            pos.0.abs() <= WEATHER_SOURCE_BOUND + 0.001,
+            "expected respawned within bounds, got {}",
+            pos.0
+        );
+        assert!(pos.0 < 0.0, "expected respawn at opposite edge (negative x), got {}", pos.0);
+    }
+
+    #[test]
+    fn test_source_field_replace_all_truncates() {
+        let mut field = WeatherSourceField::new(3);
+        let sources: Vec<WeatherSource> = (0..10)
+            .map(|i| WeatherSource::new(i as f32, 0.0, 10.0, 0.5, 0.0, 0.0))
+            .collect();
+        field.replace_all(&sources);
+        assert_eq!(field.len(), 3);
+    }
+
+    #[test]
+    fn test_weather_state_integrates_source_step() {
+        let mut state = WeatherState::new();
+        state.add_weather_source(WeatherSource::new(0.0, 0.0, 50.0, 1.0, 5.0, 0.0));
+        for _ in 0..120 {
+            state.update(1.0 / 60.0);
+        }
+        let pos = state.get_weather_sources()[0].position;
+        assert!((pos.0 - 10.0).abs() < 0.5, "expected x≈10 after 2s @ 5 m/s, got {}", pos.0);
+    }
+
+    #[test]
+    fn test_weather_state_default_has_no_sources() {
+        let state = WeatherState::default();
+        assert!(state.get_weather_sources().is_empty());
+        assert_eq!(state.sample_weather_intensity_at(0.0, 0.0), 0.0);
     }
 }
