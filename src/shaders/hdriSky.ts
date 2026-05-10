@@ -86,17 +86,26 @@ void main() {
   float bias = 0.0;
   if (uWeatherSourceCount > 0 && uSourceBiasStrength > 0.0) {
     float carBias = sampleSourceField(uCameraXZ);
-    float horizBias = 0.0;
     vec3 horizDir = vec3(rotated.x, 0.0, rotated.z);
     float horizLen = length(horizDir);
+    float horizBias = 0.0;
     if (horizLen > 0.001) {
-      vec2 worldXZ = uCameraXZ + (horizDir.xz / horizLen) * 600.0;
-      horizBias = sampleSourceField(worldXZ);
+      vec2 fwd = horizDir.xz / horizLen;
+      float h0 = sampleSourceField(uCameraXZ + fwd * 300.0);
+      float h1 = sampleSourceField(uCameraXZ + fwd * 600.0);
+      float h2 = sampleSourceField(uCameraXZ + fwd * 1000.0);
+      horizBias = (h0 + h1 + h2) / 3.0;
     }
-    bias = clamp(max(carBias, horizBias) * uSourceBiasStrength, 0.0, 1.0);
+    float dirBias = max(carBias, horizBias);
+    float horizonFade = smoothstep(0.6, -0.1, rotated.y);
+    bias = clamp(dirBias * uSourceBiasStrength * horizonFade, 0.0, 1.0);
   }
 
-  vec3 hdr = mix(cBase, cRain, bias);
+  vec3 darkenedSky = cBase * mix(vec3(1.0), vec3(0.45, 0.5, 0.55), 1.0);
+  vec3 cloudInfluence = mix(cBase, cRain * 0.7, 0.6);
+  vec3 weatherSky = mix(darkenedSky, cloudInfluence, 0.7);
+
+  vec3 hdr = mix(cBase, weatherSky, bias);
   hdr = min(hdr, vec3(1.6));
   vec3 mapped = ACESFilmic(hdr * exposure);
   gl_FragColor = vec4(mapped, 1.0);

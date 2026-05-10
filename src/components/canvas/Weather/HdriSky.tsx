@@ -115,7 +115,7 @@ export default function HdriSky() {
       },
       uWeatherSourceCount: { value: 0 },
       uCameraXZ: { value: new THREE.Vector2(0, 0) },
-      uSourceBiasStrength: { value: 0.9 },
+      uSourceBiasStrength: { value: 0.6 },
     }),
     [textures],
   )
