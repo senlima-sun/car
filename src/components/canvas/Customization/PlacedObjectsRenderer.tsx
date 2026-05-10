@@ -29,7 +29,7 @@ export default function PlacedObjectsRenderer({
   const visibleObjectIds = useVisibilityStore(s => s.visibleObjectIds)
 
   useEffect(() => {
-    loadLibrary()
+    void loadLibrary()
   }, [loadLibrary])
 
   const objectMap = useMemo(() => {

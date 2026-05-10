@@ -25,15 +25,16 @@ export default function TrackSelector() {
   const saveCurrentTrack = useTrackStore(s => s.saveCurrentTrack)
   const getActiveTrack = useTrackStore(s => s.getActiveTrack)
   const loadLibrary = useTrackStore(s => s.loadLibrary)
+  const loadedOnce = useTrackStore(s => s.loadedOnce)
 
   const activeTrack = getActiveTrack()
   const tracks = trackLibrary.tracks
 
   useEffect(() => {
-    if (trackLibrary.tracks.length === 0) {
-      loadLibrary()
+    if (!loadedOnce) {
+      void loadLibrary()
     }
-  }, [loadLibrary, trackLibrary.tracks.length])
+  }, [loadLibrary, loadedOnce])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

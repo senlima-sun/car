@@ -299,7 +299,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       isDirty: false,
     }))
 
-    get().saveLibrary()
+    void get().saveLibrary()
   },
 
   exportCurrentTrack: () => {
@@ -371,7 +371,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
         }
       }
 
-      if (mutated) get().saveLibrary()
+      if (mutated) void get().saveLibrary()
     }
 
     try {

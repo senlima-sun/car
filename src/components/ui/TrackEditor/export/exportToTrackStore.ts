@@ -57,7 +57,10 @@ function writeDraftTrack(objects: PlacedObject[]): void {
   })
 
   useCustomizationStore.getState().setPlacedObjects(objects)
-  useTrackStore.getState().saveLibrary()
+  void useTrackStore
+    .getState()
+    .saveLibrary()
+    .catch(error => console.error('Failed to save library after editor export:', error))
 }
 
 export function exportToTrackStore(input: ExportInput): ExportPreview {
