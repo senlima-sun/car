@@ -190,7 +190,13 @@ export default function HdriSky() {
           toneMapped={false}
         />
       </mesh>
-      {environmentEnabled && <Environment map={textures[environmentMapId]} background={false} />}
+      {environmentEnabled && (
+        <Environment
+          map={textures[environmentMapId]}
+          background={false}
+          environmentIntensity={0.35}
+        />
+      )}
     </>
   )
 }
