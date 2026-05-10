@@ -168,6 +168,7 @@ export default function VolumetricClouds() {
       }),
     [blitUniforms],
   )
+  const blitGeometry = useMemo(() => new THREE.PlaneGeometry(2, 2), [])
 
   useEffect(() => {
     return () => {
@@ -176,8 +177,9 @@ export default function VolumetricClouds() {
       compositeScene.geom.dispose()
       compositeScene.mat.dispose()
       blitMaterial.dispose()
+      blitGeometry.dispose()
     }
-  }, [raymarchScene, compositeScene, blitMaterial])
+  }, [raymarchScene, compositeScene, blitMaterial, blitGeometry])
 
   const orthoCamera = useMemo(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), [])
   const frameCounter = useRef(0)
@@ -213,10 +215,8 @@ export default function VolumetricClouds() {
       const s = sources[i]
       slots[i].set(s.x, s.z, s.radius, s.intensity)
     }
-    if (u.uWeatherSourceCount.value !== limit) {
-      for (let i = limit; i < MAX_WEATHER_SOURCES; i++) slots[i].set(0, 0, 0, 0)
-      u.uWeatherSourceCount.value = limit
-    }
+    for (let i = limit; i < MAX_WEATHER_SOURCES; i++) slots[i].set(0, 0, 0, 0)
+    u.uWeatherSourceCount.value = limit
 
     const jitterX = (((frameCounter.current & 1) === 0 ? 0.25 : -0.25) / halfWidth) * 2
     const jitterY = (((frameCounter.current & 2) === 0 ? 0.25 : -0.25) / halfHeight) * 2
@@ -250,7 +250,7 @@ export default function VolumetricClouds() {
 
   return (
     <mesh renderOrder={9999} frustumCulled={false}>
-      <planeGeometry args={[2, 2]} />
+      <primitive object={blitGeometry} attach='geometry' />
       <primitive object={blitMaterial} attach='material' />
     </mesh>
   )

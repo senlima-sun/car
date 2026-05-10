@@ -44,11 +44,15 @@ export default function DynamicLighting({ target }: DynamicLightingProps) {
     const sun = computeSunDirection(timeOfDay)
     const distance = 100
 
-    sunLightRef.current.position.set(
-      carPos.x + sun.x * distance,
-      Math.max(5, sun.y * distance),
-      carPos.z + sun.z * distance,
-    )
+    if (sun.y > 0.05) {
+      sunLightRef.current.position.set(
+        carPos.x + sun.x * distance,
+        sun.y * distance,
+        carPos.z + sun.z * distance,
+      )
+    } else {
+      sunLightRef.current.position.set(carPos.x, 50, carPos.z)
+    }
     const sunIntensity = getSunIntensity(timeOfDay)
     sunLightRef.current.intensity = config.sunIntensity * (0.3 + 0.7 * sunIntensity)
     sunLightRef.current.target.position.set(carPos.x, 0, carPos.z)
