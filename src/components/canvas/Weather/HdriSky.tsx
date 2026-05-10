@@ -106,7 +106,6 @@ export default function HdriSky() {
   const uniforms = useMemo(
     () => ({
       tex0: { value: textures.clear },
-      tex3: { value: textures.heavyRain },
       exposure: { value: 1.0 },
       uRotation: { value: 0 },
       uTime: { value: 0 },
@@ -139,7 +138,6 @@ export default function HdriSky() {
 
     const dominant = dominantStateRef.current
     u.tex0.value = textures[dominant]
-    u.tex3.value = textures.heavyRain
 
     const lerpFactor = Math.min(1, delta * 2.0)
     const dominantExposure = SKY_STATES[dominant].exposure

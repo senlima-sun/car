@@ -13,7 +13,6 @@ export const hdriSkyFragment = /* glsl */ `
 #define MAX_WEATHER_SOURCES 8
 
 uniform sampler2D tex0;
-uniform sampler2D tex3;
 uniform float exposure;
 uniform float uRotation;
 uniform float uTime;
@@ -32,6 +31,34 @@ vec2 equirectUv(vec3 dir) {
   uv.x = atan(dir.z, dir.x) * RECIPROCAL_PI2 + 0.5;
   uv.y = asin(clamp(dir.y, -1.0, 1.0)) * RECIPROCAL_PI + 0.5;
   return uv;
+}
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+float valueNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 4; i++) {
+    v += a * valueNoise(p);
+    p *= 2.1;
+    a *= 0.5;
+  }
+  return v;
 }
 
 vec3 ACESFilmic(vec3 x) {
@@ -81,32 +108,38 @@ void main() {
 
   vec2 uv = equirectUv(sampleDir);
   vec3 cBase = texture2D(tex0, uv).rgb;
-  vec3 cRain = texture2D(tex3, uv).rgb;
 
   float bias = 0.0;
   if (uWeatherSourceCount > 0 && uSourceBiasStrength > 0.0) {
-    float carBias = sampleSourceField(uCameraXZ);
     vec3 horizDir = vec3(rotated.x, 0.0, rotated.z);
     float horizLen = length(horizDir);
-    float horizBias = 0.0;
     if (horizLen > 0.001) {
       vec2 fwd = horizDir.xz / horizLen;
       float h0 = sampleSourceField(uCameraXZ + fwd * 300.0);
       float h1 = sampleSourceField(uCameraXZ + fwd * 600.0);
       float h2 = sampleSourceField(uCameraXZ + fwd * 1000.0);
-      horizBias = (h0 + h1 + h2) / 3.0;
+      bias = (h0 + h1 + h2) / 3.0;
     }
-    float dirBias = max(carBias, horizBias);
-    float horizonFade = smoothstep(0.6, -0.1, rotated.y);
-    bias = clamp(dirBias * uSourceBiasStrength * horizonFade, 0.0, 1.0);
+    bias = clamp(bias * uSourceBiasStrength, 0.0, 1.0);
   }
 
-  vec3 darkenedSky = cBase * mix(vec3(1.0), vec3(0.45, 0.5, 0.55), 1.0);
-  vec3 cloudInfluence = mix(cBase, cRain * 0.7, 0.6);
-  vec3 weatherSky = mix(darkenedSky, cloudInfluence, 0.7);
+  float skyMask = smoothstep(0.0, 0.4, rotated.y);
+  vec3 hdr = min(cBase, vec3(1.05));
 
-  vec3 hdr = mix(cBase, weatherSky, bias);
-  hdr = min(hdr, vec3(1.6));
+  if (bias > 0.001 && skyMask > 0.001) {
+    vec2 cloudUv = vec2(
+      atan(rotated.z, rotated.x) * RECIPROCAL_PI2 * 4.0 + uTime * 0.01,
+      acos(clamp(rotated.y, 0.0, 1.0)) * RECIPROCAL_PI * 4.0
+    );
+    float clouds = fbm(cloudUv * 2.0);
+    float coverage = mix(0.7, 0.25, bias);
+    float cloudDensity = smoothstep(coverage, coverage + 0.15, clouds);
+    cloudDensity *= skyMask * bias;
+
+    vec3 cloudColor = mix(vec3(0.85, 0.85, 0.88), vec3(0.45, 0.48, 0.55), bias);
+    hdr = mix(hdr, cloudColor, cloudDensity);
+  }
+
   vec3 mapped = ACESFilmic(hdr * exposure);
   gl_FragColor = vec4(mapped, 1.0);
   #include <colorspace_fragment>
