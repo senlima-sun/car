@@ -90,10 +90,20 @@ export default function HdriSky() {
   const avgFps = usePerformanceStore(s => s.avgFps)
   const matRef = useRef<THREE.ShaderMaterial>(null)
   const [environmentEnabled, setEnvironmentEnabled] = useState(true)
-  const [dominantId, setDominantId] = useState<SkyState>('clear')
+  const [environmentMapId, setEnvironmentMapId] = useState<SkyState>('clear')
+  const dominantIdRef = useRef<SkyState>('clear')
 
   const targetWeightsRef = useRef(new THREE.Vector4(1, 0, 0, 0))
   const activeIdsRef = useRef<SkyState[]>(['clear', 'clear', 'clear', 'clear'])
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (dominantIdRef.current !== environmentMapId) {
+        setEnvironmentMapId(dominantIdRef.current)
+      }
+    }, 500)
+    return () => window.clearInterval(id)
+  }, [environmentMapId])
 
   const uniforms = useMemo(
     () => ({
@@ -162,7 +172,7 @@ export default function HdriSky() {
     const cam = state.camera.position
     ;(u.uCameraXZ.value as THREE.Vector2).set(cam.x, cam.z)
 
-    if (ids[0] !== dominantId) setDominantId(ids[0])
+    dominantIdRef.current = ids[0]
   })
 
   useEffect(() => {
@@ -187,7 +197,7 @@ export default function HdriSky() {
           toneMapped={false}
         />
       </mesh>
-      {environmentEnabled && <Environment map={textures[dominantId]} background={false} />}
+      {environmentEnabled && <Environment map={textures[environmentMapId]} background={false} />}
     </>
   )
 }

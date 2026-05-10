@@ -4,9 +4,11 @@ import { useWeatherSourcesStore } from '@/stores/useWeatherSourcesStore'
 import { usePhysicsOptional } from '@/wasm/PhysicsProvider'
 import { computeBounds, makeTransforms } from '../CustomizationPanel/TrackMinimap/helpers'
 import { drawRoads } from '../CustomizationPanel/TrackMinimap/drawing/drawRoads'
-import { MINIMAP_SIZE } from '../CustomizationPanel/TrackMinimap/constants'
+import { MINIMAP_SIZE, PADDING } from '../CustomizationPanel/TrackMinimap/constants'
 import { pathToSources, type Point2D } from './frontPath'
 import { useEffect } from 'react'
+
+const POINT_DISTANCE_THRESHOLD_PX = 3
 
 const WORLD_FALLBACK_RANGE = 1000
 
@@ -97,10 +99,9 @@ export default function WeatherFrontEditor() {
   const screenToWorld = (sx: number, sy: number): Point2D => {
     const bounds = computeBounds(placedObjects) ?? fallbackBounds()
     const transforms = makeTransforms(bounds, 0)
-    const drawSize = MINIMAP_SIZE - 20
+    const drawSize = MINIMAP_SIZE - PADDING * 2
     const centerX = (bounds.minX + bounds.maxX) / 2
     const centerZ = (bounds.minZ + bounds.maxZ) / 2
-    const PADDING = 10
     const x = (sx - PADDING - drawSize / 2) / transforms.scale + centerX
     const z = (sy - PADDING - drawSize / 2) / transforms.scale + centerZ
     return { x, z }
@@ -120,7 +121,17 @@ export default function WeatherFrontEditor() {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    setPathScreen(prev => [...prev, { x, y }])
+    setPathScreen(prev => {
+      const last = prev[prev.length - 1]
+      if (last) {
+        const dx = x - last.x
+        const dy = y - last.y
+        if (dx * dx + dy * dy < POINT_DISTANCE_THRESHOLD_PX * POINT_DISTANCE_THRESHOLD_PX) {
+          return prev
+        }
+      }
+      return [...prev, { x, y }]
+    })
   }
 
   const handleUp = (e: React.PointerEvent<HTMLCanvasElement>) => {

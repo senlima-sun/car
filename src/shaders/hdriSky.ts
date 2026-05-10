@@ -90,12 +90,15 @@ void main() {
 
   float bias = 0.0;
   if (uWeatherSourceCount > 0 && uSourceBiasStrength > 0.0) {
+    float carBias = sampleSourceField(uCameraXZ);
+    float horizBias = 0.0;
     vec3 horizDir = vec3(rotated.x, 0.0, rotated.z);
     float horizLen = length(horizDir);
     if (horizLen > 0.001) {
       vec2 worldXZ = uCameraXZ + (horizDir.xz / horizLen) * 600.0;
-      bias = sampleSourceField(worldXZ) * uSourceBiasStrength;
+      horizBias = sampleSourceField(worldXZ);
     }
+    bias = max(carBias, horizBias) * uSourceBiasStrength;
   }
 
   vec4 weights = blendWeights;
