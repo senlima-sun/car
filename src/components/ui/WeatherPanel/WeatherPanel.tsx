@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import RadarMinimap from './RadarMinimap'
 import WeatherFrontEditor from './WeatherFrontEditor'
+import SunControl from './SunControl'
 
 export default function WeatherPanel() {
   const [enabled, setEnabled] = useState(false)
@@ -27,6 +28,9 @@ export default function WeatherPanel() {
         </div>
         <div style={styles.column}>
           <WeatherFrontEditor />
+        </div>
+        <div style={styles.column}>
+          <SunControl />
         </div>
       </div>
     </div>

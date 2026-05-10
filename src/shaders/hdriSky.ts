@@ -20,6 +20,8 @@ uniform vec4 uWeatherSources[MAX_WEATHER_SOURCES];
 uniform int uWeatherSourceCount;
 uniform vec2 uCameraXZ;
 uniform float uSourceBiasStrength;
+uniform vec3 uSunDirection;
+uniform float uSunIntensity;
 
 varying vec3 vWorldDirection;
 
@@ -124,7 +126,7 @@ void main() {
   }
 
   float skyMask = smoothstep(0.0, 0.4, rotated.y);
-  vec3 hdr = min(cBase, vec3(1.05));
+  vec3 hdr = min(cBase, vec3(0.85));
 
   if (bias > 0.001 && skyMask > 0.001) {
     vec2 cloudUv = vec2(
@@ -138,6 +140,22 @@ void main() {
 
     vec3 cloudColor = mix(vec3(0.85, 0.85, 0.88), vec3(0.45, 0.48, 0.55), bias);
     hdr = mix(hdr, cloudColor, cloudDensity);
+  }
+
+  if (uSunIntensity > 0.001) {
+    vec3 sunDir = normalize(uSunDirection);
+    float sunDot = dot(rotated, sunDir);
+    float sunDisc = smoothstep(0.9994, 0.99985, sunDot);
+    float sunHalo = smoothstep(0.985, 0.9995, sunDot) * 0.5;
+    float sunGlow = pow(max(sunDot, 0.0), 32.0) * 0.35;
+    float sunMask = clamp(sunDisc + sunHalo + sunGlow, 0.0, 1.0);
+
+    float dayMask = smoothstep(-0.05, 0.05, sunDir.y);
+    vec3 noonColor = vec3(2.4, 2.3, 2.0);
+    vec3 horizonColor = vec3(2.2, 1.3, 0.55);
+    vec3 sunColor = mix(horizonColor, noonColor, smoothstep(0.0, 0.3, sunDir.y));
+
+    hdr += sunColor * sunMask * uSunIntensity * dayMask;
   }
 
   vec3 mapped = ACESFilmic(hdr * exposure);

@@ -8,6 +8,7 @@ interface EnvironmentStore {
   cloudCover: number // 0 to 1
   rainIntensity: number // 0 to 1 (derived from precipitationRate, kept for backward compat)
   isDusk: boolean
+  timeOfDay: number // 0..24 hour of day; 12 = solar noon
 
   isModalOpen: boolean
 
@@ -18,6 +19,7 @@ interface EnvironmentStore {
   setCloudCover: (cover: number) => void
   setRainIntensity: (intensity: number) => void
   setIsDusk: (dusk: boolean) => void
+  setTimeOfDay: (hour: number) => void
   openModal: () => void
   closeModal: () => void
   toggleModal: () => void
@@ -31,6 +33,7 @@ export const useEnvironmentStore = create<EnvironmentStore>((set, get) => ({
   cloudCover: 0.2,
   rainIntensity: 0,
   isDusk: false,
+  timeOfDay: 12,
 
   isModalOpen: false,
 
@@ -52,6 +55,12 @@ export const useEnvironmentStore = create<EnvironmentStore>((set, get) => ({
   setCloudCover: cover => set({ cloudCover: Math.max(0, Math.min(1, cover)) }),
 
   setIsDusk: dusk => set({ isDusk: dusk }),
+
+  setTimeOfDay: hour => {
+    const wrapped = ((hour % 24) + 24) % 24
+    const dusk = wrapped < 6.5 || wrapped > 17.5
+    set({ timeOfDay: wrapped, isDusk: dusk })
+  },
 
   setRainIntensity: intensity => {
     const clamped = Math.max(0, Math.min(1, intensity))

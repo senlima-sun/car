@@ -16,6 +16,7 @@ import {
   type BlendInputs,
   type SkyState,
 } from './skyStates'
+import { computeSunDirection, getSunIntensity } from './sunDirection'
 
 for (const id of SKY_STATE_IDS) {
   useEnvironment.preload({ files: SKY_STATES[id].file, path: HDRI_PATH })
@@ -115,6 +116,8 @@ export default function HdriSky() {
       uWeatherSourceCount: { value: 0 },
       uCameraXZ: { value: new THREE.Vector2(0, 0) },
       uSourceBiasStrength: { value: 0.6 },
+      uSunDirection: { value: new THREE.Vector3(0, 1, 0) },
+      uSunIntensity: { value: 1.0 },
     }),
     [textures],
   )
@@ -129,11 +132,15 @@ export default function HdriSky() {
     pollAcc.current += delta
     if (pollAcc.current >= 0.1) {
       pollAcc.current = 0
-      const { temperature, rainIntensity, isDusk } = useEnvironmentStore.getState()
+      const { temperature, rainIntensity, isDusk, timeOfDay } = useEnvironmentStore.getState()
       const input: BlendInputs = { temperature, rainIntensity, isDusk }
       const ids = pickTopStates(input, 1)
       dominantStateRef.current = ids[0]
       activeIdsRef.current = [ids[0], ids[0], ids[0], 'heavyRain']
+
+      const sun = computeSunDirection(timeOfDay)
+      ;(u.uSunDirection.value as THREE.Vector3).set(sun.x, sun.y, sun.z)
+      u.uSunIntensity.value = getSunIntensity(timeOfDay)
     }
 
     const dominant = dominantStateRef.current
