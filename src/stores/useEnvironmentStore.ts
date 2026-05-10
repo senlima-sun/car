@@ -7,6 +7,7 @@ interface EnvironmentStore {
   pressure: number // hPa
   cloudCover: number // 0 to 1
   rainIntensity: number // 0 to 1 (derived from precipitationRate, kept for backward compat)
+  isDusk: boolean
 
   isModalOpen: boolean
 
@@ -16,6 +17,7 @@ interface EnvironmentStore {
   setPressure: (hPa: number) => void
   setCloudCover: (cover: number) => void
   setRainIntensity: (intensity: number) => void
+  setIsDusk: (dusk: boolean) => void
   openModal: () => void
   closeModal: () => void
   toggleModal: () => void
@@ -28,6 +30,7 @@ export const useEnvironmentStore = create<EnvironmentStore>((set, get) => ({
   pressure: 1013.25,
   cloudCover: 0.2,
   rainIntensity: 0,
+  isDusk: false,
 
   isModalOpen: false,
 
@@ -47,6 +50,8 @@ export const useEnvironmentStore = create<EnvironmentStore>((set, get) => ({
   setPressure: hPa => set({ pressure: Math.max(900, Math.min(1100, hPa)) }),
 
   setCloudCover: cover => set({ cloudCover: Math.max(0, Math.min(1, cover)) }),
+
+  setIsDusk: dusk => set({ isDusk: dusk }),
 
   setRainIntensity: intensity => {
     const clamped = Math.max(0, Math.min(1, intensity))

@@ -27,30 +27,62 @@ export function shouldEnableSkyEnvironment(avgFps: number, currentlyEnabled: boo
   return avgFps >= SKY_ENV_ENABLE_FPS
 }
 
-function deriveBlendInputs(temperature: number, rainIntensity: number): BlendInputs {
-  return { temperature, rainIntensity, isDusk: false }
-}
-
 export default function HdriSky() {
-  const textures: Record<SkyState, THREE.Texture> = {
-    clear: useEnvironment({ files: SKY_STATES.clear.file, path: HDRI_PATH }) as THREE.Texture,
-    cloudy: useEnvironment({ files: SKY_STATES.cloudy.file, path: HDRI_PATH }) as THREE.Texture,
-    overcast: useEnvironment({ files: SKY_STATES.overcast.file, path: HDRI_PATH }) as THREE.Texture,
-    drizzle: useEnvironment({ files: SKY_STATES.drizzle.file, path: HDRI_PATH }) as THREE.Texture,
-    heavyRain: useEnvironment({
-      files: SKY_STATES.heavyRain.file,
-      path: HDRI_PATH,
-    }) as THREE.Texture,
-    storm: useEnvironment({ files: SKY_STATES.storm.file, path: HDRI_PATH }) as THREE.Texture,
-    goldenHour: useEnvironment({
-      files: SKY_STATES.goldenHour.file,
-      path: HDRI_PATH,
-    }) as THREE.Texture,
-    overcastDusk: useEnvironment({
-      files: SKY_STATES.overcastDusk.file,
-      path: HDRI_PATH,
-    }) as THREE.Texture,
-  }
+  const clearTex = useEnvironment({
+    files: SKY_STATES.clear.file,
+    path: HDRI_PATH,
+  }) as THREE.Texture
+  const cloudyTex = useEnvironment({
+    files: SKY_STATES.cloudy.file,
+    path: HDRI_PATH,
+  }) as THREE.Texture
+  const overcastTex = useEnvironment({
+    files: SKY_STATES.overcast.file,
+    path: HDRI_PATH,
+  }) as THREE.Texture
+  const drizzleTex = useEnvironment({
+    files: SKY_STATES.drizzle.file,
+    path: HDRI_PATH,
+  }) as THREE.Texture
+  const heavyRainTex = useEnvironment({
+    files: SKY_STATES.heavyRain.file,
+    path: HDRI_PATH,
+  }) as THREE.Texture
+  const stormTex = useEnvironment({
+    files: SKY_STATES.storm.file,
+    path: HDRI_PATH,
+  }) as THREE.Texture
+  const goldenHourTex = useEnvironment({
+    files: SKY_STATES.goldenHour.file,
+    path: HDRI_PATH,
+  }) as THREE.Texture
+  const overcastDuskTex = useEnvironment({
+    files: SKY_STATES.overcastDusk.file,
+    path: HDRI_PATH,
+  }) as THREE.Texture
+
+  const textures = useMemo<Record<SkyState, THREE.Texture>>(
+    () => ({
+      clear: clearTex,
+      cloudy: cloudyTex,
+      overcast: overcastTex,
+      drizzle: drizzleTex,
+      heavyRain: heavyRainTex,
+      storm: stormTex,
+      goldenHour: goldenHourTex,
+      overcastDusk: overcastDuskTex,
+    }),
+    [
+      clearTex,
+      cloudyTex,
+      overcastTex,
+      drizzleTex,
+      heavyRainTex,
+      stormTex,
+      goldenHourTex,
+      overcastDuskTex,
+    ],
+  )
 
   const avgFps = usePerformanceStore(s => s.avgFps)
   const matRef = useRef<THREE.ShaderMaterial>(null)
@@ -71,14 +103,14 @@ export default function HdriSky() {
       uRotation: { value: 0 },
       uTime: { value: 0 },
     }),
-    [textures.clear],
+    [textures],
   )
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!matRef.current) return
 
-    const { temperature, rainIntensity } = useEnvironmentStore.getState()
-    const input = deriveBlendInputs(temperature, rainIntensity)
+    const { temperature, rainIntensity, isDusk } = useEnvironmentStore.getState()
+    const input: BlendInputs = { temperature, rainIntensity, isDusk }
     const ids = pickTopStates(input, 4)
     const weights = computeWeights(input, ids)
 
@@ -104,7 +136,7 @@ export default function HdriSky() {
     const rotationSpeed = SKY_STATES[ids[0]].rotationSpeed
     u.exposure.value += (dominantExposure - u.exposure.value) * lerpFactor
     u.uRotation.value += rotationSpeed * delta
-    u.uTime.value += delta
+    u.uTime.value = state.clock.elapsedTime
 
     if (ids[0] !== dominantId) setDominantId(ids[0])
   })

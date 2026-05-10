@@ -110,32 +110,14 @@ function squaredDistance(anchor: SkyStateAnchor, input: BlendInputs): number {
   return dt * dt + dr * dr + dd * dd
 }
 
-const cache = new Map<string, SkyState[]>()
-const CACHE_LIMIT = 64
-
-function quantize(input: BlendInputs): string {
-  const t = Math.round(input.temperature)
-  const r = Math.round(input.rainIntensity * 20) / 20
-  const d = input.isDusk ? 1 : 0
-  return `${t}|${r}|${d}`
-}
-
 export function pickTopStates(input: BlendInputs, k = 4): SkyState[] {
-  const key = `${k}|${quantize(input)}`
-  const cached = cache.get(key)
-  if (cached) return cached
-
-  const ranked = SKY_STATE_IDS.map(id => ({
+  return SKY_STATE_IDS.map(id => ({
     id,
     score: squaredDistance(SKY_STATES[id].anchor, input),
   }))
     .sort((a, b) => a.score - b.score)
     .slice(0, k)
     .map(entry => entry.id)
-
-  if (cache.size >= CACHE_LIMIT) cache.clear()
-  cache.set(key, ranked)
-  return ranked
 }
 
 export function computeWeights(input: BlendInputs, ids: SkyState[]): number[] {
@@ -147,8 +129,4 @@ export function computeWeights(input: BlendInputs, ids: SkyState[]): number[] {
   const sum = inverses.reduce((a, b) => a + b, 0)
   if (sum <= 0) return ids.map(() => 1 / ids.length)
   return inverses.map(v => v / sum)
-}
-
-export function clearSkyStateCache(): void {
-  cache.clear()
 }

@@ -1,11 +1,5 @@
-import { describe, expect, it, beforeEach } from 'bun:test'
-import {
-  SKY_STATES,
-  SKY_STATE_IDS,
-  pickTopStates,
-  computeWeights,
-  clearSkyStateCache,
-} from './skyStates'
+import { describe, expect, it } from 'bun:test'
+import { SKY_STATES, SKY_STATE_IDS, pickTopStates, computeWeights } from './skyStates'
 
 describe('SKY_STATES config', () => {
   it('has 8 unique states with unique files', () => {
@@ -24,9 +18,7 @@ describe('SKY_STATES config', () => {
 })
 
 describe('pickTopStates', () => {
-  beforeEach(() => clearSkyStateCache())
-
-  it('picks clear at hot dry midday', () => {
+it('picks clear at hot dry midday', () => {
     const top = pickTopStates({ temperature: 25, rainIntensity: 0, isDusk: false }, 2)
     expect(top[0]).toBe('clear')
   })
@@ -73,7 +65,7 @@ describe('pickTopStates', () => {
     expect(pickTopStates({ temperature: 20, rainIntensity: 0.2, isDusk: false }, 1)).toHaveLength(1)
   })
 
-  it('memoises identical quantised inputs', () => {
+  it('returns matching results for nearby inputs (smooth picker)', () => {
     const a = pickTopStates({ temperature: 25.1, rainIntensity: 0.001, isDusk: false }, 4)
     const b = pickTopStates({ temperature: 25.4, rainIntensity: 0.0, isDusk: false }, 4)
     expect(a).toEqual(b)
@@ -81,9 +73,7 @@ describe('pickTopStates', () => {
 })
 
 describe('computeWeights', () => {
-  beforeEach(() => clearSkyStateCache())
-
-  it('weights sum to 1', () => {
+it('weights sum to 1', () => {
     const ids = pickTopStates({ temperature: 18, rainIntensity: 0.4, isDusk: false }, 4)
     const w = computeWeights({ temperature: 18, rainIntensity: 0.4, isDusk: false }, ids)
     const sum = w.reduce((a, b) => a + b, 0)

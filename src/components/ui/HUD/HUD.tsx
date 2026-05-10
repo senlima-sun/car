@@ -15,7 +15,7 @@ import RaceInfoBar from './RaceInfoBar'
 import Callouts from './Callouts'
 import TimingTower from './TimingTower'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
-import SkyStateDebug from '../SkyStateDebug'
+import SkyStateDebug from '../Debug/SkyStateDebug'
 import { SettingsDialog } from '../SettingsDialog'
 import {
   isCustomizeStatus,
