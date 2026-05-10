@@ -10,11 +10,14 @@ void main() {
 `
 
 export const hdriSkyFragment = /* glsl */ `
-uniform sampler2D texA;
-uniform sampler2D texB;
-uniform float blend;
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+uniform sampler2D tex2;
+uniform sampler2D tex3;
+uniform vec4 blendWeights;
 uniform float exposure;
 uniform float uRotation;
+uniform float uTime;
 varying vec3 vWorldDirection;
 
 #define RECIPROCAL_PI2 0.15915494309
@@ -49,9 +52,11 @@ void main() {
   }
 
   vec2 uv = equirectUv(dir);
-  vec4 colorA = texture2D(texA, uv);
-  vec4 colorB = texture2D(texB, uv);
-  vec3 hdr = mix(colorA.rgb, colorB.rgb, blend);
+  vec3 c0 = texture2D(tex0, uv).rgb;
+  vec3 c1 = texture2D(tex1, uv).rgb;
+  vec3 c2 = texture2D(tex2, uv).rgb;
+  vec3 c3 = texture2D(tex3, uv).rgb;
+  vec3 hdr = c0 * blendWeights.x + c1 * blendWeights.y + c2 * blendWeights.z + c3 * blendWeights.w;
   vec3 mapped = ACESFilmic(hdr * exposure);
   gl_FragColor = vec4(mapped, 1.0);
   #include <colorspace_fragment>

@@ -15,6 +15,7 @@ import RaceInfoBar from './RaceInfoBar'
 import Callouts from './Callouts'
 import TimingTower from './TimingTower'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
+import SkyStateDebug from '../SkyStateDebug'
 import { SettingsDialog } from '../SettingsDialog'
 import {
   isCustomizeStatus,
@@ -190,6 +191,7 @@ export default function HUD() {
           {isRunningSession && <WrongWayIndicator />}
           {isRunningSession && <PitLaneSpeedIndicator />}
           {isRunningSession && isTestingMode && <PhysicsDebugOverlay />}
+          {isRunningSession && isTestingMode && <SkyStateDebug />}
           {isRunningSession && isTestingMode && <TrackSwitcher />}
           {isRunningSession && <TelemetryOverlay />}
           {isRunningSession && <TelemetryAnalysis />}
