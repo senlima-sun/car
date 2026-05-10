@@ -11,6 +11,7 @@ import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
 import DynamicLighting from './Weather/DynamicLighting'
 import SkyDome from './Weather/SkyDome'
+import VolumetricClouds from './Weather/VolumetricClouds'
 import WeatherMirror from './Weather/WeatherMirror'
 import WeatherSourcesProvider from './Weather/WeatherSourcesProvider'
 import JumpStartDetector from './JumpStartDetector'
@@ -48,6 +49,7 @@ export default function Scene() {
     <>
       <DynamicLighting target={carRef} />
       <SkyDome />
+      <VolumetricClouds />
 
       {isCustomizeMode && <fog attach='fog' args={['#e8e8e8', 5000, 10000]} />}
 
