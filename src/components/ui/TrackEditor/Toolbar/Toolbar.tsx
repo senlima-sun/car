@@ -127,11 +127,12 @@ export default function Toolbar() {
       return
     }
     const rawName = activeTrack?.name ?? 'Custom Track'
-    const slug =
+    const baseSlug =
       rawName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_|_$/g, '') || 'custom_track'
+    const slug = activeTrack ? baseSlug : `${baseSlug}_${Date.now().toString(36)}`
     const source = buildEditorTrackSource({
       id: `f1_${slug}`,
       name: rawName,

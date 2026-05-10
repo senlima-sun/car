@@ -29,12 +29,14 @@ function pathLength(path: Path, allPaths: Path[]): number {
   const samples = Math.max(MIN_SAMPLES, segCount * SAMPLES_PER_SEGMENT)
   let total = 0
   let prev = pointOnPathAt(path, 0, allPaths)?.point
-  if (!prev) return 0
   for (let i = 1; i <= samples; i++) {
     const t = (i / samples) * segCount
     const next = pointOnPathAt(path, t, allPaths)?.point
-    if (!next) continue
-    total += Math.hypot(next.x - prev.x, next.y - prev.y)
+    if (!next) {
+      prev = undefined
+      continue
+    }
+    if (prev) total += Math.hypot(next.x - prev.x, next.y - prev.y)
     prev = next
   }
   return total
@@ -88,8 +90,8 @@ export function buildEditorTrackSource(input: ExportPresetInput): EditorTrackSou
   const source: EditorTrackSource = {
     id: input.id,
     name: input.name,
-    trackLength: computeTrackLength(input.paths),
-    turns: countTurns(input.paths),
+    trackLength: computeTrackLength(paths),
+    turns: countTurns(paths),
     paths,
     checkpoints: input.checkpoints,
     raceDirection: input.raceDirection,
