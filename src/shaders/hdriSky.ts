@@ -13,10 +13,7 @@ export const hdriSkyFragment = /* glsl */ `
 #define MAX_WEATHER_SOURCES 8
 
 uniform sampler2D tex0;
-uniform sampler2D tex1;
-uniform sampler2D tex2;
 uniform sampler2D tex3;
-uniform vec4 blendWeights;
 uniform float exposure;
 uniform float uRotation;
 uniform float uTime;
@@ -83,10 +80,8 @@ void main() {
   }
 
   vec2 uv = equirectUv(sampleDir);
-  vec3 c0 = texture2D(tex0, uv).rgb;
-  vec3 c1 = texture2D(tex1, uv).rgb;
-  vec3 c2 = texture2D(tex2, uv).rgb;
-  vec3 c3 = texture2D(tex3, uv).rgb;
+  vec3 cBase = texture2D(tex0, uv).rgb;
+  vec3 cRain = texture2D(tex3, uv).rgb;
 
   float bias = 0.0;
   if (uWeatherSourceCount > 0 && uSourceBiasStrength > 0.0) {
@@ -98,22 +93,11 @@ void main() {
       vec2 worldXZ = uCameraXZ + (horizDir.xz / horizLen) * 600.0;
       horizBias = sampleSourceField(worldXZ);
     }
-    bias = max(carBias, horizBias) * uSourceBiasStrength;
+    bias = clamp(max(carBias, horizBias) * uSourceBiasStrength, 0.0, 1.0);
   }
 
-  vec4 weights = blendWeights;
-  weights.w = 0.0;
-  if (bias > 0.0) {
-    float lift = clamp(bias, 0.0, 1.0);
-    weights.x *= (1.0 - lift);
-    weights.y *= (1.0 - lift);
-    weights.z *= (1.0 - lift);
-    weights.w = lift;
-    float sum = weights.x + weights.y + weights.z + weights.w;
-    if (sum > 0.0001) weights /= sum;
-  }
-
-  vec3 hdr = c0 * weights.x + c1 * weights.y + c2 * weights.z + c3 * weights.w;
+  vec3 hdr = mix(cBase, cRain, bias);
+  hdr = min(hdr, vec3(1.6));
   vec3 mapped = ACESFilmic(hdr * exposure);
   gl_FragColor = vec4(mapped, 1.0);
   #include <colorspace_fragment>

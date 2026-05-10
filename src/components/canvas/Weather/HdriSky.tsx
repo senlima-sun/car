@@ -13,7 +13,6 @@ import {
   SKY_STATE_IDS,
   SKY_STATES,
   pickTopStates,
-  computeWeights,
   type BlendInputs,
   type SkyState,
 } from './skyStates'
@@ -93,8 +92,7 @@ export default function HdriSky() {
   const [environmentMapId, setEnvironmentMapId] = useState<SkyState>('clear')
   const dominantIdRef = useRef<SkyState>('clear')
 
-  const targetWeightsRef = useRef(new THREE.Vector4(1, 0, 0, 0))
-  const activeIdsRef = useRef<SkyState[]>(['clear', 'clear', 'clear', 'clear'])
+  const activeIdsRef = useRef<SkyState[]>(['clear', 'clear', 'clear', 'heavyRain'])
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -108,10 +106,7 @@ export default function HdriSky() {
   const uniforms = useMemo(
     () => ({
       tex0: { value: textures.clear },
-      tex1: { value: textures.clear },
-      tex2: { value: textures.clear },
-      tex3: { value: textures.clear },
-      blendWeights: { value: new THREE.Vector4(1, 0, 0, 0) },
+      tex3: { value: textures.heavyRain },
       exposure: { value: 1.0 },
       uRotation: { value: 0 },
       uTime: { value: 0 },
@@ -125,34 +120,30 @@ export default function HdriSky() {
     [textures],
   )
 
+  const pollAcc = useRef(0)
+  const dominantStateRef = useRef<SkyState>('clear')
+
   useFrame((state, delta) => {
     if (!matRef.current) return
-
-    const { temperature, rainIntensity, isDusk } = useEnvironmentStore.getState()
-    const input: BlendInputs = { temperature, rainIntensity, isDusk }
-    const ids = pickTopStates(input, 4)
-    const weights = computeWeights(input, ids)
-
-    activeIdsRef.current = ids
-    targetWeightsRef.current.set(
-      weights[0] ?? 0,
-      weights[1] ?? 0,
-      weights[2] ?? 0,
-      weights[3] ?? 0,
-    )
-
     const u = matRef.current.uniforms
-    u.tex0.value = textures[ids[0]]
-    u.tex1.value = textures[ids[1]]
-    u.tex2.value = textures[ids[2]]
+
+    pollAcc.current += delta
+    if (pollAcc.current >= 0.1) {
+      pollAcc.current = 0
+      const { temperature, rainIntensity, isDusk } = useEnvironmentStore.getState()
+      const input: BlendInputs = { temperature, rainIntensity, isDusk }
+      const ids = pickTopStates(input, 1)
+      dominantStateRef.current = ids[0]
+      activeIdsRef.current = [ids[0], ids[0], ids[0], 'heavyRain']
+    }
+
+    const dominant = dominantStateRef.current
+    u.tex0.value = textures[dominant]
     u.tex3.value = textures.heavyRain
 
-    const current = u.blendWeights.value as THREE.Vector4
     const lerpFactor = Math.min(1, delta * 2.0)
-    current.lerp(targetWeightsRef.current, lerpFactor)
-
-    const dominantExposure = SKY_STATES[ids[0]].exposure
-    const rotationSpeed = SKY_STATES[ids[0]].rotationSpeed
+    const dominantExposure = SKY_STATES[dominant].exposure
+    const rotationSpeed = SKY_STATES[dominant].rotationSpeed
     u.exposure.value += (dominantExposure - u.exposure.value) * lerpFactor
     u.uRotation.value += rotationSpeed * delta
     u.uTime.value = state.clock.elapsedTime
@@ -164,15 +155,17 @@ export default function HdriSky() {
       const s = sources[i]
       slots[i].set(s.x, s.z, s.radius, s.intensity)
     }
-    for (let i = limit; i < MAX_WEATHER_SOURCES; i++) {
-      slots[i].set(0, 0, 0, 0)
+    if (u.uWeatherSourceCount.value !== limit) {
+      for (let i = limit; i < MAX_WEATHER_SOURCES; i++) {
+        slots[i].set(0, 0, 0, 0)
+      }
+      u.uWeatherSourceCount.value = limit
     }
-    u.uWeatherSourceCount.value = limit
 
     const cam = state.camera.position
     ;(u.uCameraXZ.value as THREE.Vector2).set(cam.x, cam.z)
 
-    dominantIdRef.current = ids[0]
+    dominantIdRef.current = dominant
   })
 
   useEffect(() => {
