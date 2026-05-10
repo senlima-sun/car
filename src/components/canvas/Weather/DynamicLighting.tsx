@@ -3,6 +3,7 @@ import { Group, DirectionalLight, Vector3 } from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { lerp, computeAtmosphereFromDynamic } from './DynamicSky'
+import { computeSunDirection, getSunIntensity } from './sunDirection'
 
 function lerpColor(from: string, to: string, t: number): string {
   const fromR = parseInt(from.slice(1, 3), 16)
@@ -39,12 +40,17 @@ export default function DynamicLighting({ target }: DynamicLightingProps) {
 
     target.current.getWorldPosition(worldPos.current)
     const carPos = worldPos.current
+    const { timeOfDay } = useEnvironmentStore.getState()
+    const sun = computeSunDirection(timeOfDay)
+    const distance = 100
 
     sunLightRef.current.position.set(
-      carPos.x + config.sunPosition[0] * 0.5,
-      config.sunPosition[1],
-      carPos.z + config.sunPosition[2] * 0.5,
+      carPos.x + sun.x * distance,
+      Math.max(5, sun.y * distance),
+      carPos.z + sun.z * distance,
     )
+    const sunIntensity = getSunIntensity(timeOfDay)
+    sunLightRef.current.intensity = config.sunIntensity * (0.3 + 0.7 * sunIntensity)
     sunLightRef.current.target.position.set(carPos.x, 0, carPos.z)
     sunLightRef.current.target.updateMatrixWorld()
   })

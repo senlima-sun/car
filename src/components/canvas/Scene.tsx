@@ -10,7 +10,7 @@ import WeatherEffects from './Weather/WeatherEffects'
 import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
 import DynamicLighting from './Weather/DynamicLighting'
-import DynamicSky from './Weather/DynamicSky'
+import SkyDome from './Weather/SkyDome'
 import WeatherMirror from './Weather/WeatherMirror'
 import WeatherSourcesProvider from './Weather/WeatherSourcesProvider'
 import JumpStartDetector from './JumpStartDetector'
@@ -47,7 +47,7 @@ export default function Scene() {
   return (
     <>
       <DynamicLighting target={carRef} />
-      <DynamicSky />
+      <SkyDome />
 
       {isCustomizeMode && <fog attach='fog' args={['#e8e8e8', 5000, 10000]} />}
 
