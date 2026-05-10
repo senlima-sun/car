@@ -8,6 +8,8 @@ import { exportTrack } from '../utils/trackExport'
 import { readLibrary, writeLibrary } from '../utils/trackLibraryDB'
 
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let saveInFlight: Promise<void> | null = null
+let savePending = false
 
 const debouncedSaveLibrary = (saveFn: () => void): void => {
   if (saveDebounceTimer !== null) clearTimeout(saveDebounceTimer)
@@ -67,7 +69,6 @@ interface TrackState {
   isLoading: boolean
   loadedOnce: boolean
   isDirty: boolean
-  quotaExceeded: boolean
 
   createTrack: (name: string) => string
   deleteTrack: (id: string) => void
@@ -82,7 +83,7 @@ interface TrackState {
   markDirty: () => void
 
   loadLibrary: () => Promise<void>
-  saveLibrary: () => void
+  saveLibrary: () => Promise<void>
 
   getActiveTrack: () => SavedTrack | null
   getTrackById: (id: string) => SavedTrack | null
@@ -97,7 +98,6 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   isLoading: true,
   loadedOnce: false,
   isDirty: false,
-  quotaExceeded: false,
 
   createTrack: (name: string) => {
     const newTrack: SavedTrack = {
@@ -448,23 +448,25 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   },
 
   saveLibrary: () => {
-    try {
-      const { trackLibrary } = get()
-      localStorage.setItem(TRACK_LIBRARY_KEY, JSON.stringify(trackLibrary))
-      if (get().quotaExceeded) set({ quotaExceeded: false })
-    } catch (e) {
-      const isQuota =
-        e instanceof DOMException &&
-        (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')
-      if (isQuota) {
-        set({ quotaExceeded: true })
-        console.warn(
-          'Track library exceeds localStorage quota. In-memory edits will not persist until storage is cleared.',
-        )
-      } else {
+    if (saveInFlight) {
+      savePending = true
+      return saveInFlight
+    }
+    const run = (async () => {
+      try {
+        await writeLibrary(get().trackLibrary)
+      } catch (e) {
         console.error('Failed to save track library:', e)
       }
-    }
+    })()
+    saveInFlight = run
+    return run.finally(() => {
+      saveInFlight = null
+      if (savePending) {
+        savePending = false
+        void get().saveLibrary()
+      }
+    })
   },
 
   getActiveTrack: () => {
