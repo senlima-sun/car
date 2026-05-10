@@ -95,7 +95,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     activeTrackId: null,
     tracks: [],
   },
-  isLoading: true,
+  isLoading: false,
   loadedOnce: false,
   isDirty: false,
 
@@ -323,7 +323,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   },
 
   loadLibrary: async () => {
-    if (get().loadedOnce && !get().isLoading) return
+    if (get().isLoading || get().loadedOnce) return
 
     set({ isLoading: true })
 
@@ -435,7 +435,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
       try {
         await writeLibrary(migratedLib)
-        localStorage.removeItem(TRACK_LIBRARY_KEY)
+        if (migratedFromLegacy) localStorage.removeItem(TRACK_LIBRARY_KEY)
       } catch (e) {
         console.error('Failed to migrate track library to IDB:', e)
       }

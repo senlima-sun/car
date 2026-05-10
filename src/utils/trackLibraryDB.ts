@@ -38,6 +38,10 @@ export async function readLibrary(): Promise<TrackLibrary | null> {
       db.close()
       reject(req.error)
     }
+    tx.onabort = () => {
+      db.close()
+      reject(tx.error ?? new Error('IDB transaction aborted'))
+    }
   })
 }
 
@@ -55,6 +59,10 @@ export async function writeLibrary(library: TrackLibrary): Promise<void> {
       db.close()
       reject(req.error)
     }
+    tx.onabort = () => {
+      db.close()
+      reject(tx.error ?? new Error('IDB transaction aborted'))
+    }
   })
 }
 
@@ -70,6 +78,10 @@ export async function clearLibrary(): Promise<void> {
     req.onerror = () => {
       db.close()
       reject(req.error)
+    }
+    tx.onabort = () => {
+      db.close()
+      reject(tx.error ?? new Error('IDB transaction aborted'))
     }
   })
 }
