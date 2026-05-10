@@ -18,6 +18,14 @@ import {
   setEnvironment,
   getAirDensity,
   getSurfaceFrictionBreakdown,
+  // Weather sources API
+  addWeatherSource,
+  clearWeatherSources,
+  replaceWeatherSources,
+  getWeatherSources,
+  getWeatherSourceCount,
+  sampleWeatherIntensity,
+  getWeatherSourceMax,
   // Wind API
   setWind,
   setWindEnabled,
@@ -158,6 +166,14 @@ interface PhysicsContextValue {
   setEnvironment: typeof setEnvironment
   getAirDensity: typeof getAirDensity
   getSurfaceFrictionBreakdown: typeof getSurfaceFrictionBreakdown
+  // Weather sources API
+  addWeatherSource: typeof addWeatherSource
+  clearWeatherSources: typeof clearWeatherSources
+  replaceWeatherSources: typeof replaceWeatherSources
+  getWeatherSources: typeof getWeatherSources
+  getWeatherSourceCount: typeof getWeatherSourceCount
+  sampleWeatherIntensity: typeof sampleWeatherIntensity
+  getWeatherSourceMax: typeof getWeatherSourceMax
   // Wind API
   setWind: typeof setWind
   setWindEnabled: typeof setWindEnabled
@@ -305,6 +321,13 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       setEnvironment,
       getAirDensity,
       getSurfaceFrictionBreakdown,
+      addWeatherSource,
+      clearWeatherSources,
+      replaceWeatherSources,
+      getWeatherSources,
+      getWeatherSourceCount,
+      sampleWeatherIntensity,
+      getWeatherSourceMax,
       setWind,
       setWindEnabled,
       isWindEnabled,

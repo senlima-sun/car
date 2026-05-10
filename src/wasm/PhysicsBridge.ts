@@ -696,6 +696,82 @@ export function getSurfaceFrictionBreakdown(): SurfaceFrictionBreakdown {
   return getPhysicsEngine().get_surface_friction_breakdown() as SurfaceFrictionBreakdown
 }
 
+export interface WeatherSource {
+  x: number
+  z: number
+  radius: number
+  intensity: number
+  vx: number
+  vz: number
+}
+
+function safeFloat(value: number): number {
+  return Number.isFinite(value) ? value : 0
+}
+
+export function addWeatherSource(source: WeatherSource): boolean {
+  recordWasmCall()
+  return getPhysicsEngine().add_weather_source(
+    safeFloat(source.x),
+    safeFloat(source.z),
+    Math.max(1, safeFloat(source.radius)),
+    Math.max(0, Math.min(1, safeFloat(source.intensity))),
+    safeFloat(source.vx),
+    safeFloat(source.vz),
+  )
+}
+
+export function clearWeatherSources(): void {
+  recordWasmCall()
+  getPhysicsEngine().clear_weather_sources()
+}
+
+export function replaceWeatherSources(sources: WeatherSource[]): void {
+  recordWasmCall()
+  const flat = new Float32Array(sources.length * 6)
+  for (let i = 0; i < sources.length; i++) {
+    const s = sources[i]
+    const base = i * 6
+    flat[base] = safeFloat(s.x)
+    flat[base + 1] = safeFloat(s.z)
+    flat[base + 2] = Math.max(1, safeFloat(s.radius))
+    flat[base + 3] = Math.max(0, Math.min(1, safeFloat(s.intensity)))
+    flat[base + 4] = safeFloat(s.vx)
+    flat[base + 5] = safeFloat(s.vz)
+  }
+  getPhysicsEngine().replace_weather_sources(flat)
+}
+
+export function getWeatherSources(): WeatherSource[] {
+  recordWasmCall()
+  const flat = getPhysicsEngine().get_weather_source_data()
+  const out: WeatherSource[] = []
+  for (let i = 0; i + 5 < flat.length; i += 6) {
+    out.push({
+      x: flat[i],
+      z: flat[i + 1],
+      radius: flat[i + 2],
+      intensity: flat[i + 3],
+      vx: flat[i + 4],
+      vz: flat[i + 5],
+    })
+  }
+  return out
+}
+
+export function getWeatherSourceCount(): number {
+  return getPhysicsEngine().get_weather_source_count()
+}
+
+export function sampleWeatherIntensity(x: number, z: number): number {
+  recordWasmCall()
+  return safeFloat(getPhysicsEngine().sample_weather_intensity(safeFloat(x), safeFloat(z)))
+}
+
+export function getWeatherSourceMax(): number {
+  return PhysicsEngine.get_weather_source_max()
+}
+
 // ============================================================================
 // Wind API
 // ============================================================================

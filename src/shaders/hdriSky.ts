@@ -10,6 +10,8 @@ void main() {
 `
 
 export const hdriSkyFragment = /* glsl */ `
+#define MAX_WEATHER_SOURCES 8
+
 uniform sampler2D tex0;
 uniform sampler2D tex1;
 uniform sampler2D tex2;
@@ -18,6 +20,11 @@ uniform vec4 blendWeights;
 uniform float exposure;
 uniform float uRotation;
 uniform float uTime;
+uniform vec4 uWeatherSources[MAX_WEATHER_SOURCES];
+uniform int uWeatherSourceCount;
+uniform vec2 uCameraXZ;
+uniform float uSourceBiasStrength;
+
 varying vec3 vWorldDirection;
 
 #define RECIPROCAL_PI2 0.15915494309
@@ -39,24 +46,71 @@ vec3 ACESFilmic(vec3 x) {
   return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
+float sampleSourceField(vec2 worldXZ) {
+  float total = 0.0;
+  for (int i = 0; i < MAX_WEATHER_SOURCES; i++) {
+    if (i >= uWeatherSourceCount) break;
+    vec4 src = uWeatherSources[i];
+    vec2 d = worldXZ - src.xy;
+    float dist = length(d);
+    float r = max(src.z, 0.0001);
+    if (dist >= r) continue;
+    float inner = r * 0.7;
+    float t;
+    if (dist <= inner) {
+      t = 1.0;
+    } else {
+      float span = max(r - inner, 0.0001);
+      float local = (r - dist) / span;
+      t = local * local * (3.0 - 2.0 * local);
+    }
+    total += src.w * t;
+  }
+  return clamp(total, 0.0, 1.0);
+}
+
 void main() {
   vec3 dir = normalize(vWorldDirection);
 
   float cosR = cos(uRotation);
   float sinR = sin(uRotation);
-  dir = vec3(dir.x * cosR - dir.z * sinR, dir.y, dir.x * sinR + dir.z * cosR);
+  vec3 rotated = vec3(dir.x * cosR - dir.z * sinR, dir.y, dir.x * sinR + dir.z * cosR);
 
-  if (dir.y < 0.0) {
-    dir.y = max(0.001, -dir.y * 0.1);
-    dir = normalize(dir);
+  vec3 sampleDir = rotated;
+  if (sampleDir.y < 0.0) {
+    sampleDir.y = max(0.001, -sampleDir.y * 0.1);
+    sampleDir = normalize(sampleDir);
   }
 
-  vec2 uv = equirectUv(dir);
+  vec2 uv = equirectUv(sampleDir);
   vec3 c0 = texture2D(tex0, uv).rgb;
   vec3 c1 = texture2D(tex1, uv).rgb;
   vec3 c2 = texture2D(tex2, uv).rgb;
   vec3 c3 = texture2D(tex3, uv).rgb;
-  vec3 hdr = c0 * blendWeights.x + c1 * blendWeights.y + c2 * blendWeights.z + c3 * blendWeights.w;
+
+  float bias = 0.0;
+  if (uWeatherSourceCount > 0 && uSourceBiasStrength > 0.0) {
+    vec3 horizDir = vec3(rotated.x, 0.0, rotated.z);
+    float horizLen = length(horizDir);
+    if (horizLen > 0.001) {
+      vec2 worldXZ = uCameraXZ + (horizDir.xz / horizLen) * 600.0;
+      bias = sampleSourceField(worldXZ) * uSourceBiasStrength;
+    }
+  }
+
+  vec4 weights = blendWeights;
+  if (bias > 0.0) {
+    float lift = min(bias, 1.0 - weights.x);
+    float share = lift / 3.0;
+    weights.x = max(weights.x - lift, 0.0);
+    weights.y += share;
+    weights.z += share;
+    weights.w += share;
+    float sum = weights.x + weights.y + weights.z + weights.w;
+    if (sum > 0.0001) weights /= sum;
+  }
+
+  vec3 hdr = c0 * weights.x + c1 * weights.y + c2 * weights.z + c3 * weights.w;
   vec3 mapped = ACESFilmic(hdr * exposure);
   gl_FragColor = vec4(mapped, 1.0);
   #include <colorspace_fragment>

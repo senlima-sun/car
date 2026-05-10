@@ -4,7 +4,10 @@ import { useFrame } from '@react-three/fiber'
 import { useEnvironment, Environment } from '@react-three/drei'
 import { useEnvironmentStore } from '@/stores/useEnvironmentStore'
 import { usePerformanceStore } from '@/stores/usePerformanceStore'
+import { useWeatherSourcesStore } from '@/stores/useWeatherSourcesStore'
 import { hdriSkyVertex, hdriSkyFragment } from '@/shaders/hdriSky'
+
+const MAX_WEATHER_SOURCES = 8
 import {
   HDRI_PATH,
   SKY_STATE_IDS,
@@ -102,6 +105,12 @@ export default function HdriSky() {
       exposure: { value: 1.0 },
       uRotation: { value: 0 },
       uTime: { value: 0 },
+      uWeatherSources: {
+        value: Array.from({ length: MAX_WEATHER_SOURCES }, () => new THREE.Vector4(0, 0, 0, 0)),
+      },
+      uWeatherSourceCount: { value: 0 },
+      uCameraXZ: { value: new THREE.Vector2(0, 0) },
+      uSourceBiasStrength: { value: 0.6 },
     }),
     [textures],
   )
@@ -137,6 +146,21 @@ export default function HdriSky() {
     u.exposure.value += (dominantExposure - u.exposure.value) * lerpFactor
     u.uRotation.value += rotationSpeed * delta
     u.uTime.value = state.clock.elapsedTime
+
+    const sources = useWeatherSourcesStore.getState().sources
+    const slots = u.uWeatherSources.value as THREE.Vector4[]
+    const limit = Math.min(sources.length, MAX_WEATHER_SOURCES)
+    for (let i = 0; i < limit; i++) {
+      const s = sources[i]
+      slots[i].set(s.x, s.z, s.radius, s.intensity)
+    }
+    for (let i = limit; i < MAX_WEATHER_SOURCES; i++) {
+      slots[i].set(0, 0, 0, 0)
+    }
+    u.uWeatherSourceCount.value = limit
+
+    const cam = state.camera.position
+    ;(u.uCameraXZ.value as THREE.Vector2).set(cam.x, cam.z)
 
     if (ids[0] !== dominantId) setDominantId(ids[0])
   })

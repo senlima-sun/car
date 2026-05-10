@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useEnvironmentStore } from '@/stores/useEnvironmentStore'
+import { useWeatherSourcesStore } from '@/stores/useWeatherSourcesStore'
+import { usePhysicsOptional } from '@/wasm/PhysicsProvider'
 import {
   pickTopStates,
   computeWeights,
@@ -40,7 +42,27 @@ export default function SkyStateDebug() {
     return () => window.clearInterval(id)
   }, [enabled])
 
+  const physics = usePhysicsOptional()
+  const sourceCount = useWeatherSourcesStore(s => s.sources.length)
+
   if (!enabled || !snapshot) return null
+
+  const placeTestSource = () => {
+    if (!physics) return
+    physics.addWeatherSource({
+      x: 0,
+      z: -300,
+      radius: 250,
+      intensity: 1,
+      vx: 0,
+      vz: 0,
+    })
+  }
+
+  const clearSources = () => {
+    if (!physics) return
+    physics.clearWeatherSources()
+  }
 
   return (
     <div style={styles.container}>
@@ -62,6 +84,17 @@ export default function SkyStateDebug() {
             suffix={`(exp ${SKY_STATES[id].exposure})`}
           />
         ))}
+      </div>
+      <div style={styles.section}>
+        <Row label='sources' value={String(sourceCount)} />
+        <div style={styles.buttonRow}>
+          <button style={styles.button} onClick={placeTestSource}>
+            +source N
+          </button>
+          <button style={styles.button} onClick={clearSources}>
+            clear
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -100,7 +133,7 @@ const styles = {
     border: '1px solid rgba(120, 160, 220, 0.35)',
     borderRadius: 4,
     zIndex: 9999,
-    pointerEvents: 'none' as const,
+    pointerEvents: 'auto' as const,
   },
   header: {
     fontSize: 10,
@@ -121,4 +154,20 @@ const styles = {
   rowHighlight: { color: '#ffd28a', fontWeight: 600 as const },
   label: { color: '#9bb0c8' },
   value: { color: '#e8f0fa' },
+  buttonRow: {
+    display: 'flex' as const,
+    gap: 6,
+    marginTop: 4,
+  },
+  button: {
+    flex: 1,
+    background: 'rgba(60, 90, 130, 0.5)',
+    color: '#e8f0fa',
+    border: '1px solid rgba(120, 160, 220, 0.4)',
+    borderRadius: 3,
+    padding: '4px 6px',
+    fontSize: 10,
+    fontFamily: 'monospace',
+    cursor: 'pointer' as const,
+  },
 }

@@ -11,6 +11,7 @@ import WindshieldRain from './Weather/WindshieldRain'
 import LightningEffect from './Weather/LightningEffect'
 import DynamicLighting from './Weather/DynamicLighting'
 import WeatherMirror from './Weather/WeatherMirror'
+import WeatherSourcesProvider from './Weather/WeatherSourcesProvider'
 import JumpStartDetector from './JumpStartDetector'
 import {
   PlacedObjectsRenderer,
@@ -71,6 +72,7 @@ export default function Scene() {
           <WindshieldRain />
           <LightningEffect />
           <WeatherMirror />
+          <WeatherSourcesProvider />
           <JumpStartDetector />
           <SurfaceParticles />
           <Car key={activeTrackId ?? 'default'} ref={carRef} />

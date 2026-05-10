@@ -18,6 +18,14 @@ export {
   setEnvironment,
   getAirDensity,
   getSurfaceFrictionBreakdown,
+  // Weather sources API
+  addWeatherSource,
+  clearWeatherSources,
+  replaceWeatherSources,
+  getWeatherSources,
+  getWeatherSourceCount,
+  sampleWeatherIntensity,
+  getWeatherSourceMax,
   // Wind API
   setWind,
   setWindEnabled,
@@ -114,6 +122,7 @@ export type {
   CarInput,
   CarPhysicsOutput,
   GripBreakdown,
+  WeatherSource,
   TireMaterialOutput,
   SurfaceFrictionBreakdown,
   WeatherModifiers,
