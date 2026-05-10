@@ -67,14 +67,14 @@ directly per-frame.
 
 ## Sky shader sampling
 
-`src/shaders/hdriSky.ts` declares `uWeatherSources[MAX_WEATHER_SOURCES]`
-(vec4 per source: x, z, radius, intensity), `uWeatherSourceCount`,
-`uCameraXZ`, and `uSourceBiasStrength`. `sampleSourceField(worldXZ)`
-reproduces the Rust math exactly. The fragment projects its ray onto a
-horizontal plane 600 m ahead of the camera to derive `worldXZ`, samples,
-and uses the result to bias the per-fragment HDRI weights toward the
-"rainier" neighbours of the dominant state — producing visible spatial
-weather variation across the sky dome.
+`src/shaders/volumetricClouds.ts` declares `uWeatherSources[MAX_WEATHER_SOURCES]`
+(vec4 per source: x, z, radius, intensity) and `uWeatherSourceCount`.
+`sampleSourceField(worldXZ)` reproduces the Rust math exactly — the
+raymarcher samples it inside `cloudDensity()` to thicken cloud coverage
+locally where weather sources exist.
+
+The procedural `src/shaders/skyDome.ts` does NOT consume sources directly;
+the cloud raymarcher is the layer that visualizes them.
 
 ## UI authoring
 

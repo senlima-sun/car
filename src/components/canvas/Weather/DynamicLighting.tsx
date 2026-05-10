@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react'
 import { Group, DirectionalLight, Vector3 } from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
-import { lerp, computeAtmosphereFromDynamic } from './DynamicSky'
+import { lerp, computeAtmosphereFromDynamic } from './atmosphere'
 import { computeSunDirection, getSunIntensity } from './sunDirection'
 
 function lerpColor(from: string, to: string, t: number): string {
