@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import {
   CornerRightDown,
+  Download,
   GitCompare,
   Home,
   Spline,
@@ -13,6 +14,10 @@ import { PRESET_TRACKS } from '@/constants/tracks'
 import { useGameStore } from '@/stores/useGameStore'
 import { useTrackStore } from '@/stores/useTrackStore'
 import { exportToTrackStore } from '../export/exportToTrackStore'
+import {
+  buildEditorTrackSource,
+  downloadEditorTrackSourceJson,
+} from '@/utils/exportEditorTrackSource'
 import { getAnchor } from '../geometry/path'
 import {
   fitViewportToEditorState,
@@ -116,6 +121,29 @@ export default function Toolbar() {
     return true
   }
 
+  const onExportAsPreset = () => {
+    if (doc.paths.length === 0) {
+      alert('Draw at least one path before exporting as preset.')
+      return
+    }
+    const rawName = activeTrack?.name ?? 'Custom Track'
+    const slug =
+      rawName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, '') || 'custom_track'
+    const source = buildEditorTrackSource({
+      id: `f1_${slug}`,
+      name: rawName,
+      paths: doc.paths,
+      checkpoints,
+      raceDirection,
+      pitBoxAreas,
+      curbs,
+    })
+    downloadEditorTrackSourceJson(source)
+  }
+
   const onExportTo3D = () => {
     if (doc.paths.length === 0) {
       alert('Draw at least one path segment before exporting.')
@@ -183,6 +211,9 @@ export default function Toolbar() {
             title={startFinishCount > 0 ? 'Export to 3D' : 'Export to 3D (needs Start / Finish)'}
           >
             <Upload size={16} strokeWidth={1.75} />
+          </IconButton>
+          <IconButton onClick={onExportAsPreset} title='Export as Preset (JSON)'>
+            <Download size={16} strokeWidth={1.75} />
           </IconButton>
           <OverflowMenu
             raceDirection={raceDirection}
