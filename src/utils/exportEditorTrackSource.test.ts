@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { makeAnchor, makePath } from '@/components/ui/TrackEditor/geometry/path'
 import { buildRuntimePresetTrack } from './editorTrackSource'
-import { buildEditorTrackSource } from './exportEditorTrackSource'
+import { buildEditorTrackSource, presetIdFromName } from './exportEditorTrackSource'
 
 function makeSquarePath(): ReturnType<typeof makePath> {
   const path = makePath(makeAnchor({ x: 0, y: 0 }))
@@ -88,5 +88,20 @@ describe('buildEditorTrackSource', () => {
     } else {
       throw new Error('expected inline anchor')
     }
+  })
+})
+
+describe('presetIdFromName', () => {
+  test('slugifies a regular name with a stable source', () => {
+    expect(presetIdFromName('Silverstone Circuit', true)).toBe('f1_silverstone_circuit')
+  })
+
+  test('appends a base36 suffix when no stable source', () => {
+    const id = presetIdFromName('My Track', false)
+    expect(id).toMatch(/^f1_my_track_[a-z0-9]+$/)
+  })
+
+  test('falls back to custom_track for emoji-only names', () => {
+    expect(presetIdFromName('🏎️', true)).toBe('f1_custom_track')
   })
 })

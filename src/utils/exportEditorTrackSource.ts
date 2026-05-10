@@ -20,6 +20,16 @@ export interface ExportPresetInput {
   curbs?: CurbMarker[]
 }
 
+export function presetIdFromName(name: string, hasStableSource: boolean): string {
+  const baseSlug =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '') || 'custom_track'
+  const slug = hasStableSource ? baseSlug : `${baseSlug}_${Date.now().toString(36)}`
+  return `f1_${slug}`
+}
+
 const SAMPLES_PER_SEGMENT = 32
 const MIN_SAMPLES = 32
 

@@ -17,6 +17,7 @@ import { exportToTrackStore } from '../export/exportToTrackStore'
 import {
   buildEditorTrackSource,
   downloadEditorTrackSourceJson,
+  presetIdFromName,
 } from '@/utils/exportEditorTrackSource'
 import { getAnchor } from '../geometry/path'
 import {
@@ -127,14 +128,8 @@ export default function Toolbar() {
       return
     }
     const rawName = activeTrack?.name ?? 'Custom Track'
-    const baseSlug =
-      rawName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_|_$/g, '') || 'custom_track'
-    const slug = activeTrack ? baseSlug : `${baseSlug}_${Date.now().toString(36)}`
     const source = buildEditorTrackSource({
-      id: `f1_${slug}`,
+      id: presetIdFromName(rawName, activeTrack !== null),
       name: rawName,
       paths: doc.paths,
       checkpoints,
