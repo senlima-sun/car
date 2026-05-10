@@ -120,7 +120,7 @@ export default function HdriSky() {
       },
       uWeatherSourceCount: { value: 0 },
       uCameraXZ: { value: new THREE.Vector2(0, 0) },
-      uSourceBiasStrength: { value: 0.6 },
+      uSourceBiasStrength: { value: 0.9 },
     }),
     [textures],
   )
@@ -145,7 +145,7 @@ export default function HdriSky() {
     u.tex0.value = textures[ids[0]]
     u.tex1.value = textures[ids[1]]
     u.tex2.value = textures[ids[2]]
-    u.tex3.value = textures[ids[3]]
+    u.tex3.value = textures.heavyRain
 
     const current = u.blendWeights.value as THREE.Vector4
     const lerpFactor = Math.min(1, delta * 2.0)

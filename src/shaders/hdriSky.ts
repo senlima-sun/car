@@ -102,13 +102,13 @@ void main() {
   }
 
   vec4 weights = blendWeights;
+  weights.w = 0.0;
   if (bias > 0.0) {
-    float lift = min(bias, 1.0 - weights.x);
-    float share = lift / 3.0;
-    weights.x = max(weights.x - lift, 0.0);
-    weights.y += share;
-    weights.z += share;
-    weights.w += share;
+    float lift = clamp(bias, 0.0, 1.0);
+    weights.x *= (1.0 - lift);
+    weights.y *= (1.0 - lift);
+    weights.z *= (1.0 - lift);
+    weights.w = lift;
     float sum = weights.x + weights.y + weights.z + weights.w;
     if (sum > 0.0001) weights /= sum;
   }
