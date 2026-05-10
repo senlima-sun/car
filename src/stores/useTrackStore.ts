@@ -10,6 +10,7 @@ import { readLibrary, writeLibrary } from '../utils/trackLibraryDB'
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let saveInFlight: Promise<void> | null = null
 let savePending = false
+let lastWrittenLibrary: TrackLibrary | null = null
 
 const debouncedSaveLibrary = (saveFn: () => void): void => {
   if (saveDebounceTimer !== null) clearTimeout(saveDebounceTimer)
@@ -22,6 +23,7 @@ const debouncedSaveLibrary = (saveFn: () => void): void => {
 const LEGACY_STORAGE_KEY = 'car-racing-track'
 const TRACK_LIBRARY_KEY = 'car-racing-track-library'
 const CURRENT_VERSION = 1
+const DEFAULT_TRACK_ID = 'default_track'
 
 const generateId = (): string => {
   return `track_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -327,12 +329,16 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
     set({ isLoading: true })
 
-    const stripDefaultTrack = (lib: TrackLibrary): TrackLibrary => {
-      const filtered = lib.tracks.filter(t => t.id !== 'default_track')
-      if (filtered.length === lib.tracks.length) return lib
+    const stripDefaultTrack = (
+      lib: TrackLibrary,
+    ): { library: TrackLibrary; mutated: boolean } => {
+      const filtered = lib.tracks.filter(t => t.id !== DEFAULT_TRACK_ID)
+      if (filtered.length === lib.tracks.length) return { library: lib, mutated: false }
       const activeTrackId =
-        lib.activeTrackId === 'default_track' ? (filtered[0]?.id ?? null) : lib.activeTrackId
-      return { ...lib, tracks: filtered, activeTrackId }
+        lib.activeTrackId === DEFAULT_TRACK_ID
+          ? (filtered[0]?.id ?? null)
+          : lib.activeTrackId
+      return { library: { ...lib, tracks: filtered, activeTrackId }, mutated: true }
     }
 
     const reconcilePresets = (
@@ -378,8 +384,8 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       const fromIdb = await readLibrary()
       if (fromIdb) {
         const stripped = stripDefaultTrack(fromIdb)
-        const { library, mutated } = reconcilePresets(stripped)
-        finalize(library, mutated || stripped !== fromIdb)
+        const reconciled = reconcilePresets(stripped.library)
+        finalize(reconciled.library, stripped.mutated || reconciled.mutated)
         return
       }
 
@@ -429,9 +435,8 @@ export const useTrackStore = create<TrackState>((set, get) => ({
         }
       }
 
-      migratedLib = stripDefaultTrack(migratedLib)
-      const reconciled = reconcilePresets(migratedLib)
-      migratedLib = reconciled.library
+      migratedLib = stripDefaultTrack(migratedLib).library
+      migratedLib = reconcilePresets(migratedLib).library
 
       try {
         await writeLibrary(migratedLib)
@@ -452,9 +457,12 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       savePending = true
       return saveInFlight
     }
+    const snapshot = get().trackLibrary
+    if (snapshot === lastWrittenLibrary) return Promise.resolve()
     const run = (async () => {
       try {
-        await writeLibrary(get().trackLibrary)
+        await writeLibrary(snapshot)
+        lastWrittenLibrary = snapshot
       } catch (e) {
         console.error('Failed to save track library:', e)
       }
