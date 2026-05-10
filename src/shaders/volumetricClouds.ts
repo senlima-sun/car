@@ -140,8 +140,18 @@ void main() {
   ndc += uJitter;
   vec4 clip = vec4(ndc, 1.0, 1.0);
   vec4 worldPos = uInvViewProjection * clip;
+  if (abs(worldPos.w) < 0.0001) {
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+    return;
+  }
   worldPos /= worldPos.w;
-  vec3 rayDir = normalize(worldPos.xyz - uCameraPosition);
+  vec3 rayDir = worldPos.xyz - uCameraPosition;
+  float rayLen = length(rayDir);
+  if (rayLen < 0.0001) {
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+    return;
+  }
+  rayDir /= rayLen;
 
   if (rayDir.y < 0.01) {
     gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
@@ -191,6 +201,13 @@ void main() {
   }
 
   float alpha = clamp(1.0 - transmittance, 0.0, 1.0);
-  gl_FragColor = vec4(scattered * uSunIntensity, alpha);
+  vec3 color = scattered * uSunIntensity;
+  bool safe = color.r == color.r && color.g == color.g && color.b == color.b && alpha == alpha;
+  if (!safe) {
+    color = vec3(0.0);
+    alpha = 0.0;
+  }
+  color = clamp(color, vec3(0.0), vec3(8.0));
+  gl_FragColor = vec4(color, alpha);
 }
 `

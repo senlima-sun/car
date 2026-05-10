@@ -14,20 +14,9 @@ const ENABLED_TIERS: QualityTier[] = ['ultra', 'high']
 const CLOUD_BOTTOM = 800
 const CLOUD_TOP = 1800
 
-const compositeFragment = /* glsl */ `
-uniform sampler2D uCurrent;
-uniform sampler2D uPrevious;
-uniform float uBlend;
-varying vec2 vUv;
-
-void main() {
-  vec4 cur = texture2D(uCurrent, vUv);
-  vec4 prev = texture2D(uPrevious, vUv);
-  gl_FragColor = mix(cur, prev, uBlend);
-}
-`
-
-const screenVertex = /* glsl */ `
+const blitVertex = /* glsl */ `
+attribute vec3 position;
+attribute vec2 uv;
 varying vec2 vUv;
 void main() {
   vUv = uv;
@@ -36,10 +25,25 @@ void main() {
 `
 
 const blitFragment = /* glsl */ `
+precision highp float;
 uniform sampler2D uTexture;
 varying vec2 vUv;
 void main() {
-  gl_FragColor = texture2D(uTexture, vUv);
+  vec4 c = texture2D(uTexture, vUv);
+  gl_FragColor = vec4(c.rgb, clamp(c.a, 0.0, 1.0));
+}
+`
+
+const compositeFragment = /* glsl */ `
+precision highp float;
+uniform sampler2D uCurrent;
+uniform sampler2D uPrevious;
+uniform float uBlend;
+varying vec2 vUv;
+void main() {
+  vec4 cur = texture2D(uCurrent, vUv);
+  vec4 prev = texture2D(uPrevious, vUv);
+  gl_FragColor = mix(cur, prev, uBlend);
 }
 `
 
@@ -81,8 +85,20 @@ export default function VolumetricClouds() {
       }),
     [halfWidth, halfHeight],
   )
-  const writeRef = useRef(rtA)
-  const readRef = useRef(rtB)
+
+  useEffect(() => {
+    const prevTarget = gl.getRenderTarget()
+    const prevClearColor = new THREE.Color()
+    gl.getClearColor(prevClearColor)
+    const prevClearAlpha = gl.getClearAlpha()
+    gl.setClearColor(0x000000, 0)
+    for (const rt of [rtA, rtB, composedRt]) {
+      gl.setRenderTarget(rt)
+      gl.clear()
+    }
+    gl.setRenderTarget(prevTarget)
+    gl.setClearColor(prevClearColor, prevClearAlpha)
+  }, [gl, rtA, rtB, composedRt])
 
   useEffect(() => {
     return () => {
@@ -91,6 +107,10 @@ export default function VolumetricClouds() {
       composedRt.dispose()
     }
   }, [rtA, rtB, composedRt])
+
+  const writeRef = useRef(rtA)
+  const readRef = useRef(rtB)
+  const initialisedRef = useRef(false)
 
   const raymarchUniforms = useMemo(
     () => ({
@@ -119,7 +139,6 @@ export default function VolumetricClouds() {
       vertexShader: cloudRaymarchVertex,
       fragmentShader: cloudRaymarchFragment,
       uniforms: raymarchUniforms,
-      transparent: true,
       depthTest: false,
       depthWrite: false,
     })
@@ -139,8 +158,8 @@ export default function VolumetricClouds() {
   const compositeScene = useMemo(() => {
     const scene = new THREE.Scene()
     const geom = new THREE.PlaneGeometry(2, 2)
-    const mat = new THREE.ShaderMaterial({
-      vertexShader: screenVertex,
+    const mat = new THREE.RawShaderMaterial({
+      vertexShader: blitVertex,
       fragmentShader: compositeFragment,
       uniforms: compositeUniforms,
       depthTest: false,
@@ -156,19 +175,24 @@ export default function VolumetricClouds() {
     }),
     [],
   )
-  const blitMaterial = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        vertexShader: screenVertex,
-        fragmentShader: blitFragment,
-        uniforms: blitUniforms,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-      }),
-    [blitUniforms],
-  )
-  const blitGeometry = useMemo(() => new THREE.PlaneGeometry(2, 2), [])
+
+  const blitScene = useMemo(() => {
+    const scene = new THREE.Scene()
+    const geom = new THREE.PlaneGeometry(2, 2)
+    const mat = new THREE.RawShaderMaterial({
+      vertexShader: blitVertex,
+      fragmentShader: blitFragment,
+      uniforms: blitUniforms,
+      depthTest: false,
+      depthWrite: false,
+      transparent: true,
+      blending: THREE.NormalBlending,
+      blendSrc: THREE.SrcAlphaFactor,
+      blendDst: THREE.OneMinusSrcAlphaFactor,
+    })
+    scene.add(new THREE.Mesh(geom, mat))
+    return { scene, geom, mat }
+  }, [blitUniforms])
 
   useEffect(() => {
     return () => {
@@ -176,10 +200,10 @@ export default function VolumetricClouds() {
       raymarchScene.mat.dispose()
       compositeScene.geom.dispose()
       compositeScene.mat.dispose()
-      blitMaterial.dispose()
-      blitGeometry.dispose()
+      blitScene.geom.dispose()
+      blitScene.mat.dispose()
     }
-  }, [raymarchScene, compositeScene, blitMaterial, blitGeometry])
+  }, [raymarchScene, compositeScene, blitScene])
 
   const orthoCamera = useMemo(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), [])
   const frameCounter = useRef(0)
@@ -187,6 +211,11 @@ export default function VolumetricClouds() {
 
   useFrame((_, delta) => {
     if (!enabled) return
+    if (!camera.matrixWorld || !camera.projectionMatrix) return
+
+    const projDet = camera.projectionMatrix.determinant()
+    const viewDet = camera.matrixWorld.determinant()
+    if (!Number.isFinite(projDet) || projDet === 0 || !Number.isFinite(viewDet)) return
 
     const { timeOfDay, rainIntensity, cloudCover } = useEnvironmentStore.getState()
     const wind = useWindStore.getState()
@@ -196,7 +225,7 @@ export default function VolumetricClouds() {
     const u = raymarchUniforms
     ;(u.uSunDirection.value as THREE.Vector3).set(sun.x, sun.y, sun.z)
     u.uSunIntensity.value = getSunIntensity(timeOfDay)
-    u.uTime.value += delta
+    u.uTime.value += Math.min(delta, 0.1)
 
     const windX = Math.cos(wind.direction) * wind.speed
     const windZ = Math.sin(wind.direction) * wind.speed
@@ -225,33 +254,40 @@ export default function VolumetricClouds() {
 
     const prevTarget = gl.getRenderTarget()
     const prevAutoClear = gl.autoClear
+    const prevClearColor = new THREE.Color()
+    gl.getClearColor(prevClearColor)
+    const prevClearAlpha = gl.getClearAlpha()
+
+    gl.setClearColor(0x000000, 0)
+    gl.autoClear = true
 
     gl.setRenderTarget(writeRef.current)
-    gl.autoClear = true
+    gl.clear()
     gl.render(raymarchScene.scene, orthoCamera)
 
+    if (!initialisedRef.current) {
+      compositeUniforms.uPrevious.value = writeRef.current.texture
+      initialisedRef.current = true
+    } else {
+      compositeUniforms.uPrevious.value = readRef.current.texture
+    }
     compositeUniforms.uCurrent.value = writeRef.current.texture
-    compositeUniforms.uPrevious.value = readRef.current.texture
     gl.setRenderTarget(composedRt)
-    gl.autoClear = true
+    gl.clear()
     gl.render(compositeScene.scene, orthoCamera)
 
     blitUniforms.uTexture.value = composedRt.texture
+    gl.setRenderTarget(prevTarget)
+    gl.autoClear = false
+    gl.render(blitScene.scene, orthoCamera)
 
     const tmp = writeRef.current
     writeRef.current = readRef.current
     readRef.current = tmp
 
-    gl.setRenderTarget(prevTarget)
     gl.autoClear = prevAutoClear
-  }, 999)
+    gl.setClearColor(prevClearColor, prevClearAlpha)
+  }, 2)
 
-  if (!enabled) return null
-
-  return (
-    <mesh renderOrder={9999} frustumCulled={false}>
-      <primitive object={blitGeometry} attach='geometry' />
-      <primitive object={blitMaterial} attach='material' />
-    </mesh>
-  )
+  return null
 }
