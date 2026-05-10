@@ -44,14 +44,16 @@ while [ $# -gt 0 ]; do
 done
 
 case "$PRESET" in
-  clear)    HI_BOOST=8.0 ;;
-  sunset)   HI_BOOST=6.0 ;;
-  cloudy)   HI_BOOST=3.0 ;;
-  overcast) HI_BOOST=2.0 ;;
-  rain)     HI_BOOST=1.5 ;;
-  storm)    HI_BOOST=2.5 ;;
+  clear)    HI_BOOST=4.0 ;;
+  sunset)   HI_BOOST=3.0 ;;
+  cloudy)   HI_BOOST=2.0 ;;
+  overcast) HI_BOOST=1.3 ;;
+  rain)     HI_BOOST=1.1 ;;
+  storm)    HI_BOOST=1.5 ;;
   *) echo "Unknown preset: $PRESET"; exit 1 ;;
 esac
+
+HI_THRESHOLD=0.85
 
 echo "→ Input:   $INPUT"
 echo "→ Output:  $OUTPUT"
@@ -62,22 +64,24 @@ echo "→ Source:  $DIMS"
 
 # Filter chain (run order):
 #   1. scale to 2048×1024 (lanczos, force 2:1) — input is 8-bit at this point
-#   2. lutrgb — sRGB→linear gamma decode + soft highlight boost.
-#      Operating on 8-bit input where val is 0..255. Normalize to 0..1, apply
-#      pow(2.2), apply soft highlight boost, then re-scale back to 0..255 so
-#      lutrgb can clamp/store into the next stage.
-#      Wait — lutrgb on 8-bit clamps output to 0..255, killing HDR. We need
-#      to boost AFTER promoting to float.
+#   2. lutrgb (8-bit space) — sRGB→linear gamma decode (val 0..255 normalized)
 #   3. format gbrpf32le — promote to 32-bit float
-#   4. zscale or geq for HDR boost in float pix_fmt where val IS already 0..1
+#   4. geq — threshold-gated HDR boost. Linear values BELOW HI_THRESHOLD are
+#      passed through unchanged (LDR mid/shadow tones stay correctly exposed).
+#      Values ABOVE the threshold get scaled by (HI_BOOST-1)*excess pushed
+#      into HDR range. This means:
+#        - Sky / mid-tone clouds (linear 0.2-0.8): unchanged, ACES maps to
+#          natural display brightness
+#        - Bright highlights (linear > 0.85, near-white pixels): pushed to
+#          1.0 .. HI_BOOST, gives HDR sun / cloud-top brightness
 #
-# Final approach: do gamma decode in 8-bit lutrgb (0..1 normalized via /255 and
-# *255), then promote to float, then use geq to multiply by HI_BOOST in float
-# space where values are already 0..1.
+# Without the threshold, applying a uniform multiplier to the whole image
+# pushes 30-40% of sky pixels above 1.0 and ACES tonemaps the entire image
+# to white. The threshold restricts boost to the brightest ~15% of pixels.
 
 ffmpeg -y -hide_banner -loglevel warning \
   -i "$INPUT" \
-  -vf "scale=2048:1024:flags=lanczos,lutrgb=r='clip(pow(val/255,2.2)*255,0,255)':g='clip(pow(val/255,2.2)*255,0,255)':b='clip(pow(val/255,2.2)*255,0,255)',format=gbrpf32le,geq=r='r(X,Y)*(1+(${HI_BOOST}-1)*pow(min(r(X,Y),1),1.5))':g='g(X,Y)*(1+(${HI_BOOST}-1)*pow(min(g(X,Y),1),1.5))':b='b(X,Y)*(1+(${HI_BOOST}-1)*pow(min(b(X,Y),1),1.5))'" \
+  -vf "scale=2048:1024:flags=lanczos,lutrgb=r='clip(pow(val/255,2.2)*255,0,255)':g='clip(pow(val/255,2.2)*255,0,255)':b='clip(pow(val/255,2.2)*255,0,255)',format=gbrpf32le,geq=r='if(gt(r(X,Y),${HI_THRESHOLD}),r(X,Y)+(r(X,Y)-${HI_THRESHOLD})*(${HI_BOOST}-1)/(1-${HI_THRESHOLD}),r(X,Y))':g='if(gt(g(X,Y),${HI_THRESHOLD}),g(X,Y)+(g(X,Y)-${HI_THRESHOLD})*(${HI_BOOST}-1)/(1-${HI_THRESHOLD}),g(X,Y))':b='if(gt(b(X,Y),${HI_THRESHOLD}),b(X,Y)+(b(X,Y)-${HI_THRESHOLD})*(${HI_BOOST}-1)/(1-${HI_THRESHOLD}),b(X,Y))'" \
   -c:v exr \
   -compression zip16 \
   -format float \
