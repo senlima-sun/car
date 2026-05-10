@@ -194,7 +194,7 @@ export default function HdriSky() {
         <Environment
           map={textures[environmentMapId]}
           background={false}
-          environmentIntensity={0.35}
+          environmentIntensity={0.8}
         />
       )}
     </>
