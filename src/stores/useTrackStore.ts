@@ -3,9 +3,9 @@ import type { TrackLibrary, SavedTrack } from '../types/track'
 import { useCustomizationStore, type PlacedObject } from './useCustomizationStore'
 import { useEditorStore } from './useEditorStore'
 import { useTerrainStore } from './useTerrainStore'
-import { DEFAULT_TRACK_NAME, DEFAULT_TRACK_OBJECTS } from '../constants/defaultTrack'
 import { PRESET_TRACKS } from '../constants/tracks'
 import { exportTrack } from '../utils/trackExport'
+import { readLibrary, writeLibrary } from '../utils/trackLibraryDB'
 
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -65,6 +65,7 @@ const getTrackCenter = (objects: PlacedObject[]): [number, number, number] | nul
 interface TrackState {
   trackLibrary: TrackLibrary
   isLoading: boolean
+  loadedOnce: boolean
   isDirty: boolean
   quotaExceeded: boolean
 
@@ -80,7 +81,7 @@ interface TrackState {
   setActiveTrack: (id: string | null) => void
   markDirty: () => void
 
-  loadLibrary: () => void
+  loadLibrary: () => Promise<void>
   saveLibrary: () => void
 
   getActiveTrack: () => SavedTrack | null
@@ -94,6 +95,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     tracks: [],
   },
   isLoading: true,
+  loadedOnce: false,
   isDirty: false,
   quotaExceeded: false,
 
@@ -320,112 +322,128 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     set({ isDirty: true })
   },
 
-  loadLibrary: () => {
+  loadLibrary: async () => {
+    if (get().loadedOnce && !get().isLoading) return
+
     set({ isLoading: true })
 
+    const stripDefaultTrack = (lib: TrackLibrary): TrackLibrary => {
+      const filtered = lib.tracks.filter(t => t.id !== 'default_track')
+      if (filtered.length === lib.tracks.length) return lib
+      const activeTrackId =
+        lib.activeTrackId === 'default_track' ? (filtered[0]?.id ?? null) : lib.activeTrackId
+      return { ...lib, tracks: filtered, activeTrackId }
+    }
+
+    const reconcilePresets = (
+      lib: TrackLibrary,
+    ): { library: TrackLibrary; mutated: boolean } => {
+      let mutated = false
+      const tracks = lib.tracks.map(t => {
+        if (!t.presetId) return t
+        const preset = PRESET_TRACKS.find(p => p.id === t.presetId)
+        if (!preset) return t
+        if (presetObjectsEqual(t.objects, preset.objects)) return t
+        mutated = true
+        return {
+          ...t,
+          name: preset.name,
+          updatedAt: Date.now(),
+          objectCount: preset.objects.length,
+          objects: cloneObjects(preset.objects),
+        }
+      })
+      return { library: mutated ? { ...lib, tracks } : lib, mutated }
+    }
+
+    const finalize = (library: TrackLibrary, mutated: boolean) => {
+      set({ trackLibrary: library, isLoading: false, loadedOnce: true })
+
+      if (library.activeTrackId) {
+        const activeTrack = library.tracks.find(t => t.id === library.activeTrackId)
+        if (activeTrack) {
+          useCustomizationStore.getState().setPlacedObjects(activeTrack.objects)
+          if (activeTrack.heightmap && activeTrack.heightmap.length > 0) {
+            useTerrainStore.getState().loadHeightmap(activeTrack.heightmap)
+          } else {
+            useTerrainStore.getState().resetHeightmap()
+          }
+        }
+      }
+
+      if (mutated) get().saveLibrary()
+    }
+
     try {
-      const libraryData = localStorage.getItem(TRACK_LIBRARY_KEY)
-
-      if (libraryData) {
-        const library = JSON.parse(libraryData) as TrackLibrary
-        let mutated = false
-
-        if (
-          DEFAULT_TRACK_OBJECTS.length > 0 &&
-          !library.tracks.find(t => t.id === 'default_track')
-        ) {
-          const defaultTrack: SavedTrack = {
-            id: 'default_track',
-            name: DEFAULT_TRACK_NAME,
-            createdAt: 0,
-            updatedAt: 0,
-            objectCount: DEFAULT_TRACK_OBJECTS.length,
-            objects: [...DEFAULT_TRACK_OBJECTS],
-          }
-          library.tracks.unshift(defaultTrack)
-          mutated = true
-        }
-
-        library.tracks = library.tracks.map(t => {
-          if (!t.presetId) return t
-          const preset = PRESET_TRACKS.find(p => p.id === t.presetId)
-          if (!preset) return t
-          if (presetObjectsEqual(t.objects, preset.objects)) return t
-          mutated = true
-          return {
-            ...t,
-            name: preset.name,
-            updatedAt: Date.now(),
-            objectCount: preset.objects.length,
-            objects: cloneObjects(preset.objects),
-          }
-        })
-
-        set({ trackLibrary: library, isLoading: false })
-
-        if (library.activeTrackId) {
-          const activeTrack = library.tracks.find(t => t.id === library.activeTrackId)
-          if (activeTrack) {
-            useCustomizationStore.getState().setPlacedObjects(activeTrack.objects)
-            if (activeTrack.heightmap && activeTrack.heightmap.length > 0) {
-              useTerrainStore.getState().loadHeightmap(activeTrack.heightmap)
-            } else {
-              useTerrainStore.getState().resetHeightmap()
-            }
-          }
-        }
-
-        if (mutated) get().saveLibrary()
+      const fromIdb = await readLibrary()
+      if (fromIdb) {
+        const stripped = stripDefaultTrack(fromIdb)
+        const { library, mutated } = reconcilePresets(stripped)
+        finalize(library, mutated || stripped !== fromIdb)
         return
       }
 
-      const legacyData = localStorage.getItem(LEGACY_STORAGE_KEY)
-      const newLibrary: TrackLibrary = {
+      let migratedLib: TrackLibrary = {
         version: CURRENT_VERSION,
         activeTrackId: null,
         tracks: [],
       }
+      let migratedFromLegacy = false
 
-      if (DEFAULT_TRACK_OBJECTS.length > 0) {
-        const defaultTrack: SavedTrack = {
-          id: 'default_track',
-          name: DEFAULT_TRACK_NAME,
-          createdAt: 0,
-          updatedAt: 0,
-          objectCount: DEFAULT_TRACK_OBJECTS.length,
-          objects: [...DEFAULT_TRACK_OBJECTS],
-        }
-        newLibrary.tracks.push(defaultTrack)
-        newLibrary.activeTrackId = defaultTrack.id
-
-        useCustomizationStore.getState().setPlacedObjects(DEFAULT_TRACK_OBJECTS)
-      }
-
-      if (legacyData) {
+      const libraryData = localStorage.getItem(TRACK_LIBRARY_KEY)
+      if (libraryData) {
         try {
-          const legacyObjects = JSON.parse(legacyData) as PlacedObject[]
-          const migratedTrack: SavedTrack = {
-            id: generateId(),
-            name: 'My Track',
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            objectCount: legacyObjects.length,
-            objects: legacyObjects,
+          const parsed = JSON.parse(libraryData) as TrackLibrary
+          migratedLib = {
+            version: parsed.version ?? CURRENT_VERSION,
+            activeTrackId: parsed.activeTrackId ?? null,
+            tracks: Array.isArray(parsed.tracks) ? parsed.tracks : [],
           }
-          newLibrary.tracks.push(migratedTrack)
-          newLibrary.activeTrackId = migratedTrack.id
-
-          useCustomizationStore.getState().setPlacedObjects(legacyObjects)
+          migratedFromLegacy = true
         } catch (e) {
-          console.error('Failed to migrate legacy track data:', e)
+          console.error('Failed to parse legacy track library:', e)
         }
       }
 
-      set({ trackLibrary: newLibrary, isLoading: false })
-      get().saveLibrary()
+      if (!migratedFromLegacy) {
+        const legacyData = localStorage.getItem(LEGACY_STORAGE_KEY)
+        if (legacyData) {
+          try {
+            const legacyObjects = JSON.parse(legacyData) as PlacedObject[]
+            const migratedTrack: SavedTrack = {
+              id: generateId(),
+              name: 'My Track',
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              objectCount: legacyObjects.length,
+              objects: legacyObjects,
+            }
+            migratedLib = {
+              version: CURRENT_VERSION,
+              activeTrackId: migratedTrack.id,
+              tracks: [migratedTrack],
+            }
+          } catch (e) {
+            console.error('Failed to parse legacy track data:', e)
+          }
+        }
+      }
+
+      migratedLib = stripDefaultTrack(migratedLib)
+      const reconciled = reconcilePresets(migratedLib)
+      migratedLib = reconciled.library
+
+      try {
+        await writeLibrary(migratedLib)
+        localStorage.removeItem(TRACK_LIBRARY_KEY)
+      } catch (e) {
+        console.error('Failed to migrate track library to IDB:', e)
+      }
+
+      finalize(migratedLib, false)
     } catch (e) {
       console.error('Failed to load track library:', e)
-      set({ isLoading: false })
+      set({ isLoading: false, loadedOnce: true })
     }
   },
 
