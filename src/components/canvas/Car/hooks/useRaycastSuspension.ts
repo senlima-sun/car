@@ -10,6 +10,7 @@ import {
   SUSPENSION_RAY_GROUPS,
 } from '../../../../constants/dimensions'
 import { usePhysicsDebugStore, type WheelDebug } from '../../../../stores/usePhysicsDebugStore'
+import { useDevToolsStore } from '../../../../stores/useDevToolsStore'
 import { useSuspensionStore } from '../../../../stores/useSuspensionStore'
 import { useTerrainStore } from '../../../../stores/useTerrainStore'
 
@@ -475,7 +476,7 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
     }
 
     const debugState = usePhysicsDebugStore.getState()
-    if (debugState.enabled) {
+    if (useDevToolsStore.getState().panels['physics-debug'].isOpen) {
       const now = performance.now()
       if (now - lastDebugUpdateRef.current >= DEBUG_UPDATE_INTERVAL_MS) {
         lastDebugUpdateRef.current = now

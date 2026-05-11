@@ -1,77 +1,63 @@
-import { useEffect } from 'react'
 import { usePhysicsDebugStore } from '@/stores/usePhysicsDebugStore'
+import DraggablePanel from './DevTools/DraggablePanel'
 
 const LABEL_NAMES = ['FL', 'FR', 'RL', 'RR'] as const
 
 export default function PhysicsDebugOverlay() {
-  const enabled = usePhysicsDebugStore(s => s.enabled)
-  const toggle = usePhysicsDebugStore(s => s.toggle)
   const posY = usePhysicsDebugStore(s => s.posY)
   const velY = usePhysicsDebugStore(s => s.velY)
   const totalForceY = usePhysicsDebugStore(s => s.totalForceY)
   const groundedCount = usePhysicsDebugStore(s => s.groundedCount)
   const wheels = usePhysicsDebugStore(s => s.wheels)
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.code === 'F9') toggle()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [toggle])
-
-  if (!enabled) return null
-
   const netAccel = totalForceY / 600 - 9.81
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        PHYSICS DEBUG <span style={styles.hint}>(F9)</span>
-      </div>
+    <DraggablePanel id='physics-debug' title='Physics Debug' hotkey='F9'>
+      <div style={styles.body}>
+        <div style={styles.section}>
+          <Row label='pos.y' value={posY.toFixed(3)} />
+          <Row label='vel.y' value={velY.toFixed(3)} warn={Math.abs(velY) > 5} />
+          <Row label='force.y' value={totalForceY.toFixed(0)} suffix='N' />
+          <Row
+            label='net accel'
+            value={netAccel.toFixed(2)}
+            suffix='m/s²'
+            warn={netAccel > 15 || netAccel < -15}
+          />
+          <Row
+            label='grounded'
+            value={`${groundedCount}/4`}
+            color={groundedCount === 4 ? '#4ade80' : groundedCount > 0 ? '#facc15' : '#f87171'}
+          />
+        </div>
 
-      <div style={styles.section}>
-        <Row label='pos.y' value={posY.toFixed(3)} />
-        <Row label='vel.y' value={velY.toFixed(3)} warn={Math.abs(velY) > 5} />
-        <Row label='force.y' value={totalForceY.toFixed(0)} suffix='N' />
-        <Row
-          label='net accel'
-          value={netAccel.toFixed(2)}
-          suffix='m/s²'
-          warn={netAccel > 15 || netAccel < -15}
-        />
-        <Row
-          label='grounded'
-          value={`${groundedCount}/4`}
-          color={groundedCount === 4 ? '#4ade80' : groundedCount > 0 ? '#facc15' : '#f87171'}
-        />
-      </div>
+        <div style={styles.divider} />
 
-      <div style={styles.divider} />
+        <div style={styles.section}>
+          <div style={styles.subheader}>WHEELS</div>
+          {wheels.map((w, i) => (
+            <div key={i} style={styles.wheelRow}>
+              <span style={{ ...styles.badge, background: w.isGrounded ? '#166534' : '#7f1d1d' }}>
+                {LABEL_NAMES[i]}
+              </span>
+              <span style={styles.mono}>
+                comp={w.compression.toFixed(3)} hit={w.hitY.toFixed(3)} ray={w.rayOriginY.toFixed(2)}
+              </span>
+            </div>
+          ))}
+        </div>
 
-      <div style={styles.section}>
-        <div style={styles.subheader}>WHEELS</div>
-        {wheels.map((w, i) => (
-          <div key={i} style={styles.wheelRow}>
-            <span style={{ ...styles.badge, background: w.isGrounded ? '#166534' : '#7f1d1d' }}>
-              {LABEL_NAMES[i]}
-            </span>
-            <span style={styles.mono}>
-              comp={w.compression.toFixed(3)} hit={w.hitY.toFixed(3)} ray={w.rayOriginY.toFixed(2)}
-            </span>
-          </div>
-        ))}
+        <div style={styles.divider} />
+        <div style={styles.section}>
+          <div style={styles.subheader}>SUSPENSION HEALTH</div>
+          <BarRow label='Spring eq.' value={1 / 8} max={0.4} />
+          {wheels.map((w, i) => (
+            <BarRow key={i} label={LABEL_NAMES[i]} value={w.compression} max={0.4} />
+          ))}
+        </div>
       </div>
-
-      <div style={styles.divider} />
-      <div style={styles.section}>
-        <div style={styles.subheader}>SUSPENSION HEALTH</div>
-        <BarRow label='Spring eq.' value={1 / 8} max={0.4} />
-        {wheels.map((w, i) => (
-          <BarRow key={i} label={LABEL_NAMES[i]} value={w.compression} max={0.4} />
-        ))}
-      </div>
-    </div>
+    </DraggablePanel>
   )
 }
 
@@ -119,29 +105,13 @@ function BarRow({ label, value, max }: { label: string; value: number; max: numb
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  container: {
-    position: 'absolute',
-    top: 60,
-    right: 16,
+  body: {
     width: 320,
-    background: 'rgba(0,0,0,0.9)',
-    border: '1px solid rgba(59,130,246,0.5)',
-    borderRadius: 8,
     padding: '10px 12px',
     fontFamily: 'monospace',
     fontSize: 11,
     color: '#e5e7eb',
-    pointerEvents: 'auto',
-    zIndex: 1000,
-    userSelect: 'none',
   },
-  header: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: '#60a5fa',
-    marginBottom: 6,
-  },
-  hint: { fontSize: 9, color: '#6b7280', marginLeft: 4 },
   section: { marginBottom: 4 },
   subheader: { fontSize: 10, color: '#60a5fa', marginBottom: 2 },
   divider: { borderTop: '1px solid rgba(255,255,255,0.1)', margin: '6px 0' },

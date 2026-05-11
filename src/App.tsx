@@ -10,7 +10,7 @@ import HUD from './components/ui/HUD/HUD'
 import LoadingFallback from './components/ui/LoadingFallback'
 import { PhysicsProvider } from './wasm'
 import { keyboardMap } from './constants/controls'
-import { usePhysicsDebugStore } from './stores/usePhysicsDebugStore'
+import { useDevToolsStore } from './stores/useDevToolsStore'
 import { isSessionShellStatus, useGameStore } from './stores/useGameStore'
 import { isRunningSessionPhase, useSessionStore } from './stores/useSessionStore'
 import { FIXED_TIME_STEP } from './constants/physics'
@@ -40,7 +40,7 @@ function usePhysicsPause() {
 }
 
 export default function App() {
-  const physicsDebug = usePhysicsDebugStore(s => s.enabled)
+  const physicsDebug = useDevToolsStore(s => s.panels['physics-debug'].isOpen)
   const showFPS = useGameStore(s => s.showFPS)
   const shellStatus = useGameStore(s => s.status)
   const sessionPhase = useSessionStore(s => s.phase)
@@ -58,7 +58,7 @@ export default function App() {
             shadows
             frameloop='always'
             camera={{ position: [0, 5, 10], fov: 75 }}
-            dpr={[1, 1]}
+            dpr={[1, 2]}
             gl={{ toneMapping: THREE.ACESFilmicToneMapping, powerPreference: 'high-performance' }}
           >
             {showFPS && <FPSMonitor />}
