@@ -1,17 +1,19 @@
 import { selectAverageWear, useTireStore } from '../../../stores/useTireStore'
-import { TIRE_CONFIG, TIRE_WEAR_WARNING, TIRE_WEAR_CRITICAL } from '../../../constants/tires'
-import { HUD_LABEL_CLASS, HudPanel } from './hudChrome'
-
-function wearColor(wear: number): string {
-  if (wear >= TIRE_WEAR_CRITICAL) return '#ef4444'
-  if (wear >= TIRE_WEAR_WARNING) return '#f59e0b'
-  return '#22c55e'
-}
+import { TIRE_CONFIG, TIRE_WEAR_CRITICAL } from '../../../constants/tires'
+import {
+  HUD_LABEL_CLASS,
+  HUD_MICRO_LABEL_CLASS,
+  HUD_NUMERIC_CLASS,
+  HUD_STATUS,
+  HudCell,
+  HudPanel,
+  wearColor,
+} from './hudChrome'
 
 function gripColor(g: number): string {
-  if (g >= 80) return '#22c55e'
-  if (g >= 50) return '#f59e0b'
-  return '#ef4444'
+  if (g >= 80) return HUD_STATUS.success
+  if (g >= 50) return HUD_STATUS.warning
+  return HUD_STATUS.danger
 }
 
 function WheelCell({
@@ -27,9 +29,7 @@ function WheelCell({
   const color = wearColor(wear)
   return (
     <div className='flex flex-col items-center gap-1'>
-      <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
-        {label}
-      </span>
+      <span className={HUD_MICRO_LABEL_CLASS}>{label}</span>
       <div
         className='relative flex h-12 w-7 flex-col justify-end overflow-hidden bg-white/5'
         style={{ border: `1.5px solid ${compoundColor}`, borderRadius: 2 }}
@@ -39,7 +39,7 @@ function WheelCell({
           style={{ height: `${remaining}%`, background: color }}
         />
       </div>
-      <span className='font-mono text-[10px] font-semibold tabular-nums' style={{ color }}>
+      <span className={`${HUD_NUMERIC_CLASS} text-[10px]`} style={{ color }}>
         {Math.round(remaining)}
       </span>
     </div>
@@ -90,15 +90,14 @@ export default function TireIndicator() {
             {config.displayName}
           </span>
         </div>
-        <div className='flex items-baseline gap-1'>
-          <span className={HUD_LABEL_CLASS}>Grip</span>
+        <HudCell label='Grip' align='end'>
           <span
-            className='font-mono text-[12px] font-semibold tabular-nums'
+            className={`${HUD_NUMERIC_CLASS} text-[12px]`}
             style={{ color: gripColor(gripPercent) }}
           >
             {gripPercent}%
           </span>
-        </div>
+        </HudCell>
       </div>
 
       <div className='flex items-center justify-center gap-3 px-3 py-3'>
@@ -119,7 +118,7 @@ export default function TireIndicator() {
         <div className='mb-1 flex items-baseline justify-between'>
           <span className={HUD_LABEL_CLASS}>Avg Life</span>
           <span
-            className='font-mono text-[11px] font-semibold tabular-nums'
+            className={`${HUD_NUMERIC_CLASS} text-[11px]`}
             style={{ color: wearColor(averageWear) }}
           >
             {Math.round(avgRemaining)}%
@@ -139,8 +138,8 @@ export default function TireIndicator() {
                 className='flex items-center justify-between px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.28em]'
                 style={{
                   background: 'rgba(245,158,11,0.14)',
-                  border: '1px solid rgba(245,158,11,0.35)',
-                  color: '#f59e0b',
+                  border: `1px solid ${HUD_STATUS.warning}59`,
+                  color: HUD_STATUS.warning,
                 }}
               >
                 <span>Graining</span>
@@ -152,8 +151,8 @@ export default function TireIndicator() {
                 className='flex items-center justify-between px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.28em]'
                 style={{
                   background: 'rgba(239,68,68,0.14)',
-                  border: '1px solid rgba(239,68,68,0.35)',
-                  color: '#ef4444',
+                  border: `1px solid ${HUD_STATUS.danger}59`,
+                  color: HUD_STATUS.danger,
                 }}
               >
                 <span>Blistering</span>
