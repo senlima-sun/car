@@ -1,14 +1,40 @@
 import { useTemperatureStore } from '../../../stores/useTemperatureStore'
+import { useBrakeStore } from '../../../stores/useBrakeStore'
 import { engineTempToCelsius, tireTempToCelsius } from '../../../wasm/PhysicsBridge'
 import { celsiusToColor } from '../../../utils/temperatureColors'
-import { HUD_LABEL_CLASS, HudPanel } from './hudChrome'
+import { BRAKE_BIAS, ENGINE_BRAKING } from '../../../constants/colors'
+import type { EngineBrakingLevel } from '../../../wasm/PhysicsBridge'
+import {
+  HUD_LABEL_CLASS,
+  HUD_MICRO_LABEL_CLASS,
+  HUD_NUMERIC_CLASS,
+  HUD_STATUS,
+  HudCell,
+  HudPanel,
+} from './hudChrome'
 
 function engineTempColor(normalized: number): string {
-  if (normalized >= 0.857) return '#dc2626' // ~140C — bearing damage zone
-  if (normalized >= 0.75) return '#ef4444' // ~125C — derate
-  if (normalized >= 0.679) return '#f59e0b' // ~115C — warn
-  if (normalized >= 0.286) return '#22c55e' // ~60C+ — operating
+  if (normalized >= 0.857) return '#dc2626'
+  if (normalized >= 0.75) return HUD_STATUS.danger
+  if (normalized >= 0.679) return HUD_STATUS.warning
+  if (normalized >= 0.286) return HUD_STATUS.success
   return '#60a5fa'
+}
+
+export function biasColor(frontBias: number): string {
+  if (frontBias > 62) return BRAKE_BIAS.front
+  if (frontBias < 58) return BRAKE_BIAS.rear
+  return BRAKE_BIAS.balanced
+}
+
+const ENGINE_BRAKE_META: Record<EngineBrakingLevel, { abbrev: 'L' | 'M' | 'H'; color: string }> = {
+  Low: { abbrev: 'L', color: ENGINE_BRAKING.low },
+  Medium: { abbrev: 'M', color: ENGINE_BRAKING.medium },
+  High: { abbrev: 'H', color: ENGINE_BRAKING.high },
+}
+
+export function engineBrakeMeta(level: EngineBrakingLevel) {
+  return ENGINE_BRAKE_META[level]
 }
 
 function TireCell({
@@ -33,11 +59,11 @@ function TireCell({
 
   const danger = blown || blowoutRisk > 0.4
   const borderColor = blown
-    ? '#ef4444'
+    ? HUD_STATUS.danger
     : blowoutRisk > 0.4
-      ? '#f59e0b'
+      ? HUD_STATUS.warning
       : inWindow
-        ? '#22c55e'
+        ? HUD_STATUS.success
         : 'rgba(255,255,255,0.18)'
   const glow = blown
     ? '0 0 8px rgba(239,68,68,0.9)'
@@ -49,9 +75,7 @@ function TireCell({
 
   return (
     <div className='flex flex-col items-center gap-1'>
-      <span className='text-[8px] font-bold uppercase tracking-[0.28em] text-white/45'>
-        {label}
-      </span>
+      <span className={HUD_MICRO_LABEL_CLASS}>{label}</span>
       <div
         className='flex h-10 w-5 flex-col overflow-hidden border'
         style={{
@@ -65,8 +89,8 @@ function TireCell({
         <div className='flex-1 transition-colors' style={{ background: celsiusToColor(innerC) }} />
       </div>
       <span
-        className='font-mono text-[9px] font-semibold tabular-nums'
-        style={{ color: blown ? '#ef4444' : danger ? '#f59e0b' : 'rgba(255,255,255,0.85)' }}
+        className={`${HUD_NUMERIC_CLASS} text-[9px]`}
+        style={{ color: blown ? HUD_STATUS.danger : danger ? HUD_STATUS.warning : 'rgba(255,255,255,0.85)' }}
       >
         {blown ? 'BLOWN' : tempC}
       </span>
@@ -83,10 +107,17 @@ export default function TemperaturePanel() {
   const engineSeizeRisk = useTemperatureStore(s => s.engineSeizeRisk)
   const engineSeized = useTemperatureStore(s => s.engineSeized)
 
+  const frontBias = useBrakeStore(s => s.frontBias)
+  const engineBraking = useBrakeStore(s => s.engineBraking)
+
   const engineTempC = Math.round(engineTempToCelsius(engine.temperature))
   const powerLoss = Math.round((1 - engine.power_multiplier) * 100)
-  const engineColor = engineSeized ? '#ef4444' : engineTempColor(engine.temperature)
+  const engineColor = engineSeized ? HUD_STATUS.danger : engineTempColor(engine.temperature)
   const engineDanger = engineSeized || engineSeizeRisk > 0.2
+
+  const rearBias = 100 - frontBias
+  const biasTone = biasColor(frontBias)
+  const eb = engineBrakeMeta(engineBraking)
 
   return (
     <HudPanel accent={engineColor} className='min-w-[188px]' contentClassName='pb-2' edge='right'>
@@ -94,10 +125,7 @@ export default function TemperaturePanel() {
         <span className={HUD_LABEL_CLASS} style={{ color: '#ffcc00' }}>
           Temperatures
         </span>
-        <span
-          className='font-mono text-[11px] font-semibold tabular-nums'
-          style={{ color: engineColor }}
-        >
+        <span className={`${HUD_NUMERIC_CLASS} text-[11px]`} style={{ color: engineColor }}>
           {engineSeized ? 'SEIZED' : `${engineTempC}°C`}
         </span>
       </div>
@@ -106,15 +134,21 @@ export default function TemperaturePanel() {
         <div className='mb-1 flex items-baseline justify-between'>
           <span className={HUD_LABEL_CLASS}>Engine</span>
           {engineSeized ? (
-            <span className='font-mono text-[9px] font-bold tabular-nums text-[#ef4444]'>
+            <span
+              className={`${HUD_NUMERIC_CLASS} text-[9px] font-bold`}
+              style={{ color: HUD_STATUS.danger }}
+            >
               FAILURE
             </span>
           ) : powerLoss > 0 ? (
-            <span className='font-mono text-[9px] font-bold tabular-nums text-[#ef4444]'>
+            <span
+              className={`${HUD_NUMERIC_CLASS} text-[9px] font-bold`}
+              style={{ color: HUD_STATUS.danger }}
+            >
               −{powerLoss}% PWR
             </span>
           ) : (
-            <span className='font-mono text-[9px] font-bold tabular-nums text-white/35'>OK</span>
+            <span className={`${HUD_NUMERIC_CLASS} text-[9px] font-bold text-white/35`}>OK</span>
           )}
         </div>
         <div className='h-1 overflow-hidden bg-white/10'>
@@ -127,10 +161,16 @@ export default function TemperaturePanel() {
           />
         </div>
         {engineDanger && !engineSeized ? (
-          <div className='mt-1 h-0.5 overflow-hidden bg-[#ef4444]/15'>
+          <div
+            className='mt-1 h-0.5 overflow-hidden'
+            style={{ background: 'rgba(239,68,68,0.15)' }}
+          >
             <div
-              className='h-full bg-[#ef4444] transition-[width] duration-200'
-              style={{ width: `${Math.min(100, engineSeizeRisk * 100)}%` }}
+              className='h-full transition-[width] duration-200'
+              style={{
+                width: `${Math.min(100, engineSeizeRisk * 100)}%`,
+                background: HUD_STATUS.danger,
+              }}
             />
           </div>
         ) : null}
@@ -174,6 +214,21 @@ export default function TemperaturePanel() {
             />
           </div>
         </div>
+      </div>
+
+      <div className='flex items-center justify-between border-t border-white/10 px-3 py-2'>
+        <HudCell label='Brake'>
+          <div className={`${HUD_NUMERIC_CLASS} flex items-baseline gap-1 text-[12px]`}>
+            <span style={{ color: biasTone }}>{Math.round(frontBias)}</span>
+            <span className='text-white/35'>:</span>
+            <span style={{ color: biasTone }}>{Math.round(rearBias)}</span>
+          </div>
+        </HudCell>
+        <HudCell label='EB' align='end'>
+          <span className={`${HUD_NUMERIC_CLASS} text-[12px]`} style={{ color: eb.color }}>
+            EB·{eb.abbrev}
+          </span>
+        </HudCell>
       </div>
     </HudPanel>
   )
