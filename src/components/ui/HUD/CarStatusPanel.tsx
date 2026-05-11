@@ -114,15 +114,15 @@ function CombinedWheelCell({
           />
         </div>
       </div>
-      <div className='flex items-baseline gap-1'>
+      <div className='flex flex-col items-center gap-0 leading-tight'>
         <span
           className={`${HUD_NUMERIC_CLASS} text-[10px]`}
           style={{ color: blown ? HUD_STATUS.danger : danger ? HUD_STATUS.warning : 'rgba(255,255,255,0.85)' }}
         >
-          {blown ? 'BLN' : avgC}
+          {blown ? 'BLN' : `${avgC}°`}
         </span>
         <span className={`${HUD_NUMERIC_CLASS} text-[10px]`} style={{ color: wearTone }}>
-          {Math.round(remaining)}
+          {Math.round(remaining)}%
         </span>
       </div>
     </div>
@@ -203,48 +203,54 @@ export default function CarStatusPanel() {
         </HudCell>
       </div>
 
-      <div className='flex items-center justify-center gap-3 px-3 py-2'>
-        <CombinedWheelCell
-          label='FL'
-          wear={perWheelWear.frontLeft}
-          innerTemp={tires.front_left_inner}
-          outerTemp={tires.front_left_outer}
-          inWindow={tiresInWindow[0]}
-          blowoutRisk={tireBlowoutRisk[0]}
-          blown={tireBlown[0]}
-          compoundColor={config.color}
-        />
-        <CombinedWheelCell
-          label='FR'
-          wear={perWheelWear.frontRight}
-          innerTemp={tires.front_right_inner}
-          outerTemp={tires.front_right_outer}
-          inWindow={tiresInWindow[1]}
-          blowoutRisk={tireBlowoutRisk[1]}
-          blown={tireBlown[1]}
-          compoundColor={config.color}
-        />
-        <div className='h-14 w-px bg-white/10' />
-        <CombinedWheelCell
-          label='RL'
-          wear={perWheelWear.rearLeft}
-          innerTemp={tires.rear_left_inner}
-          outerTemp={tires.rear_left_outer}
-          inWindow={tiresInWindow[2]}
-          blowoutRisk={tireBlowoutRisk[2]}
-          blown={tireBlown[2]}
-          compoundColor={config.color}
-        />
-        <CombinedWheelCell
-          label='RR'
-          wear={perWheelWear.rearRight}
-          innerTemp={tires.rear_right_inner}
-          outerTemp={tires.rear_right_outer}
-          inWindow={tiresInWindow[3]}
-          blowoutRisk={tireBlowoutRisk[3]}
-          blown={tireBlown[3]}
-          compoundColor={config.color}
-        />
+      <div className='flex items-center justify-center gap-3 px-3 py-3'>
+        <div className='flex flex-col gap-3'>
+          <CombinedWheelCell
+            label='FL'
+            wear={perWheelWear.frontLeft}
+            innerTemp={tires.front_left_inner}
+            outerTemp={tires.front_left_outer}
+            inWindow={tiresInWindow[0]}
+            blowoutRisk={tireBlowoutRisk[0]}
+            blown={tireBlown[0]}
+            compoundColor={config.color}
+          />
+          <CombinedWheelCell
+            label='RL'
+            wear={perWheelWear.rearLeft}
+            innerTemp={tires.rear_left_inner}
+            outerTemp={tires.rear_left_outer}
+            inWindow={tiresInWindow[2]}
+            blowoutRisk={tireBlowoutRisk[2]}
+            blown={tireBlown[2]}
+            compoundColor={config.color}
+          />
+        </div>
+
+        <div className='relative h-[152px] w-2 rounded-full bg-gradient-to-b from-white/15 via-white/5 to-white/15' />
+
+        <div className='flex flex-col gap-3'>
+          <CombinedWheelCell
+            label='FR'
+            wear={perWheelWear.frontRight}
+            innerTemp={tires.front_right_inner}
+            outerTemp={tires.front_right_outer}
+            inWindow={tiresInWindow[1]}
+            blowoutRisk={tireBlowoutRisk[1]}
+            blown={tireBlown[1]}
+            compoundColor={config.color}
+          />
+          <CombinedWheelCell
+            label='RR'
+            wear={perWheelWear.rearRight}
+            innerTemp={tires.rear_right_inner}
+            outerTemp={tires.rear_right_outer}
+            inWindow={tiresInWindow[3]}
+            blowoutRisk={tireBlowoutRisk[3]}
+            blown={tireBlown[3]}
+            compoundColor={config.color}
+          />
+        </div>
       </div>
 
       <div className='border-t border-white/10 px-3 py-2'>
