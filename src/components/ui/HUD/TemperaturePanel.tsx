@@ -44,6 +44,7 @@ function TireCell({
   inWindow,
   blowoutRisk,
   blown,
+  compact = false,
 }: {
   label: string
   inner: number
@@ -51,6 +52,7 @@ function TireCell({
   inWindow: boolean
   blowoutRisk: number
   blown: boolean
+  compact?: boolean
 }) {
   const avg = (inner + outer) / 2
   const tempC = Math.round(tireTempToCelsius(avg))
@@ -77,7 +79,7 @@ function TireCell({
     <div className='flex flex-col items-center gap-1'>
       <span className={HUD_MICRO_LABEL_CLASS}>{label}</span>
       <div
-        className='flex h-10 w-5 flex-col overflow-hidden border'
+        className={`flex ${compact ? 'h-6' : 'h-10'} w-5 flex-col overflow-hidden border`}
         style={{
           borderColor,
           boxShadow: glow,
@@ -98,7 +100,7 @@ function TireCell({
   )
 }
 
-export default function TemperaturePanel() {
+export default function TemperaturePanel({ compact = false }: { compact?: boolean } = {}) {
   const engine = useTemperatureStore(s => s.engine)
   const tires = useTemperatureStore(s => s.tires)
   const tiresInWindow = useTemperatureStore(s => s.tiresInWindow)
@@ -175,8 +177,8 @@ export default function TemperaturePanel() {
           </div>
         ) : null}
 
-        <div className='mt-3 flex items-start justify-center gap-3'>
-          <div className='flex flex-col gap-2'>
+        <div className={`flex items-start justify-center ${compact ? 'mt-1.5 gap-2' : 'mt-3 gap-3'}`}>
+          <div className={`flex flex-col ${compact ? 'gap-1' : 'gap-2'}`}>
             <TireCell
               label='FL'
               inner={tires.front_left_inner}
@@ -184,6 +186,7 @@ export default function TemperaturePanel() {
               inWindow={tiresInWindow[0]}
               blowoutRisk={tireBlowoutRisk[0]}
               blown={tireBlown[0]}
+              compact={compact}
             />
             <TireCell
               label='RL'
@@ -192,10 +195,13 @@ export default function TemperaturePanel() {
               inWindow={tiresInWindow[2]}
               blowoutRisk={tireBlowoutRisk[2]}
               blown={tireBlown[2]}
+              compact={compact}
             />
           </div>
-          <div className='mt-3 h-[88px] w-1.5 rounded-full bg-gradient-to-b from-white/15 via-white/5 to-white/15' />
-          <div className='flex flex-col gap-2'>
+          <div
+            className={`${compact ? 'mt-2 h-[52px]' : 'mt-3 h-[88px]'} w-1.5 rounded-full bg-gradient-to-b from-white/15 via-white/5 to-white/15`}
+          />
+          <div className={`flex flex-col ${compact ? 'gap-1' : 'gap-2'}`}>
             <TireCell
               label='FR'
               inner={tires.front_right_inner}
@@ -203,6 +209,7 @@ export default function TemperaturePanel() {
               inWindow={tiresInWindow[1]}
               blowoutRisk={tireBlowoutRisk[1]}
               blown={tireBlown[1]}
+              compact={compact}
             />
             <TireCell
               label='RR'
@@ -211,6 +218,7 @@ export default function TemperaturePanel() {
               inWindow={tiresInWindow[3]}
               blowoutRisk={tireBlowoutRisk[3]}
               blown={tireBlown[3]}
+              compact={compact}
             />
           </div>
         </div>

@@ -49,6 +49,9 @@ import { TelemetryOverlay } from '../TelemetryOverlay'
 import { TelemetryAnalysis } from '../TelemetryAnalysis'
 import FPSCounter from './FPSCounter'
 import SteeringWheelIndicator from './SteeringWheelIndicator'
+import DevToolbar from '../DevTools/DevToolbar'
+import DevToolsSessionLifecycle from '../DevTools/DevToolsSessionLifecycle'
+import { useDevToolsHotkeys } from '@/hooks/useDevToolsHotkeys'
 
 export default function HUD() {
   const isMobile = useMobileDetection()
@@ -66,6 +69,8 @@ export default function HUD() {
 
   const [modeNotification, setModeNotification] = useState<string | null>(null)
   const prevTestingMode = useRef(isTestingMode)
+
+  useDevToolsHotkeys(isSessionShell && isRunningSession && isTestingMode)
 
   useEffect(() => {
     if (isMenuMode) {
@@ -146,14 +151,18 @@ export default function HUD() {
               <div className='absolute bottom-[110px] left-1/2 -translate-x-1/2'>
                 <CoastIndicator />
               </div>
-              <div className='absolute bottom-5 left-1/2 -translate-x-1/2'>
+              <div
+                className={
+                  isTestingMode ? 'absolute bottom-5 right-5' : 'absolute bottom-5 left-1/2 -translate-x-1/2'
+                }
+              >
                 <RacePanel />
               </div>
               <div className='absolute bottom-5 left-5'>
                 <TireIndicator />
               </div>
-              <div className='absolute bottom-5 right-5'>
-                <TemperaturePanel />
+              <div className={isTestingMode ? 'absolute bottom-[150px] right-5' : 'absolute bottom-5 right-5'}>
+                <TemperaturePanel compact={isTestingMode} />
               </div>
             </>
           )}
@@ -190,9 +199,15 @@ export default function HUD() {
           {isRunningSession && <TrackLimitsIndicator />}
           {isRunningSession && <WrongWayIndicator />}
           {isRunningSession && <PitLaneSpeedIndicator />}
-          {isRunningSession && isTestingMode && <PhysicsDebugOverlay />}
-          {isRunningSession && isTestingMode && <WeatherPanel />}
-          {isRunningSession && isTestingMode && <TrackSwitcher />}
+          {isRunningSession && isTestingMode && (
+            <>
+              <DevToolsSessionLifecycle />
+              {!isMobile && <DevToolbar />}
+              <PhysicsDebugOverlay />
+              <WeatherPanel />
+              <TrackSwitcher />
+            </>
+          )}
           {isRunningSession && <TelemetryOverlay />}
           {isRunningSession && <TelemetryAnalysis />}
         </>
