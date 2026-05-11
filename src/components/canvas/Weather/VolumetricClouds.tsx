@@ -11,8 +11,8 @@ import { computeSunDirection, getSunIntensity } from './sunDirection'
 const MAX_WEATHER_SOURCES = 8
 const ENABLED_TIERS: QualityTier[] = ['ultra', 'high']
 
-const CLOUD_BOTTOM = 800
-const CLOUD_TOP = 1800
+const CLOUD_BOTTOM = 900
+const CLOUD_TOP = 1400
 
 const blitVertex = /* glsl */ `
 attribute vec3 position;

@@ -112,7 +112,7 @@ float cloudDensity(vec3 p) {
   float shape = baseShape * 0.8 + detailShape * 0.2;
 
   float sourceMod = sampleSourceField(p.xz);
-  float coverage = mix(uCoverage, 0.35, sourceMod);
+  float coverage = mix(uCoverage, 0.55, sourceMod);
 
   float density = smoothstep(coverage, coverage + 0.18, shape);
   return density * heightFactor;
@@ -124,10 +124,10 @@ float lightMarch(vec3 p) {
   for (int i = 0; i < LIGHT_STEPS; i++) {
     p += step;
     float density = cloudDensity(p);
-    transmittance *= exp(-density * 80.0 * 0.03);
+    transmittance *= exp(-density * 80.0 * 0.02);
     if (transmittance < 0.05) break;
   }
-  return mix(0.35, 1.0, transmittance);
+  return mix(0.6, 1.0, transmittance);
 }
 
 float henyeyGreenstein(float cosTheta, float g) {
@@ -174,17 +174,17 @@ void main() {
   float jitter = hash13(vec3(gl_FragCoord.xy, uTime * 60.0));
   float t = tStart + stepSize * jitter;
 
-  vec3 sunColor = mix(vec3(1.4, 0.95, 0.5), vec3(1.8, 1.7, 1.5), smoothstep(0.05, 0.4, uSunDirection.y));
-  vec3 ambientColor = vec3(0.85, 0.9, 1.0);
+  vec3 sunColor = mix(vec3(1.5, 1.05, 0.55), vec3(2.0, 1.95, 1.85), smoothstep(0.05, 0.4, uSunDirection.y));
+  vec3 ambientColor = vec3(1.4, 1.45, 1.5);
 
   float cosThetaSun = dot(rayDir, normalize(uSunDirection));
   float forwardScatter = henyeyGreenstein(cosThetaSun, 0.6);
   float backScatter = henyeyGreenstein(cosThetaSun, -0.2);
-  float phase = forwardScatter * 0.7 + backScatter * 0.3;
+  float phase = forwardScatter * 0.5 + backScatter * 0.5;
 
   float transmittance = 1.0;
   vec3 scattered = vec3(0.0);
-  float sigma = 0.06;
+  float sigma = 0.05;
 
   for (int i = 0; i < MAX_STEPS; i++) {
     if (t > tEnd || transmittance < 0.02) break;
@@ -194,9 +194,9 @@ void main() {
     if (density > 0.01) {
       float lightT = lightMarch(samplePos);
       vec3 directLight = sunColor * lightT * phase;
-      vec3 inscatter = directLight + ambientColor * 0.6;
+      vec3 inscatter = directLight + ambientColor;
       float deltaT = exp(-density * stepSize * sigma);
-      scattered += inscatter * transmittance * (1.0 - deltaT) * density * 0.25;
+      scattered += inscatter * transmittance * (1.0 - deltaT) * density * 0.4;
       transmittance *= deltaT;
     }
     t += stepSize;
