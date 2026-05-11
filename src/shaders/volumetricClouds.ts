@@ -101,33 +101,33 @@ float cloudDensity(vec3 p) {
   float h = (p.y - uCloudBottom) / max(uCloudTop - uCloudBottom, 0.0001);
   if (h < 0.0 || h > 1.0) return 0.0;
 
-  float heightFactor = smoothstep(0.0, 0.2, h) * smoothstep(1.0, 0.6, h);
+  float heightFactor = smoothstep(0.0, 0.25, h) * smoothstep(1.0, 0.7, h);
 
   vec3 advected = p;
   advected.xz += uWindVector * uTime * 0.5;
-  advected /= 800.0;
+  advected /= 2400.0;
 
   float baseShape = fbm3(advected);
-  float detailShape = worleyApprox(advected * 3.5);
-  float shape = baseShape - detailShape * 0.15;
+  float detailShape = fbm3(advected * 4.0);
+  float shape = baseShape * 0.8 + detailShape * 0.2;
 
   float sourceMod = sampleSourceField(p.xz);
-  float coverage = mix(uCoverage, 0.85, sourceMod);
+  float coverage = mix(uCoverage, 0.35, sourceMod);
 
-  float density = smoothstep(coverage - 0.05, coverage + 0.05, shape);
+  float density = smoothstep(coverage, coverage + 0.18, shape);
   return density * heightFactor;
 }
 
 float lightMarch(vec3 p) {
   float transmittance = 1.0;
-  vec3 step = uSunDirection * 60.0;
+  vec3 step = uSunDirection * 80.0;
   for (int i = 0; i < LIGHT_STEPS; i++) {
     p += step;
     float density = cloudDensity(p);
-    transmittance *= exp(-density * 60.0 * 0.04);
+    transmittance *= exp(-density * 80.0 * 0.03);
     if (transmittance < 0.05) break;
   }
-  return transmittance;
+  return mix(0.35, 1.0, transmittance);
 }
 
 float henyeyGreenstein(float cosTheta, float g) {
@@ -174,8 +174,8 @@ void main() {
   float jitter = hash13(vec3(gl_FragCoord.xy, uTime * 60.0));
   float t = tStart + stepSize * jitter;
 
-  vec3 sunColor = mix(vec3(1.6, 1.0, 0.5), vec3(2.0, 1.9, 1.6), smoothstep(0.05, 0.4, uSunDirection.y));
-  vec3 ambientColor = vec3(0.55, 0.65, 0.78);
+  vec3 sunColor = mix(vec3(1.4, 0.95, 0.5), vec3(1.8, 1.7, 1.5), smoothstep(0.05, 0.4, uSunDirection.y));
+  vec3 ambientColor = vec3(0.85, 0.9, 1.0);
 
   float cosThetaSun = dot(rayDir, normalize(uSunDirection));
   float forwardScatter = henyeyGreenstein(cosThetaSun, 0.6);
@@ -184,6 +184,7 @@ void main() {
 
   float transmittance = 1.0;
   vec3 scattered = vec3(0.0);
+  float sigma = 0.06;
 
   for (int i = 0; i < MAX_STEPS; i++) {
     if (t > tEnd || transmittance < 0.02) break;
@@ -192,9 +193,10 @@ void main() {
 
     if (density > 0.01) {
       float lightT = lightMarch(samplePos);
-      vec3 inscatter = (sunColor * lightT * phase + ambientColor * 0.5) * density;
-      float deltaT = exp(-density * stepSize * 0.04);
-      scattered += inscatter * transmittance * (1.0 - deltaT) * stepSize * 0.04;
+      vec3 directLight = sunColor * lightT * phase;
+      vec3 inscatter = directLight + ambientColor * 0.6;
+      float deltaT = exp(-density * stepSize * sigma);
+      scattered += inscatter * transmittance * (1.0 - deltaT) * density * 0.25;
       transmittance *= deltaT;
     }
     t += stepSize;

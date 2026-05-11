@@ -68,8 +68,8 @@ void main() {
   float rPhase = rayleighPhase(cosTheta);
   float mPhase = miePhase(cosTheta, MIE_G);
 
-  vec3 zenithBlue = vec3(0.18, 0.34, 0.62);
-  vec3 horizonHaze = vec3(0.78, 0.85, 0.95);
+  vec3 zenithBlue = vec3(0.12, 0.28, 0.58);
+  vec3 horizonHaze = vec3(0.70, 0.80, 0.92);
 
   float duskAmount = 1.0 - smoothstep(0.0, 0.35, sunZenithCos);
   vec3 horizonDuskTint = mix(horizonHaze, vec3(0.95, 0.55, 0.32), duskAmount);
@@ -77,8 +77,8 @@ void main() {
 
   vec3 baseSky = mix(horizonDuskTint, zenithDuskTint, smoothstep(0.0, 0.4, viewDir.y));
 
-  vec3 rayleighColor = rayleighScatter * rPhase * vec3(0.4, 0.6, 1.0) * 0.8;
-  vec3 mieColor = mieScatter * mPhase * vec3(1.0, 0.95, 0.85) * 0.5;
+  vec3 rayleighColor = rayleighScatter * rPhase * vec3(0.4, 0.6, 1.0) * 0.6;
+  vec3 mieColor = mieScatter * mPhase * vec3(1.0, 0.95, 0.85) * 0.15;
 
   vec3 sky = baseSky + (rayleighColor + mieColor) * dayMask;
 
