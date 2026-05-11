@@ -67,14 +67,14 @@ directly per-frame.
 
 ## Sky shader sampling
 
-`src/shaders/volumetricClouds.ts` declares `uWeatherSources[MAX_WEATHER_SOURCES]`
-(vec4 per source: x, z, radius, intensity) and `uWeatherSourceCount`.
-`sampleSourceField(worldXZ)` reproduces the Rust math exactly — the
-raymarcher samples it inside `cloudDensity()` to thicken cloud coverage
-locally where weather sources exist.
-
-The procedural `src/shaders/skyDome.ts` does NOT consume sources directly;
-the cloud raymarcher is the layer that visualizes them.
+No live shader consumer in the current codebase. The source field is
+authored via the WeatherFrontEditor UI and visualised on RadarMinimap,
+but the visual rendering layer that consumed them (volumetric clouds)
+was removed pending a redesign. When the cloud system is rebuilt, it
+should declare `uWeatherSources[MAX_WEATHER_SOURCES]` (vec4: x, z,
+radius, intensity) plus `uWeatherSourceCount`, and replicate
+`sample_intensity()` from `weather.rs` to thicken cloud coverage at
+source locations.
 
 ## UI authoring
 
