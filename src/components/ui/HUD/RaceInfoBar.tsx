@@ -1,7 +1,7 @@
 import { useSessionStore } from '@/stores/useSessionStore'
 import { useLapTimeStore } from '@/stores/useLapTimeStore'
 import { useEnvironmentStore } from '@/stores/useEnvironmentStore'
-import { HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
+import { HUD_ACCENT, HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
 
 function formatLapTime(ms: number | null): string {
   if (ms === null) return '—:——.———'
@@ -43,7 +43,7 @@ export default function RaceInfoBar() {
 
         <Divider />
 
-        <Segment label='Best Lap' accent='#b388ff'>
+        <Segment label='Best Lap' accent={HUD_ACCENT.battery}>
           <span className='font-mono text-[15px] font-semibold tabular-nums text-white'>
             {formatLapTime(bestLapTime)}
           </span>

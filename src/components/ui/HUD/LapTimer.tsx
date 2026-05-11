@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../stores/usePitStore'
 import { useGhostCarStore } from '../../../stores/useGhostCarStore'
-import { HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
+import { HUD_ACCENT, HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HUD_STATUS, HudPanel } from './hudChrome'
 
 const TIMER_UPDATE_INTERVAL = 50
 
@@ -15,7 +15,7 @@ function sectorTone(
   const time = sectorTimes.get(sectorNum)
   if (time === undefined) return { bar: 'rgba(255,255,255,0.18)', tint: 'rgba(255,255,255,0.04)' }
   const best = bestSectorTimes.get(sectorNum)
-  if (best === time) return { bar: '#b388ff', tint: 'rgba(179,136,255,0.18)' }
+  if (best === time) return { bar: HUD_ACCENT.battery, tint: 'rgba(179,136,255,0.18)' }
   return { bar: '#ffcc00', tint: 'rgba(255,204,0,0.15)' }
 }
 
@@ -68,13 +68,13 @@ export default function LapTimer() {
 
   const hasStarted = currentLapStart !== null
   const ghostAhead = ghostTimeDelta !== null && ghostTimeDelta <= 0
-  const ghostColor = ghostAhead ? '#22c55e' : '#ef4444'
+  const ghostColor = ghostAhead ? HUD_STATUS.success : HUD_STATUS.danger
 
   return (
     <div className='absolute top-[76px] left-1/2 -translate-x-1/2 z-20 pointer-events-none select-none'>
-      <HudPanel accent='#00e5ff' contentClassName='px-4 py-2'>
+      <HudPanel accent={HUD_ACCENT.speed} contentClassName='px-4 py-2'>
         <div className='flex items-center gap-5'>
-          <Column label='Current' accent='#00e5ff'>
+          <Column label='Current' accent={HUD_ACCENT.speed}>
             {hasStarted ? (
               <span
                 className='font-mono text-[18px] font-semibold leading-none tabular-nums text-white'
@@ -97,10 +97,10 @@ export default function LapTimer() {
 
           <Divider />
 
-          <Column label='Best' accent='#b388ff'>
+          <Column label='Best' accent={HUD_ACCENT.battery}>
             <span
               className='font-mono text-[14px] font-semibold tabular-nums'
-              style={{ color: '#b388ff', textShadow: '0 0 12px rgba(179,136,255,0.4)' }}
+              style={{ color: HUD_ACCENT.battery, textShadow: '0 0 12px rgba(179,136,255,0.4)' }}
             >
               {formatTime(bestLapTime)}
             </span>
@@ -109,8 +109,11 @@ export default function LapTimer() {
           {pitPenalty > 0 && (
             <>
               <Divider />
-              <Column label='Penalty' accent='#ef4444'>
-                <span className='font-mono text-[14px] font-semibold tabular-nums text-[#ef4444]'>
+              <Column label='Penalty' accent={HUD_STATUS.danger}>
+                <span
+                  className='font-mono text-[14px] font-semibold tabular-nums'
+                  style={{ color: HUD_STATUS.danger }}
+                >
                   +{pitPenalty}s
                 </span>
               </Column>

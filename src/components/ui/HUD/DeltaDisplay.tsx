@@ -1,5 +1,5 @@
 import { useGhostCarStore } from '@/stores/useGhostCarStore'
-import { HUD_CLIP_LEFT, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
+import { HUD_CLIP_LEFT, HUD_LABEL_CLASS, HUD_NUMERIC_CLASS, HUD_STATUS, HudPanel } from './hudChrome'
 
 export default function DeltaDisplay() {
   const ghostDelta = useGhostCarStore(s => s.ghostTimeDelta)
@@ -12,8 +12,8 @@ export default function DeltaDisplay() {
   const delta = ghostDelta
   const isAhead = delta < 0
   const magnitude = Math.abs(delta)
-  const accent = isAhead ? '#22c55e' : '#ef4444'
-  const subtle = isAhead ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'
+  const accent = isAhead ? HUD_STATUS.success : HUD_STATUS.danger
+  const subtle = `${accent}1f`
 
   return (
     <div className='absolute top-4 right-4 pointer-events-none select-none z-30'>
@@ -27,7 +27,7 @@ export default function DeltaDisplay() {
           <div className='flex flex-col items-start'>
             <span className={HUD_LABEL_CLASS}>Ghost Δ</span>
             <span
-              className='font-mono text-[22px] font-semibold leading-none tabular-nums'
+              className={`${HUD_NUMERIC_CLASS} text-[22px] leading-none`}
               style={{ color: accent, textShadow: `0 0 18px ${subtle}` }}
             >
               {isAhead ? '−' : '+'}

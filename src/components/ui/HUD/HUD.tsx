@@ -143,7 +143,7 @@ export default function HUD() {
 
           {isRunningSession && !isMobile && cameraMode !== 'first-person' && (
             <>
-              <div className='absolute bottom-[118px] left-1/2 -translate-x-1/2'>
+              <div className='absolute bottom-[160px] left-1/2 -translate-x-1/2'>
                 <CoastIndicator />
               </div>
               <div className='absolute bottom-5 left-1/2 -translate-x-1/2'>
@@ -159,7 +159,7 @@ export default function HUD() {
           )}
 
           {isRunningSession && !isMobile && mouseSteeringEnabled && (
-            <div className='absolute bottom-[200px] left-1/2 -translate-x-1/2'>
+            <div className='absolute bottom-[240px] left-1/2 -translate-x-1/2'>
               <SteeringWheelIndicator />
             </div>
           )}
