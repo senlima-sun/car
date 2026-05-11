@@ -1,5 +1,3 @@
-import { STATUS } from '../../../constants/colors'
-
 export const MAX_RPM = 15000
 export const RPM_LIGHT_COUNT = 15
 
@@ -11,11 +9,11 @@ const HIGHEST_LIT_YELLOW_END = ZONE_YELLOW_END + 1
 
 export type RpmZone = 'idle' | 'green' | 'yellow' | 'red' | 'limiter'
 
-export const RPM_ZONE_COLORS: Record<RpmZone, string> = {
+const RPM_ZONE_COLORS: Record<RpmZone, string> = {
   idle: 'rgba(255,255,255,0.85)',
-  green: STATUS.success,
-  yellow: STATUS.warning,
-  red: STATUS.danger,
+  green: '#22c55e',
+  yellow: '#f59e0b',
+  red: '#ef4444',
   limiter: '#ff2929',
 }
 

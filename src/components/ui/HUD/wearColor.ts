@@ -7,3 +7,7 @@ export function wearColor(wear: number): string {
   if (wear >= TIRE_WEAR_WARNING) return STATUS.warning
   return STATUS.success
 }
+
+export function isWearCritical(wear: number): boolean {
+  return Number.isFinite(wear) && wear >= TIRE_WEAR_CRITICAL
+}

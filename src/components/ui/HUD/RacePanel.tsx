@@ -47,6 +47,13 @@ function ersPresetMeta(preset: string) {
   }
 }
 
+function ersFlowMeta(isDeploying: boolean, isHarvesting: boolean) {
+  if (isDeploying && isHarvesting) return { glyph: '⇅', color: '#22c55e' }
+  if (isDeploying) return { glyph: '▲', color: '#22c55e' }
+  if (isHarvesting) return { glyph: '▼', color: '#60a5fa' }
+  return { glyph: '·', color: 'rgba(255,255,255,0.35)' }
+}
+
 export default function RacePanel() {
   const gear = useCarStore(s => s.gear)
   const speed = useCarStore(s => s.speed)
@@ -72,13 +79,7 @@ export default function RacePanel() {
   const preset = ersPresetMeta(semiAutoConfig.preset)
   const batteryPercent = Math.max(0, Math.min(100, batteryCharge))
 
-  const ersFlow =
-    ersIsDeploying && ersIsHarvesting ? '⇅' : ersIsDeploying ? '▲' : ersIsHarvesting ? '▼' : '·'
-  const ersFlowColor = ersIsDeploying
-    ? '#22c55e'
-    : ersIsHarvesting
-      ? '#60a5fa'
-      : 'rgba(255,255,255,0.35)'
+  const ersFlow = ersFlowMeta(ersIsDeploying, ersIsHarvesting)
 
   const gearColor =
     gear === -1 ? HUD_ACCENT.reverse : rpmPercent > 0.95 ? HUD_ACCENT.limiter : HUD_ACCENT.gear
@@ -221,7 +222,7 @@ export default function RacePanel() {
                     <span className='text-white/40'>%</span>
                   </span>
                   <span className='flex items-center gap-1 text-[10px] font-semibold'>
-                    <span style={{ color: ersFlowColor }}>{ersFlow}</span>
+                    <span style={{ color: ersFlow.color }}>{ersFlow.glyph}</span>
                     <span style={{ color: preset.color }}>{preset.label}</span>
                   </span>
                 </div>

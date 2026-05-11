@@ -163,7 +163,7 @@ export default function TemperaturePanel() {
         {engineDanger && !engineSeized ? (
           <div
             className='mt-1 h-0.5 overflow-hidden'
-            style={{ background: 'rgba(239,68,68,0.15)' }}
+            style={{ background: `${HUD_STATUS.danger}26` }}
           >
             <div
               className='h-full transition-[width] duration-200'

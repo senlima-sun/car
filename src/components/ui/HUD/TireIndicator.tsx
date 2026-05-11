@@ -1,5 +1,5 @@
 import { selectAverageWear, useTireStore } from '../../../stores/useTireStore'
-import { TIRE_CONFIG, TIRE_WEAR_CRITICAL } from '../../../constants/tires'
+import { TIRE_CONFIG } from '../../../constants/tires'
 import {
   HUD_LABEL_CLASS,
   HUD_MICRO_LABEL_CLASS,
@@ -7,6 +7,7 @@ import {
   HUD_STATUS,
   HudCell,
   HudPanel,
+  isWearCritical,
   wearColor,
 } from './hudChrome'
 
@@ -63,7 +64,7 @@ export default function TireIndicator() {
     perWheelWear.rearLeft,
     perWheelWear.rearRight,
   )
-  const isCritical = maxWear >= TIRE_WEAR_CRITICAL
+  const isCritical = isWearCritical(maxWear)
 
   const maxGraining = tireMaterial ? Math.max(...tireMaterial.per_wheel_graining) : 0
   const maxBlistering = tireMaterial ? Math.max(...tireMaterial.per_wheel_blistering) : 0

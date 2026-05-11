@@ -32,7 +32,7 @@ export const HUD_ACCENT = {
   limiter: '#ff2929',
 } as const
 
-export { wearColor } from './wearColor'
+export { wearColor, isWearCritical } from './wearColor'
 export * from './rpmZones'
 
 type HudPanelProps = {
