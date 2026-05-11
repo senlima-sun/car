@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTrackStore } from '@/stores/useTrackStore'
 import { PRESET_TRACKS } from '@/constants/tracks'
+import DraggablePanel from '../DevTools/DraggablePanel'
 
 const DRAFT_ID = 'editor_draft'
 
@@ -29,23 +30,24 @@ export default function TrackSwitcher() {
   })()
 
   return (
-    <div className='pointer-events-auto absolute top-[230px] right-5 z-20 flex flex-col gap-1 rounded-lg bg-black/70 px-3 py-2 text-xs text-white shadow-lg ring-1 ring-white/10 backdrop-blur-md'>
-      <label className='text-[10px] uppercase tracking-[0.28em] text-white/55'>Track</label>
-      <select
-        className='rounded bg-neutral-900/90 px-2 py-1 font-mono text-xs text-white focus:outline-none ring-1 ring-white/10'
-        value={currentValue}
-        onChange={e => {
-          onChange(e.target.value)
-          e.currentTarget.blur()
-        }}
-      >
-        {draft && <option value={DRAFT_ID}>Editor Draft</option>}
-        {PRESET_TRACKS.map(p => (
-          <option key={p.id} value={`preset:${p.id}`}>
-            {p.name}
-          </option>
-        ))}
-      </select>
-    </div>
+    <DraggablePanel id='track-switcher' title='Track' hotkey='F8'>
+      <div className='flex flex-col gap-1 px-3 py-2 text-xs text-white'>
+        <select
+          className='rounded bg-neutral-900/90 px-2 py-1 font-mono text-xs text-white focus:outline-none ring-1 ring-white/10'
+          value={currentValue}
+          onChange={e => {
+            onChange(e.target.value)
+            e.currentTarget.blur()
+          }}
+        >
+          {draft && <option value={DRAFT_ID}>Editor Draft</option>}
+          {PRESET_TRACKS.map(p => (
+            <option key={p.id} value={`preset:${p.id}`}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </DraggablePanel>
   )
 }
