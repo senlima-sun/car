@@ -17,19 +17,22 @@ export function useDraggable(
 ): { handleProps: DragHandleProps } {
   const sessionRef = useRef<DragSession | null>(null)
   const captureTargetRef = useRef<HTMLElement | null>(null)
+  const capturePointerIdRef = useRef<number | null>(null)
   const movedRef = useRef(false)
 
   const endDrag = useCallback(() => {
     const target = captureTargetRef.current
-    if (target && sessionRef.current) {
+    const pointerId = capturePointerIdRef.current
+    if (target && pointerId !== null) {
       try {
-        target.releasePointerCapture?.(0)
+        target.releasePointerCapture(pointerId)
       } catch {
         // ignore — pointerId already released
       }
     }
     sessionRef.current = null
     captureTargetRef.current = null
+    capturePointerIdRef.current = null
     movedRef.current = false
   }, [])
 
@@ -71,6 +74,7 @@ export function useDraggable(
         startPanelPos: currentPos,
       }
       captureTargetRef.current = event.currentTarget
+      capturePointerIdRef.current = event.pointerId
       try {
         event.currentTarget.setPointerCapture(event.pointerId)
       } catch {

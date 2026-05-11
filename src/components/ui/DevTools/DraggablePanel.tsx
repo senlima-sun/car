@@ -26,6 +26,8 @@ export default function DraggablePanel({
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const sizeRef = useRef<Size | null>(defaultSize ?? null)
+  const positionRef = useRef(panel.position)
+  positionRef.current = panel.position
 
   const { handleProps } = useDraggable(id, sizeRef)
 
@@ -36,23 +38,24 @@ export default function DraggablePanel({
       if (!el) return
       sizeRef.current = { width: el.offsetWidth, height: el.offsetHeight }
     }
-    measure()
-    const handleResize = () => {
+    function clampNow() {
       measure()
       const size = sizeRef.current
       if (!size) return
+      const current = positionRef.current
       const clamped = clampPositionToViewport(
-        panel.position,
+        current,
         { width: window.innerWidth, height: window.innerHeight },
         size,
       )
-      if (clamped.x !== panel.position.x || clamped.y !== panel.position.y) {
+      if (clamped.x !== current.x || clamped.y !== current.y) {
         setPanelPosition(id, clamped)
       }
     }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [panel.isOpen, panel.position, id, setPanelPosition])
+    clampNow()
+    window.addEventListener('resize', clampNow)
+    return () => window.removeEventListener('resize', clampNow)
+  }, [panel.isOpen, id, setPanelPosition])
 
   if (!panel.isOpen) return null
 
