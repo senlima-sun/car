@@ -8,7 +8,6 @@ import type { EngineBrakingLevel } from '../../../wasm/PhysicsBridge'
 import { celsiusToColor } from '../../../utils/temperatureColors'
 import {
   HUD_LABEL_CLASS,
-  HUD_MICRO_LABEL_CLASS,
   HUD_NUMERIC_CLASS,
   HUD_STATUS,
   HudCell,
@@ -48,7 +47,7 @@ export function engineBrakeMeta(level: EngineBrakingLevel) {
 }
 
 function CombinedWheelCell({
-  label,
+  side,
   wear,
   innerTemp,
   outerTemp,
@@ -57,7 +56,7 @@ function CombinedWheelCell({
   blown,
   compoundColor,
 }: {
-  label: string
+  side: 'left' | 'right'
   wear: number
   innerTemp: number
   outerTemp: number
@@ -73,58 +72,68 @@ function CombinedWheelCell({
   const avgC = Math.round(tireTempToCelsius((innerTemp + outerTemp) / 2))
 
   const danger = blown || blowoutRisk > 0.4
-  const borderColor = blown
+  const ringColor = blown
     ? HUD_STATUS.danger
     : blowoutRisk > 0.4
       ? HUD_STATUS.warning
       : inWindow
         ? HUD_STATUS.success
         : compoundColor
-  const glow = blown
-    ? '0 0 8px rgba(239,68,68,0.9)'
+  const ringGlow = blown
+    ? '0 0 14px rgba(239,68,68,0.85)'
     : blowoutRisk > 0.4
-      ? `0 0 ${4 + blowoutRisk * 6}px rgba(245,158,11,${0.4 + blowoutRisk * 0.5})`
+      ? `0 0 ${8 + blowoutRisk * 10}px rgba(245,158,11,${0.45 + blowoutRisk * 0.45})`
       : inWindow
-        ? '0 0 6px rgba(34,197,94,0.5)'
-        : 'none'
+        ? '0 0 10px rgba(34,197,94,0.45)'
+        : '0 0 8px rgba(255,255,255,0.06)'
+
+  const innerSwatch = celsiusToColor(innerC)
+  const outerSwatch = celsiusToColor(outerC)
+  const outerDotPosition = side === 'left' ? 'left-1.5' : 'right-1.5'
+  const innerDotPosition = side === 'left' ? 'right-1.5' : 'left-1.5'
 
   return (
-    <div className='flex flex-col items-center gap-1'>
-      <span className={HUD_MICRO_LABEL_CLASS}>{label}</span>
-      <div className='flex items-stretch gap-1'>
-        <div
-          className='flex h-14 w-3 flex-col overflow-hidden'
-          style={{
-            border: `1.5px solid ${borderColor}`,
-            boxShadow: glow,
-            borderRadius: 2,
-            opacity: blown ? 0.55 : 1,
-          }}
-        >
-          <div className='flex-1 transition-colors' style={{ background: celsiusToColor(outerC) }} />
-          <div className='flex-1 transition-colors' style={{ background: celsiusToColor(innerC) }} />
-        </div>
-        <div
-          className='relative flex h-14 w-3 flex-col justify-end overflow-hidden bg-white/5'
-          style={{ border: `1.5px solid ${compoundColor}`, borderRadius: 2 }}
-        >
-          <div
-            className='w-full transition-[height,background-color] duration-300'
-            style={{ height: `${remaining}%`, background: wearTone }}
-          />
-        </div>
-      </div>
-      <div className='flex flex-col items-center gap-0 leading-tight'>
-        <span
-          className={`${HUD_NUMERIC_CLASS} text-[10px]`}
-          style={{ color: blown ? HUD_STATUS.danger : danger ? HUD_STATUS.warning : 'rgba(255,255,255,0.85)' }}
-        >
-          {blown ? 'BLN' : `${avgC}°`}
-        </span>
-        <span className={`${HUD_NUMERIC_CLASS} text-[10px]`} style={{ color: wearTone }}>
-          {Math.round(remaining)}%
-        </span>
-      </div>
+    <div
+      className='relative flex h-[78px] w-[78px] flex-col items-center justify-center rounded-full border-2 bg-black/55'
+      style={{
+        borderColor: ringColor,
+        boxShadow: ringGlow,
+        opacity: blown ? 0.6 : 1,
+      }}
+    >
+      <span
+        className={`absolute top-2.5 ${outerDotPosition} h-1.5 w-1.5 rounded-full`}
+        style={{ background: outerSwatch, boxShadow: `0 0 4px ${outerSwatch}` }}
+        title={`Outer ${Math.round(outerC)}°C`}
+      />
+      <span
+        className={`absolute bottom-2.5 ${outerDotPosition} h-1.5 w-1.5 rounded-full`}
+        style={{ background: outerSwatch, opacity: 0.6 }}
+      />
+      <span
+        className={`absolute top-2.5 ${innerDotPosition} h-1.5 w-1.5 rounded-full`}
+        style={{ background: innerSwatch, boxShadow: `0 0 4px ${innerSwatch}` }}
+        title={`Inner ${Math.round(innerC)}°C`}
+      />
+      <span
+        className={`absolute bottom-2.5 ${innerDotPosition} h-1.5 w-1.5 rounded-full`}
+        style={{ background: innerSwatch, opacity: 0.6 }}
+      />
+
+      <span
+        className={`${HUD_NUMERIC_CLASS} text-[13px] leading-tight`}
+        style={{
+          color: blown ? HUD_STATUS.danger : danger ? HUD_STATUS.warning : 'rgba(255,255,255,0.95)',
+        }}
+      >
+        {blown ? 'BLN' : `${avgC}°`}
+      </span>
+      <span
+        className={`${HUD_NUMERIC_CLASS} text-[12px] leading-tight`}
+        style={{ color: wearTone }}
+      >
+        {Math.round(remaining)}%
+      </span>
     </div>
   )
 }
@@ -203,10 +212,17 @@ export default function CarStatusPanel() {
         </HudCell>
       </div>
 
-      <div className='flex items-center justify-center gap-3 px-3 py-3'>
-        <div className='flex flex-col gap-3'>
+      <div className='relative px-3 py-3'>
+        <div
+          className='pointer-events-none absolute left-1/2 top-4 bottom-4 w-px -translate-x-1/2'
+          style={{
+            background:
+              'linear-gradient(to bottom, transparent, rgba(255,255,255,0.16) 18%, rgba(255,255,255,0.16) 82%, transparent)',
+          }}
+        />
+        <div className='grid grid-cols-2 gap-x-4 gap-y-3 justify-items-center'>
           <CombinedWheelCell
-            label='FL'
+            side='left'
             wear={perWheelWear.frontLeft}
             innerTemp={tires.front_left_inner}
             outerTemp={tires.front_left_outer}
@@ -216,22 +232,7 @@ export default function CarStatusPanel() {
             compoundColor={config.color}
           />
           <CombinedWheelCell
-            label='RL'
-            wear={perWheelWear.rearLeft}
-            innerTemp={tires.rear_left_inner}
-            outerTemp={tires.rear_left_outer}
-            inWindow={tiresInWindow[2]}
-            blowoutRisk={tireBlowoutRisk[2]}
-            blown={tireBlown[2]}
-            compoundColor={config.color}
-          />
-        </div>
-
-        <div className='relative h-[152px] w-2 rounded-full bg-gradient-to-b from-white/15 via-white/5 to-white/15' />
-
-        <div className='flex flex-col gap-3'>
-          <CombinedWheelCell
-            label='FR'
+            side='right'
             wear={perWheelWear.frontRight}
             innerTemp={tires.front_right_inner}
             outerTemp={tires.front_right_outer}
@@ -241,7 +242,17 @@ export default function CarStatusPanel() {
             compoundColor={config.color}
           />
           <CombinedWheelCell
-            label='RR'
+            side='left'
+            wear={perWheelWear.rearLeft}
+            innerTemp={tires.rear_left_inner}
+            outerTemp={tires.rear_left_outer}
+            inWindow={tiresInWindow[2]}
+            blowoutRisk={tireBlowoutRisk[2]}
+            blown={tireBlown[2]}
+            compoundColor={config.color}
+          />
+          <CombinedWheelCell
+            side='right'
             wear={perWheelWear.rearRight}
             innerTemp={tires.rear_right_inner}
             outerTemp={tires.rear_right_outer}
