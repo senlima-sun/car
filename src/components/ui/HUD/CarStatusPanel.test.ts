@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { biasColor, engineBrakeMeta } from './TemperaturePanel'
+import { biasColor, engineBrakeMeta } from './CarStatusPanel'
 import { BRAKE_BIAS, ENGINE_BRAKING } from '../../../constants/colors'
 
 describe('biasColor', () => {

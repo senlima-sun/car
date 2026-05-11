@@ -71,7 +71,7 @@ export default function LapTimer() {
   const ghostColor = ghostAhead ? HUD_STATUS.success : HUD_STATUS.danger
 
   return (
-    <div className='absolute top-[76px] left-1/2 -translate-x-1/2 z-20 pointer-events-none select-none'>
+    <div className='absolute top-[76px] right-5 z-20 pointer-events-none select-none'>
       <HudPanel accent={HUD_ACCENT.speed} contentClassName='px-4 py-2'>
         <div className='flex items-center gap-5'>
           <Column label='Current' accent={HUD_ACCENT.speed}>

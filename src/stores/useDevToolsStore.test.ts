@@ -6,12 +6,18 @@ afterEach(() => {
 })
 
 describe('useDevToolsStore', () => {
-  test('defaults: all panels closed at focusOrder 0', () => {
+  test('dev-tool defaults: physics/weather/track closed at focusOrder 0', () => {
     const { panels } = useDevToolsStore.getState()
     expect(panels['physics-debug'].isOpen).toBe(false)
     expect(panels.weather.isOpen).toBe(false)
     expect(panels['track-switcher'].isOpen).toBe(false)
     expect(panels['physics-debug'].focusOrder).toBe(0)
+  })
+
+  test('HUD-panel defaults: minimap + car-status open', () => {
+    const { panels } = useDevToolsStore.getState()
+    expect(panels.minimap.isOpen).toBe(true)
+    expect(panels['car-status'].isOpen).toBe(true)
   })
 
   test('togglePanel opens a closed panel and assigns top focusOrder', () => {

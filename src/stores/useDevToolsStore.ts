@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 import type { Position } from '../utils/dragController'
 
-export type DevPanelId = 'physics-debug' | 'weather' | 'track-switcher'
+export type DevPanelId =
+  | 'physics-debug'
+  | 'weather'
+  | 'track-switcher'
+  | 'minimap'
+  | 'car-status'
 
 export interface DevPanelState {
   isOpen: boolean
@@ -23,15 +28,35 @@ const DEFAULT_POSITIONS: Record<DevPanelId, Position> = {
   'physics-debug': { x: 24, y: 80 },
   weather: { x: 320, y: 80 },
   'track-switcher': { x: 24, y: 380 },
+  minimap: { x: 24, y: 80 },
+  'car-status': { x: 24, y: 0 },
+}
+
+const DEFAULT_OPEN: Record<DevPanelId, boolean> = {
+  'physics-debug': false,
+  weather: false,
+  'track-switcher': false,
+  minimap: true,
+  'car-status': true,
 }
 
 function defaultPanels(): Record<DevPanelId, DevPanelState> {
   return {
-    'physics-debug': { isOpen: false, position: DEFAULT_POSITIONS['physics-debug'], focusOrder: 0 },
-    weather: { isOpen: false, position: DEFAULT_POSITIONS.weather, focusOrder: 0 },
+    'physics-debug': {
+      isOpen: DEFAULT_OPEN['physics-debug'],
+      position: DEFAULT_POSITIONS['physics-debug'],
+      focusOrder: 0,
+    },
+    weather: { isOpen: DEFAULT_OPEN.weather, position: DEFAULT_POSITIONS.weather, focusOrder: 0 },
     'track-switcher': {
-      isOpen: false,
+      isOpen: DEFAULT_OPEN['track-switcher'],
       position: DEFAULT_POSITIONS['track-switcher'],
+      focusOrder: 0,
+    },
+    minimap: { isOpen: DEFAULT_OPEN.minimap, position: DEFAULT_POSITIONS.minimap, focusOrder: 0 },
+    'car-status': {
+      isOpen: DEFAULT_OPEN['car-status'],
+      position: DEFAULT_POSITIONS['car-status'],
       focusOrder: 0,
     },
   }
@@ -88,4 +113,10 @@ export const useDevToolsStore = create<DevToolsState>(set => ({
   reset: () => set({ panels: defaultPanels() }),
 }))
 
-export const DEV_PANEL_IDS: DevPanelId[] = ['physics-debug', 'weather', 'track-switcher']
+export const DEV_PANEL_IDS: DevPanelId[] = [
+  'physics-debug',
+  'weather',
+  'track-switcher',
+  'minimap',
+  'car-status',
+]

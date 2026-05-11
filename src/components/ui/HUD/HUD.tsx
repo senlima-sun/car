@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import RacePanel from './RacePanel'
-import TireIndicator from './TireIndicator'
-import TemperaturePanel from './TemperaturePanel'
+import CarStatusPanel from './CarStatusPanel'
 import PitStopUI from './PitStopUI'
 import WeatherControlModal from './WeatherControlModal'
 import TrackLimitsIndicator from './TrackLimitsIndicator'
@@ -30,6 +29,7 @@ import {
   useSessionStore,
 } from '@/stores/useSessionStore'
 import { usePitStore } from '@/stores/usePitStore'
+import { useDevToolsStore } from '@/stores/useDevToolsStore'
 import { MobileControls, MobileSpeedGear } from '../MobileControls'
 import TrackMinimap from '../CustomizationPanel/TrackMinimap'
 import { AnimationPreviewPanel } from '../AnimationPreview'
@@ -72,6 +72,11 @@ export default function HUD() {
 
   useDevToolsHotkeys(isSessionShell && isRunningSession && isTestingMode)
 
+  const isMinimapOpen = useDevToolsStore(s => s.panels.minimap.isOpen)
+  const isCarStatusOpen = useDevToolsStore(s => s.panels['car-status'].isOpen)
+  const showMinimap = !isTestingMode || isMinimapOpen
+  const showCarStatus = !isTestingMode || isCarStatusOpen
+
   useEffect(() => {
     if (isMenuMode) {
       setModeNotification(null)
@@ -92,7 +97,7 @@ export default function HUD() {
       {!isCustomizeMode && !isMenuMode && !isPreviewMode && <FPSCounter />}
       {isSessionShell && <SessionRuntimeController />}
       {isSessionShell && <SessionEventBridge />}
-      {isRunningSession && <TrackMinimap />}
+      {isRunningSession && showMinimap && <TrackMinimap />}
 
       {modeNotification && (
         <div
@@ -158,12 +163,11 @@ export default function HUD() {
               >
                 <RacePanel />
               </div>
-              <div className='absolute bottom-5 left-5'>
-                <TireIndicator />
-              </div>
-              <div className={isTestingMode ? 'absolute bottom-[150px] right-5' : 'absolute bottom-5 right-5'}>
-                <TemperaturePanel compact={isTestingMode} />
-              </div>
+              {showCarStatus && (
+                <div className='absolute bottom-5 left-5'>
+                  <CarStatusPanel />
+                </div>
+              )}
             </>
           )}
 

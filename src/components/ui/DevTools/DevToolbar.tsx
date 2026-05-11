@@ -1,14 +1,16 @@
-import { Cloud, Map, Zap } from 'lucide-react'
+import { Cloud, Gauge, Locate, Map, Zap } from 'lucide-react'
 import { useDevToolsStore, type DevPanelId } from '../../../stores/useDevToolsStore'
 
 interface ToolEntry {
   id: DevPanelId
   label: string
-  hotkey: string
+  hotkey?: string
   icon: typeof Zap
 }
 
 const TOOLS: ToolEntry[] = [
+  { id: 'car-status', label: 'Car Status', icon: Gauge },
+  { id: 'minimap', label: 'Minimap', icon: Locate },
   { id: 'physics-debug', label: 'Physics', hotkey: 'F9', icon: Zap },
   { id: 'weather', label: 'Weather', hotkey: 'F7', icon: Cloud },
   { id: 'track-switcher', label: 'Track', hotkey: 'F8', icon: Map },
@@ -34,8 +36,8 @@ export default function DevToolbar() {
             className={`group relative flex h-7 w-7 items-center justify-center rounded transition-colors ${
               isOpen ? 'bg-white/15 text-white' : 'text-white/55 hover:bg-white/8 hover:text-white'
             }`}
-            aria-label={`Toggle ${label} (${hotkey})`}
-            title={`${label} (${hotkey})`}
+            aria-label={hotkey ? `Toggle ${label} (${hotkey})` : `Toggle ${label}`}
+            title={hotkey ? `${label} (${hotkey})` : label}
           >
             <Icon size={14} strokeWidth={2} />
             {isOpen && (
