@@ -176,23 +176,22 @@ export default function VolumetricClouds() {
     [],
   )
 
-  const blitScene = useMemo(() => {
-    const scene = new THREE.Scene()
-    const geom = new THREE.PlaneGeometry(2, 2)
-    const mat = new THREE.RawShaderMaterial({
-      vertexShader: blitVertex,
-      fragmentShader: blitFragment,
-      uniforms: blitUniforms,
-      depthTest: false,
-      depthWrite: false,
-      transparent: true,
-      blending: THREE.NormalBlending,
-      blendSrc: THREE.SrcAlphaFactor,
-      blendDst: THREE.OneMinusSrcAlphaFactor,
-    })
-    scene.add(new THREE.Mesh(geom, mat))
-    return { scene, geom, mat }
-  }, [blitUniforms])
+  const blitMaterial = useMemo(
+    () =>
+      new THREE.RawShaderMaterial({
+        vertexShader: blitVertex,
+        fragmentShader: blitFragment,
+        uniforms: blitUniforms,
+        depthTest: false,
+        depthWrite: false,
+        transparent: true,
+        blending: THREE.NormalBlending,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+      }),
+    [blitUniforms],
+  )
+  const blitGeometry = useMemo(() => new THREE.PlaneGeometry(2, 2), [])
 
   useEffect(() => {
     return () => {
@@ -200,16 +199,16 @@ export default function VolumetricClouds() {
       raymarchScene.mat.dispose()
       compositeScene.geom.dispose()
       compositeScene.mat.dispose()
-      blitScene.geom.dispose()
-      blitScene.mat.dispose()
+      blitMaterial.dispose()
+      blitGeometry.dispose()
     }
-  }, [raymarchScene, compositeScene, blitScene])
+  }, [raymarchScene, compositeScene, blitMaterial, blitGeometry])
 
   const orthoCamera = useMemo(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), [])
   const frameCounter = useRef(0)
   const tmpInvVp = useMemo(() => new THREE.Matrix4(), [])
 
-  useFrame((_, delta) => {
+  useFrame((_state, delta) => {
     if (!enabled) return
     if (!camera.matrixWorld || !camera.projectionMatrix) return
 
@@ -231,8 +230,8 @@ export default function VolumetricClouds() {
     const windZ = Math.sin(wind.direction) * wind.speed
     ;(u.uWindVector.value as THREE.Vector2).set(windX, windZ)
 
-    const baseCoverage = 0.55 - cloudCover * 0.2 + rainIntensity * 0.15
-    u.uCoverage.value = Math.max(0.2, Math.min(0.85, baseCoverage))
+    const baseCoverage = 0.75 - cloudCover * 0.1 + rainIntensity * 0.1
+    u.uCoverage.value = Math.max(0.55, Math.min(0.92, baseCoverage))
 
     ;(u.uCameraPosition.value as THREE.Vector3).copy(camera.position)
     tmpInvVp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).invert()
@@ -252,7 +251,6 @@ export default function VolumetricClouds() {
     ;(u.uJitter.value as THREE.Vector2).set(jitterX, jitterY)
     frameCounter.current++
 
-    const prevTarget = gl.getRenderTarget()
     const prevAutoClear = gl.autoClear
     const prevClearColor = new THREE.Color()
     gl.getClearColor(prevClearColor)
@@ -277,9 +275,7 @@ export default function VolumetricClouds() {
     gl.render(compositeScene.scene, orthoCamera)
 
     blitUniforms.uTexture.value = composedRt.texture
-    gl.setRenderTarget(prevTarget)
-    gl.autoClear = false
-    gl.render(blitScene.scene, orthoCamera)
+    gl.setRenderTarget(null)
 
     const tmp = writeRef.current
     writeRef.current = readRef.current
@@ -287,7 +283,14 @@ export default function VolumetricClouds() {
 
     gl.autoClear = prevAutoClear
     gl.setClearColor(prevClearColor, prevClearAlpha)
-  }, 2)
+  })
 
-  return null
+  if (!enabled) return null
+
+  return (
+    <mesh renderOrder={9999} frustumCulled={false}>
+      <primitive object={blitGeometry} attach='geometry' />
+      <primitive object={blitMaterial} attach='material' />
+    </mesh>
+  )
 }

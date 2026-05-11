@@ -153,7 +153,7 @@ void main() {
   }
   rayDir /= rayLen;
 
-  if (rayDir.y < 0.01) {
+  if (rayDir.y < 0.04) {
     gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
     return;
   }
