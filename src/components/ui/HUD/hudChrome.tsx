@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { STATUS } from '../../../constants/colors'
 
 export const HUD_CLIP_STANDARD =
   'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)'
@@ -7,8 +8,32 @@ export const HUD_CLIP_RIGHT = 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100%
 export const HUD_DIVIDER_CLASS =
   'w-px self-stretch bg-gradient-to-b from-transparent via-white/14 to-transparent'
 export const HUD_LABEL_CLASS = 'text-[8px] font-semibold uppercase tracking-[0.32em] text-white/45'
+export const HUD_MICRO_LABEL_CLASS = HUD_LABEL_CLASS
 export const HUD_PANEL_CLASS =
   'relative overflow-hidden border border-white/10 backdrop-blur-md shadow-[0_18px_55px_rgba(0,0,0,0.52)]'
+
+export const HUD_DISPLAY_DIGIT_CLASS = 'font-mono font-bold leading-none tabular-nums'
+export const HUD_NUMERIC_CLASS = 'font-mono font-semibold tabular-nums'
+
+export const HUD_STATUS = {
+  success: STATUS.success,
+  warning: STATUS.warning,
+  danger: STATUS.danger,
+  info: STATUS.info,
+  neutral: STATUS.neutral,
+} as const
+
+export const HUD_ACCENT = {
+  speed: '#00e5ff',
+  battery: '#b388ff',
+  ers: '#b388ff',
+  gear: '#ffffff',
+  reverse: '#ff9f43',
+  limiter: '#ff2929',
+} as const
+
+export { wearColor } from './wearColor'
+export * from './rpmZones'
 
 type HudPanelProps = {
   children: ReactNode
@@ -74,4 +99,42 @@ export function HudPanel({
       <div className={joinClasses('relative', contentClassName)}>{children}</div>
     </div>
   )
+}
+
+type HudCellAlign = 'start' | 'center' | 'end'
+
+const HUD_CELL_ALIGN_CLASS: Record<HudCellAlign, string> = {
+  start: 'items-start',
+  center: 'items-center',
+  end: 'items-end',
+}
+
+type HudCellProps = {
+  label?: string
+  align?: HudCellAlign
+  children: ReactNode
+  className?: string
+}
+
+export function HudCell({ label, align = 'start', children, className }: HudCellProps) {
+  return (
+    <div className={joinClasses('flex flex-col gap-1', HUD_CELL_ALIGN_CLASS[align], className)}>
+      {label !== undefined && <span className={HUD_LABEL_CLASS}>{label}</span>}
+      {children}
+    </div>
+  )
+}
+
+const HUD_DIVIDER_HEIGHT_CLASS: Record<'sm' | 'md' | 'lg', string> = {
+  sm: 'h-6',
+  md: 'h-7',
+  lg: 'h-10',
+}
+
+type HudVerticalDividerProps = {
+  size?: 'sm' | 'md' | 'lg'
+}
+
+export function HudVerticalDivider({ size = 'lg' }: HudVerticalDividerProps) {
+  return <div className={joinClasses(HUD_DIVIDER_HEIGHT_CLASS[size], HUD_DIVIDER_CLASS)} />
 }

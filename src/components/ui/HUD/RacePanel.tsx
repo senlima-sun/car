@@ -3,8 +3,17 @@ import { useActiveAeroStore } from '../../../stores/useActiveAeroStore'
 import { useErsStore } from '../../../stores/useErsStore'
 import { selectAverageWear, useTireStore } from '../../../stores/useTireStore'
 import { useBrakeStore } from '../../../stores/useBrakeStore'
-import { TIRE_CONFIG, TIRE_WEAR_WARNING, TIRE_WEAR_CRITICAL } from '../../../constants/tires'
-import { HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
+import { TIRE_CONFIG } from '../../../constants/tires'
+import {
+  HUD_DIVIDER_CLASS,
+  HUD_LABEL_CLASS,
+  HudPanel,
+  RPM_LIGHT_COUNT,
+  litLights as litLightsForRpm,
+  rpmLightColor,
+  rpmPercent as rpmPercentForRpm,
+  wearColor,
+} from './hudChrome'
 
 const GEAR_LABEL: Record<number, string> = {
   [-1]: 'R',
@@ -18,9 +27,6 @@ const GEAR_LABEL: Record<number, string> = {
   7: '7',
   8: '8',
 }
-
-const MAX_RPM = 15000
-const RPM_LIGHTS = 15
 
 function aeroMeta(mode: string) {
   if (mode === 'Corner') return { label: 'CRN', color: '#00e5ff' }
@@ -38,12 +44,6 @@ function ersPresetMeta(preset: string) {
   }
 }
 
-function wearColor(wear: number) {
-  if (wear >= TIRE_WEAR_CRITICAL) return '#ef4444'
-  if (wear >= TIRE_WEAR_WARNING) return '#f59e0b'
-  return '#22c55e'
-}
-
 function engineBrakeMeta(level: string) {
   switch (level) {
     case 'Low':
@@ -53,13 +53,6 @@ function engineBrakeMeta(level: string) {
     default:
       return { abbrev: 'M', color: '#22c55e' }
   }
-}
-
-function rpmLightColor(index: number, litCount: number) {
-  if (index >= litCount) return 'rgba(255,255,255,0.06)'
-  if (index < 7) return '#22c55e'
-  if (index < 12) return '#f59e0b'
-  return '#ef4444'
 }
 
 export default function RacePanel() {
@@ -82,8 +75,8 @@ export default function RacePanel() {
 
   const displayGear = GEAR_LABEL[gear] ?? gear.toString()
   const displaySpeed = Math.round(Math.abs(speed))
-  const rpmPercent = Math.min(1, rpm / MAX_RPM)
-  const litLights = Math.round(rpmPercent * RPM_LIGHTS)
+  const rpmPercent = rpmPercentForRpm(rpm)
+  const litLights = litLightsForRpm(rpm)
   const aero = aeroMeta(aeroMode)
   const preset = ersPresetMeta(semiAutoConfig.preset)
   const tireConfig = TIRE_CONFIG[currentCompound]
@@ -106,7 +99,7 @@ export default function RacePanel() {
   return (
     <div className='relative flex flex-col items-stretch gap-0 select-none'>
       <div className='flex items-center justify-center gap-[3px] px-2'>
-        {Array.from({ length: RPM_LIGHTS }).map((_, i) => (
+        {Array.from({ length: RPM_LIGHT_COUNT }).map((_, i) => (
           <div
             key={i}
             className='h-1.5 w-3 rounded-[1px]'
