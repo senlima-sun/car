@@ -1,4 +1,5 @@
-import { Cloud, Gauge, Locate, Map, Zap } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Cloud, Gauge, Locate, Map, Menu, Zap } from 'lucide-react'
 import { useDevToolsStore, type DevPanelId } from '../../../stores/useDevToolsStore'
 
 interface ToolEntry {
@@ -20,32 +21,78 @@ export default function DevToolbar() {
   const panels = useDevToolsStore(s => s.panels)
   const toggle = useDevToolsStore(s => s.togglePanel)
 
+  const [expanded, setExpanded] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!expanded) return
+    function onPointerDown(event: PointerEvent) {
+      if (!containerRef.current) return
+      if (containerRef.current.contains(event.target as Node)) return
+      setExpanded(false)
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setExpanded(false)
+    }
+    window.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [expanded])
+
+  const openCount = TOOLS.reduce((n, t) => (panels[t.id].isOpen ? n + 1 : n), 0)
+
   return (
-    <div className='pointer-events-auto absolute top-4 left-4 z-[1200] flex items-center gap-1.5 border border-white/12 bg-black/70 px-1.5 py-1 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.45)]'>
-      <span className='px-2 font-sans text-[9px] font-bold uppercase tracking-[0.32em] text-white/45'>
-        Dev
-      </span>
-      <div className='h-5 w-px bg-white/10' />
-      {TOOLS.map(({ id, label, hotkey, icon: Icon }) => {
-        const isOpen = panels[id].isOpen
-        return (
-          <button
-            key={id}
-            type='button'
-            onClick={() => toggle(id)}
-            className={`group relative flex h-7 w-7 items-center justify-center rounded transition-colors ${
-              isOpen ? 'bg-white/15 text-white' : 'text-white/55 hover:bg-white/8 hover:text-white'
-            }`}
-            aria-label={hotkey ? `Toggle ${label} (${hotkey})` : `Toggle ${label}`}
-            title={hotkey ? `${label} (${hotkey})` : label}
-          >
-            <Icon size={14} strokeWidth={2} />
-            {isOpen && (
-              <span className='absolute -bottom-0.5 left-1/2 h-0.5 w-3 -translate-x-1/2 bg-cyan-400' />
-            )}
-          </button>
-        )
-      })}
+    <div ref={containerRef} className='pointer-events-auto absolute top-4 left-4 z-[1200]'>
+      <button
+        type='button'
+        onClick={() => setExpanded(v => !v)}
+        className={`flex h-8 items-center gap-1.5 border border-white/12 px-2 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.45)] transition-colors ${
+          expanded ? 'bg-white/15' : 'bg-black/70 hover:bg-black/85'
+        }`}
+        aria-label='Dev tools menu'
+        aria-expanded={expanded}
+      >
+        <Menu size={14} strokeWidth={2.2} className='text-white' />
+        <span className='font-sans text-[9px] font-bold uppercase tracking-[0.32em] text-white/85'>
+          Dev
+        </span>
+        {openCount > 0 && (
+          <span className='flex h-4 min-w-[16px] items-center justify-center rounded-full bg-cyan-500/85 px-1 font-mono text-[9px] font-bold leading-none text-black'>
+            {openCount}
+          </span>
+        )}
+      </button>
+
+      {expanded && (
+        <div className='absolute top-9 left-0 flex flex-col gap-0.5 border border-white/12 bg-black/85 p-1 backdrop-blur-md shadow-[0_18px_50px_rgba(0,0,0,0.55)]'>
+          {TOOLS.map(({ id, label, hotkey, icon: Icon }) => {
+            const isOpen = panels[id].isOpen
+            return (
+              <button
+                key={id}
+                type='button'
+                onClick={() => toggle(id)}
+                className={`flex w-full items-center gap-2.5 px-2 py-1.5 text-left transition-colors ${
+                  isOpen ? 'bg-white/12 text-white' : 'text-white/75 hover:bg-white/8 hover:text-white'
+                }`}
+                aria-label={hotkey ? `Toggle ${label} (${hotkey})` : `Toggle ${label}`}
+              >
+                <Icon size={13} strokeWidth={2} />
+                <span className='flex-1 font-sans text-[11px] font-semibold tracking-wide'>
+                  {label}
+                </span>
+                {hotkey && (
+                  <span className='font-mono text-[9px] text-white/40'>{hotkey}</span>
+                )}
+                {isOpen && <span className='h-1.5 w-1.5 rounded-full bg-cyan-400' />}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

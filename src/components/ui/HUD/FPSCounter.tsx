@@ -1,5 +1,6 @@
 import { useFPSStore, FPS_HISTORY_SIZE } from '@/stores/useFPSStore'
 import { useGameStore } from '@/stores/useGameStore'
+import { useSessionStore } from '@/stores/useSessionStore'
 import { HUD_CLIP_LEFT, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
 
 const GRAPH_W = 120
@@ -38,6 +39,7 @@ export default function FPSCounter() {
   const fps = useFPSStore(state => state.fps)
   const history = useFPSStore(state => state.history)
   const showFPS = useGameStore(state => state.showFPS)
+  const isTestingMode = useSessionStore(state => state.config?.testingMode ?? false)
 
   if (!showFPS) return null
 
@@ -48,7 +50,11 @@ export default function FPSCounter() {
   const areaPath = buildAreaPath(linePath)
 
   return (
-    <div className='absolute top-4 left-4 pointer-events-none z-[900]'>
+    <div
+      className={`absolute top-4 pointer-events-none z-[900] ${
+        isTestingMode ? 'left-[110px]' : 'left-4'
+      }`}
+    >
       <HudPanel
         accent={color}
         clipPath={HUD_CLIP_LEFT}
