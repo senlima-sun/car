@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#
+# Track-source pre-commit hook
+# Runs `bun run track:validate-source <name>` for every staged track source.
+#
+# Installation (one-time, per-developer):
+#   cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# This hook is intentionally NOT installed automatically. Copy it yourself when
+# you want the gate. The canonical gate for CI is `bun run track:add <name>`.
+#
+# What it does:
+#   Scans staged files for any path matching src/constants/tracks/sources/*.json.
+#   For each matched file it derives the circuit name (basename without .json)
+#   and runs `bun run track:validate-source <name>`. If validation reports any
+#   critical failure the commit is blocked and the report is printed to stderr.
+#   AI drive validation is NOT run here — it requires a running dev server and
+#   takes several minutes. Run `bun run track:ai-drive <name>` separately.
+
+set -euo pipefail
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+SOURCES=$(echo "$STAGED" | grep -E '^src/constants/tracks/sources/[^/]+\.json$' || true)
+
+if [ -z "$SOURCES" ]; then
+  exit 0
+fi
+
+FAILED=0
+
+while IFS= read -r FILE; do
+  CIRCUIT=$(basename "$FILE" .json)
+  echo "pre-commit: validating track source for $CIRCUIT"
+  if ! bun run track:validate-source "$CIRCUIT"; then
+    echo "pre-commit: BLOCKED — $CIRCUIT source has critical validation failures" >&2
+    FAILED=1
+  fi
+done <<< "$SOURCES"
+
+if [ "$FAILED" -ne 0 ]; then
+  echo "" >&2
+  echo "Fix the issues above, then retry the commit." >&2
+  echo "To bypass (for emergency fixes): git commit --no-verify" >&2
+  exit 1
+fi
+
+exit 0
