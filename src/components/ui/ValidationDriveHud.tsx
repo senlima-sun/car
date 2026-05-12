@@ -162,6 +162,14 @@ export function ValidationDriveBridge() {
       const objects = useCustomizationStore.getState().placedObjects
       const centerline = buildValidationCenterline(objects)
       if (centerline.length < 2) return 'no_centerline'
+      const sectorCheckpointCount = objects.filter(
+        o => o.type === 'checkpoint' && o.checkpointType === 'sector',
+      ).length
+      useLapTimeStore.getState().reset()
+      useLapTimeStore.getState().setActive(true, sectorCheckpointCount)
+      if (!useLapTimeStore.getState().isRecording) {
+        useLapTimeStore.getState().toggleRecording()
+      }
       useValidationDriveStore.getState().start(activeTrackId, centerline)
       return 'started'
     }
