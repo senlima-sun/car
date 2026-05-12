@@ -51,7 +51,9 @@ import FPSCounter from './FPSCounter'
 import SteeringWheelIndicator from './SteeringWheelIndicator'
 import DevToolbar from '../DevTools/DevToolbar'
 import DevToolsSessionLifecycle from '../DevTools/DevToolsSessionLifecycle'
+import ValidationDriveHud, { ValidationDriveBridge } from '../ValidationDriveHud'
 import { useDevToolsHotkeys } from '@/hooks/useDevToolsHotkeys'
+import { IS_DEV } from '@/utils/isDev'
 
 export default function HUD() {
   const isMobile = useMobileDetection()
@@ -127,6 +129,8 @@ export default function HUD() {
 
       <WeatherControlModal />
       <SettingsDialog />
+      {IS_DEV && <ValidationDriveBridge />}
+      <ValidationDriveHud />
 
       {isMenuMode ? (
         <MainMenu />
