@@ -33,7 +33,7 @@ These are the two tag predicates used by the Overpass query. Every major F1 circ
 
 Pan the map so the full circuit fits in the viewport. The Overpass bbox format is `[south, west, north, east]` — i.e. `[min_lat, min_lon, max_lat, max_lon]`.
 
-To read the coordinates: in the OSM URL bar you will see `#map=<zoom>/<lat>/<lon>`. Use the **Export** tab on the left sidebar and read the four coordinate fields labelled "left", "right", "top", "bottom" — these correspond to `west`, `east`, `north`, `south` respectively.
+To read the coordinates: use the **Export** tab on the left sidebar and read the four coordinate fields labelled "left", "right", "top", "bottom" — these correspond to `west`, `east`, `north`, `south` respectively.
 
 Add a margin of ~0.01 degrees (~1 km) on each side so that all the circuit's OSM ways fall inside the bbox.
 
