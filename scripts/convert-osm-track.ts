@@ -1,44 +1,20 @@
 #!/usr/bin/env bun
-/**
- * OSM Track Data Converter
- *
- * Fetches F1 circuit data from OpenStreetMap Overpass API,
- * converts GPS coordinates to game world coordinates,
- * and outputs editor-native source JSON for built-in presets.
- *
- * Usage: bun run scripts/convert-osm-track.ts <circuit-name>
- *   e.g. bun run scripts/convert-osm-track.ts silverstone
- *        bun run scripts/convert-osm-track.ts suzuka
- */
 
 import { buildEditorTrackSourceFromPolyline } from '../src/utils/editorTrackSourceFromPolyline'
+import {
+  fetchOSMData,
+  extractNodesAndWays,
+  orderWaysIntoCircuit,
+  gpsToWorld,
+  douglasPeucker,
+  computeCurvature,
+  fitQuadraticBezier,
+} from './lib/osm-ingest'
+import type { OSMWay, Point2D } from './lib/osm-ingest'
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface OSMNode {
-  type: 'node'
-  id: number
-  lat: number
-  lon: number
-}
-
-interface OSMWay {
-  type: 'way'
-  id: number
-  nodes: number[]
-  tags: Record<string, string>
-}
-
-interface OSMResponse {
-  elements: (OSMNode | OSMWay)[]
-}
-
-interface Point2D {
-  x: number
-  z: number
-}
 
 interface PlacedObject {
   id: string
@@ -66,21 +42,13 @@ interface CircuitConfig {
   query: string
   centerLat: number
   centerLon: number
-  /** Filter function to select only GP circuit ways */
   filterWays?: (way: OSMWay) => boolean
-  /** Way name to start chaining from */
   startWayName?: string
-  /** Max gap (meters) allowed between chained ways */
   maxChainGap?: number
-  /** Elevation overrides: segments where elevation != 0 */
   elevationZones?: { startFraction: number; endFraction: number; elevation: number }[]
-  /** Sector split fractions [0-1] for checkpoint placement */
   sectorSplits: [number, number]
-  /** Start/finish line fraction [0-1] */
   startFinishFraction: number
-  /** Reverse the chained node order (fix wrong-way circuits) */
   reverseDirection?: boolean
-  /** Number of turns on this circuit */
   turns?: number
 }
 
@@ -101,10 +69,8 @@ const CIRCUITS: Record<string, CircuitConfig> = {
       out skel qt;`,
     centerLat: 52.0716,
     centerLon: -1.0166,
-    // Silverstone GP circuit named sections in order
     filterWays: (way: OSMWay) => {
       const name = way.tags?.name || ''
-      // Exclude non-GP circuit ways
       const excludePatterns = [
         'Stowe Circuit',
         'Stowe CircuitPit',
@@ -115,7 +81,6 @@ const CIRCUITS: Record<string, CircuitConfig> = {
       if (excludePatterns.some(e => name.includes(e))) return false
       return true
     },
-    /** Way name to start chaining from */
     startWayName: 'National Pit Straight',
     sectorSplits: [0.33, 0.66],
     startFinishFraction: 0.0,
@@ -147,18 +112,14 @@ const CIRCUITS: Record<string, CircuitConfig> = {
         'ロッキーコースター',
         'チララのフラワーワゴン',
         'アドベンチャードライブ',
-        '日立オートモティブシステムズシケイン', // old naming, duplicates 日立Astemo
+        '日立オートモティブシステムズシケイン',
       ]
       if (excludePatterns.some(e => name.includes(e))) return false
       return true
     },
     startWayName: 'メインストレート',
     maxChainGap: 50,
-    // Suzuka overpass: back straight passes over the S-curves section
-    elevationZones: [
-      // The overpass section (roughly where the back straight crosses over)
-      { startFraction: 0.55, endFraction: 0.62, elevation: 6.0 },
-    ],
+    elevationZones: [{ startFraction: 0.55, endFraction: 0.62, elevation: 6.0 }],
     sectorSplits: [0.33, 0.66],
     startFinishFraction: 0.0,
     reverseDirection: true,
@@ -172,227 +133,9 @@ const CIRCUITS: Record<string, CircuitConfig> = {
 
 const TRACK_WIDTH = 12
 const HALF_WIDTH = TRACK_WIDTH / 2
-const METERS_PER_DEG_LAT = 110540
-const SIMPLIFY_TOLERANCE = 1.0 // meters - Douglas-Peucker tolerance
-const MAX_SEGMENT_LENGTH = 60 // meters - max road segment length
-const CURVATURE_THRESHOLD = 0.005 // threshold to use curve vs straight
-
-// ============================================================================
-// GPS → Game World Conversion
-// ============================================================================
-
-function gpsToWorld(lat: number, lon: number, centerLat: number, centerLon: number): Point2D {
-  const x = (lon - centerLon) * Math.cos((centerLat * Math.PI) / 180) * 111320
-  const z = -(lat - centerLat) * METERS_PER_DEG_LAT // negate so north = -z
-  return { x, z }
-}
-
-// ============================================================================
-// Douglas-Peucker Line Simplification
-// ============================================================================
-
-function perpendicularDistance(point: Point2D, lineStart: Point2D, lineEnd: Point2D): number {
-  const dx = lineEnd.x - lineStart.x
-  const dz = lineEnd.z - lineStart.z
-  const lineLenSq = dx * dx + dz * dz
-  if (lineLenSq === 0) {
-    const ddx = point.x - lineStart.x
-    const ddz = point.z - lineStart.z
-    return Math.sqrt(ddx * ddx + ddz * ddz)
-  }
-  const t = Math.max(
-    0,
-    Math.min(1, ((point.x - lineStart.x) * dx + (point.z - lineStart.z) * dz) / lineLenSq),
-  )
-  const projX = lineStart.x + t * dx
-  const projZ = lineStart.z + t * dz
-  const ddx = point.x - projX
-  const ddz = point.z - projZ
-  return Math.sqrt(ddx * ddx + ddz * ddz)
-}
-
-function douglasPeucker(points: Point2D[], tolerance: number): Point2D[] {
-  if (points.length <= 2) return points
-
-  let maxDist = 0
-  let maxIdx = 0
-  const end = points.length - 1
-
-  for (let i = 1; i < end; i++) {
-    const d = perpendicularDistance(points[i], points[0], points[end])
-    if (d > maxDist) {
-      maxDist = d
-      maxIdx = i
-    }
-  }
-
-  if (maxDist > tolerance) {
-    const left = douglasPeucker(points.slice(0, maxIdx + 1), tolerance)
-    const right = douglasPeucker(points.slice(maxIdx), tolerance)
-    return [...left.slice(0, -1), ...right]
-  }
-  return [points[0], points[end]]
-}
-
-// ============================================================================
-// Curvature Analysis
-// ============================================================================
-
-function computeCurvature(p0: Point2D, p1: Point2D, p2: Point2D): number {
-  // Menger curvature: 4 * area / (|p0-p1| * |p1-p2| * |p2-p0|)
-  const area = Math.abs((p1.x - p0.x) * (p2.z - p0.z) - (p2.x - p0.x) * (p1.z - p0.z)) / 2
-  const d01 = Math.sqrt((p1.x - p0.x) ** 2 + (p1.z - p0.z) ** 2)
-  const d12 = Math.sqrt((p2.x - p1.x) ** 2 + (p2.z - p1.z) ** 2)
-  const d02 = Math.sqrt((p2.x - p0.x) ** 2 + (p2.z - p0.z) ** 2)
-  const denom = d01 * d12 * d02
-  if (denom < 0.001) return 0
-  return (4 * area) / denom
-}
-
-// ============================================================================
-// Bézier Curve Fitting
-// ============================================================================
-
-function fitQuadraticBezier(points: Point2D[]): { control: Point2D; error: number } {
-  // Fit a quadratic Bézier to a polyline
-  // Control point = intersection of tangent lines at start and end
-  const start = points[0]
-  const end = points[points.length - 1]
-
-  // Tangent at start (from first two points)
-  const t0x = points[1].x - points[0].x
-  const t0z = points[1].z - points[0].z
-
-  // Tangent at end (from last two points)
-  const t1x = points[points.length - 1].x - points[points.length - 2].x
-  const t1z = points[points.length - 1].z - points[points.length - 2].z
-
-  // Find intersection of tangent lines
-  const det = t0x * t1z - t0z * t1x
-  if (Math.abs(det) < 0.001) {
-    // Nearly parallel - use midpoint
-    const mid = points[Math.floor(points.length / 2)]
-    return { control: { x: mid.x, z: mid.z }, error: 0 }
-  }
-
-  const dx = end.x - start.x
-  const dz = end.z - start.z
-  const t = (dx * t1z - dz * t1x) / det
-
-  const control: Point2D = {
-    x: start.x + t * t0x,
-    z: start.z + t * t0z,
-  }
-
-  // Compute fitting error
-  let maxError = 0
-  for (let i = 1; i < points.length - 1; i++) {
-    const u = i / (points.length - 1)
-    const u1 = 1 - u
-    const bx = u1 * u1 * start.x + 2 * u1 * u * control.x + u * u * end.x
-    const bz = u1 * u1 * start.z + 2 * u1 * u * control.z + u * u * end.z
-    const err = Math.sqrt((points[i].x - bx) ** 2 + (points[i].z - bz) ** 2)
-    maxError = Math.max(maxError, err)
-  }
-
-  return { control, error: maxError }
-}
-
-// ============================================================================
-// OSM Data Processing
-// ============================================================================
-
-async function fetchOSMData(query: string): Promise<OSMResponse> {
-  const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`
-  console.log('Fetching OSM data...')
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Overpass API error: ${res.status}`)
-  return res.json() as Promise<OSMResponse>
-}
-
-function extractNodesAndWays(data: OSMResponse): { nodes: Map<number, OSMNode>; ways: OSMWay[] } {
-  const nodes = new Map<number, OSMNode>()
-  const ways: OSMWay[] = []
-
-  for (const el of data.elements) {
-    if (el.type === 'node') nodes.set(el.id, el)
-    if (el.type === 'way') ways.push(el)
-  }
-
-  return { nodes, ways }
-}
-
-/**
- * Order ways into a continuous circuit using proximity-based chaining.
- * Instead of requiring exact endpoint matches, finds the nearest unvisited
- * way endpoint within a distance threshold.
- */
-function orderWaysIntoCircuit(
-  ways: OSMWay[],
-  nodes: Map<number, OSMNode>,
-  startWayName?: string,
-  maxGap: number = 100,
-): number[] {
-  if (ways.length === 0) return []
-
-  function getCoord(nodeId: number): [number, number] | null {
-    const n = nodes.get(nodeId)
-    return n ? [n.lat, n.lon] : null
-  }
-
-  function geoDistance(a: [number, number] | null, b: [number, number] | null): number {
-    if (!a || !b) return Infinity
-    const dlat = (a[0] - b[0]) * METERS_PER_DEG_LAT
-    const dlon = (a[1] - b[1]) * Math.cos((a[0] * Math.PI) / 180) * 111320
-    return Math.sqrt(dlat * dlat + dlon * dlon)
-  }
-
-  // Find start way
-  let startIdx = 0
-  if (startWayName) {
-    const idx = ways.findIndex(w => (w.tags?.name || '') === startWayName)
-    if (idx !== -1) startIdx = idx
-  }
-
-  const used = new Set<number>([startIdx])
-  const orderedNodes: number[] = [...ways[startIdx].nodes]
-
-  for (let iter = 0; iter < ways.length * 2; iter++) {
-    const lastCoord = getCoord(orderedNodes[orderedNodes.length - 1])
-    let bestDist = Infinity
-    let bestIdx = -1
-    let bestReverse = false
-
-    for (let i = 0; i < ways.length; i++) {
-      if (used.has(i)) continue
-      const w = ways[i]
-      const dStart = geoDistance(lastCoord, getCoord(w.nodes[0]))
-      const dEnd = geoDistance(lastCoord, getCoord(w.nodes[w.nodes.length - 1]))
-
-      if (dStart < bestDist) {
-        bestDist = dStart
-        bestIdx = i
-        bestReverse = false
-      }
-      if (dEnd < bestDist) {
-        bestDist = dEnd
-        bestIdx = i
-        bestReverse = true
-      }
-    }
-
-    if (bestIdx === -1 || bestDist > maxGap) break
-
-    used.add(bestIdx)
-    const w = ways[bestIdx]
-    const newNodes = bestReverse ? [...w.nodes].reverse() : [...w.nodes]
-    // Skip first node if it's very close to our last node (shared endpoint)
-    orderedNodes.push(...newNodes.slice(bestDist < 5 ? 1 : 0))
-  }
-
-  console.log(`  🔗 Chained ${used.size}/${ways.length} ways`)
-  return orderedNodes
-}
+const SIMPLIFY_TOLERANCE = 1.0
+const MAX_SEGMENT_LENGTH = 60
+const CURVATURE_THRESHOLD = 0.005
 
 // ============================================================================
 // Road Segment Generation
@@ -614,11 +357,9 @@ function generateCurbs(roads: PlacedObject[]): PlacedObject[] {
   for (const road of roads) {
     if (!road.startPoint || !road.endPoint) continue
 
-    // Only place curbs on curve segments
     const isCurve = road.trackMode === 'curve' && road.controlPoint
     if (!isCurve) continue
 
-    // Add curbs on both sides of curves
     for (const side of ['left', 'right'] as const) {
       curbs.push({
         id: `curb_${curbId++}`,
@@ -697,7 +438,7 @@ function generateCheckpoints(roads: PlacedObject[], config: CircuitConfig): Plac
 }
 
 // ============================================================================
-// Barrier Generation (at track edges on straights)
+// Barrier Generation
 // ============================================================================
 
 function generateBarriers(
@@ -715,7 +456,6 @@ function generateBarriers(
     if (!road.startLeftEdge || !road.startRightEdge) continue
     if (!road.endLeftEdge || !road.endRightEdge) continue
 
-    // Left barrier
     const lStart: [number, number, number] = [
       road.startLeftEdge[0] + (road.startLeftEdge[0] - road.startPoint[0]) * 0.3,
       0,
@@ -737,7 +477,6 @@ function generateBarriers(
       trackMode: 'straight',
     })
 
-    // Right barrier
     const rStart: [number, number, number] = [
       road.startRightEdge[0] + (road.startRightEdge[0] - road.startPoint[0]) * 0.3,
       0,
@@ -779,19 +518,16 @@ async function convertCircuit(circuitName: string): Promise<void> {
 
   console.log(`\n🏎️  Converting ${config.displayName}...`)
 
-  // 1. Fetch OSM data
   const osmData = await fetchOSMData(config.query)
   const { nodes, ways } = extractNodesAndWays(osmData)
   console.log(`  📍 Fetched ${nodes.size} nodes, ${ways.length} ways`)
 
-  // 2. Filter to GP circuit ways
   let gpWays = ways
   if (config.filterWays) {
     gpWays = ways.filter(config.filterWays)
   }
   console.log(`  🏁 GP circuit: ${gpWays.length} ways`)
 
-  // 3. Order ways into continuous circuit
   const orderedNodeIds = orderWaysIntoCircuit(
     gpWays,
     nodes,
@@ -805,7 +541,6 @@ async function convertCircuit(circuitName: string): Promise<void> {
     console.log('  🔄 Reversed circuit direction')
   }
 
-  // 4. Convert GPS to game world coordinates
   const worldPoints: Point2D[] = []
   for (const nodeId of orderedNodeIds) {
     const node = nodes.get(nodeId)
@@ -814,7 +549,6 @@ async function convertCircuit(circuitName: string): Promise<void> {
   }
   console.log(`  🌍 Converted ${worldPoints.length} GPS points to world coordinates`)
 
-  // 5. Simplify polyline
   const simplified = douglasPeucker(worldPoints, SIMPLIFY_TOLERANCE)
   console.log(`  ✂️  Simplified: ${worldPoints.length} → ${simplified.length} points`)
 
@@ -843,7 +577,6 @@ async function convertCircuit(circuitName: string): Promise<void> {
     `  🧭 Source path anchors: ${source.paths[0]?.anchors.length ?? 0}, checkpoints: ${source.checkpoints.length}`,
   )
 
-  // Bounding box
   let minX = Infinity,
     maxX = -Infinity,
     minZ = Infinity,
