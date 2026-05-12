@@ -20,7 +20,6 @@ export interface AIDriverState {
   velocityMS: number
   heading: number
   centerlineSamples: AIDriverCenterlineSample[]
-  lapProgressFraction: number
 }
 
 function normalizeAngle(angle: number): number {

@@ -138,7 +138,6 @@ export function useCarFrame({
         velocityMS,
         heading: yaw,
         centerlineSamples: validationDrive.centerlineSamples,
-        lapProgressFraction: 0,
       })
     } else {
       input = {

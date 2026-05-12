@@ -50,7 +50,6 @@ describe('computeAIInput', () => {
       velocityMS: 30,
       heading: 0,
       centerlineSamples: samples,
-      lapProgressFraction: 0.1,
     })
     expect(Math.abs(input.steer ?? 0)).toBeLessThan(0.05)
     expect(input.throttle).toBe(1)
@@ -66,7 +65,6 @@ describe('computeAIInput', () => {
       velocityMS: 50,
       heading: 0,
       centerlineSamples: samples,
-      lapProgressFraction: 0.3,
     })
     expect(input.brake_analog).toBe(1)
     expect(input.brake).toBe(true)
@@ -81,7 +79,6 @@ describe('computeAIInput', () => {
       velocityMS: 10,
       heading: Math.PI / 4,
       centerlineSamples: samples,
-      lapProgressFraction: 0.45,
     })
     const cornerSpeedLimit = Math.sqrt((LATERAL_G_LIMIT * GRAVITY_MS2) / 0.05)
     expect(input.throttle === 1 || input.brake_analog === 0).toBe(true)
@@ -100,14 +97,12 @@ describe('computeAIInput', () => {
       velocityMS: 20,
       heading: Math.PI - epsilon,
       centerlineSamples: samples,
-      lapProgressFraction: 0.05,
     })
     const inputNearNegPi = computeAIInput({
       position: [0, 0, 10],
       velocityMS: 20,
       heading: -Math.PI + epsilon,
       centerlineSamples: samples,
-      lapProgressFraction: 0.05,
     })
     const diff = Math.abs((inputNearPi.steer ?? 0) - (inputNearNegPi.steer ?? 0))
     expect(diff).toBeLessThan(0.05)
@@ -119,7 +114,6 @@ describe('computeAIInput', () => {
       velocityMS: 0,
       heading: 0,
       centerlineSamples: [{ x: 0, z: 0, cumulativeDistance: 0 }],
-      lapProgressFraction: 0,
     })
     expect(input.throttle).toBe(0)
     expect(input.brake_analog).toBe(0)
@@ -134,7 +128,6 @@ describe('computeAIInput', () => {
       velocityMS: 5,
       heading: Math.PI / 2,
       centerlineSamples: samples,
-      lapProgressFraction: 0.05,
     })
     expect(input.steer).toBeGreaterThanOrEqual(-1)
     expect(input.steer).toBeLessThanOrEqual(1)
