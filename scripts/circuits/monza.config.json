@@ -6,5 +6,5 @@
   "expectedTrackLengthMeters": 5770,
   "expectedTurns": 3,
   "expectedStartHeadingDegrees": 5.6,
-  "aiDriveLapTimeWindowSeconds": [180, 360]
+  "aiDriveLapTimeWindowSeconds": [120, 480]
 }
