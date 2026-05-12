@@ -36,12 +36,6 @@ function clamp(value: number, lo: number, hi: number): number {
   return value
 }
 
-function distance2D(ax: number, az: number, bx: number, bz: number): number {
-  const dx = ax - bx
-  const dz = az - bz
-  return Math.hypot(dx, dz)
-}
-
 function findClosestSampleIndex(
   samples: AIDriverCenterlineSample[],
   x: number,
