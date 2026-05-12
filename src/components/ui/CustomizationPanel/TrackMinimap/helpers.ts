@@ -12,25 +12,31 @@ export interface Bounds {
 }
 
 export function computeBounds(placedObjects: PlacedObject[]): Bounds | null {
-  const roads = placedObjects.filter(o => o.type === 'road' && o.startPoint && o.endPoint)
-  if (roads.length === 0) return null
-
   let minX = Infinity,
     maxX = -Infinity,
     minZ = Infinity,
     maxZ = -Infinity
+  let hasPoint = false
 
-  for (const road of roads) {
-    const points = [road.startPoint!, road.endPoint!]
-    if (road.controlPoint) points.push(road.controlPoint)
+  const addPoint = (x: number, z: number) => {
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (z < minZ) minZ = z
+    if (z > maxZ) maxZ = z
+    hasPoint = true
+  }
 
-    for (const p of points) {
-      minX = Math.min(minX, p[0])
-      maxX = Math.max(maxX, p[0])
-      minZ = Math.min(minZ, p[2])
-      maxZ = Math.max(maxZ, p[2])
+  for (const obj of placedObjects) {
+    if (obj.type === 'road' && obj.startPoint && obj.endPoint) {
+      addPoint(obj.startPoint[0], obj.startPoint[2])
+      addPoint(obj.endPoint[0], obj.endPoint[2])
+      if (obj.controlPoint) addPoint(obj.controlPoint[0], obj.controlPoint[2])
+    } else if (obj.type === 'track_ribbon' && obj.ribbonPoints && obj.ribbonPoints.length > 0) {
+      for (const p of obj.ribbonPoints) addPoint(p.x, p.z)
     }
   }
+
+  if (!hasPoint) return null
 
   const rangeX = maxX - minX || 1
   const rangeZ = maxZ - minZ || 1

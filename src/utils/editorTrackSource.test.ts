@@ -2,7 +2,14 @@ import { describe, expect, test } from 'bun:test'
 import { makeAnchor, makePath } from '@/components/ui/TrackEditor/geometry/path'
 import { PAINTED_WIDTH, TRACK_WIDTH } from '@/constants/dimensions'
 import { CURB_WIDTH } from '@/constants/curb'
-import { buildRuntimePresetTrack, buildTrackObjectsFromEditorSource } from './editorTrackSource'
+import {
+  buildRuntimePresetTrack,
+  buildTrackObjectsFromEditorSource,
+  type EditorTrackDocument,
+} from './editorTrackSource'
+import silverstoneSource from '@/constants/tracks/sources/silverstone.json'
+import suzukaSource from '@/constants/tracks/sources/suzuka.json'
+import monzaSource from '@/constants/tracks/sources/monza.json'
 
 describe('buildTrackObjectsFromEditorSource', () => {
   test('builds runtime objects from editor-native data', () => {
@@ -155,6 +162,38 @@ describe('curb export sampler', () => {
 
     expect(objects.some(o => o.type === 'curb')).toBe(false)
   })
+})
+
+describe('preset checkpoints stay on the rendered ribbon', () => {
+  const presets: Array<[string, EditorTrackDocument]> = [
+    ['silverstone', silverstoneSource as unknown as EditorTrackDocument],
+    ['suzuka', suzukaSource as unknown as EditorTrackDocument],
+    ['monza', monzaSource as unknown as EditorTrackDocument],
+  ]
+
+  for (const [name, source] of presets) {
+    test(`${name} checkpoints sit within TRACK_WIDTH/4 of the nearest ribbon point`, () => {
+      const objects = buildTrackObjectsFromEditorSource(source)
+      const ribbons = objects.filter(o => o.type === 'track_ribbon')
+      const checkpoints = objects.filter(o => o.type === 'checkpoint')
+
+      expect(ribbons.length).toBeGreaterThan(0)
+      expect(checkpoints.length).toBeGreaterThan(0)
+
+      for (const cp of checkpoints) {
+        const midX = cp.position[0]
+        const midZ = cp.position[2]
+        let minDist = Infinity
+        for (const ribbon of ribbons) {
+          for (const pt of ribbon.ribbonPoints ?? []) {
+            const d = Math.hypot(pt.x - midX, pt.z - midZ)
+            if (d < minDist) minDist = d
+          }
+        }
+        expect(minDist).toBeLessThanOrEqual(TRACK_WIDTH / 4)
+      }
+    })
+  }
 })
 
 describe('buildRuntimePresetTrack', () => {

@@ -14,6 +14,7 @@ import { documentToRibbons } from '@/components/ui/TrackEditor/export/pathToRibb
 import { PAINTED_WIDTH, TRACK_WIDTH } from '@/constants/dimensions'
 import { CURB_WIDTH } from '@/constants/curb'
 import { useTerrainStore } from '@/stores/useTerrainStore'
+import { realignCheckpointToRibbons } from '@/utils/checkpointAlignment'
 import type { PlacedObject, TrackRibbonPoint } from '@/types/trackObjects'
 
 export type EditorTrackDocument = {
@@ -57,6 +58,7 @@ function checkpointToPlacedObject(
   order: number,
   paths: Path[],
   raceDirection: RaceDirection,
+  ribbons: PlacedObject[],
 ): PlacedObject | null {
   const path = paths.find(candidate => candidate.id === checkpoint.pathId)
   if (!path) return null
@@ -71,14 +73,33 @@ function checkpointToPlacedObject(
   const startZ = point.y + tangent.x * halfWidth
   const endX = point.x + tangent.y * halfWidth
   const endZ = point.y - tangent.x * halfWidth
-  const startPoint: [number, number, number] = [startX, terrainHeightAt(startX, startZ), startZ]
-  const endPoint: [number, number, number] = [endX, terrainHeightAt(endX, endZ), endZ]
-  const rotation = Math.atan2(tangent.x, tangent.y)
+
+  let startPoint: [number, number, number] = [startX, terrainHeightAt(startX, startZ), startZ]
+  let endPoint: [number, number, number] = [endX, terrainHeightAt(endX, endZ), endZ]
+  let rotation = Math.atan2(tangent.x, tangent.y)
+  let position: [number, number, number] = [point.x, centerY, point.y]
+
+  const desiredDirection: [number, number, number] = [tangent.x, 0, tangent.y]
+  const realigned = realignCheckpointToRibbons(position, desiredDirection, TRACK_WIDTH, ribbons)
+  if (realigned) {
+    const sx = realigned.startPoint[0]
+    const sz = realigned.startPoint[2]
+    const ex = realigned.endPoint[0]
+    const ez = realigned.endPoint[2]
+    startPoint = [sx, terrainHeightAt(sx, sz), sz]
+    endPoint = [ex, terrainHeightAt(ex, ez), ez]
+    position = [
+      realigned.midpoint[0],
+      terrainHeightAt(realigned.midpoint[0], realigned.midpoint[2]),
+      realigned.midpoint[2],
+    ]
+    rotation = realigned.rotation
+  }
 
   return {
     id: genId('cp'),
     type: 'checkpoint',
-    position: [point.x, centerY, point.y],
+    position,
     rotation,
     startPoint,
     endPoint,
@@ -279,7 +300,13 @@ export function buildTrackObjectsFromEditorSource(input: EditorTrackDocument): P
   let sectorOrder = 0
   for (const checkpoint of input.checkpoints) {
     const order = checkpoint.kind === 'sector' ? ++sectorOrder : 0
-    const object = checkpointToPlacedObject(checkpoint, order, input.paths, input.raceDirection)
+    const object = checkpointToPlacedObject(
+      checkpoint,
+      order,
+      input.paths,
+      input.raceDirection,
+      ribbons,
+    )
     if (object) checkpointObjects.push(object)
   }
 

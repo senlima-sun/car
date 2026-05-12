@@ -21,7 +21,12 @@ export default function TrackMinimap() {
 
   const bounds = useMemo(() => computeBounds(placedObjects), [placedObjects])
   const roads = useMemo(
-    () => placedObjects.filter(o => o.type === 'road' && o.startPoint && o.endPoint),
+    () =>
+      placedObjects.filter(
+        o =>
+          (o.type === 'road' && o.startPoint && o.endPoint) ||
+          (o.type === 'track_ribbon' && o.ribbonPoints && o.ribbonPoints.length > 1),
+      ),
     [placedObjects],
   )
   const checkpoints = useMemo(

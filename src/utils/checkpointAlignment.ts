@@ -1,9 +1,17 @@
-import type { PlacedObject } from '../types/trackObjects'
+import type { PlacedObject, TrackRibbonPoint } from '../types/trackObjects'
 import { isCurveMode } from '../types/trackObjects'
 
 export interface AlignmentResult {
   startPoint: [number, number, number]
   endPoint: [number, number, number]
+  flipped: boolean
+}
+
+export interface RealignmentResult {
+  startPoint: [number, number, number]
+  endPoint: [number, number, number]
+  midpoint: [number, number, number]
+  rotation: number
   flipped: boolean
 }
 
@@ -127,4 +135,111 @@ const findNearestOnCurve = (
 
   if (!bestTangent) return null
   return { dist: bestDist, tangent: bestTangent }
+}
+
+export const realignCheckpointToRibbons = (
+  midpoint: [number, number, number],
+  desiredDirection: [number, number, number] | null,
+  lineLength: number,
+  ribbons: PlacedObject[],
+): RealignmentResult | null => {
+  const nearest = findNearestRibbonPoint(midpoint[0], midpoint[2], ribbons)
+  if (!nearest) return null
+
+  const halfLen = lineLength / 2
+  let lineX = -nearest.tangent[2]
+  let lineZ = nearest.tangent[0]
+  let flipped = false
+
+  if (desiredDirection) {
+    const normalAlongTangent =
+      nearest.tangent[0] * desiredDirection[0] + nearest.tangent[2] * desiredDirection[2]
+    if (normalAlongTangent < 0) {
+      lineX = -lineX
+      lineZ = -lineZ
+      flipped = true
+    }
+  }
+
+  const newMidpoint: [number, number, number] = [nearest.point[0], nearest.point[1], nearest.point[2]]
+  const startPoint: [number, number, number] = [
+    newMidpoint[0] + lineX * halfLen,
+    newMidpoint[1],
+    newMidpoint[2] + lineZ * halfLen,
+  ]
+  const endPoint: [number, number, number] = [
+    newMidpoint[0] - lineX * halfLen,
+    newMidpoint[1],
+    newMidpoint[2] - lineZ * halfLen,
+  ]
+
+  const dx = endPoint[0] - startPoint[0]
+  const dz = endPoint[2] - startPoint[2]
+  const rotation = Math.atan2(dx, dz)
+
+  return { startPoint, endPoint, midpoint: newMidpoint, rotation, flipped }
+}
+
+const findNearestRibbonPoint = (
+  x: number,
+  z: number,
+  ribbons: PlacedObject[],
+): { point: [number, number, number]; tangent: [number, number, number]; dist: number } | null => {
+  let best: {
+    point: [number, number, number]
+    tangent: [number, number, number]
+    dist: number
+  } | null = null
+
+  for (const ribbon of ribbons) {
+    if (ribbon.type !== 'track_ribbon' || !ribbon.ribbonPoints || ribbon.ribbonPoints.length < 2) {
+      continue
+    }
+    const candidate = nearestOnPolyline(x, z, ribbon.ribbonPoints, ribbon.ribbonClosed ?? false)
+    if (!candidate) continue
+    if (!best || candidate.dist < best.dist) best = candidate
+  }
+
+  if (!best || best.dist > SEARCH_RADIUS) return null
+  return best
+}
+
+const nearestOnPolyline = (
+  x: number,
+  z: number,
+  points: TrackRibbonPoint[],
+  closed: boolean,
+): { point: [number, number, number]; tangent: [number, number, number]; dist: number } | null => {
+  const segCount = closed ? points.length : points.length - 1
+  if (segCount < 1) return null
+
+  let bestDist = Infinity
+  let bestPoint: [number, number, number] | null = null
+  let bestTangent: [number, number, number] | null = null
+
+  for (let i = 0; i < segCount; i++) {
+    const a = points[i]!
+    const b = points[(i + 1) % points.length]!
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const segLenSq = dx * dx + dz * dz
+    if (segLenSq < 1e-12) continue
+
+    const tRaw = ((x - a.x) * dx + (z - a.z) * dz) / segLenSq
+    const tClamped = Math.max(0, Math.min(1, tRaw))
+    const px = a.x + dx * tClamped
+    const py = a.y + (b.y - a.y) * tClamped
+    const pz = a.z + dz * tClamped
+    const d = Math.hypot(x - px, z - pz)
+
+    if (d < bestDist) {
+      bestDist = d
+      bestPoint = [px, py, pz]
+      const segLen = Math.sqrt(segLenSq)
+      bestTangent = [dx / segLen, 0, dz / segLen]
+    }
+  }
+
+  if (!bestPoint || !bestTangent) return null
+  return { point: bestPoint, tangent: bestTangent, dist: bestDist }
 }

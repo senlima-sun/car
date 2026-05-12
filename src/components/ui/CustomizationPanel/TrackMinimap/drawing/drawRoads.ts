@@ -25,6 +25,26 @@ export function drawRoads(
 
     ctx.lineWidth = 2.5
 
+    if (road.type === 'track_ribbon' && road.ribbonPoints && road.ribbonPoints.length > 1) {
+      const pts = road.ribbonPoints
+      const first = pts[0]
+      const sx0 = toScreenX(first.x)
+      const sz0 = toScreenZ(first.z)
+      ctx.moveTo(rotX(sx0, sz0), rotZ(sx0, sz0))
+      for (let i = 1; i < pts.length; i++) {
+        const p = pts[i]
+        const sx = toScreenX(p.x)
+        const sz = toScreenZ(p.z)
+        ctx.lineTo(rotX(sx, sz), rotZ(sx, sz))
+      }
+      if (road.ribbonClosed) {
+        ctx.lineTo(rotX(sx0, sz0), rotZ(sx0, sz0))
+      }
+      ctx.stroke()
+      if (road.flowDirection) drawRibbonFlowArrow(ctx, road, t)
+      continue
+    }
+
     if (isCurveMode(road.trackMode) && road.controlPoint) {
       const sx = toScreenX(road.startPoint![0])
       const sz = toScreenZ(road.startPoint![2])
@@ -108,6 +128,60 @@ function drawFlowArrow(
   const rmx = rotX(mx, mz)
   const rmz = rotZ(mx, mz)
 
+  const arrowSize = 5
+
+  ctx.beginPath()
+  ctx.fillStyle = '#22c55e'
+  ctx.moveTo(rmx + rndx * arrowSize, rmz + rndz * arrowSize)
+  ctx.lineTo(
+    rmx - rndx * arrowSize * 0.5 + rndz * arrowSize * 0.5,
+    rmz - rndz * arrowSize * 0.5 - rndx * arrowSize * 0.5,
+  )
+  ctx.lineTo(
+    rmx - rndx * arrowSize * 0.5 - rndz * arrowSize * 0.5,
+    rmz - rndz * arrowSize * 0.5 + rndx * arrowSize * 0.5,
+  )
+  ctx.closePath()
+  ctx.fill()
+}
+
+function drawRibbonFlowArrow(
+  ctx: CanvasRenderingContext2D,
+  road: PlacedObject,
+  t: MinimapTransforms,
+) {
+  const pts = road.ribbonPoints
+  if (!pts || pts.length < 2) return
+
+  const { toScreenX, toScreenZ, rotX, rotZ, scale, angle } = t
+  const isForward = road.flowDirection === 'forward'
+
+  const midIndex = Math.floor(pts.length / 2)
+  const a = pts[Math.max(0, midIndex - 1)]
+  const b = pts[Math.min(pts.length - 1, midIndex)]
+
+  const mx = toScreenX((a.x + b.x) / 2)
+  const mz = toScreenZ((a.z + b.z) / 2)
+
+  let rawDx = b.x - a.x
+  let rawDz = b.z - a.z
+  if (!isForward) {
+    rawDx = -rawDx
+    rawDz = -rawDz
+  }
+  const len = Math.sqrt(rawDx * rawDx + rawDz * rawDz) || 1
+  const ndx = (rawDx / len) * scale
+  const ndz = (rawDz / len) * scale
+
+  const arrowLen = Math.sqrt(ndx * ndx + ndz * ndz) || 1
+  const ux = ndx / arrowLen
+  const uz = ndz / arrowLen
+
+  const rndx = ux * Math.cos(angle) - uz * Math.sin(angle)
+  const rndz = ux * Math.sin(angle) + uz * Math.cos(angle)
+
+  const rmx = rotX(mx, mz)
+  const rmz = rotZ(mx, mz)
   const arrowSize = 5
 
   ctx.beginPath()
