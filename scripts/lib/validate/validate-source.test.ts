@@ -137,20 +137,31 @@ describe('validateTrackSource — wrap-around angle', () => {
   })
 
   it('correctly wraps 179° vs -179° = 2° diff, not 358°', () => {
-    const source = squareSource()
-    const report179 = validateTrackSource(
-      source,
-      baseConfig({ expectedStartHeadingDegrees: 179 }),
+    const southFirstSource = buildEditorTrackSourceFromPolyline({
+      id: 'test_south_first',
+      name: 'Test South First',
+      trackLength: 400,
+      turns: 4,
+      points: [
+        { x: 0, z: 0 },
+        { x: 0, z: -100 },
+        { x: 100, z: -100 },
+        { x: 100, z: 0 },
+        { x: 0, z: 0 },
+      ],
+      sectorSplits: [0.33, 0.66],
+      startFinishFraction: 0.125,
+    })
+    const actualHeading = computedDrivingHeading(southFirstSource)
+    expect(Math.abs(Math.abs(actualHeading) - 180)).toBeLessThan(5)
+    const expectedAcrossWrap = actualHeading < 0 ? actualHeading + 358 : actualHeading - 358
+    const wrappedExpected = ((expectedAcrossWrap + 540) % 360) - 180
+    const report = validateTrackSource(
+      southFirstSource,
+      baseConfig({ expectedStartHeadingDegrees: wrappedExpected }),
     )
-    const reportNeg179 = validateTrackSource(
-      source,
-      baseConfig({ expectedStartHeadingDegrees: -179 }),
-    )
-    const h179 = report179.sourceChecks.find(r => r.id === 'source-heading')!.message
-    const hn179 = reportNeg179.sourceChecks.find(r => r.id === 'source-heading')!.message
-    const diff179 = parseFloat(h179.match(/deviates ([\d.]+)°/)?.[1] ?? '999')
-    const diffn179 = parseFloat(hn179.match(/deviates ([\d.]+)°/)?.[1] ?? '999')
-    expect(Math.abs(diff179 - diffn179)).toBeLessThan(3)
+    const headingResult = report.sourceChecks.find(r => r.id === 'source-heading')!
+    expect(headingResult.severity).toBe('pass')
   })
 })
 

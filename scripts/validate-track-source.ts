@@ -37,16 +37,32 @@ async function run(): Promise<void> {
     console.error(`No config found at scripts/circuits/${circuitName}.config.json`)
     process.exit(1)
   }
-  const config = (await configFile.json()) as CircuitConfigFile
+  let config: CircuitConfigFile
+  try {
+    config = (await configFile.json()) as CircuitConfigFile
+  } catch (err) {
+    console.error(
+      `Invalid JSON in scripts/circuits/${circuitName}.config.json: ${(err as Error).message}`,
+    )
+    process.exit(1)
+  }
 
   const sourceFile = Bun.file(`src/constants/tracks/sources/${circuitName}.json`)
   if (!(await sourceFile.exists())) {
     console.error(`No source found at src/constants/tracks/sources/${circuitName}.json`)
     process.exit(1)
   }
-  const source = await sourceFile.json()
+  let source: unknown
+  try {
+    source = await sourceFile.json()
+  } catch (err) {
+    console.error(
+      `Invalid JSON in src/constants/tracks/sources/${circuitName}.json: ${(err as Error).message}`,
+    )
+    process.exit(1)
+  }
 
-  const report = validateTrackSource(source, config)
+  const report = validateTrackSource(source as Parameters<typeof validateTrackSource>[0], config)
 
   console.log(`\n${BOLD}Track source validation: ${config.displayName}${RESET}`)
   console.log('─'.repeat(60))

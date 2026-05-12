@@ -121,3 +121,15 @@ The Monaco Formula 1 circuit runs on public roads through the principality. OSM 
 Even if you construct a manual Overpass query without the raceway filter, the road topology is extremely complex (tunnels, elevation changes, public-road junctions) and the result would require heavy manual curation.
 
 **Workaround**: draw Monaco manually in the in-app track editor and export the source JSON, then create a `scripts/circuits/monaco.config.json` with `provenance: "manual"`. The pipeline will validate and AI-drive the manually-drawn source without attempting OSM ingest.
+
+---
+
+## Known Limitations
+
+### Shanghai start-finish placement
+
+`src/constants/tracks/sources/shanghai.json` has its start-finish checkpoint at `segmentIndex: 0`. This was added programmatically when the source had no start-finish checkpoint at all (Phase 2 validation surfaced the omission). OSM `highway=raceway` traces conventionally begin at the real start-finish line — Suzuka follows this convention and lands correctly at segmentIndex 0 — but Shanghai's trace has not been verified visually. If lap timing or AI-drive on Shanghai records laps relative to an unexpected point on the circuit, the SF checkpoint needs to be relocated in the in-app track editor.
+
+### Shanghai sector checkpoints
+
+`shanghai.json` has no `kind: "sector"` checkpoints. The in-app lap counter requires sectors to produce per-sector times. Add two sector checkpoints in the editor before exposing Shanghai as a playable circuit.
