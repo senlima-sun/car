@@ -13,8 +13,10 @@ import { keyboardMap } from './constants/controls'
 import { useDevToolsStore } from './stores/useDevToolsStore'
 import { isSessionShellStatus, useGameStore } from './stores/useGameStore'
 import { isRunningSessionPhase, useSessionStore } from './stores/useSessionStore'
+import { useTrackStore } from './stores/useTrackStore'
 import { FIXED_TIME_STEP } from './constants/physics'
 import { useGlobalKeys } from './hooks/useGlobalKeys'
+import { PRESET_TRACKS } from './constants/tracks'
 
 function usePhysicsPause() {
   const [paused, setPaused] = useState(false)
@@ -39,6 +41,18 @@ function usePhysicsPause() {
   return paused
 }
 
+function useUrlTrackParam() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const requestedTrackId = params.get('track')
+    if (!requestedTrackId) return
+    const preset = PRESET_TRACKS.find(t => t.id === requestedTrackId)
+    if (!preset) return
+    useTrackStore.getState().loadPresetTrack(requestedTrackId)
+  }, [])
+}
+
 export default function App() {
   const physicsDebug = useDevToolsStore(s => s.panels['physics-debug'].isOpen)
   const showFPS = useGameStore(s => s.showFPS)
@@ -46,6 +60,7 @@ export default function App() {
   const sessionPhase = useSessionStore(s => s.phase)
   const physicsPaused = usePhysicsPause()
   useGlobalKeys()
+  useUrlTrackParam()
 
   const shouldPausePhysics =
     physicsPaused || !isSessionShellStatus(shellStatus) || !isRunningSessionPhase(sessionPhase)

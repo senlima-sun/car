@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react'
 import { useValidationDriveStore } from '@/stores/useValidationDriveStore'
 import { useLapTimeStore } from '@/stores/useLapTimeStore'
 import { useCarStore } from '@/stores/useCarStore'
+import { useTrackStore } from '@/stores/useTrackStore'
+import { useCustomizationStore } from '@/stores/useCustomizationStore'
+import { buildValidationCenterline } from '@/utils/validationCenterline'
 import { TRACK_WIDTH } from '@/constants/dimensions'
 import { IS_DEV } from '@/utils/isDev'
 
@@ -16,6 +19,7 @@ const TRACK_HALF_WIDTH_M = TRACK_WIDTH / 2 + TRACK_RIBBON_MARGIN_M
 declare global {
   interface Window {
     __VALIDATION_DRIVE_RESULT__?: ReturnType<typeof useValidationDriveStore.getState>['summary']
+    __VALIDATION_DRIVE_START__?: () => 'started' | 'no_centerline' | 'no_active_track'
   }
 }
 
@@ -149,6 +153,22 @@ export function ValidationDriveBridge() {
       window.__VALIDATION_DRIVE_RESULT__ = undefined
     }
   }, [summary])
+
+  useEffect(() => {
+    if (!IS_DEV) return
+    window.__VALIDATION_DRIVE_START__ = () => {
+      const activeTrackId = useTrackStore.getState().trackLibrary.activeTrackId
+      if (!activeTrackId) return 'no_active_track'
+      const objects = useCustomizationStore.getState().placedObjects
+      const centerline = buildValidationCenterline(objects)
+      if (centerline.length < 2) return 'no_centerline'
+      useValidationDriveStore.getState().start(activeTrackId, centerline)
+      return 'started'
+    }
+    return () => {
+      window.__VALIDATION_DRIVE_START__ = undefined
+    }
+  }, [])
 
   return null
 }
