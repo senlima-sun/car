@@ -399,12 +399,19 @@ async function convertCircuit(circuitName: string): Promise<void> {
 const args = process.argv.slice(2)
 if (args.length === 0) {
   const available = await discoverCircuitNames()
-  console.log('Usage: bun run scripts/convert-osm-track.ts <circuit-name>')
+  console.log('Usage: bun run track:ingest <circuit-name>')
   console.log(`Available circuits: ${available.join(', ')}`)
   process.exit(0)
 }
 
 const circuitName = args[0].toLowerCase()
+const available = await discoverCircuitNames()
+if (!available.includes(circuitName)) {
+  console.error(`Unknown circuit: ${circuitName}`)
+  console.error(`Available: ${available.join(', ')}`)
+  process.exit(1)
+}
+
 convertCircuit(circuitName).catch(err => {
   console.error('Error:', err)
   process.exit(1)
