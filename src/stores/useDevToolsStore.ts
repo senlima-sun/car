@@ -3,6 +3,7 @@ import type { Position } from '../utils/dragController'
 
 export type DevPanelId =
   | 'physics-debug'
+  | 'steering-debug'
   | 'weather'
   | 'track-switcher'
   | 'minimap'
@@ -26,6 +27,7 @@ interface DevToolsState {
 
 const DEFAULT_POSITIONS: Record<DevPanelId, Position> = {
   'physics-debug': { x: 24, y: 80 },
+  'steering-debug': { x: 360, y: 80 },
   weather: { x: 320, y: 80 },
   'track-switcher': { x: 24, y: 380 },
   minimap: { x: 24, y: 80 },
@@ -34,6 +36,7 @@ const DEFAULT_POSITIONS: Record<DevPanelId, Position> = {
 
 const DEFAULT_OPEN: Record<DevPanelId, boolean> = {
   'physics-debug': false,
+  'steering-debug': false,
   weather: false,
   'track-switcher': false,
   minimap: true,
@@ -45,6 +48,11 @@ function defaultPanels(): Record<DevPanelId, DevPanelState> {
     'physics-debug': {
       isOpen: DEFAULT_OPEN['physics-debug'],
       position: DEFAULT_POSITIONS['physics-debug'],
+      focusOrder: 0,
+    },
+    'steering-debug': {
+      isOpen: DEFAULT_OPEN['steering-debug'],
+      position: DEFAULT_POSITIONS['steering-debug'],
       focusOrder: 0,
     },
     weather: { isOpen: DEFAULT_OPEN.weather, position: DEFAULT_POSITIONS.weather, focusOrder: 0 },
@@ -115,6 +123,7 @@ export const useDevToolsStore = create<DevToolsState>(set => ({
 
 export const DEV_PANEL_IDS: DevPanelId[] = [
   'physics-debug',
+  'steering-debug',
   'weather',
   'track-switcher',
   'minimap',

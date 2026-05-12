@@ -13,8 +13,11 @@ import { useCarStateSync } from './useCarStateSync'
 import { useCarTelemetryLogging } from './useCarTelemetryLogging'
 import { useCarRubberAndTrails } from './useCarRubberAndTrails'
 import { useTelemetryRecorder } from '../../../../telemetry/useTelemetryRecorder'
+import { useSteeringDebugStore } from '../../../../stores/useSteeringDebugStore'
+import { IS_DEV } from '../../../../utils/isDev'
 import { type CarState } from './types'
 
+const STEER_DEBUG_SYNC_EVERY = 4
 type PhysicsContext = ReturnType<typeof import('../../../../wasm').usePhysics>
 
 interface UseCarFrameOptions {
@@ -58,6 +61,9 @@ export function useCarFrame({
     isBraking: false,
     speedKmh: 0,
   })
+
+  const steerDebugCounterRef = useRef(0)
+  const maxSteerObservedRef = useRef(0)
 
   useFrame((state, delta) => {
     if (!chassisRef.current) return
@@ -120,6 +126,25 @@ export function useCarFrame({
     const { output, syncResult, windSyncNeeded, suspensionOutput } = result
 
     stateSync.syncAll(output, syncResult, windSyncNeeded)
+
+    if (IS_DEV && steerDebugCounterRef.current++ % STEER_DEBUG_SYNC_EVERY === 0) {
+      const steerAngleDeg = (output.steer_angle * 180) / Math.PI
+      const absSteerDeg = Math.abs(steerAngleDeg)
+      const steerInputAbs = Math.abs(keys.steer)
+      const maxSteerDeg =
+        steerInputAbs > 0.05 ? absSteerDeg / steerInputAbs : maxSteerObservedRef.current
+      if (steerInputAbs > 0.05) maxSteerObservedRef.current = maxSteerDeg
+      useSteeringDebugStore.getState().update({
+        inputSteer: keys.steer,
+        steerAngleDeg,
+        maxSteerAngleDeg: maxSteerDeg,
+        yawRate: output.angular_velocity[1],
+        speedKmh: output.speed_kmh,
+        slipAngleDeg: output.slip_angle,
+        lateralG: output.lateral_g,
+        isDrifting: output.is_drifting,
+      })
+    }
 
     const chassis = chassisRef.current
     const pos = chassis.translation()

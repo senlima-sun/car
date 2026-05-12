@@ -14,6 +14,7 @@ import RaceInfoBar from './RaceInfoBar'
 import Callouts from './Callouts'
 import TimingTower from './TimingTower'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
+import SteeringDebugOverlay from '../SteeringDebugOverlay'
 import WeatherPanel from '../WeatherPanel/WeatherPanel'
 import { SettingsDialog } from '../SettingsDialog'
 import {
@@ -208,6 +209,7 @@ export default function HUD() {
               <DevToolsSessionLifecycle />
               {!isMobile && <DevToolbar />}
               <PhysicsDebugOverlay />
+              <SteeringDebugOverlay />
               <WeatherPanel />
               <TrackSwitcher />
             </>

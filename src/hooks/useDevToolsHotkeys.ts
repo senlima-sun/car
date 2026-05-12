@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useDevToolsStore, type DevPanelId } from '../stores/useDevToolsStore'
 
 export const DEV_TOOLS_HOTKEY_MAP: Record<string, DevPanelId> = {
+  F6: 'steering-debug',
   F7: 'weather',
   F8: 'track-switcher',
   F9: 'physics-debug',
