@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { Cloud, Gauge, Locate, Map, Menu, Zap } from 'lucide-react'
+import { Cloud, Flag, Gauge, Locate, Map, Menu, Zap } from 'lucide-react'
 import { useDevToolsStore, type DevPanelId } from '../../../stores/useDevToolsStore'
+import { runDevAction, type DevActionId } from '../../../hooks/useDevToolsHotkeys'
 
 interface ToolEntry {
   id: DevPanelId
+  label: string
+  hotkey?: string
+  icon: typeof Zap
+}
+
+interface ActionEntry {
+  id: DevActionId
   label: string
   hotkey?: string
   icon: typeof Zap
@@ -15,6 +23,10 @@ const TOOLS: ToolEntry[] = [
   { id: 'physics-debug', label: 'Physics', hotkey: 'F9', icon: Zap },
   { id: 'weather', label: 'Weather', hotkey: 'F7', icon: Cloud },
   { id: 'track-switcher', label: 'Track', hotkey: 'F8', icon: Map },
+]
+
+const ACTIONS: ActionEntry[] = [
+  { id: 'start-lights', label: 'Start Lights', hotkey: 'F4', icon: Flag },
 ]
 
 export default function DevToolbar() {
@@ -91,6 +103,25 @@ export default function DevToolbar() {
               </button>
             )
           })}
+          <div className='mt-1 border-t border-white/12 pt-1'>
+            {ACTIONS.map(({ id, label, hotkey, icon: Icon }) => (
+              <button
+                key={id}
+                type='button'
+                onClick={() => runDevAction(id)}
+                className='flex w-full items-center gap-2.5 px-2 py-1.5 text-left text-white/75 transition-colors hover:bg-white/8 hover:text-white'
+                aria-label={hotkey ? `${label} (${hotkey})` : label}
+              >
+                <Icon size={13} strokeWidth={2} />
+                <span className='flex-1 font-sans text-[11px] font-semibold tracking-wide'>
+                  {label}
+                </span>
+                {hotkey && (
+                  <span className='font-mono text-[9px] text-white/40'>{hotkey}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

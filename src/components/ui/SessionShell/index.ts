@@ -1,4 +1,3 @@
-export { default as CountdownOverlay } from './CountdownOverlay'
 export { default as PauseOverlay } from './PauseOverlay'
 export { default as ResultsScreen } from './ResultsScreen'
 export { default as SessionEventBridge } from './SessionEventBridge'

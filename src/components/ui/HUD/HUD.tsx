@@ -38,7 +38,6 @@ import { MainMenu } from '../MainMenu'
 import { TrackEditor } from '../TrackEditor'
 import { TrackSwitcher } from '../TrackSwitcher'
 import {
-  CountdownOverlay,
   PauseOverlay,
   ResultsScreen,
   SessionEventBridge,
@@ -138,7 +137,6 @@ export default function HUD() {
       ) : isSessionShell ? (
         <>
           {isSetupSessionPhase(sessionPhase) && <SessionSetup />}
-          <CountdownOverlay />
           <PauseOverlay />
           <ResultsScreen />
 

@@ -8,6 +8,7 @@ import { useCustomizationStore } from '@/stores/useCustomizationStore'
 import { useCarStore } from '../../../stores/useCarStore'
 import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
 import type { CheckpointType } from '../../../types/trackObjects'
+import StartLightsGantry from './StartLightsGantry'
 
 interface CheckpointProps {
   position: [number, number, number]
@@ -159,6 +160,7 @@ export default function Checkpoint({
           <CheckeredStripe length={length} isGhost={isGhost} />
           <StartFinishPylons length={length} isGhost={isGhost} />
           {flowDirection && <RaceDirectionMarker flowDirection={flowDirection} isGhost={isGhost} />}
+          {!isGhost && <StartLightsGantry length={length} />}
         </>
       )}
     </group>

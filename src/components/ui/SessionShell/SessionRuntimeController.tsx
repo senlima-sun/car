@@ -8,7 +8,9 @@ import {
   isSetupSessionPhase,
   useSessionStore,
 } from '@/stores/useSessionStore'
+import { useStartLightsDriver } from '@/hooks/useStartLightsDriver'
 export default function SessionRuntimeController() {
+  useStartLightsDriver()
   const shellStatus = useGameStore(s => s.status)
   const phase = useSessionStore(s => s.phase)
   const config = useSessionStore(s => s.config)

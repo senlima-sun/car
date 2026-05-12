@@ -14,10 +14,12 @@ import { useCarTelemetryLogging } from './useCarTelemetryLogging'
 import { useCarRubberAndTrails } from './useCarRubberAndTrails'
 import { useTelemetryRecorder } from '../../../../telemetry/useTelemetryRecorder'
 import { useSteeringDebugStore } from '../../../../stores/useSteeringDebugStore'
+import { useStartLightsStore } from '../../../../stores/useStartLightsStore'
 import { IS_DEV } from '../../../../utils/isDev'
 import { type CarState } from './types'
 
 const STEER_DEBUG_SYNC_EVERY = 4
+
 type PhysicsContext = ReturnType<typeof import('../../../../wasm').usePhysics>
 
 interface UseCarFrameOptions {
@@ -99,17 +101,30 @@ export function useCarFrame({
       return
     }
 
-    const input: CarInput = {
-      forward: keys.forward,
-      backward: keys.backward,
-      left: keys.left,
-      right: keys.right,
-      brake: keys.brake,
-      handbrake: keys.handbrake,
-      steer: keys.steer,
-      throttle: keys.throttle,
-      brake_analog: keys.brakeAnalog,
-    }
+    const inputLocked = useStartLightsStore.getState().isInputLocked()
+    const input: CarInput = inputLocked
+      ? {
+          forward: false,
+          backward: false,
+          left: false,
+          right: false,
+          brake: true,
+          handbrake: true,
+          steer: 0,
+          throttle: 0,
+          brake_analog: 1,
+        }
+      : {
+          forward: keys.forward,
+          backward: keys.backward,
+          left: keys.left,
+          right: keys.right,
+          brake: keys.brake,
+          handbrake: keys.handbrake,
+          steer: keys.steer,
+          throttle: keys.throttle,
+          brake_analog: keys.brakeAnalog,
+        }
 
     const { steps } = accumulator.accumulate(dt)
 
