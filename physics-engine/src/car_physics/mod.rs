@@ -494,8 +494,25 @@ impl CarPhysicsState {
             .scale(clamped_forward)
             .add(right_dir.scale(clamped_lateral));
 
-        // Cap angular velocity
-        let max_ang_vel = if self.drift.is_drifting() { 2.8 } else { 1.8 };
+        // Speed-scheduled angular-velocity cap, C¹-continuous across the
+        // full speed range. Replaces the prior {1.8 grip, 2.8 drift} step,
+        // which produced a perceptible "snap" whenever ω lingered at the
+        // grip cap long enough to push slip past the drift threshold and
+        // the cap jumped by ~1 rad/s in a single frame.
+        //
+        // Anchors:
+        //   ≤ 40 km/h  →  2.8 rad/s  (low-speed agility preserved)
+        //   ≥ 220 km/h →  1.5 rad/s  (high-speed stability)
+        // Half-cosine blend in between.
+        let max_ang_vel = {
+            const V_LO: f32 = 40.0 / 3.6;
+            const V_HI: f32 = 220.0 / 3.6;
+            const OMEGA_LO: f32 = 2.8;
+            const OMEGA_HI: f32 = 1.5;
+            let t = ((self.speed_ms - V_LO) / (V_HI - V_LO)).clamp(0.0, 1.0);
+            let eased = 0.5 - 0.5 * (t * std::f32::consts::PI).cos();
+            OMEGA_LO + eased * (OMEGA_HI - OMEGA_LO)
+        };
         let final_ang_vel =
             (self.target_angular_velocity + drift_rotation + crosswind_yaw_moment * dt)
                 .clamp(-max_ang_vel, max_ang_vel);

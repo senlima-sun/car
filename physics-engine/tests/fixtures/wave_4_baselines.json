@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "captured_at": "wave-4 + turbo + fuel + LSD + driveshaft",
-  "notes": "Captured post driveshaft Phase 2. First-order torque lag (τ ≈ 0.4s for default I/c) on rear-axle drive. Adds ~6% to 0-100 (3.48 → 3.68s), ~9% to DRS 200-300 (6.59 → 7.19s), ~5% drop in low-grip lat-g (oil/wet). Stop distances barely affected. All shifts physically consistent with delayed throttle response.",
+  "captured_at": "wave-4 + speed-scheduled yaw cap",
+  "notes": "Recaptured after replacing the {1.8 grip / 2.8 drift} step cap on body-frame angular velocity with a speed-scheduled continuous cap (2.8 at ≤40 km/h → 1.5 at ≥220 km/h, half-cosine blend). Removes the perceptible 'snap' when ω lingered at the grip cap long enough to push slip past the drift threshold and the cap jumped by ~1 rad/s in a single frame. Dry lat-g drops from 9.94 to 8.12 because the prior peak was saturated against the legacy ±10G sanitize ceiling; the new value is closer to physically plausible high-downforce cornering. Low-grip lat-g rises slightly because oil/wet were previously cap-limited too. All ±20-25% drift bands remain green.",
   "scenarios": {
     "zero_to_100_kmh_seconds": 3.6833,
     "fifty_ms_to_zero_stop_distance_m": 52.6731,
-    "steady_state_80m_radius_peak_lat_g": 9.9403,
+    "steady_state_80m_radius_peak_lat_g": 8.1228,
     "drs_active_200_to_300_kmh_seconds": 7.1917,
     "hundred_kmh_to_zero_stop_distance_m": 18.5445,
     "wet_fifty_ms_to_zero_stop_distance_m": 88.2055,
-    "wet_steady_state_80m_radius_peak_lat_g": 7.8545,
-    "oil_steady_state_80m_radius_peak_lat_g": 7.8130
+    "wet_steady_state_80m_radius_peak_lat_g": 8.2235,
+    "oil_steady_state_80m_radius_peak_lat_g": 8.1553
   }
 }
