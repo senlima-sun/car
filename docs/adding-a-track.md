@@ -293,4 +293,110 @@ See the next section.
 
 ## FastF1 / Real-F1 Telemetry Research Appendix
 
-See the next section.
+This appendix documents the real-F1 data sources that could be used to calibrate the pipeline in the future. None of these integrations are implemented. Each suggestion is explicitly marked **NOT IMPLEMENTED**.
+
+---
+
+### FastF1 (Python library)
+
+**Source**: [https://github.com/theOehrly/Fast-F1](https://github.com/theOehrly/Fast-F1)  
+**Install**: `pip install fastf1`
+
+FastF1 is a community-maintained Python library that wraps the official F1 timing API. It provides per-driver, per-session telemetry for every race weekend since 2018.
+
+Available channels per lap sample:
+
+| Channel | Unit | Notes |
+|---------|------|-------|
+| `X`, `Y` | metres (track-frame) | 2D position in a circuit-specific coordinate frame, NOT lat/lon |
+| `Speed` | km/h | GPS-derived; typically 50 Hz |
+| `Throttle` | 0–100 % | |
+| `Brake` | 0/1 (boolean) | |
+| `nGear` | 0–8 | |
+| `RPM` | rev/min | |
+| `DRS` | 0/1/10/12/14 | State machine; 10/12 = eligible, 14 = active |
+| `SessionTime` | timedelta | Elapsed time since session start |
+
+**Caveats**:
+
+- Position (`X`, `Y`) is in a track-frame coordinate system that differs per circuit and is not documented by F1. Mapping it onto our world coordinate system requires a per-circuit affine calibration. The calibration is not trivial (rotation + scale + translation) and must be derived from matching known GPS anchor points to the track-frame points.
+- The F1 timing API enforces rate limits and a rolling data embargo: race data is typically unavailable for ~2 hours after session end.
+- Not all sessions are public. Pre-season testing and some practice sessions are gated behind the F1 TV subscription.
+- FastF1 caches responses to disk; cache must be initialised: `fastf1.Cache.enable_cache('/path/to/cache')`.
+
+---
+
+### Official F1 Timing API (`livetiming.formula1.com`)
+
+**Source**: [https://livetiming.formula1.com](https://livetiming.formula1.com)
+
+This is the upstream data source that FastF1 consumes. Direct access requires reverse-engineering a SignalR-based WebSocket protocol. The protocol has changed multiple times across seasons, breaking existing clients.
+
+**Not recommended for hobby use.** Use FastF1 or OpenF1.org as stable abstraction layers.
+
+---
+
+### F1 Game UDP Telemetry (Codemasters F1 23 / F1 24)
+
+Codemasters' official F1 titles broadcast a structured UDP packet stream on the local network while driving. The packet specification is published annually:  
+**F1 24**: [https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220](https://answers.ea.com/t5/General-Discussion/F1-24-UDP-Specification/td-p/13745220)
+
+Available channels (~60 total), including:
+
+- Suspension travel (FL/FR/RL/RR)
+- Tyre surface and inner temperatures per corner
+- Brake temperatures
+- Car damage state
+
+This is useful as an **OEM-grade reference for what a full telemetry surface looks like**, and as a benchmark for what our own WASM telemetry channels should eventually cover. It is not real-F1 data — it reflects the game's physics simulation, not actual on-track measurements.
+
+---
+
+### OpenF1.org
+
+**Source**: [https://openf1.org](https://openf1.org)  
+**Docs**: [https://openf1.org/#introduction](https://openf1.org/#introduction)
+
+OpenF1 provides a REST API and GraphQL endpoint over the F1 timing data, with lower overhead than FastF1 for simple one-shot queries. It is particularly useful for fetching a single driver's position trace for a specific session without pulling the full FastF1 session object.
+
+Example: fetch Hamilton's position for lap 12 of the 2024 British GP:
+
+```
+GET https://api.openf1.org/v1/position?session_key=9158&driver_number=44&lap_number=12
+```
+
+The position data is in track-frame coordinates (same caveats as FastF1 re: calibration).
+
+---
+
+### MotoGP Equivalents
+
+Out of scope. MotoGP does not use the same circuits and has different circuit geometries. Mentioned here only as a pointer: [https://www.motogp.com/en/stats](https://www.motogp.com/en/stats).
+
+---
+
+### How We Could Use This in the Future
+
+All suggestions below are **NOT IMPLEMENTED** in the current pipeline.
+
+**1. Lap-time window calibration** (NOT IMPLEMENTED)
+
+Pull the real F1 race pace from FastF1 for a given circuit:
+
+```python
+import fastf1
+session = fastf1.get_session(2024, 'Great Britain', 'R')
+session.load()
+fastest = session.laps.pick_driver('HAM').pick_fastest()
+print(fastest['LapTime'].total_seconds())  # e.g. 90.4 s
+```
+
+Multiply by 2.0 for the floor (conservative AI slowness) and 4.0 for the ceiling. Write into `aiDriveLapTimeWindowSeconds` in the circuit config. This would replace the current placeholder values of `[120, 480]` with empirically-grounded bounds.
+
+**2. Reference racing line** (NOT IMPLEMENTED)
+
+Sample the `X`, `Y` position trace from FastF1 at 5 m spacing. Apply the affine calibration (once computed) to convert from track-frame to our world coordinate system. Overlay the result as a debug line in the in-app track editor to visually compare the AI driver's centreline-following path against the real racing line.
+
+**3. Reference braking points** (NOT IMPLEMENTED)
+
+Sample the `Brake` channel against `X`, `Y` position. Identify the lap-fraction at which heavy braking begins on each long straight. Use those fractions to inform placement of future barrier objects — long straights currently have no barriers because the physics engine does not enforce run-off zones. Real braking points would identify where barriers matter most.
