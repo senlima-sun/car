@@ -1,10 +1,10 @@
-import { useRef, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useRef, useMemo, useEffect } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { useSteeringWheelDisplay } from './SteeringWheelDisplay'
 import { useCarStore } from '@/stores/useCarStore'
-import { getSwDisplay } from '@/stores/useSwDisplayStore'
+import { applySwDisplayAnisotropy, getSwDisplay } from '@/stores/useSwDisplayStore'
 
 const MODEL_PATH = '/models/steering-wheel.glb'
 const MAX_RPM = 12500
@@ -29,15 +29,20 @@ const RPM_COLORS = [
 const RPM_LED_COUNT = RPM_COLORS.length
 
 interface SteeringWheelProps {
-  steerAngle: number
+  getSteerAngle: () => number
   showDisplay: boolean
 }
 
-export function SteeringWheel({ steerAngle }: SteeringWheelProps) {
+export function SteeringWheel({ getSteerAngle }: SteeringWheelProps) {
   const { scene } = useGLTF(MODEL_PATH, true)
   const steeringWheelRef = useRef<THREE.Group>(null)
   const smoothSteeringWheel = useRef(0)
+  const gl = useThree(s => s.gl)
   useSteeringWheelDisplay()
+
+  useEffect(() => {
+    applySwDisplayAnisotropy(gl.capabilities.getMaxAnisotropy())
+  }, [gl])
 
   const { clonedScene, ledMaterials, displayMesh } = useMemo(() => {
     const cloned = scene.clone(true)
@@ -81,16 +86,16 @@ export function SteeringWheel({ steerAngle }: SteeringWheelProps) {
   }, [scene])
 
   useFrame((_, delta) => {
-    const lerpSpeed = 8
+    const lerpSpeed = 18
     smoothSteeringWheel.current = THREE.MathUtils.lerp(
       smoothSteeringWheel.current,
-      steerAngle,
-      lerpSpeed * delta,
+      getSteerAngle(),
+      Math.min(lerpSpeed * delta, 1),
     )
 
     if (steeringWheelRef.current) {
-      steeringWheelRef.current.rotation.y = smoothSteeringWheel.current * 1.5
-      steeringWheelRef.current.rotation.z = smoothSteeringWheel.current * 0.1
+      steeringWheelRef.current.rotation.y = -smoothSteeringWheel.current
+      steeringWheelRef.current.rotation.z = 0
     }
 
     const rpm = useCarStore.getState().rpm
@@ -108,7 +113,7 @@ export function SteeringWheel({ steerAngle }: SteeringWheelProps) {
   })
 
   return (
-    <group position={[0, 1.03, 3.25]} rotation={[1.4484, -0.0016, 3.1384]} scale={1.65}>
+    <group position={[0, 0.895, 3.275]} rotation={[1.4484, -0.0016, 3.1384]} scale={3}>
       <group ref={steeringWheelRef}>
         <primitive object={clonedScene} />
       </group>

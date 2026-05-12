@@ -9,7 +9,7 @@ const STEER_LERP_SPEED = 8
 const _steerQ = new THREE.Quaternion()
 const _spinQ = new THREE.Quaternion()
 const _resultQ = new THREE.Quaternion()
-const _upAxis = new THREE.Vector3(0, 1, 0)
+const _upAxis = new THREE.Vector3(0, 0, 1)
 const _spinAxis = new THREE.Vector3(0, 0, 1)
 
 interface GltfWheelAnimatorProps {

@@ -1,5 +1,3 @@
-import { useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
 import { useCarStore } from '../../../../stores/useCarStore'
 import { useGameStore } from '../../../../stores/useGameStore'
 import { getWheelAngleRad, isLockActive } from '../../../../input/mouseSteeringState'
@@ -10,23 +8,22 @@ interface CockpitProps {
   showDisplay: boolean
 }
 
-const SW_ANGLE_GAIN = 1.5
+const KEYBOARD_TIRE_ANGLE_RAD = 0.3
+const TIRE_TO_WHEEL_RATIO = Math.PI / KEYBOARD_TIRE_ANGLE_RAD
+
+function readWheelAngle(): number {
+  const mouseEnabled = useGameStore.getState().mouseSteeringEnabled
+  if (mouseEnabled && isLockActive()) {
+    return getWheelAngleRad()
+  }
+  const tireAngle = useCarStore.getState().steerAngle
+  return -tireAngle * TIRE_TO_WHEEL_RATIO
+}
 
 export function Cockpit({ showDisplay }: CockpitProps) {
-  const steerRef = useRef(0)
-
-  useFrame(() => {
-    const mouseEnabled = useGameStore.getState().mouseSteeringEnabled
-    if (mouseEnabled && isLockActive()) {
-      steerRef.current = getWheelAngleRad() / SW_ANGLE_GAIN
-    } else {
-      steerRef.current = useCarStore.getState().steerAngle
-    }
-  })
-
   return (
     <group>
-      <SteeringWheel steerAngle={steerRef.current} showDisplay={showDisplay} />
+      <SteeringWheel getSteerAngle={readWheelAngle} showDisplay={showDisplay} />
       {showDisplay && (
         <>
           <pointLight

@@ -7,7 +7,8 @@ import { extractYawQuaternion, slerpOrSnap } from './utils'
 import type { CameraTargetProps } from './types'
 
 const ROTATION_LERP = 0.4
-const DRIVER_OFFSET = new Vector3(0, 1.2, 2.95)
+const DRIVER_OFFSET = new Vector3(0, 1.2, 2.3)
+const FOV = 64
 
 export default function FirstPersonCamera({ target }: CameraTargetProps) {
   const cameraRef = useRef<ThreePerspectiveCamera>(null)
@@ -38,6 +39,6 @@ export default function FirstPersonCamera({ target }: CameraTargetProps) {
   })
 
   return (
-    <PerspectiveCamera ref={cameraRef} makeDefault fov={110} near={CAMERA_NEAR} far={CAMERA_FAR} />
+    <PerspectiveCamera ref={cameraRef} makeDefault fov={FOV} near={CAMERA_NEAR} far={CAMERA_FAR} />
   )
 }
