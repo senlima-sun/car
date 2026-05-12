@@ -140,9 +140,20 @@ function useLapCompletionBridge() {
   }, [])
 }
 
+function useLapStoreTeardown() {
+  useEffect(() => {
+    return useValidationDriveStore.subscribe((state, prev) => {
+      if (prev.phase !== 'driving') return
+      if (state.phase !== 'completed' && state.phase !== 'failed') return
+      useLapTimeStore.getState().setActive(false)
+    })
+  }, [])
+}
+
 export function ValidationDriveBridge() {
   useValidationDriveTicker()
   useLapCompletionBridge()
+  useLapStoreTeardown()
 
   const summary = useValidationDriveStore(s => s.summary)
 

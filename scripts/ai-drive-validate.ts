@@ -12,6 +12,7 @@ const MAX_VALIDATION_DRIVE_SECONDS = 600
 const POLL_INTERVAL_MS = 2_000
 const WALL_CLOCK_TIMEOUT_MS = (MAX_VALIDATION_DRIVE_SECONDS + 30) * 1000
 const DEV_SERVER_URL = 'http://localhost:3000'
+const AGENT_BROWSER_SESSION = 'ai-drive-validate'
 
 const aiDriveTrackIds: Record<string, string> = {
   silverstone: 'f1_silverstone_circuit',
@@ -47,10 +48,22 @@ async function devServerIsUp(): Promise<boolean> {
 }
 
 async function runAgentBrowser(args: string[]): Promise<{ stdout: string; ok: boolean }> {
-  const proc = Bun.spawn(['agent-browser', ...args], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
+  let proc
+  try {
+    proc = Bun.spawn(['agent-browser', ...args], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: { ...process.env, AGENT_BROWSER_SESSION },
+    })
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      process.stderr.write(
+        `agent-browser CLI not found. Install with: pnpm add -g agent-browser\n`,
+      )
+      process.exit(1)
+    }
+    throw err
+  }
   const stdout = await new Response(proc.stdout).text()
   const stderr = await new Response(proc.stderr).text()
   const code = await proc.exited
@@ -58,6 +71,10 @@ async function runAgentBrowser(args: string[]): Promise<{ stdout: string; ok: bo
     process.stderr.write(stderr)
   }
   return { stdout, ok: code === 0 }
+}
+
+async function closeSession(): Promise<void> {
+  await runAgentBrowser(['close']).catch(() => undefined)
 }
 
 async function pollForResult(): Promise<ValidationRunSummary | null> {
@@ -108,71 +125,79 @@ async function main(): Promise<void> {
 
   await mkdir(CACHE_DIR, { recursive: true })
 
-  const openRes = await runAgentBrowser([
-    'open',
-    `${DEV_SERVER_URL}/?track=${trackId}`,
-  ])
-  if (!openRes.ok) {
-    process.stderr.write(`agent-browser open failed\n`)
-    process.exit(1)
-  }
-
-  await runAgentBrowser(['wait', '--load', 'networkidle'])
-
-  const startRes = await runAgentBrowser([
-    'eval',
-    'window.__VALIDATION_DRIVE_START__ ? window.__VALIDATION_DRIVE_START__() : "NO_START_GLOBAL"',
-  ])
-  if (!startRes.ok || startRes.stdout.includes('NO_START_GLOBAL')) {
-    process.stderr.write(
-      `window.__VALIDATION_DRIVE_START__ is not present — is the dev build running?\n`,
-    )
-    await runAgentBrowser([
-      'screenshot',
-      join(CACHE_DIR, `${circuit}-no-start-global.png`),
+  let exitCode = 1
+  try {
+    const openRes = await runAgentBrowser([
+      'open',
+      `${DEV_SERVER_URL}/?track=${trackId}`,
     ])
-    process.exit(1)
-  }
+    if (!openRes.ok) {
+      process.stderr.write(`agent-browser open failed\n`)
+      return
+    }
 
-  const summary = await pollForResult()
+    await runAgentBrowser(['wait', '--load', 'networkidle'])
 
-  if (!summary) {
-    process.stderr.write(`AI drive timed out after ${WALL_CLOCK_TIMEOUT_MS / 1000}s\n`)
-    await runAgentBrowser(['screenshot', join(CACHE_DIR, `${circuit}-timeout.png`)])
-    process.exit(1)
-  }
-
-  const failures: string[] = []
-  if (summary.phase !== 'completed') {
-    failures.push(`phase is "${summary.phase}" (expected "completed")`)
-  }
-  if (summary.lapTimeSeconds === null) {
-    failures.push('lapTimeSeconds is null')
-  } else if (
-    summary.lapTimeSeconds < floorSeconds ||
-    summary.lapTimeSeconds > ceilingSeconds
-  ) {
-    failures.push(
-      `lapTimeSeconds ${summary.lapTimeSeconds.toFixed(2)}s outside window [${floorSeconds}, ${ceilingSeconds}]`,
-    )
-  }
-  if (summary.offTrackSeconds > 10) {
-    failures.push(`offTrackSeconds ${summary.offTrackSeconds.toFixed(2)} exceeds 10s budget`)
-  }
-
-  if (failures.length > 0) {
-    process.stderr.write(`AI drive FAILED for ${circuit}:\n`)
-    for (const f of failures) process.stderr.write(`  - ${f}\n`)
-    process.stderr.write(`Summary: ${JSON.stringify(summary, null, 2)}\n`)
-    await runAgentBrowser([
-      'screenshot',
-      join(CACHE_DIR, `${circuit}-failure.png`),
+    const startRes = await runAgentBrowser([
+      'eval',
+      'window.__VALIDATION_DRIVE_START__ ? window.__VALIDATION_DRIVE_START__() : "NO_START_GLOBAL"',
     ])
-    process.exit(1)
-  }
+    if (!startRes.ok || startRes.stdout.includes('NO_START_GLOBAL')) {
+      process.stderr.write(
+        `window.__VALIDATION_DRIVE_START__ is not present — is the dev build running?\n`,
+      )
+      await runAgentBrowser([
+        'screenshot',
+        join(CACHE_DIR, `${circuit}-no-start-global.png`),
+      ])
+      return
+    }
 
-  process.stdout.write(`AI drive OK: ${summary.lapTimeSeconds?.toFixed(2)}s\n`)
-  process.exit(0)
+    const summary = await pollForResult()
+
+    if (!summary) {
+      process.stderr.write(`AI drive timed out after ${WALL_CLOCK_TIMEOUT_MS / 1000}s\n`)
+      await runAgentBrowser(['screenshot', join(CACHE_DIR, `${circuit}-timeout.png`)])
+      return
+    }
+
+    const failures: string[] = []
+    if (summary.phase !== 'completed') {
+      failures.push(`phase is "${summary.phase}" (expected "completed")`)
+    }
+    if (summary.lapTimeSeconds === null) {
+      failures.push('lapTimeSeconds is null')
+    } else if (
+      summary.lapTimeSeconds < floorSeconds ||
+      summary.lapTimeSeconds > ceilingSeconds
+    ) {
+      failures.push(
+        `lapTimeSeconds ${summary.lapTimeSeconds.toFixed(2)}s outside window [${floorSeconds}, ${ceilingSeconds}]`,
+      )
+    }
+    if (summary.offTrackSeconds > 10) {
+      failures.push(`offTrackSeconds ${summary.offTrackSeconds.toFixed(2)} exceeds 10s budget`)
+    }
+
+    if (failures.length > 0) {
+      process.stderr.write(`AI drive FAILED for ${circuit}:\n`)
+      for (const f of failures) process.stderr.write(`  - ${f}\n`)
+      process.stderr.write(`Summary: ${JSON.stringify(summary, null, 2)}\n`)
+      await runAgentBrowser([
+        'screenshot',
+        join(CACHE_DIR, `${circuit}-failure.png`),
+      ])
+      return
+    }
+
+    const lap = summary.lapTimeSeconds?.toFixed(2) ?? '?'
+    const off = summary.offTrackSeconds.toFixed(2)
+    process.stdout.write(`AI drive OK for ${circuit}: lap=${lap}s offTrack=${off}s\n`)
+    exitCode = 0
+  } finally {
+    await closeSession()
+    process.exit(exitCode)
+  }
 }
 
 await main()
