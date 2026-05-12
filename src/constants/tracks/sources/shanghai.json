@@ -3566,7 +3566,15 @@
       "fill": "none"
     }
   ],
-  "checkpoints": [],
+  "checkpoints": [
+    {
+      "id": "f1_shanghai_checkpoint_0",
+      "kind": "start-finish",
+      "pathId": "f1_shanghai_path_0",
+      "segmentIndex": 0,
+      "t": 0.000010572491946857257
+    }
+  ],
   "raceDirection": "forward",
   "pitBoxAreas": []
 }

@@ -1448,22 +1448,6 @@
           "handleType": "smooth"
         },
         {
-          "id": "f1_monza_path_0_anchor_90",
-          "point": {
-            "x": 415.45709751466666,
-            "y": 841.3428935739651
-          },
-          "inHandle": {
-            "x": 415.45709751466666,
-            "y": 841.3428935739651
-          },
-          "outHandle": {
-            "x": 415.45709751466666,
-            "y": 841.3428935739651
-          },
-          "handleType": "corner"
-        },
-        {
           "id": "f1_monza_path_0_anchor_91",
           "point": {
             "x": 405.99724938098024,
@@ -3841,7 +3825,7 @@
       "id": "f1_monza_checkpoint_2",
       "kind": "sector",
       "pathId": "f1_monza_path_0",
-      "segmentIndex": 157,
+      "segmentIndex": 156,
       "t": 0.8400019105275042
     }
   ],

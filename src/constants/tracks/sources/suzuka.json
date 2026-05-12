@@ -3832,7 +3832,7 @@
           "handleType": "corner"
         }
       ],
-      "closed": false,
+      "closed": true,
       "stroke": "#e5e7eb",
       "strokeWidth": 1.5,
       "fill": "none"
