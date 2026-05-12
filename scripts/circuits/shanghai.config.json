@@ -1,0 +1,10 @@
+{
+  "name": "shanghai",
+  "displayName": "Shanghai International Circuit",
+  "provenance": "manual",
+  "startFinishFraction": 0.0,
+  "expectedTrackLengthMeters": 5451,
+  "expectedTurns": 16,
+  "expectedStartHeadingDegrees": -101.9,
+  "aiDriveLapTimeWindowSeconds": [180, 360]
+}

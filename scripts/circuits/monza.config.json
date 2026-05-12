@@ -1,0 +1,10 @@
+{
+  "name": "monza",
+  "displayName": "Autodromo Nazionale Monza",
+  "provenance": "manual",
+  "startFinishFraction": 0.0,
+  "expectedTrackLengthMeters": 5770,
+  "expectedTurns": 3,
+  "expectedStartHeadingDegrees": 5.6,
+  "aiDriveLapTimeWindowSeconds": [180, 360]
+}
