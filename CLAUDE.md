@@ -125,6 +125,10 @@ Root 3D scene: Ground (grass with vertex displacement shader) → PlacedObjectsR
 - **Track data**: JSON files in `src/constants/tracks/` (silverstone, suzuka, monza). Loaded by `useTrackStore`.
 - **Debug system**: `src/debug/ActionLogger` — dev-only logging for physics actions, store changes.
 
+### Adding a Track
+
+Drop `scripts/circuits/<name>.config.json` (use `provenance: "osm"` for OSM-sourced circuits, `provenance: "manual"` for editor-drawn ones). Run `bun run track:add <name>` — it sequences source ingest/validation, a dev-server preflight, and AI-drive validation. See `docs/adding-a-track.md` for BBox selection, config fields, validation thresholds, and AI-drive failure triage.
+
 ### Adding Physics Features
 
 1. Define Rust types/functions in `physics-engine/src/`
