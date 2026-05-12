@@ -14,6 +14,7 @@ import type { Point2D } from './lib/osm-ingest'
 import type { CircuitConfigFile } from './circuits/_schema'
 import { buildOverpassQuery } from './lib/osm-ingest/overpass'
 import { autoDetectSectorSplits } from './lib/osm-ingest/sectors'
+import { validateTrackSource } from './lib/validate/validate-source'
 
 // ============================================================================
 // Types
@@ -422,6 +423,19 @@ async function convertCircuit(circuitName: string): Promise<void> {
   console.log(
     `  📐 Center offset: x=${Math.round((minX + maxX) / 2)}, z=${Math.round((minZ + maxZ) / 2)}`,
   )
+
+  const report = validateTrackSource(source, config)
+  if (!report.canRace) {
+    const criticals = report.results.filter(r => r.severity === 'critical')
+    for (const issue of criticals) {
+      process.stderr.write(`  [CRITICAL] ${issue.rule}: ${issue.message}\n`)
+    }
+    console.error(
+      '\n  Validation FAILED — source has been written for inspection but should NOT be committed',
+    )
+    process.exit(1)
+  }
+  console.log('  Validation OK')
 }
 
 // ============================================================================
