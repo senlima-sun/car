@@ -10,7 +10,9 @@ import {
   computeCurvature,
   fitQuadraticBezier,
 } from './lib/osm-ingest'
-import type { OSMWay, Point2D } from './lib/osm-ingest'
+import type { Point2D } from './lib/osm-ingest'
+import type { CircuitConfigFile } from './circuits/_schema'
+import { buildOverpassQuery } from './lib/osm-ingest/overpass'
 
 // ============================================================================
 // Types
@@ -34,97 +36,6 @@ interface PlacedObject {
   width?: number
   startElevation?: number
   endElevation?: number
-}
-
-interface CircuitConfig {
-  name: string
-  displayName: string
-  query: string
-  centerLat: number
-  centerLon: number
-  filterWays?: (way: OSMWay) => boolean
-  startWayName?: string
-  maxChainGap?: number
-  elevationZones?: { startFraction: number; endFraction: number; elevation: number }[]
-  sectorSplits: [number, number]
-  startFinishFraction: number
-  reverseDirection?: boolean
-  turns?: number
-}
-
-// ============================================================================
-// Circuit Configurations
-// ============================================================================
-
-const CIRCUITS: Record<string, CircuitConfig> = {
-  silverstone: {
-    name: 'silverstone',
-    displayName: 'Silverstone Circuit',
-    query: `[out:json][timeout:60];
-      (
-        way(52.05,-1.05,52.09,-0.98)["highway"="raceway"]["sport"="motor"];
-      );
-      out body;
-      >;
-      out skel qt;`,
-    centerLat: 52.0716,
-    centerLon: -1.0166,
-    filterWays: (way: OSMWay) => {
-      const name = way.tags?.name || ''
-      const excludePatterns = [
-        'Stowe Circuit',
-        'Stowe CircuitPit',
-        'Stowe Circuit Pit',
-        'International pit lane',
-        'Ice Hill',
-      ]
-      if (excludePatterns.some(e => name.includes(e))) return false
-      return true
-    },
-    startWayName: 'National Pit Straight',
-    sectorSplits: [0.33, 0.66],
-    startFinishFraction: 0.0,
-    reverseDirection: true,
-    turns: 18,
-  },
-  suzuka: {
-    name: 'suzuka',
-    displayName: 'Suzuka International Racing Course',
-    query: `[out:json][timeout:60];
-      (
-        way(34.83,136.52,34.86,136.55)["highway"="raceway"]["sport"="motor"];
-      );
-      out body;
-      >;
-      out skel qt;`,
-    centerLat: 34.8431,
-    centerLon: 136.5407,
-    filterWays: (way: OSMWay) => {
-      const name = way.tags?.name || ''
-      const excludePatterns = [
-        'Pit Lane',
-        'West Circuit Pit Lane',
-        '鈴鹿サーキット国際南コース',
-        'プッチグランプリ',
-        'DREAM R',
-        'アクロエックス',
-        'ene-1',
-        'ロッキーコースター',
-        'チララのフラワーワゴン',
-        'アドベンチャードライブ',
-        '日立オートモティブシステムズシケイン',
-      ]
-      if (excludePatterns.some(e => name.includes(e))) return false
-      return true
-    },
-    startWayName: 'メインストレート',
-    maxChainGap: 50,
-    elevationZones: [{ startFraction: 0.55, endFraction: 0.62, elevation: 6.0 }],
-    sectorSplits: [0.33, 0.66],
-    startFinishFraction: 0.0,
-    reverseDirection: true,
-    turns: 18,
-  },
 }
 
 // ============================================================================
@@ -228,7 +139,10 @@ function computeJunctionEdges(
   return edges
 }
 
-function generateRoadSegments(points: Point2D[], config: CircuitConfig): PlacedObject[] {
+function generateRoadSegments(
+  points: Point2D[],
+  config: Pick<CircuitConfigFile, 'elevationZones'>,
+): PlacedObject[] {
   const objects: PlacedObject[] = []
   let segId = 0
 
@@ -347,185 +261,58 @@ function generateRoadSegments(points: Point2D[], config: CircuitConfig): PlacedO
 }
 
 // ============================================================================
-// Curb Generation
-// ============================================================================
-
-function generateCurbs(roads: PlacedObject[]): PlacedObject[] {
-  const curbs: PlacedObject[] = []
-  let curbId = 0
-
-  for (const road of roads) {
-    if (!road.startPoint || !road.endPoint) continue
-
-    const isCurve = road.trackMode === 'curve' && road.controlPoint
-    if (!isCurve) continue
-
-    for (const side of ['left', 'right'] as const) {
-      curbs.push({
-        id: `curb_${curbId++}`,
-        type: 'curb',
-        position: [0, 0, 0],
-        rotation: 0,
-        parentRoadId: road.id,
-        edgeSide: side,
-        startT: 0.05,
-        endT: 0.95,
-      } as any)
-    }
-  }
-
-  return curbs
-}
-
-// ============================================================================
-// Checkpoint Generation
-// ============================================================================
-
-function generateCheckpoints(roads: PlacedObject[], config: CircuitConfig): PlacedObject[] {
-  const checkpoints: PlacedObject[] = []
-  const totalRoads = roads.length
-
-  function makeCheckpoint(
-    id: string,
-    road: PlacedObject,
-    type: 'start-finish' | 'sector',
-    order: number,
-  ): PlacedObject {
-    const sp = road.startPoint!
-    const ep = road.endPoint!
-    const rotation = Math.atan2(ep[0] - sp[0], ep[2] - sp[2])
-    const perpAngle = rotation + Math.PI / 2
-    const hw = TRACK_WIDTH / 2
-    const cpStartPoint: [number, number, number] = [
-      sp[0] + Math.sin(perpAngle) * hw,
-      sp[1],
-      sp[2] + Math.cos(perpAngle) * hw,
-    ]
-    const cpEndPoint: [number, number, number] = [
-      sp[0] - Math.sin(perpAngle) * hw,
-      sp[1],
-      sp[2] - Math.cos(perpAngle) * hw,
-    ]
-    return {
-      id,
-      type: 'checkpoint',
-      position: [...sp] as [number, number, number],
-      rotation,
-      startPoint: cpStartPoint,
-      endPoint: cpEndPoint,
-      checkpointType: type,
-      checkpointOrder: order,
-      width: TRACK_WIDTH,
-    }
-  }
-
-  const sfIdx = Math.floor(config.startFinishFraction * totalRoads)
-  const sfRoad = roads[sfIdx]
-  if (sfRoad?.startPoint && sfRoad?.endPoint) {
-    checkpoints.push(makeCheckpoint('checkpoint_sf', sfRoad, 'start-finish', 0))
-  }
-
-  for (let i = 0; i < config.sectorSplits.length; i++) {
-    const fraction = config.sectorSplits[i]
-    const idx = Math.floor(fraction * totalRoads)
-    const road = roads[idx]
-    if (road?.startPoint && road?.endPoint) {
-      checkpoints.push(makeCheckpoint(`checkpoint_s${i + 1}`, road, 'sector', i + 1))
-    }
-  }
-
-  return checkpoints
-}
-
-// ============================================================================
-// Barrier Generation
-// ============================================================================
-
-function generateBarriers(
-  roads: PlacedObject[],
-  checkpointRoadIndices: Set<number>,
-): PlacedObject[] {
-  const barriers: PlacedObject[] = []
-  let barrierId = 0
-
-  const interval = 5
-  for (let i = 0; i < roads.length; i += interval) {
-    if (checkpointRoadIndices.has(i)) continue
-    const road = roads[i]
-    if (!road.startPoint || !road.endPoint) continue
-    if (!road.startLeftEdge || !road.startRightEdge) continue
-    if (!road.endLeftEdge || !road.endRightEdge) continue
-
-    const lStart: [number, number, number] = [
-      road.startLeftEdge[0] + (road.startLeftEdge[0] - road.startPoint[0]) * 0.3,
-      0,
-      road.startLeftEdge[2] + (road.startLeftEdge[2] - road.startPoint[2]) * 0.3,
-    ]
-    const lEnd: [number, number, number] = [
-      road.endLeftEdge[0] + (road.endLeftEdge[0] - road.endPoint[0]) * 0.3,
-      0,
-      road.endLeftEdge[2] + (road.endLeftEdge[2] - road.endPoint[2]) * 0.3,
-    ]
-
-    barriers.push({
-      id: `barrier_l_${barrierId}`,
-      type: 'barrier',
-      position: [(lStart[0] + lEnd[0]) / 2, 0, (lStart[2] + lEnd[2]) / 2],
-      rotation: 0,
-      startPoint: lStart,
-      endPoint: lEnd,
-      trackMode: 'straight',
-    })
-
-    const rStart: [number, number, number] = [
-      road.startRightEdge[0] + (road.startRightEdge[0] - road.startPoint[0]) * 0.3,
-      0,
-      road.startRightEdge[2] + (road.startRightEdge[2] - road.startPoint[2]) * 0.3,
-    ]
-    const rEnd: [number, number, number] = [
-      road.endRightEdge[0] + (road.endRightEdge[0] - road.endPoint[0]) * 0.3,
-      0,
-      road.endRightEdge[2] + (road.endRightEdge[2] - road.endPoint[2]) * 0.3,
-    ]
-
-    barriers.push({
-      id: `barrier_r_${barrierId}`,
-      type: 'barrier',
-      position: [(rStart[0] + rEnd[0]) / 2, 0, (rStart[2] + rEnd[2]) / 2],
-      rotation: 0,
-      startPoint: rStart,
-      endPoint: rEnd,
-      trackMode: 'straight',
-    })
-
-    barrierId++
-  }
-
-  return barriers
-}
-
-// ============================================================================
 // Main Pipeline
 // ============================================================================
 
-async function convertCircuit(circuitName: string): Promise<void> {
-  const config = CIRCUITS[circuitName]
-  if (!config) {
+async function loadConfig(circuitName: string): Promise<CircuitConfigFile> {
+  const configPath = `scripts/circuits/${circuitName}.config.json`
+  const file = Bun.file(configPath)
+  if (!(await file.exists())) {
+    const available = await discoverCircuitNames()
     console.error(`Unknown circuit: ${circuitName}`)
-    console.log(`Available circuits: ${Object.keys(CIRCUITS).join(', ')}`)
+    console.log(`Available circuits: ${available.join(', ')}`)
+    process.exit(1)
+  }
+  return file.json() as Promise<CircuitConfigFile>
+}
+
+async function discoverCircuitNames(): Promise<string[]> {
+  const glob = new Bun.Glob('scripts/circuits/*.config.json')
+  const names: string[] = []
+  for await (const file of glob.scan('.')) {
+    const match = file.match(/scripts\/circuits\/(.+)\.config\.json$/)
+    if (match) names.push(match[1])
+  }
+  return names.sort()
+}
+
+async function convertCircuit(circuitName: string): Promise<void> {
+  const config = await loadConfig(circuitName)
+
+  if (config.provenance === 'manual') {
+    console.log(
+      `Skipped: ${config.displayName} — manual provenance, source is the canonical artefact`,
+    )
+    process.exit(0)
+  }
+
+  if (!config.overpass) {
+    console.error(`Circuit ${circuitName} is provenance:osm but missing overpass config`)
     process.exit(1)
   }
 
   console.log(`\n🏎️  Converting ${config.displayName}...`)
 
-  const osmData = await fetchOSMData(config.query)
+  const query = buildOverpassQuery(config.overpass.bbox, config.overpass.queryFilters)
+  const osmData = await fetchOSMData(query)
   const { nodes, ways } = extractNodesAndWays(osmData)
   console.log(`  📍 Fetched ${nodes.size} nodes, ${ways.length} ways`)
 
-  let gpWays = ways
-  if (config.filterWays) {
-    gpWays = ways.filter(config.filterWays)
-  }
+  const denyList = config.wayNameDenyList ?? []
+  const gpWays = ways.filter(way => {
+    const name = way.tags?.name ?? ''
+    return !denyList.some(pattern => name.includes(pattern))
+  })
   console.log(`  🏁 GP circuit: ${gpWays.length} ways`)
 
   const orderedNodeIds = orderWaysIntoCircuit(
@@ -545,7 +332,9 @@ async function convertCircuit(circuitName: string): Promise<void> {
   for (const nodeId of orderedNodeIds) {
     const node = nodes.get(nodeId)
     if (!node) continue
-    worldPoints.push(gpsToWorld(node.lat, node.lon, config.centerLat, config.centerLon))
+    worldPoints.push(
+      gpsToWorld(node.lat, node.lon, config.centerLat ?? 0, config.centerLon ?? 0),
+    )
   }
   console.log(`  🌍 Converted ${worldPoints.length} GPS points to world coordinates`)
 
@@ -559,13 +348,18 @@ async function convertCircuit(circuitName: string): Promise<void> {
     totalLength += Math.sqrt(dx * dx + dz * dz)
   }
 
+  const sectorSplits = config.sectorSplits ?? [0.33, 0.66]
+  if (config.sectorSplits) {
+    console.log(`  📐 Using manual sectorSplits override: [${sectorSplits.join(', ')}]`)
+  }
+
   const source = buildEditorTrackSourceFromPolyline({
     id: `f1_${config.name}`,
     name: config.displayName,
     trackLength: Math.round(totalLength),
-    turns: config.turns ?? config.sectorSplits.length + 1,
+    turns: config.expectedTurns,
     points: simplified.map(point => ({ x: point.x, z: point.z })),
-    sectorSplits: config.sectorSplits,
+    sectorSplits,
     startFinishFraction: config.startFinishFraction,
   })
 
@@ -599,8 +393,9 @@ async function convertCircuit(circuitName: string): Promise<void> {
 
 const args = process.argv.slice(2)
 if (args.length === 0) {
+  const available = await discoverCircuitNames()
   console.log('Usage: bun run scripts/convert-osm-track.ts <circuit-name>')
-  console.log(`Available circuits: ${Object.keys(CIRCUITS).join(', ')}`)
+  console.log(`Available circuits: ${available.join(', ')}`)
   process.exit(0)
 }
 

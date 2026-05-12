@@ -1,0 +1,26 @@
+{
+  "name": "silverstone",
+  "displayName": "Silverstone Circuit",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [52.05, -1.05, 52.09, -0.98],
+    "queryFilters": ["\"highway\"=\"raceway\"", "\"sport\"=\"motor\""]
+  },
+  "centerLat": 52.0716,
+  "centerLon": -1.0166,
+  "startWayName": "National Pit Straight",
+  "wayNameDenyList": [
+    "Stowe Circuit",
+    "Stowe CircuitPit",
+    "Stowe Circuit Pit",
+    "International pit lane",
+    "Ice Hill"
+  ],
+  "reverseDirection": true,
+  "sectorSplits": [0.33, 0.66],
+  "startFinishFraction": 0.0,
+  "expectedTrackLengthMeters": 5891,
+  "expectedTurns": 18,
+  "expectedStartHeadingDegrees": -37.6,
+  "aiDriveLapTimeWindowSeconds": [180, 360]
+}
