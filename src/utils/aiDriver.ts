@@ -5,9 +5,12 @@ export const LOOKAHEAD_BASE_M = 25
 export const LOOKAHEAD_SPEED_GAIN = 0.6
 export const LOOKAHEAD_MIN_M = 15
 export const LOOKAHEAD_MAX_M = 80
-export const LATERAL_G_LIMIT = 1.6
+export const LATERAL_G_LIMIT = 1.4
 export const GRAVITY_MS2 = 9.81
 export const MAX_STEER_ANGLE_RAD = 0.4
+export const BRAKING_DECEL_MS2 = 25
+export const BRAKING_HORIZON_MIN_M = 50
+export const CURVATURE_SAMPLE_WINDOW_M = 10
 
 export interface AIDriverCenterlineSample {
   x: number
@@ -136,7 +139,7 @@ export function computeAIInput(state: AIDriverState): CarInput {
     LOOKAHEAD_MAX_M,
   )
 
-  const { index: lookaheadIndex, point: lookaheadPoint } = advanceAlongCenterline(
+  const { point: lookaheadPoint } = advanceAlongCenterline(
     centerlineSamples,
     closestIndex,
     lookahead,
@@ -155,18 +158,35 @@ export function computeAIInput(state: AIDriverState): CarInput {
   const steer = clamp(steeringAngleRad / MAX_STEER_ANGLE_RAD, -1, 1)
 
   const n = centerlineSamples.length
-  const prev = centerlineSamples[(lookaheadIndex - 1 + n) % n]!
-  const curr = centerlineSamples[lookaheadIndex]!
-  const next = centerlineSamples[(lookaheadIndex + 1) % n]!
-  const curvature = mengerCurvature(prev.x, prev.z, curr.x, curr.z, next.x, next.z)
+  const totalLength = centerlineSamples[n - 1]!.cumulativeDistance
+  const brakingHorizon = Math.max(
+    BRAKING_HORIZON_MIN_M,
+    (velocityMS * velocityMS) / (2 * BRAKING_DECEL_MS2),
+  )
+
+  const closestDistance = centerlineSamples[closestIndex]!.cumulativeDistance
+  const stepSpacing =
+    n > 1 ? (centerlineSamples[1]!.cumulativeDistance - centerlineSamples[0]!.cumulativeDistance) : 5
+  const windowStepCount = Math.max(1, Math.round(CURVATURE_SAMPLE_WINDOW_M / stepSpacing))
+
+  let maxCurvature = 0
+  for (let offset = 0; offset <= brakingHorizon; offset += stepSpacing) {
+    const target = totalLength > 0 ? (closestDistance + offset) % totalLength : closestDistance
+    const idx = Math.round(target / stepSpacing) % n
+    const prev = centerlineSamples[(idx - windowStepCount + n) % n]!
+    const curr = centerlineSamples[idx]!
+    const next = centerlineSamples[(idx + windowStepCount) % n]!
+    const c = mengerCurvature(prev.x, prev.z, curr.x, curr.z, next.x, next.z)
+    if (c > maxCurvature) maxCurvature = c
+  }
 
   const vTarget =
-    curvature > 1e-6
-      ? Math.sqrt((LATERAL_G_LIMIT * GRAVITY_MS2) / curvature)
+    maxCurvature > 1e-6
+      ? Math.sqrt((LATERAL_G_LIMIT * GRAVITY_MS2) / maxCurvature)
       : Number.POSITIVE_INFINITY
 
   const throttleOn = velocityMS < vTarget * 0.95
-  const brakeOn = velocityMS > vTarget * 1.1
+  const brakeOn = velocityMS > vTarget * 1.05
 
   return {
     forward: throttleOn,
