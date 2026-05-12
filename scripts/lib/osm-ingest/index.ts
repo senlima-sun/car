@@ -10,3 +10,5 @@ export {
   computeCurvature,
   fitQuadraticBezier,
 } from './geometry'
+
+export { autoDetectSectorSplits } from './sectors'

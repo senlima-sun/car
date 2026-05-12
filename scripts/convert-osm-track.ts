@@ -13,6 +13,7 @@ import {
 import type { Point2D } from './lib/osm-ingest'
 import type { CircuitConfigFile } from './circuits/_schema'
 import { buildOverpassQuery } from './lib/osm-ingest/overpass'
+import { autoDetectSectorSplits } from './lib/osm-ingest/sectors'
 
 // ============================================================================
 // Types
@@ -348,9 +349,13 @@ async function convertCircuit(circuitName: string): Promise<void> {
     totalLength += Math.sqrt(dx * dx + dz * dz)
   }
 
-  const sectorSplits = config.sectorSplits ?? [0.33, 0.66]
+  let sectorSplits: [number, number]
   if (config.sectorSplits) {
+    sectorSplits = config.sectorSplits
     console.log(`  📐 Using manual sectorSplits override: [${sectorSplits.join(', ')}]`)
+  } else {
+    sectorSplits = autoDetectSectorSplits(simplified)
+    console.log(`  📐 Auto-detected sectorSplits: [${sectorSplits.join(', ')}]`)
   }
 
   const source = buildEditorTrackSourceFromPolyline({
