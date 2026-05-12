@@ -274,7 +274,34 @@ async function loadConfig(circuitName: string): Promise<CircuitConfigFile> {
     console.log(`Available circuits: ${available.join(', ')}`)
     process.exit(1)
   }
-  return file.json() as Promise<CircuitConfigFile>
+  const config = (await file.json()) as CircuitConfigFile
+  if (config.name !== circuitName) {
+    console.error(
+      `Invalid config ${configPath}: name "${config.name}" does not match CLI argument "${circuitName}"`,
+    )
+    process.exit(1)
+  }
+  if (typeof config.expectedTrackLengthMeters !== 'number' || config.expectedTrackLengthMeters <= 0) {
+    console.error(
+      `Invalid config ${configPath}: expectedTrackLengthMeters must be a positive number`,
+    )
+    process.exit(1)
+  }
+  if (config.provenance === 'osm') {
+    if (!config.overpass || config.overpass.bbox.length !== 4) {
+      console.error(
+        `Invalid config ${configPath}: provenance "osm" requires overpass with a 4-element bbox`,
+      )
+      process.exit(1)
+    }
+    if (config.centerLat == null || config.centerLon == null) {
+      console.error(
+        `Invalid config ${configPath}: provenance "osm" requires centerLat and centerLon`,
+      )
+      process.exit(1)
+    }
+  }
+  return config
 }
 
 async function discoverCircuitNames(): Promise<string[]> {
@@ -329,12 +356,17 @@ async function convertCircuit(circuitName: string): Promise<void> {
     console.log('  🔄 Reversed circuit direction')
   }
 
+  const { centerLat, centerLon } = config
+  if (centerLat == null || centerLon == null) {
+    throw new Error(`${config.name}: centerLat/centerLon must be set for OSM provenance`)
+  }
+
   const worldPoints: Point2D[] = []
   for (const nodeId of orderedNodeIds) {
     const node = nodes.get(nodeId)
     if (!node) continue
     worldPoints.push(
-      gpsToWorld(node.lat, node.lon, config.centerLat ?? 0, config.centerLon ?? 0),
+      gpsToWorld(node.lat, node.lon, centerLat, centerLon),
     )
   }
   console.log(`  🌍 Converted ${worldPoints.length} GPS points to world coordinates`)
