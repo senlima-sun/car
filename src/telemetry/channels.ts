@@ -1,4 +1,4 @@
-export const TELEMETRY_STRIDE = 38
+export const TELEMETRY_STRIDE = 40
 
 export const CH = {
   TIMESTAMP: 0,
@@ -39,6 +39,8 @@ export const CH = {
   TIRE_TEMP_FR: 35,
   TIRE_TEMP_RL: 36,
   TIRE_TEMP_RR: 37,
+  STEER_ANGLE_DEG: 38,
+  YAW_RATE: 39,
 } as const
 
 export type ChannelId = (typeof CH)[keyof typeof CH]
@@ -89,4 +91,6 @@ export const CHANNEL_META: Record<ChannelId, ChannelMeta> = {
   [CH.TIRE_TEMP_FR]: { name: 'Tire Temp FR', unit: '', min: 0, max: 1 },
   [CH.TIRE_TEMP_RL]: { name: 'Tire Temp RL', unit: '', min: 0, max: 1 },
   [CH.TIRE_TEMP_RR]: { name: 'Tire Temp RR', unit: '', min: 0, max: 1 },
+  [CH.STEER_ANGLE_DEG]: { name: 'Steer Angle', unit: '°', min: -25, max: 25 },
+  [CH.YAW_RATE]: { name: 'Yaw Rate', unit: 'rad/s', min: -2, max: 2 },
 }

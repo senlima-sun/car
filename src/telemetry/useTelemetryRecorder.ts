@@ -50,6 +50,8 @@ export function useTelemetryRecorder() {
       f[CH.LATERAL_G] = output.lateral_g
       f[CH.LONGITUDINAL_G] = output.longitudinal_g
       f[CH.SLIP_ANGLE] = output.slip_angle
+      f[CH.STEER_ANGLE_DEG] = (output.steer_angle * 180) / Math.PI
+      f[CH.YAW_RATE] = output.angular_velocity?.[1] ?? 0
       f[CH.EFFECTIVE_GRIP] = output.effective_grip
       f[CH.DOWNFORCE_N] = output.downforce_newtons
       f[CH.ERS_BATTERY] = output.ers?.battery_charge != null ? output.ers.battery_charge * 100 : 0

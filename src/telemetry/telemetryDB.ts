@@ -1,5 +1,5 @@
 const DB_NAME = 'f1-telemetry'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_NAME = 'laps'
 const MAX_LAPS_PER_TRACK = 20
 
@@ -16,8 +16,11 @@ export interface StoredTelemetryLap {
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = event => {
       const db = req.result
+      if (event.oldVersion < 2 && db.objectStoreNames.contains(STORE_NAME)) {
+        db.deleteObjectStore(STORE_NAME)
+      }
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, {
           keyPath: 'id',
