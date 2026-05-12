@@ -20,14 +20,14 @@ export function autoDetectSectorSplits(simplifiedPoints: Point2D[]): [number, nu
 
   const isStraight: boolean[] = []
   for (let i = 0; i < n - 1; i++) {
-    if (i === 0 || i === n - 2) {
+    if (i === 0) {
       isStraight.push(true)
       continue
     }
     const curvature = computeCurvature(
       simplifiedPoints[i - 1],
       simplifiedPoints[i],
-      simplifiedPoints[i + 1],
+      simplifiedPoints[i + 1] ?? simplifiedPoints[i],
     )
     isStraight.push(curvature < CURVATURE_THRESHOLD)
   }
@@ -39,7 +39,6 @@ export function autoDetectSectorSplits(simplifiedPoints: Point2D[]): [number, nu
 
   const straightRuns: StraightRun[] = []
   let runStart = -1
-  let distanceCovered = 0
 
   for (let i = 0; i < isStraight.length; i++) {
     if (isStraight[i] && runStart === -1) {
@@ -64,7 +63,6 @@ export function autoDetectSectorSplits(simplifiedPoints: Point2D[]): [number, nu
       straightRuns.push({ endFraction, chordLength })
       runStart = -1
     }
-    distanceCovered += segmentLengths[i]
   }
 
   straightRuns.sort((a, b) => b.chordLength - a.chordLength)
@@ -85,17 +83,32 @@ export function autoDetectSectorSplits(simplifiedPoints: Point2D[]): [number, nu
   }
 
   if (sector1 === null || sector2 === null) {
-    console.warn('  ⚠️  Could not detect two distinct sector splits, falling back to [0.33, 0.66]')
-    return [0.33, 0.66]
+    throw new Error(
+      'autoDetectSectorSplits: could not detect two distinct sector splits; circuit needs explicit sectorSplits in its config',
+    )
   }
 
   const [s1, s2] = sector1 < sector2 ? [sector1, sector2] : [sector2, sector1]
 
-  const inBand1 = s1 >= 0.20 && s1 <= 0.45
-  const inBand2 = s2 >= 0.55 && s2 <= 0.85
-  if (!inBand1 || !inBand2) {
-    console.warn(
-      `  ⚠️  Detected splits [${s1.toFixed(3)}, ${s2.toFixed(3)}] outside expected bands ([0.20-0.45], [0.55-0.85]) — proceeding`,
+  if (s1 >= 0.98) {
+    throw new Error(
+      `autoDetectSectorSplits: detected sector boundary at lap-end (endFraction=${s1.toFixed(3)}); circuit needs explicit sectorSplits in its config`,
+    )
+  }
+  if (s2 >= 0.98) {
+    throw new Error(
+      `autoDetectSectorSplits: detected sector boundary at lap-end (endFraction=${s2.toFixed(3)}); circuit needs explicit sectorSplits in its config`,
+    )
+  }
+
+  if (s1 < 0.20 || s1 > 0.45) {
+    throw new Error(
+      `autoDetectSectorSplits: sector 1 split ${s1.toFixed(3)} is outside expected band [0.20, 0.45]; circuit needs explicit sectorSplits in its config`,
+    )
+  }
+  if (s2 < 0.55 || s2 > 0.85) {
+    throw new Error(
+      `autoDetectSectorSplits: sector 2 split ${s2.toFixed(3)} is outside expected band [0.55, 0.85]; circuit needs explicit sectorSplits in its config`,
     )
   }
 
