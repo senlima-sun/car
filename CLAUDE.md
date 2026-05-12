@@ -127,7 +127,7 @@ Root 3D scene: Ground (grass with vertex displacement shader) → PlacedObjectsR
 
 ### Adding a Track
 
-Drop `scripts/circuits/<name>.config.json` (use `provenance: "osm"` for OSM-sourced circuits, `provenance: "manual"` for editor-drawn ones). Run `bun run track:add <name>` — it sequences source ingest/validation, a dev-server preflight, and AI-drive validation. See `docs/adding-a-track.md` for BBox selection, config fields, validation thresholds, and AI-drive failure triage.
+Drop `scripts/circuits/<name>.config.json` (use `provenance: "osm"` for OSM-sourced circuits, `provenance: "manual"` for editor-drawn ones). Run `bun run track:add <name>` — it runs ingest (for OSM) or validate-source (for manual). See `docs/adding-a-track.md` for BBox selection, config fields, and validation thresholds.
 
 ### Adding Physics Features
 

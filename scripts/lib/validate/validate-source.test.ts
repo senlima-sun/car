@@ -14,7 +14,6 @@ function baseConfig(overrides: Partial<CircuitConfigFile> = {}): CircuitConfigFi
     expectedTrackLengthMeters: 400,
     expectedTurns: 4,
     expectedStartHeadingDegrees: 90,
-    aiDriveLapTimeWindowSeconds: [60, 300],
     ...overrides,
   }
 }

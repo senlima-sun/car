@@ -4,6 +4,5 @@
   "provenance": "manual",
   "expectedTrackLengthMeters": 5827,
   "expectedTurns": 18,
-  "expectedStartHeadingDegrees": -37.6,
-  "aiDriveLapTimeWindowSeconds": [120, 480]
+  "expectedStartHeadingDegrees": -37.6
 }

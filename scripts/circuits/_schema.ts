@@ -26,5 +26,4 @@ export interface CircuitConfigFile {
   expectedTrackLengthMeters: number
   expectedTurns: number
   expectedStartHeadingDegrees: number
-  aiDriveLapTimeWindowSeconds: [number, number]
 }

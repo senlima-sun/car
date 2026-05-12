@@ -15,8 +15,6 @@ import { useCarRubberAndTrails } from './useCarRubberAndTrails'
 import { useTelemetryRecorder } from '../../../../telemetry/useTelemetryRecorder'
 import { useSteeringDebugStore } from '../../../../stores/useSteeringDebugStore'
 import { useStartLightsStore } from '../../../../stores/useStartLightsStore'
-import { useValidationDriveStore } from '../../../../stores/useValidationDriveStore'
-import { computeAIInput } from '../../../../utils/aiDriver'
 import { IS_DEV } from '../../../../utils/isDev'
 import { type CarState } from './types'
 
@@ -104,54 +102,29 @@ export function useCarFrame({
     }
 
     const inputLocked = useStartLightsStore.getState().isInputLocked()
-    const validationDrive = useValidationDriveStore.getState()
-    const useAIInput =
-      validationDrive.phase === 'driving' &&
-      validationDrive.centerlineSamples !== null &&
-      validationDrive.centerlineSamples.length >= 2
-
-    let input: CarInput
-    if (inputLocked) {
-      input = {
-        forward: false,
-        backward: false,
-        left: false,
-        right: false,
-        brake: true,
-        handbrake: true,
-        steer: 0,
-        throttle: 0,
-        brake_analog: 1,
-      }
-    } else if (useAIInput && chassisRef.current && validationDrive.centerlineSamples) {
-      const chassis = chassisRef.current
-      const pos = chassis.translation()
-      const rot = chassis.rotation()
-      const yaw = Math.atan2(
-        2 * (rot.w * rot.y + rot.x * rot.z),
-        1 - 2 * (rot.y * rot.y + rot.x * rot.x),
-      )
-      const lv = chassis.linvel()
-      const velocityMS = Math.hypot(lv.x, lv.z)
-      input = computeAIInput({
-        position: [pos.x, pos.y, pos.z],
-        velocityMS,
-        heading: yaw,
-        centerlineSamples: validationDrive.centerlineSamples,
-      })
-    } else {
-      input = {
-        forward: keys.forward,
-        backward: keys.backward,
-        left: keys.left,
-        right: keys.right,
-        brake: keys.brake,
-        handbrake: keys.handbrake,
-        steer: keys.steer,
-        throttle: keys.throttle,
-        brake_analog: keys.brakeAnalog,
-      }
-    }
+    const input: CarInput = inputLocked
+      ? {
+          forward: false,
+          backward: false,
+          left: false,
+          right: false,
+          brake: true,
+          handbrake: true,
+          steer: 0,
+          throttle: 0,
+          brake_analog: 1,
+        }
+      : {
+          forward: keys.forward,
+          backward: keys.backward,
+          left: keys.left,
+          right: keys.right,
+          brake: keys.brake,
+          handbrake: keys.handbrake,
+          steer: keys.steer,
+          throttle: keys.throttle,
+          brake_analog: keys.brakeAnalog,
+        }
 
     const { steps } = accumulator.accumulate(dt)
 

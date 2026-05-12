@@ -1,6 +1,6 @@
 # Adding a Track
 
-This guide covers how to ingest a new circuit from OpenStreetMap and configure it for the pipeline. Phases 2 and 3 of the pipeline (geometry validation and AI drive validation) are documented here when those phases ship.
+This guide covers how to ingest a new circuit from OpenStreetMap and validate the resulting source geometry.
 
 ---
 
@@ -103,8 +103,7 @@ Expected config skeleton:
   "startFinishFraction": 0.0,
   "expectedTrackLengthMeters": 7004,
   "expectedTurns": 20,
-  "expectedStartHeadingDegrees": 170.0,
-  "aiDriveLapTimeWindowSeconds": [240, 480]
+  "expectedStartHeadingDegrees": 170.0
 }
 ```
 
@@ -120,7 +119,7 @@ The Monaco Formula 1 circuit runs on public roads through the principality. OSM 
 
 Even if you construct a manual Overpass query without the raceway filter, the road topology is extremely complex (tunnels, elevation changes, public-road junctions) and the result would require heavy manual curation.
 
-**Workaround**: draw Monaco manually in the in-app track editor and export the source JSON, then create a `scripts/circuits/monaco.config.json` with `provenance: "manual"`. The pipeline will validate and AI-drive the manually-drawn source without attempting OSM ingest.
+**Workaround**: draw Monaco manually in the in-app track editor and export the source JSON, then create a `scripts/circuits/monaco.config.json` with `provenance: "manual"`. The pipeline will validate the manually-drawn source without attempting OSM ingest.
 
 ---
 
@@ -128,7 +127,7 @@ Even if you construct a manual Overpass query without the raceway filter, the ro
 
 ### Shanghai start-finish placement
 
-`src/constants/tracks/sources/shanghai.json` has its start-finish checkpoint at `segmentIndex: 0`. This was added programmatically when the source had no start-finish checkpoint at all (Phase 2 validation surfaced the omission). OSM `highway=raceway` traces conventionally begin at the real start-finish line — Suzuka follows this convention and lands correctly at segmentIndex 0 — but Shanghai's trace has not been verified visually. If lap timing or AI-drive on Shanghai records laps relative to an unexpected point on the circuit, the SF checkpoint needs to be relocated in the in-app track editor.
+`src/constants/tracks/sources/shanghai.json` has its start-finish checkpoint at `segmentIndex: 0`. This was added programmatically when the source had no start-finish checkpoint at all (validation surfaced the omission). OSM `highway=raceway` traces conventionally begin at the real start-finish line — Suzuka follows this convention and lands correctly at segmentIndex 0 — but Shanghai's trace has not been verified visually. If lap timing on Shanghai records laps relative to an unexpected point on the circuit, the SF checkpoint needs to be relocated in the in-app track editor.
 
 ### Shanghai sector checkpoints
 
@@ -138,7 +137,7 @@ Even if you construct a manual Overpass query without the raceway filter, the ro
 
 ## End-to-End Workflow
 
-The following five commands take you from a blank config to a committed, fully-validated circuit. Spa-Francorchamps is the worked example throughout; substitute the actual circuit name for any real use.
+The following commands take you from a blank config to a committed, validated circuit. Spa-Francorchamps is the worked example throughout; substitute the actual circuit name for any real use.
 
 ### Step 1 — Write the circuit config
 
@@ -166,17 +165,9 @@ bun run track:validate-source spa
 
 Runs all structural checks and writes a JSON report to `.cache/track-validation/spa.json`. Fix any CRITICAL issues before continuing. WARNING-level issues may be informational and are non-blocking.
 
-### Step 5 — Run AI drive validation
+### Step 5 — Commit
 
-```bash
-bun run track:ai-drive spa
-```
-
-Requires the dev server to be running (`bun run dev` in a separate shell). The browser agent opens the circuit in validation-drive mode, waits for the AI driver to complete one lap, and asserts the result. See "AI-drive failure triage" below if this step fails.
-
-### Step 6 — Commit
-
-Once all three phases pass, commit `scripts/circuits/spa.config.json` and `src/constants/tracks/sources/spa.json`. If you have installed the pre-commit hook (`scripts/git-hooks/pre-commit`), the source validator runs automatically at commit time.
+Once validation passes, commit `scripts/circuits/spa.config.json` and `src/constants/tracks/sources/spa.json`. If you have installed the pre-commit hook (`scripts/git-hooks/pre-commit`), the source validator runs automatically at commit time.
 
 ### One-command shortcut
 
@@ -184,15 +175,13 @@ Once all three phases pass, commit `scripts/circuits/spa.config.json` and `src/c
 bun run track:add spa
 ```
 
-Sequences steps 2/4 (ingest for OSM, validate-source for manual) → dev-server preflight → AI drive. Exits 0 on full success, 1 on any sub-step failure, 2 if the dev server is not running.
-
-**Note on cold starts**: `bun run dev` compiles WASM on first run, which can take several minutes. Run `bun run build:wasm` to pre-warm the WASM cache before running `track:add` on a fresh checkout.
+Runs ingest (for OSM) or validate-source (for manual). Exits 0 on success, 1 on any sub-step failure.
 
 ---
 
 ## Validation Thresholds
 
-Every source JSON and AI drive run is checked against the following bands. These were derived from first principles and then calibrated against the four existing circuits.
+Every source JSON is checked against the following bands. These were derived from first principles and then calibrated against the four existing circuits.
 
 ### Source-side checks (run by `track:validate-source` and inline in `track:ingest`)
 
@@ -205,38 +194,15 @@ Every source JSON and AI drive run is checked against the following bands. These
 | **Zero-length segments** | Every road segment ≥ 1 m | Zero-length segments produce NaN in the physics engine's raycast suspension. Upper bound of 60 m (MAX_SEGMENT_LENGTH) remains unchanged. |
 | **Curvature spikes** | No single segment's Menger curvature > 0.20 (radius < 5 m) | Below F1 wheelbase + suspension stroke; produces un-survivable kinks. Uses the same `computeCurvature` function as the converter. |
 
-### AI-drive checks (run by `track:ai-drive`)
-
-| Check | Threshold | Rationale |
-|-------|-----------|-----------|
-| **Lap completion** | Must cross start-finish once within 600 s (`MAX_VALIDATION_DRIVE_SECONDS`) | Tracks up to 7 km at conservative AI pace (~25–35 m/s) need this headroom. |
-| **Off-track budget** | Cumulative time with all 4 wheels off-track ≤ 10 s | Detects broken edge polylines without false-positives from grass-cutting at apexes. |
-| **Collision kill** | Zero `crashed` transitions in `useGameStore.gameStatus` | The Rapier contact callback for barriers resets the game state; any reset is a failure. |
-| **Lap time window** | Within `config.aiDriveLapTimeWindowSeconds = [floor, ceiling]` | Per-circuit, hand-set. Initial guidance: real F1 race pace × 2.0 (floor) and × 4.0 (ceiling). The AI driver is intentionally conservative; this slack band is correct. |
-
----
-
-## AI-Drive Failure Triage
-
-When `bun run track:ai-drive <name>` exits 1, the `failureReason` field in the printed summary indicates the root cause. Use this table:
-
-| `failureReason` | Likely root cause | First diagnostic step |
-|-----------------|-------------------|----------------------|
-| `off_track_budget_exceeded` | Edge polyline has a large gap or mis-traced section that the AI crosses repeatedly | Open the track in the editor; check for abrupt direction changes or single-node gaps in the road mesh. Compare the failing screenshot at `.cache/track-validation/<name>-failure.png` against the map. |
-| `timeout` | AI driver is stuck in a very tight hairpin or the centreline has a self-intersection | Check `.cache/track-validation/<name>-timeout.png`. Look for 180° reversals in the simplified polyline. Consider adding a `reverseDirection: true` if the AI is consistently heading the wrong way. |
-| `stuck_at_<x>_<z>` | Speed dropped below 5 m/s for > 5 s at the given world coordinates | The coordinate identifies the problem location precisely. Load the track, drive to that coordinate manually, and identify the geometric issue (tight kink, broken segment, overlapping road objects). |
-| `phase is "failed"` | Internal validation drive store transitioned to `failed` for a reason not listed above | Inspect `window.__VALIDATION_DRIVE_RESULT__` in the browser console for the full summary object including `offTrackSeconds` and `lapTimeSeconds`. |
-| `lapTimeSeconds outside window` | Lap time is outside `[floor, ceiling]` in the config | If the lap time is *above* the ceiling: the AI is driving too slowly — check for very tight sectors or a missing sector checkpoint that causes the driver to re-loop. If *below* the floor: the start-finish checkpoint may be mis-placed, causing the lap to register after only a partial lap. |
-
 ---
 
 ## Common Gotchas
 
 ### Wrong-way circuits (`reverseDirection`)
 
-OSM way ordering follows the digitising order of the original contributor, which is not always the race direction. If the AI consistently drives the circuit in the wrong direction (fast straight becomes a hairpin approach, or the car goes counter-clockwise on a clockwise circuit), set `reverseDirection: true` in the config and re-run `track:ingest`.
+OSM way ordering follows the digitising order of the original contributor, which is not always the race direction. If the start-finish checkpoint points the wrong way after ingest (fast straight becomes a hairpin approach, or the car spawns facing backwards), set `reverseDirection: true` in the config and re-run `track:ingest`.
 
-To detect the correct direction before running AI drive: open the written source in the in-app editor and observe the checkpoint arrows — they should point in the lap direction.
+To detect the correct direction: open the written source in the in-app editor and observe the checkpoint arrows — they should point in the lap direction.
 
 ### Karting tracks sharing the OSM area (`wayNameDenyList`)
 
@@ -262,7 +228,7 @@ If chaining still fails despite elevation zones, use `maxChainGap` to tighten th
 
 ### Missing sector checkpoints
 
-The in-app lap counter requires at least two `kind: "sector"` checkpoints in addition to the `kind: "start-finish"` checkpoint. The converter auto-places sector checkpoints at `sectorSplits` fractions along the polyline. If the auto-detected splits produce a sector that is only a few road objects long, the AI driver may not register it correctly.
+The in-app lap counter requires at least two `kind: "sector"` checkpoints in addition to the `kind: "start-finish"` checkpoint. The converter auto-places sector checkpoints at `sectorSplits` fractions along the polyline.
 
 Check the sector positions in the editor. Drag them to the closest straight section for reliable checkpoint crossing. Update `sectorSplits` in the config to a manual override if the auto-detected value is consistently wrong.
 
@@ -282,8 +248,7 @@ See the next section.
 
 - `bun run track:ingest <name>` skips the OSM fetch and exits 0 with a "skipped: manual provenance" message. It does not overwrite the source file.
 - `bun run track:validate-source <name>` still runs the full structural validator against the existing source JSON. Manual provenance does not exempt a circuit from validation.
-- `bun run track:ai-drive <name>` works normally — the AI driver validates playability regardless of how the source was produced.
-- `bun run track:add <name>` runs `track:validate-source` instead of `track:ingest`, then proceeds to `track:ai-drive`.
+- `bun run track:add <name>` runs `track:validate-source` instead of `track:ingest`.
 
 **Current manual-provenance circuits**: Silverstone, Monza, Shanghai. Their sources are the canonical artefacts. Modifying them requires going through the in-app editor, not re-running `track:ingest`.
 
@@ -379,24 +344,10 @@ Out of scope. MotoGP does not use the same circuits and has different circuit ge
 
 All suggestions below are **NOT IMPLEMENTED** in the current pipeline.
 
-**1. Lap-time window calibration** (NOT IMPLEMENTED)
+**1. Reference racing line** (NOT IMPLEMENTED)
 
-Pull the real F1 race pace from FastF1 for a given circuit:
+Sample the `X`, `Y` position trace from FastF1 at 5 m spacing. Apply the affine calibration (once computed) to convert from track-frame to our world coordinate system. Overlay the result as a debug line in the in-app track editor to visually compare against the centerline.
 
-```python
-import fastf1
-session = fastf1.get_session(2024, 'Great Britain', 'R')
-session.load()
-fastest = session.laps.pick_driver('HAM').pick_fastest()
-print(fastest['LapTime'].total_seconds())  # e.g. 90.4 s
-```
-
-Multiply by 2.0 for the floor (conservative AI slowness) and 4.0 for the ceiling. Write into `aiDriveLapTimeWindowSeconds` in the circuit config. This would replace the current placeholder values of `[120, 480]` with empirically-grounded bounds.
-
-**2. Reference racing line** (NOT IMPLEMENTED)
-
-Sample the `X`, `Y` position trace from FastF1 at 5 m spacing. Apply the affine calibration (once computed) to convert from track-frame to our world coordinate system. Overlay the result as a debug line in the in-app track editor to visually compare the AI driver's centreline-following path against the real racing line.
-
-**3. Reference braking points** (NOT IMPLEMENTED)
+**2. Reference braking points** (NOT IMPLEMENTED)
 
 Sample the `Brake` channel against `X`, `Y` position. Identify the lap-fraction at which heavy braking begins on each long straight. Use those fractions to inform placement of future barrier objects — long straights currently have no barriers because the physics engine does not enforce run-off zones. Real braking points would identify where barriers matter most.
