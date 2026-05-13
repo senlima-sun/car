@@ -14,9 +14,6 @@ interface TrackRibbonProps {
   isGhost?: boolean
 }
 
-/** @deprecated Use buildRibbonLayers from ./geometry/ribbonGeometry directly. Will be removed at end of Wave 3. */
-export const buildRibbon = buildRibbonLayers
-
 export default function TrackRibbon({ points, closed, width, isGhost = false }: TrackRibbonProps) {
   const ribbon = useMemo(() => buildRibbonLayers(points, closed, width), [points, closed, width])
   const enterSurface = useSurfaceStore(s => s.enterSurface)
@@ -32,31 +29,33 @@ export default function TrackRibbon({ points, closed, width, isGhost = false }: 
 
   return (
     <group>
-      <RigidBody type='fixed' colliders={false} friction={1.0}>
-        <TrimeshCollider
-          args={[ribbon.collisionVertices, ribbon.collisionIndices]}
-          collisionGroups={TRACK_COLLISION_GROUPS}
-        />
-      </RigidBody>
       {!isGhost && (
-        <RigidBody type='fixed' colliders={false}>
-          {ribbon.mainSensorIndices.length > 0 && (
+        <>
+          <RigidBody type='fixed' colliders={false} friction={1.0}>
             <TrimeshCollider
-              args={[ribbon.mainSensorVertices, ribbon.mainSensorIndices]}
-              sensor
-              onIntersectionEnter={enterRoad}
-              onIntersectionExit={exitRoad}
+              args={[ribbon.collisionVertices, ribbon.collisionIndices]}
+              collisionGroups={TRACK_COLLISION_GROUPS}
             />
-          )}
-          {ribbon.pitSensorIndices && ribbon.pitSensorVertices && (
-            <TrimeshCollider
-              args={[ribbon.pitSensorVertices, ribbon.pitSensorIndices]}
-              sensor
-              onIntersectionEnter={enterPit}
-              onIntersectionExit={exitPit}
-            />
-          )}
-        </RigidBody>
+          </RigidBody>
+          <RigidBody type='fixed' colliders={false}>
+            {ribbon.mainSensorIndices.length > 0 && (
+              <TrimeshCollider
+                args={[ribbon.mainSensorVertices, ribbon.mainSensorIndices]}
+                sensor
+                onIntersectionEnter={enterRoad}
+                onIntersectionExit={exitRoad}
+              />
+            )}
+            {ribbon.pitSensorIndices && ribbon.pitSensorVertices && (
+              <TrimeshCollider
+                args={[ribbon.pitSensorVertices, ribbon.pitSensorIndices]}
+                sensor
+                onIntersectionEnter={enterPit}
+                onIntersectionExit={exitPit}
+              />
+            )}
+          </RigidBody>
+        </>
       )}
       <mesh geometry={ribbon.mainGeometry} receiveShadow>
         <RoadSurfaceMaterial isGhost={isGhost} variant='road' />

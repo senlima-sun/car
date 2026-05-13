@@ -2,11 +2,11 @@ import { describe, expect, test } from 'bun:test'
 import { Vector3 } from 'three'
 import { TRACK_EDGE_LINE_WIDTH } from '../../../constants/dimensions'
 import { TRACK_LAYER_Y_OFFSETS } from '../../../constants/trackLayers'
-import { buildRibbon } from './TrackRibbon'
+import { buildRibbonLayers } from './geometry/ribbonGeometry'
 
-describe('buildRibbon', () => {
+describe('buildRibbonLayers (ribbon-level invariants)', () => {
   test('top-face triangles wind upward for rendering from above', () => {
-    const ribbon = buildRibbon(
+    const ribbon = buildRibbonLayers(
       [
         { x: 0, y: 0, z: 0, isPitLane: false },
         { x: 10, y: 0, z: 0, isPitLane: false },
@@ -35,7 +35,7 @@ describe('buildRibbon', () => {
   })
 
   test('places white edge lines inside the road surface', () => {
-    const ribbon = buildRibbon(
+    const ribbon = buildRibbonLayers(
       [
         { x: 0, y: 0, z: 0, isPitLane: false },
         { x: 10, y: 0, z: 0, isPitLane: false },
@@ -56,7 +56,7 @@ describe('buildRibbon', () => {
   })
 
   test('keeps painted area above grass displacement and below white edge lines', () => {
-    const ribbon = buildRibbon(
+    const ribbon = buildRibbonLayers(
       [
         { x: 0, y: 0, z: 0, isPitLane: false },
         { x: 10, y: 0, z: 0, isPitLane: false },

@@ -1,4 +1,7 @@
+import { useMemo } from 'react'
 import { useTrackEditorStore } from './state/useTrackEditorStore'
+import { useTrackStore } from '../../../stores/useTrackStore'
+import { IS_DEV } from '../../../utils/isDev'
 
 type ShortcutHint = {
   key: string
@@ -10,6 +13,12 @@ export default function HintBar() {
   const pen = useTrackEditorStore(s => s.pen)
   const selected = useTrackEditorStore(s => s.selected)
   const selectedPitBoxAreaId = useTrackEditorStore(s => s.selectedPitBoxAreaId)
+  const activeTrackId = useTrackStore(s => s.trackLibrary.activeTrackId)
+  const tracks = useTrackStore(s => s.trackLibrary.tracks)
+  const activePresetId = useMemo(() => {
+    if (!activeTrackId) return null
+    return tracks.find(t => t.id === activeTrackId)?.presetId ?? null
+  }, [activeTrackId, tracks])
 
   const shortcuts: ShortcutHint[] = (() => {
     if (tool === 'pen') {
@@ -93,8 +102,23 @@ export default function HintBar() {
         {shortcuts.map(shortcut => (
           <ShortcutChip key={`${shortcut.key}-${shortcut.label}`} shortcut={shortcut} />
         ))}
+        {IS_DEV && activePresetId && <PreviewLink presetId={activePresetId} />}
       </div>
     </div>
+  )
+}
+
+function PreviewLink({ presetId }: { presetId: string }) {
+  return (
+    <a
+      href={`/track-preview?track=${presetId}`}
+      target='_blank'
+      rel='noopener'
+      className='pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-cyan-500/15 px-2.5 py-1 text-[11px] text-cyan-200 backdrop-blur-md hover:bg-cyan-500/25'
+    >
+      <span className='text-[10px] font-semibold uppercase tracking-[0.14em]'>Preview</span>
+      <span>Open ↗</span>
+    </a>
   )
 }
 

@@ -128,6 +128,8 @@ const server = serve({
   },
   routes: {
     '/': index,
+    '/track-preview': index,
+    '/track-preview/*': index,
   },
   fetch(req) {
     const url = new URL(req.url)

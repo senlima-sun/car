@@ -14,6 +14,10 @@ if ('serviceWorker' in navigator && !IS_DEV) {
 }
 
 const App = lazy(() => import('./App'))
+const TrackPreviewApp = lazy(() => import('./preview/TrackPreviewApp'))
+
+const isTrackPreviewRoute = window.location.pathname.startsWith('/track-preview')
+const Root = isTrackPreviewRoute ? TrackPreviewApp : App
 
 function AppLoading() {
   return (
@@ -39,7 +43,7 @@ function AppLoading() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Suspense fallback={<AppLoading />}>
-      <App />
+      <Root />
     </Suspense>
   </StrictMode>,
 )
