@@ -1,7 +1,6 @@
-import { Suspense, useMemo } from 'react'
+import { useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, OrthographicCamera } from '@react-three/drei'
-import { Physics } from '@react-three/rapier'
 import { PRESET_TRACKS, getPresetTrack } from '../constants/tracks'
 import TrackPreviewScene from './TrackPreviewScene'
 import LayerTogglePanel from './LayerTogglePanel'
@@ -19,7 +18,7 @@ export default function TrackPreviewApp() {
   }
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#1a1a2e', position: 'relative' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#3a5a3a', position: 'relative' }}>
       <Canvas dpr={[1, 2]}>
         <OrthographicCamera makeDefault position={[0, 200, 0]} zoom={2} near={0.1} far={2000} />
         <ambientLight intensity={0.7} />
@@ -32,11 +31,7 @@ export default function TrackPreviewApp() {
           maxZoom={40}
           mouseButtons={{ LEFT: 2, MIDDLE: 1, RIGHT: 0 }}
         />
-        <Suspense fallback={null}>
-          <Physics paused>
-            <TrackPreviewScene track={track} />
-          </Physics>
-        </Suspense>
+        <TrackPreviewScene track={track} />
       </Canvas>
       <LayerTogglePanel trackName={track.name ?? track.id} />
     </div>
@@ -49,7 +44,7 @@ function FallbackList({ reason }: { reason: string }) {
       style={{
         width: '100vw',
         height: '100vh',
-        background: '#1a1a2e',
+        background: '#3a5a3a',
         color: '#eee',
         fontFamily: 'system-ui, sans-serif',
         display: 'flex',

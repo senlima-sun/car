@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import TrackObjectWrapper from '../components/canvas/TrackObjects/TrackObjectWrapper'
+import PreviewTrackObject from './PreviewTrackObject'
 import { getLayerGroup } from '../utils/trackLayerGroup'
 import { useLayerToggleStore } from './useLayerToggleStore'
 import type { PresetTrack } from '../constants/tracks'
@@ -15,7 +15,8 @@ export default function TrackPreviewScene({ track }: TrackPreviewSceneProps) {
     () =>
       track.objects.filter(obj => {
         const group = getLayerGroup(obj)
-        return group === null || visible[group]
+        if (group === null) return false
+        return visible[group]
       }),
     [track, visible],
   )
@@ -23,7 +24,7 @@ export default function TrackPreviewScene({ track }: TrackPreviewSceneProps) {
   return (
     <group>
       {visibleObjects.map(obj => (
-        <TrackObjectWrapper key={obj.id} object={obj} enablePhysics={false} isGhost />
+        <PreviewTrackObject key={obj.id} object={obj} />
       ))}
     </group>
   )
