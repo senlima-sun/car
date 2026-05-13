@@ -2,6 +2,7 @@ import silverstoneSource from './sources/silverstone.json'
 import suzukaSource from './sources/suzuka.json'
 import monzaSource from './sources/monza.json'
 import shanghaiSource from './sources/shanghai.json'
+import spaSource from './sources/spa.json'
 import {
   buildRuntimePresetTrack,
   type EditorTrackSource,
@@ -15,6 +16,7 @@ export const PRESET_TRACKS: PresetTrack[] = [
   suzukaSource as EditorTrackSource,
   monzaSource as EditorTrackSource,
   shanghaiSource as EditorTrackSource,
+  spaSource as EditorTrackSource,
 ].map(buildRuntimePresetTrack)
 
 export function getPresetTrack(id: string): PresetTrack | undefined {
