@@ -53,6 +53,14 @@ export type CurbDrag = {
   pathEnd: number
 }
 
+export type CheckpointDrag = {
+  kind: 'checkpoint'
+  id: string
+  origin: { pathId: string; segmentIndex: number; t: number }
+  startScreen: Point
+  moved: boolean
+}
+
 export type Drag =
   | PenDrag
   | HandleDrag
@@ -61,4 +69,5 @@ export type Drag =
   | PitAreaDrag
   | PitAreaRotateDrag
   | CurbDrag
+  | CheckpointDrag
   | null

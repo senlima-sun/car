@@ -29,6 +29,8 @@ export function useShortcuts() {
         setAnchorPoint,
         selectedCurbId,
         deleteCurb,
+        selectedCheckpointId,
+        deleteCheckpoint,
       } = state
 
       if (mod && (e.key === 'z' || e.key === 'Z')) {
@@ -77,6 +79,11 @@ export function useShortcuts() {
         return
       }
       if (e.key === 'Backspace' || e.key === 'Delete') {
+        if (selectedCheckpointId) {
+          e.preventDefault()
+          deleteCheckpoint(selectedCheckpointId)
+          return
+        }
         if (selectedCurbId) {
           e.preventDefault()
           deleteCurb(selectedCurbId)

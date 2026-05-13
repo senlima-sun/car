@@ -1,8 +1,8 @@
-import type { AnchorRef, HandleRef, Path, PitBoxArea, Point } from './types'
+import type { AnchorRef, CheckpointMarker, HandleRef, Path, PitBoxArea, Point } from './types'
 import { getAnchor, resolveAnchor } from './path'
 import { dist } from './point'
 import { worldToScreen, type Viewport } from './viewport'
-import { pointOnPathAt } from './closestPoint'
+import { pointOnPath, pointOnPathAt } from './closestPoint'
 
 export const HIT_RADIUS_SCREEN = 10
 export const CLOSE_RADIUS_SCREEN = 12
@@ -13,6 +13,54 @@ export const PIT_AREA_DEPTH = 15
 export const PIT_ROTATE_HANDLE_DIST = 2
 export const CURB_HIT_RADIUS_SCREEN = 8
 export const CURB_OFFSET_SCREEN = 5
+export const CHECKPOINT_HIT_RADIUS_SCREEN = 14
+export const CHECKPOINT_WIDTH_WORLD = 12
+
+export function hitTestCheckpoint(
+  paths: Path[],
+  viewport: Viewport,
+  checkpoints: CheckpointMarker[],
+  screen: Point,
+): string | null {
+  let best: { id: string; dist: number } | null = null
+  for (let i = checkpoints.length - 1; i >= 0; i--) {
+    const cp = checkpoints[i]!
+    const path = paths.find(p => p.id === cp.pathId)
+    if (!path) continue
+    const onPath = pointOnPath(path, cp.segmentIndex, cp.t, paths)
+    if (!onPath) continue
+    const centerScreen = worldToScreen(viewport, onPath.point)
+    const dCenter = dist(centerScreen, screen)
+    if (dCenter <= CHECKPOINT_HIT_RADIUS_SCREEN) {
+      if (!best || dCenter < best.dist) best = { id: cp.id, dist: dCenter }
+      continue
+    }
+    const half = CHECKPOINT_WIDTH_WORLD / 2
+    const left = worldToScreen(viewport, {
+      x: onPath.point.x - onPath.tangent.y * half,
+      y: onPath.point.y + onPath.tangent.x * half,
+    })
+    const right = worldToScreen(viewport, {
+      x: onPath.point.x + onPath.tangent.y * half,
+      y: onPath.point.y - onPath.tangent.x * half,
+    })
+    const lineDist = pointToSegmentDist(screen, left, right)
+    if (lineDist <= CHECKPOINT_HIT_RADIUS_SCREEN && (!best || lineDist < best.dist)) {
+      best = { id: cp.id, dist: lineDist }
+    }
+  }
+  return best?.id ?? null
+}
+
+function pointToSegmentDist(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const L2 = dx * dx + dy * dy
+  if (L2 < 1e-9) return dist(p, a)
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2
+  t = Math.max(0, Math.min(1, t))
+  return dist(p, { x: a.x + t * dx, y: a.y + t * dy })
+}
 
 export function hitTestAnchor(
   paths: Path[],

@@ -44,6 +44,7 @@ type EditorState = {
   pitBoxAreas: PitBoxArea[]
   curbs: CurbMarker[]
   selectedCurbId: string | null
+  selectedCheckpointId: string | null
   pendingCurbVariant: CurbVariant
   viewport: Viewport
   tool: Tool
@@ -87,6 +88,11 @@ type EditorState = {
 
   addCheckpoint: (kind: CheckpointKind, pathId: string, segmentIndex: number, t: number) => void
   deleteCheckpoint: (id: string) => void
+  updateCheckpoint: (
+    id: string,
+    updates: { pathId?: string; segmentIndex?: number; t?: number },
+  ) => void
+  setSelectedCheckpointId: (id: string | null) => void
   setRaceDirection: (d: RaceDirection) => void
 
   markPitLaneSegments: (pathId: string, segmentIndices: number[]) => void
@@ -220,6 +226,7 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
   pitBoxAreas: [],
   curbs: [],
   selectedCurbId: null,
+  selectedCheckpointId: null,
   pendingCurbVariant: 'apex',
   viewport: identityViewport(),
   tool: 'pen',
@@ -247,6 +254,7 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         selectedPitBoxAreaId: t === 'select' ? s.selectedPitBoxAreaId : null,
         selectedPathId: t === 'select' ? s.selectedPathId : null,
         selectedCurbId: t === 'select' ? s.selectedCurbId : null,
+        selectedCheckpointId: t === 'select' ? s.selectedCheckpointId : null,
       }
     }),
 
@@ -450,6 +458,10 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         selectedPathId: s.selectedPathId === id ? null : s.selectedPathId,
         selectedCurbId:
           s.selectedCurbId && curbs.find(c => c.id === s.selectedCurbId) ? s.selectedCurbId : null,
+        selectedCheckpointId:
+          s.selectedCheckpointId && checkpoints.find(c => c.id === s.selectedCheckpointId)
+            ? s.selectedCheckpointId
+            : null,
       }
     })
   },
@@ -569,6 +581,10 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         selectedCurbId:
           s.selectedCurbId && finalCurbs.find(c => c.id === s.selectedCurbId)
             ? s.selectedCurbId
+            : null,
+        selectedCheckpointId:
+          s.selectedCheckpointId && checkpoints.find(c => c.id === s.selectedCheckpointId)
+            ? s.selectedCheckpointId
             : null,
       }
     })
@@ -733,10 +749,31 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
     const past = [...get().past, snapshotOf(get())].slice(-HISTORY_LIMIT)
     set(s => ({
       checkpoints: s.checkpoints.filter(c => c.id !== id),
+      selectedCheckpointId: s.selectedCheckpointId === id ? null : s.selectedCheckpointId,
       past,
       future: [],
     }))
   },
+
+  updateCheckpoint: (id, updates) => {
+    set(s => ({
+      checkpoints: s.checkpoints.map(c => (c.id === id ? { ...c, ...updates } : c)),
+    }))
+  },
+
+  setSelectedCheckpointId: id =>
+    set(() => ({
+      selectedCheckpointId: id,
+      ...(id != null
+        ? {
+            selected: null,
+            selectedAnchors: [],
+            selectedPathId: null,
+            selectedPitBoxAreaId: null,
+            selectedCurbId: null,
+          }
+        : {}),
+    })),
 
   setRaceDirection: d => {
     const past = [...get().past, snapshotOf(get())].slice(-HISTORY_LIMIT)
@@ -768,6 +805,7 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         selectedPitBoxAreaId: null,
         selectedPathId: null,
         selectedCurbId: null,
+        selectedCheckpointId: null,
       }
     })
   },
@@ -790,6 +828,7 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
         selectedPitBoxAreaId: null,
         selectedPathId: null,
         selectedCurbId: null,
+        selectedCheckpointId: null,
       }
     })
   },
@@ -809,6 +848,7 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
       selectedPitBoxAreaId: null,
       selectedPathId: null,
       selectedCurbId: null,
+        selectedCheckpointId: null,
     })
   },
 
@@ -830,6 +870,7 @@ export const useTrackEditorStore = create<EditorState>((set, get) => ({
       selectedPitBoxAreaId: null,
       selectedPathId: null,
       selectedCurbId: null,
+        selectedCheckpointId: null,
     })
   },
 }))

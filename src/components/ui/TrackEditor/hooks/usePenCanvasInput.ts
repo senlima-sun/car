@@ -13,6 +13,7 @@ import {
   PATH_HIT_RADIUS_SCREEN,
   edgeSideAt,
   hitTestAnchor,
+  hitTestCheckpoint,
   hitTestCurb,
   hitTestHandle,
   hitTestPitArea,
@@ -251,6 +252,22 @@ export function usePenCanvasInput(args: {
 
     if (tool === 'select') {
       const world = worldOf(e)
+      const checkpointHit = hitTestCheckpoint(doc.paths, viewport, store.checkpoints, screen)
+      if (checkpointHit) {
+        const cp = store.checkpoints.find(c => c.id === checkpointHit)
+        if (cp) {
+          store.setSelectedCheckpointId(checkpointHit)
+          setDrag({
+            kind: 'checkpoint',
+            id: checkpointHit,
+            origin: { pathId: cp.pathId, segmentIndex: cp.segmentIndex, t: cp.t },
+            startScreen: screen,
+            moved: false,
+          })
+          return
+        }
+      }
+      if (store.selectedCheckpointId) store.setSelectedCheckpointId(null)
       const curbHit = hitTestCurb(doc.paths, viewport, store.curbs, screen)
       if (curbHit) {
         store.setSelectedCurbId(curbHit)
@@ -491,6 +508,23 @@ export function usePenCanvasInput(args: {
       if (!hit) return
       const pathPos = hit.segmentIndex + hit.t
       setDrag({ ...drag, pathEnd: pathPos })
+      return
+    }
+
+    if (drag.kind === 'checkpoint') {
+      const moved = drag.moved || dist(screen, drag.startScreen) > DRAG_THRESHOLD_SCREEN
+      if (!drag.moved && moved) {
+        store.commit()
+        setDrag({ ...drag, moved: true })
+      }
+      const path = doc.paths.find(p => p.id === drag.origin.pathId)
+      if (!path) return
+      const hit = closestPointOnPath(path, world, doc.paths)
+      if (!hit) return
+      store.updateCheckpoint(drag.id, {
+        segmentIndex: hit.segmentIndex,
+        t: hit.t,
+      })
       return
     }
   }
