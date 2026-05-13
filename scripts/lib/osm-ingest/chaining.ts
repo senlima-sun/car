@@ -122,6 +122,55 @@ function sequenceToNodes(ways: OSMWay[], sequence: ChainStep[]): number[] {
   return orderedNodes
 }
 
+export function orderWaysByRelationMembers(
+  ways: OSMWay[],
+  memberWayIds: number[],
+): number[] | null {
+  const wayById = new Map<number, OSMWay>()
+  for (const w of ways) wayById.set(w.id, w)
+  const orderedWays: OSMWay[] = []
+  for (const id of memberWayIds) {
+    const w = wayById.get(id)
+    if (w) orderedWays.push(w)
+  }
+  if (orderedWays.length < 2) return null
+
+  let result: number[] | null = null
+  let bestUnmatched = Infinity
+
+  for (const startReverse of [false, true]) {
+    const trial: number[] = []
+    let lastEnd: number | null = null
+    let unmatched = 0
+    for (let i = 0; i < orderedWays.length; i++) {
+      const w = orderedWays[i]!
+      const nFirst = w.nodes[0]!
+      const nLast = w.nodes[w.nodes.length - 1]!
+      let reverse = i === 0 ? startReverse : false
+      if (i > 0 && lastEnd != null) {
+        if (nFirst === lastEnd) reverse = false
+        else if (nLast === lastEnd) reverse = true
+        else {
+          unmatched++
+          continue
+        }
+      }
+      const nodes = reverse ? [...w.nodes].reverse() : [...w.nodes]
+      if (trial.length === 0) trial.push(...nodes)
+      else trial.push(...(nodes[0] === lastEnd ? nodes.slice(1) : nodes))
+      lastEnd = reverse ? nFirst : nLast
+    }
+    if (unmatched < bestUnmatched) {
+      bestUnmatched = unmatched
+      result = trial
+    }
+  }
+
+  if (!result) return null
+  if (bestUnmatched > orderedWays.length * 0.2) return null
+  return result
+}
+
 export function orderWaysIntoCircuit(
   ways: OSMWay[],
   nodes: Map<number, OSMNode>,

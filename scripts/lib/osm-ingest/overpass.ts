@@ -12,8 +12,15 @@ export interface OSMWay {
   tags: Record<string, string>
 }
 
+export interface OSMRelation {
+  type: 'relation'
+  id: number
+  members: { type: string; ref: number; role: string }[]
+  tags?: Record<string, string>
+}
+
 export interface OSMResponse {
-  elements: (OSMNode | OSMWay)[]
+  elements: (OSMNode | OSMWay | OSMRelation)[]
 }
 
 export async function fetchOSMData(query: string): Promise<OSMResponse> {
@@ -48,16 +55,19 @@ export async function fetchOSMData(query: string): Promise<OSMResponse> {
 export function extractNodesAndWays(data: OSMResponse): {
   nodes: Map<number, OSMNode>
   ways: OSMWay[]
+  relations: OSMRelation[]
 } {
   const nodes = new Map<number, OSMNode>()
   const ways: OSMWay[] = []
+  const relations: OSMRelation[] = []
 
   for (const el of data.elements) {
     if (el.type === 'node') nodes.set(el.id, el)
-    if (el.type === 'way') ways.push(el)
+    else if (el.type === 'way') ways.push(el)
+    else if (el.type === 'relation') relations.push(el)
   }
 
-  return { nodes, ways }
+  return { nodes, ways, relations }
 }
 
 export function buildOverpassQuery(
@@ -68,6 +78,7 @@ export function buildOverpassQuery(
   if (relationId != null) {
     return `[out:json][timeout:60];
       rel(${relationId});
+      out body;
       (
         way(r);
       );

@@ -5,6 +5,7 @@ import {
   fetchOSMData,
   extractNodesAndWays,
   orderWaysIntoCircuit,
+  orderWaysByRelationMembers,
   gpsToWorld,
   douglasPeucker,
   computeCurvature,
@@ -436,8 +437,8 @@ async function convertCircuit(circuitName: string): Promise<void> {
     config.overpass.relationId,
   )
   const osmData = await fetchOSMData(query)
-  const { nodes, ways } = extractNodesAndWays(osmData)
-  console.log(`  📍 Fetched ${nodes.size} nodes, ${ways.length} ways`)
+  const { nodes, ways, relations } = extractNodesAndWays(osmData)
+  console.log(`  📍 Fetched ${nodes.size} nodes, ${ways.length} ways, ${relations.length} relations`)
 
   const denyList = config.wayNameDenyList ?? []
   const gpWays = ways.filter(way => {
@@ -446,12 +447,38 @@ async function convertCircuit(circuitName: string): Promise<void> {
   })
   console.log(`  🏁 GP circuit: ${gpWays.length} ways`)
 
-  const orderedNodeIds = orderWaysIntoCircuit(
-    gpWays,
-    nodes,
-    config.startWayName,
-    config.maxChainGap ?? 100,
-  )
+  const skipRelationRoles = new Set([
+    'pit_lane',
+    'pitlane',
+    'pit',
+    'service',
+    'access',
+    'connector',
+    'shortcut',
+    'alternative',
+  ])
+  let orderedNodeIds: number[] | null = null
+  if (config.overpass.relationId != null) {
+    const rel = relations.find(r => r.id === config.overpass!.relationId)
+    if (rel) {
+      const memberWayIds = rel.members
+        .filter(m => m.type === 'way' && !skipRelationRoles.has(m.role.toLowerCase()))
+        .map(m => m.ref)
+      const result = orderWaysByRelationMembers(gpWays, memberWayIds)
+      if (result) {
+        orderedNodeIds = result
+        console.log(`  🔗 Chained ${memberWayIds.length}/${gpWays.length} ways via relation-member order`)
+      }
+    }
+  }
+  if (!orderedNodeIds) {
+    orderedNodeIds = orderWaysIntoCircuit(
+      gpWays,
+      nodes,
+      config.startWayName,
+      config.maxChainGap ?? 100,
+    )
+  }
   console.log(`  🔗 Ordered circuit: ${orderedNodeIds.length} nodes`)
 
   if (config.reverseDirection) {
