@@ -10,6 +10,8 @@ import {
 import silverstoneSource from '@/constants/tracks/sources/silverstone.json'
 import suzukaSource from '@/constants/tracks/sources/suzuka.json'
 import monzaSource from '@/constants/tracks/sources/monza.json'
+import miamiSource from '@/constants/tracks/sources/miami.json'
+import { buildEdgeLineGeometry } from '@/components/canvas/TrackObjects/geometry/ribbonGeometry'
 
 describe('buildTrackObjectsFromEditorSource', () => {
   test('builds runtime objects from editor-native data', () => {
@@ -239,6 +241,41 @@ describe('preset checkpoints stay on the rendered ribbon', () => {
           }
         }
         expect(minDist).toBeLessThanOrEqual(TRACK_WIDTH / 4)
+      }
+    })
+  }
+})
+
+describe('preset edge lines stay on the rendered ribbon', () => {
+  const presets: Array<[string, EditorTrackDocument]> = [
+    ['miami', miamiSource as unknown as EditorTrackDocument],
+    ['suzuka', suzukaSource as unknown as EditorTrackDocument],
+  ]
+
+  for (const [name, source] of presets) {
+    test(`${name} edge lines build from parent ribbon boundaries`, () => {
+      const objects = buildTrackObjectsFromEditorSource(source)
+      const ribbons = objects.filter(o => o.type === 'track_ribbon')
+      const edgeLines = objects.filter(o => o.type === 'edge_line')
+
+      expect(ribbons.length).toBeGreaterThan(0)
+      expect(edgeLines.length).toBe(ribbons.length * 2)
+
+      for (const edgeLine of edgeLines) {
+        const parent = ribbons.find(ribbon => ribbon.id === edgeLine.parentRibbonId)
+        expect(parent?.ribbonPoints?.length).toBeGreaterThan(1)
+        expect(edgeLine.parentSide).toBeDefined()
+
+        const geometry = buildEdgeLineGeometry(
+          parent!.ribbonPoints!,
+          parent!.ribbonClosed ?? false,
+          parent!.width ?? TRACK_WIDTH,
+          edgeLine.parentSide!,
+          edgeLine.derivedWidth ?? edgeLine.width ?? 0.2,
+        )
+
+        expect(geometry).not.toBeNull()
+        expect(geometry!.indices.length).toBe(parent!.ribbonPoints!.length * 6)
       }
     })
   }

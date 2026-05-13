@@ -3,7 +3,7 @@ import { BufferGeometry } from 'three'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '@/constants/trackLayers'
 import { GHOST_OPACITY } from '@/constants/trackObjects'
 import { resolveParentDerivedLayer } from '@/utils/parentDerivedLayer'
-import { buildAsphaltGeometry } from './geometry/ribbonGeometry'
+import { buildAsphaltGeometry, buildEdgeLineGeometry } from './geometry/ribbonGeometry'
 import type { PlacedObject } from '@/types/trackObjects'
 
 interface EdgeLineProps {
@@ -21,6 +21,22 @@ export default function EdgeLine({ placed, parentRibbon, isGhost = false }: Edge
   }
 
   const geometries = useMemo<BufferGeometry[]>(() => {
+    if (
+      parentRibbon?.ribbonPoints &&
+      parentRibbon.ribbonPoints.length >= 2 &&
+      placed.parentSide &&
+      !placed.tRange
+    ) {
+      const built = buildEdgeLineGeometry(
+        parentRibbon.ribbonPoints,
+        parentRibbon.ribbonClosed ?? false,
+        parentRibbon.width ?? 12,
+        placed.parentSide,
+        placed.derivedWidth ?? placed.width ?? 0.2,
+      )
+      return built ? [built.geometry] : []
+    }
+
     const segments = resolveParentDerivedLayer(placed, { parent: parentRibbon })
     const out: BufferGeometry[] = []
     for (const seg of segments) {

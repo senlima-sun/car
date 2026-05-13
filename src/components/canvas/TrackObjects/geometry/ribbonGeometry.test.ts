@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   buildAsphaltGeometry,
+  buildEdgeLineGeometry,
   buildPitLaneGeometry,
   buildRibbonLayers,
   computeRibbonFrames,
@@ -124,5 +125,32 @@ describe('buildRibbonLayers', () => {
   test('collision vertices equal main positions', () => {
     const layers = buildRibbonLayers(STRAIGHT, false, 12)!
     arraysCloseEnough(layers.collisionVertices, layers.mainSensorVertices)
+  })
+})
+
+describe('buildEdgeLineGeometry', () => {
+  test('left edge line uses the parent asphalt left boundary as its outside edge', () => {
+    const parentFrames = computeRibbonFrames(STRAIGHT, false, 12)!
+    const result = buildEdgeLineGeometry(STRAIGHT, false, 12, 'left', 0.2)!
+    expect(result.indices.length).toBe(6)
+    expect(result.positions[0]).toBeCloseTo(parentFrames.leftPositions[0]!.x)
+    expect(result.positions[1]).toBeCloseTo(parentFrames.leftPositions[0]!.y + 0.002)
+    expect(result.positions[2]).toBeCloseTo(parentFrames.leftPositions[0]!.z)
+    expect(result.positions[5]).toBeCloseTo(5.8)
+  })
+
+  test('right edge line uses the parent asphalt right boundary as its outside edge', () => {
+    const parentFrames = computeRibbonFrames(STRAIGHT, false, 12)!
+    const result = buildEdgeLineGeometry(STRAIGHT, false, 12, 'right', 0.2)!
+    expect(result.indices.length).toBe(6)
+    expect(result.positions[3]).toBeCloseTo(parentFrames.rightPositions[0]!.x)
+    expect(result.positions[4]).toBeCloseTo(parentFrames.rightPositions[0]!.y + 0.002)
+    expect(result.positions[5]).toBeCloseTo(parentFrames.rightPositions[0]!.z)
+    expect(result.positions[2]).toBeCloseTo(-5.8)
+  })
+
+  test('closed edge line keeps the parent segment count', () => {
+    const result = buildEdgeLineGeometry(CLOSED_LOOP, true, 12, 'left', 0.2)!
+    expect(result.indices.length).toBe(CLOSED_LOOP.length * 6)
   })
 })

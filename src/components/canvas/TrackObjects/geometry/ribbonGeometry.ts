@@ -22,6 +22,15 @@ export interface PitGeometryResult {
   indices: number[]
 }
 
+export interface EdgeLineGeometryResult {
+  geometry: BufferGeometry
+  positions: Float32Array
+  uvs: Float32Array
+  normals: Float32Array
+  indices: number[]
+  frames: RibbonFrames
+}
+
 export interface RibbonLayers {
   mainGeometry: BufferGeometry
   pitGeometry: BufferGeometry | null
@@ -137,6 +146,72 @@ function segmentRibbonIndices(points: TrackRibbonPoint[], closed: boolean) {
   }
 
   return { mainIndices, pitIndices }
+}
+
+function segmentAllRibbonIndices(points: TrackRibbonPoint[], closed: boolean): number[] {
+  const n = points.length
+  const segmentCount = closed ? n : n - 1
+  const indices: number[] = []
+
+  for (let i = 0; i < segmentCount; i++) {
+    const a = i
+    const b = (i + 1) % n
+    const iA_L = a * 2
+    const iA_R = a * 2 + 1
+    const iB_L = b * 2
+    const iB_R = b * 2 + 1
+    indices.push(iA_L, iB_L, iA_R)
+    indices.push(iB_L, iB_R, iA_R)
+  }
+
+  return indices
+}
+
+export function buildEdgeLineGeometry(
+  points: TrackRibbonPoint[],
+  closed: boolean,
+  parentWidth: number,
+  side: 'left' | 'right',
+  lineWidth: number,
+): EdgeLineGeometryResult | null {
+  const n = points.length
+  if (n < 2 || parentWidth <= 0 || lineWidth <= 0) return null
+
+  const halfParent = parentWidth / 2
+  const innerHalf = Math.max(0, halfParent - lineWidth)
+  const surfaceY = TRACK_LAYER_Y_OFFSETS.EDGE_LINE
+  const tangents = computeRibbonTangents(points, closed)
+  const leftPositions: Vector3[] = []
+  const rightPositions: Vector3[] = []
+
+  for (let i = 0; i < n; i++) {
+    const p = points[i]!
+    const tan = tangents[i]!
+    const nx = -tan.z
+    const nz = tan.x
+    const y = p.y + surfaceY
+
+    if (side === 'left') {
+      leftPositions.push(new Vector3(p.x + nx * halfParent, y, p.z + nz * halfParent))
+      rightPositions.push(new Vector3(p.x + nx * innerHalf, y, p.z + nz * innerHalf))
+    } else {
+      leftPositions.push(new Vector3(p.x - nx * innerHalf, y, p.z - nz * innerHalf))
+      rightPositions.push(new Vector3(p.x - nx * halfParent, y, p.z - nz * halfParent))
+    }
+  }
+
+  const frames = { leftPositions, rightPositions }
+  const { positions, uvs, normals } = buildRibbonAttributes(frames)
+  const indices = segmentAllRibbonIndices(points, closed)
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3))
+  geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2))
+  geometry.setAttribute('normal', new Float32BufferAttribute(normals, 3))
+  geometry.setIndex(indices)
+  geometry.computeBoundingBox()
+  geometry.computeBoundingSphere()
+
+  return { geometry, positions, uvs, normals, indices, frames }
 }
 
 export function buildAsphaltGeometry(
