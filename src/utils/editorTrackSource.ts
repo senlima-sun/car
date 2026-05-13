@@ -15,6 +15,7 @@ import { PAINTED_WIDTH, TRACK_EDGE_LINE_WIDTH, TRACK_WIDTH } from '@/constants/d
 import { CURB_WIDTH } from '@/constants/curb'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 import { realignCheckpointToRibbons } from '@/utils/checkpointAlignment'
+import { bezierTToArcT } from '@/utils/bezierToArcT'
 import type { PlacedObject, TrackRibbonPoint } from '@/types/trackObjects'
 
 export type EditorTrackDocument = {
@@ -199,78 +200,43 @@ function curbMarkerToPlacedObject(curb: CurbMarker, paths: Path[]): PlacedObject
   }
 }
 
-const PAINTED_SAMPLE_SPACING = 1.0
-
-function paintedAreaForPath(
+function paintedAreaForRibbon(
   path: Path,
+  ribbon: PlacedObject,
   side: 'left' | 'right',
-  paths: Path[],
   width: number,
   innerOffset: number,
-  pathStart: number = 0,
-  pathEnd: number = segmentCount(path),
+  pathStart?: number,
+  pathEnd?: number,
   idPrefix: string = 'painted',
+  allPaths?: Path[],
 ): PlacedObject | null {
   const segCount = segmentCount(path)
   if (segCount === 0) return null
-  const lo = Math.max(0, Math.min(pathStart, pathEnd))
-  const hi = Math.min(segCount, Math.max(pathStart, pathEnd))
-  const span = hi - lo
-  if (span < 1e-4) return null
 
-  const sign = side === 'left' ? 1 : -1
-  const halfTrack = TRACK_WIDTH / 2
-  const offset = halfTrack + innerOffset + width / 2
-
-  let approxLen = 0
-  let prev: { x: number; y: number } | null = null
-  const probe = Math.max(32, Math.ceil(segCount * 32))
-  for (let i = 0; i <= probe; i++) {
-    const p = lo + (span * i) / probe
-    const onPath = pointOnPathAt(path, p, paths)
-    if (!onPath) continue
-    if (prev) {
-      approxLen += Math.hypot(onPath.point.x - prev.x, onPath.point.y - prev.y)
-    }
-    prev = onPath.point
-  }
-  const steps = Math.max(8, Math.ceil(approxLen / PAINTED_SAMPLE_SPACING))
-
-  const samplesArr: TrackRibbonPoint[] = []
-  for (let i = 0; i <= steps; i++) {
-    const p = lo + (span * i) / steps
-    const onPath = pointOnPathAt(path, p, paths)
-    if (!onPath) continue
-    const wx = onPath.point.x + sign * -onPath.tangent.y * offset
-    const wz = onPath.point.y + sign * onPath.tangent.x * offset
-    samplesArr.push({
-      x: wx,
-      y: terrainHeightAt(wx, wz),
-      z: wz,
-      isPitLane: false,
-    })
+  let tRange: [number, number] | undefined
+  if (pathStart !== undefined && pathEnd !== undefined) {
+    const lo = Math.max(0, Math.min(pathStart, pathEnd))
+    const hi = Math.min(segCount, Math.max(pathStart, pathEnd))
+    if (hi - lo < 1e-4) return null
+    const paths = allPaths ?? [path]
+    const tStart = bezierTToArcT(path, lo, paths)
+    const tEnd = bezierTToArcT(path, hi, paths)
+    tRange = [tStart, tEnd]
   }
 
-  if (samplesArr.length < 2) return null
-
-  let cx = 0
-  let cy = 0
-  let cz = 0
-  for (const p of samplesArr) {
-    cx += p.x
-    cy += p.y
-    cz += p.z
-  }
-  const n = samplesArr.length
   return {
     id: genId(idPrefix),
     type: 'painted_area',
-    position: [cx / n, cy / n, cz / n],
+    position: ribbon.position,
     rotation: 0,
+    parentRibbonId: ribbon.id,
+    parentSide: side,
+    innerOffset,
+    derivedWidth: width,
     width,
     edgeSide: side,
-    ribbonPoints: samplesArr,
-    ribbonClosed: path.closed && lo === 0 && hi === segCount,
+    tRange,
   }
 }
 
@@ -350,23 +316,28 @@ export function buildTrackObjectsFromEditorSource(input: EditorTrackDocument): P
   const paintedObjects: PlacedObject[] = []
   const apronObjects: PlacedObject[] = []
   const curbs = input.curbs ?? []
-  for (const path of input.paths) {
-    const left = paintedAreaForPath(path, 'left', input.paths, PAINTED_WIDTH, CURB_WIDTH)
+  for (let i = 0; i < input.paths.length; i++) {
+    const path = input.paths[i]!
+    const ribbon = ribbons[i]
+    if (!ribbon) continue
+
+    const left = paintedAreaForRibbon(path, ribbon, 'left', PAINTED_WIDTH, CURB_WIDTH)
     if (left) paintedObjects.push(left)
-    const right = paintedAreaForPath(path, 'right', input.paths, PAINTED_WIDTH, CURB_WIDTH)
+    const right = paintedAreaForRibbon(path, ribbon, 'right', PAINTED_WIDTH, CURB_WIDTH)
     if (right) paintedObjects.push(right)
 
     for (const side of ['left', 'right'] as const) {
       for (const gap of curbBandGapsForPath(path, side, curbs)) {
-        const apron = paintedAreaForPath(
+        const apron = paintedAreaForRibbon(
           path,
+          ribbon,
           side,
-          input.paths,
           CURB_WIDTH,
           0,
           gap.start,
           gap.end,
           'painted_apron',
+          input.paths,
         )
         if (apron) apronObjects.push(apron)
       }

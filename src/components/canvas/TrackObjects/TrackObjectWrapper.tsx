@@ -214,13 +214,14 @@ function TrackObjectWrapper({
       )
       break
     case 'painted_area':
-      if (object.ribbonPoints && object.ribbonPoints.length >= 2) {
+      if (
+        object.parentRibbonId ||
+        (object.ribbonPoints && object.ribbonPoints.length >= 2)
+      ) {
         component = (
           <PaintedArea
-            points={object.ribbonPoints}
-            closed={object.ribbonClosed ?? false}
-            width={object.width ?? 3}
-            edgeSide={object.edgeSide}
+            placed={object}
+            parentRibbon={parentRibbon}
             isGhost={isGhost || !enablePhysics}
           />
         )

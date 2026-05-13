@@ -125,17 +125,18 @@ describe('curb export sampler', () => {
       ],
     })
 
-    const leftPainted = objects.find(o => o.type === 'painted_area' && o.edgeSide === 'left')
+    const leftPainted = objects.find(o => o.type === 'painted_area' && o.parentSide === 'left')
     const curb = objects.find(o => o.type === 'curb' && o.edgeSide === 'left')
 
     expect(leftPainted).toBeDefined()
     expect(curb).toBeDefined()
 
-    const paintedCenter = leftPainted!.ribbonPoints![0]!
-    const paintedInnerEdge = Math.abs(paintedCenter.z) - leftPainted!.width! / 2
-    const curbInnerEdge = Math.abs(curb!.curbCenterline![0]!.z) - CURB_WIDTH / 2
+    // Parent-anchored painted: innerOffset is the gap between the parent ribbon
+    // edge and the painted band's inner edge. derivedWidth = width.
+    expect(leftPainted!.innerOffset).toBeCloseTo(CURB_WIDTH)
+    expect(leftPainted!.derivedWidth).toBeCloseTo(PAINTED_WIDTH)
 
-    expect(paintedInnerEdge).toBeCloseTo(TRACK_WIDTH / 2 + CURB_WIDTH)
+    const curbInnerEdge = Math.abs(curb!.curbCenterline![0]!.z) - CURB_WIDTH / 2
     expect(curbInnerEdge).toBeCloseTo(TRACK_WIDTH / 2)
   })
 
@@ -161,22 +162,24 @@ describe('curb export sampler', () => {
     })
 
     const leftOuterPainted = objects.find(
-      o => o.type === 'painted_area' && o.edgeSide === 'left' && o.width === PAINTED_WIDTH,
+      o => o.type === 'painted_area' && o.parentSide === 'left' && o.derivedWidth === PAINTED_WIDTH,
     )
     const leftAprons = objects.filter(
-      o => o.type === 'painted_area' && o.edgeSide === 'left' && o.width === CURB_WIDTH,
+      o => o.type === 'painted_area' && o.parentSide === 'left' && o.derivedWidth === CURB_WIDTH,
     )
 
     expect(leftOuterPainted).toBeDefined()
     expect(leftAprons.length).toBe(2)
 
-    const apronRanges = leftAprons.map(apron => {
-      const xs = apron.ribbonPoints!.map(point => point.x)
-      return { min: Math.min(...xs), max: Math.max(...xs) }
-    })
-
-    expect(apronRanges.some(range => range.max <= 20.01)).toBe(true)
-    expect(apronRanges.some(range => range.min >= 79.99)).toBe(true)
+    // Aprons cover the two gap intervals around the curb's [0.2, 0.8] tRange.
+    // Each apron's tRange falls outside [arcT(0.2), arcT(0.8)] (≈ [0.2, 0.8]
+    // on a uniform-length straight path).
+    const ranges = leftAprons.map(a => a.tRange).filter((r): r is [number, number] => !!r)
+    expect(ranges.length).toBe(2)
+    const lowApron = ranges.find(r => r[1] <= 0.25)
+    const highApron = ranges.find(r => r[0] >= 0.75)
+    expect(lowApron).toBeDefined()
+    expect(highApron).toBeDefined()
   })
 
   test('skips zero-length curbs', () => {

@@ -3,14 +3,13 @@ import * as THREE from 'three'
 import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '../../../constants/trackLayers'
+import { resolveParentDerivedLayer } from '../../../utils/parentDerivedLayer'
 import { buildAsphaltGeometry } from './geometry/ribbonGeometry'
-import type { TrackRibbonPoint } from '../../../types/trackObjects'
+import type { PlacedObject } from '../../../types/trackObjects'
 
 interface PaintedAreaProps {
-  points: TrackRibbonPoint[]
-  closed: boolean
-  width: number
-  edgeSide?: 'left' | 'right'
+  placed: PlacedObject
+  parentRibbon: PlacedObject | undefined
   isGhost?: boolean
 }
 
@@ -22,8 +21,21 @@ interface PaintedAreaMeshData {
   sensorIndices: Uint32Array
 }
 
-export default function PaintedArea({ points, closed, width, isGhost = false }: PaintedAreaProps) {
+export default function PaintedArea({ placed, parentRibbon, isGhost = false }: PaintedAreaProps) {
   const meshData = useMemo<PaintedAreaMeshData | null>(() => {
+    let points = placed.ribbonPoints
+    let closed = placed.ribbonClosed ?? false
+    let width = placed.width ?? 3
+
+    if (placed.parentRibbonId) {
+      const resolved = resolveParentDerivedLayer(placed, { parent: parentRibbon })
+      if (!resolved) return null
+      points = resolved.points
+      closed = resolved.closed
+      width = resolved.width
+    }
+
+    if (!points || points.length < 2) return null
     const result = buildAsphaltGeometry(points, closed, width)
     if (!result || result.mainIndices.length === 0) return null
     return {
@@ -31,7 +43,7 @@ export default function PaintedArea({ points, closed, width, isGhost = false }: 
       sensorVertices: result.positions,
       sensorIndices: new Uint32Array(result.mainIndices),
     }
-  }, [points, closed, width])
+  }, [placed, parentRibbon])
 
   const enterSurface = useSurfaceStore(s => s.enterSurface)
   const exitSurface = useSurfaceStore(s => s.exitSurface)

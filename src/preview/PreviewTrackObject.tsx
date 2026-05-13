@@ -15,7 +15,7 @@ interface PreviewTrackObjectProps {
 
 export default function PreviewTrackObject({ object, allObjects }: PreviewTrackObjectProps) {
   if (object.type === 'track_ribbon') return <PreviewRibbon object={object} />
-  if (object.type === 'painted_area') return <PreviewPainted object={object} />
+  if (object.type === 'painted_area') return <PreviewPainted object={object} allObjects={allObjects} />
   if (object.type === 'curb') return <PreviewCurb object={object} />
   if (object.type === 'edge_line') return <PreviewEdgeLine object={object} allObjects={allObjects} />
   return null
@@ -104,11 +104,22 @@ function PreviewRibbon({ object }: { object: PlacedObject }) {
   )
 }
 
-function PreviewPainted({ object }: { object: PlacedObject }) {
+function PreviewPainted({
+  object,
+  allObjects,
+}: {
+  object: PlacedObject
+  allObjects: readonly PlacedObject[]
+}) {
   const built = useMemo(() => {
+    if (object.parentRibbonId) {
+      const resolved = resolveParentDerivedLayer(object, { allObjects })
+      if (!resolved || resolved.points.length < 2) return null
+      return buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
+    }
     if (!object.ribbonPoints || object.ribbonPoints.length < 2) return null
     return buildAsphaltGeometry(object.ribbonPoints, object.ribbonClosed ?? false, object.width ?? 3)
-  }, [object.ribbonPoints, object.ribbonClosed, object.width])
+  }, [object, allObjects])
 
   useEffect(
     () => () => {
