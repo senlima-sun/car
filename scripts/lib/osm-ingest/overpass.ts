@@ -63,7 +63,18 @@ export function extractNodesAndWays(data: OSMResponse): {
 export function buildOverpassQuery(
   bbox: [number, number, number, number],
   queryFilters: string[],
+  relationId?: number,
 ): string {
+  if (relationId != null) {
+    return `[out:json][timeout:60];
+      rel(${relationId});
+      (
+        way(r);
+      );
+      out body;
+      >;
+      out skel qt;`
+  }
   const [south, west, north, east] = bbox
   const filters = queryFilters.map(f => `[${f}]`).join('')
   return `[out:json][timeout:60];

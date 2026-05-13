@@ -6,6 +6,7 @@ export interface CircuitConfigFile {
   overpass?: {
     bbox: [south: number, west: number, north: number, east: number]
     queryFilters: string[]
+    relationId?: number
   }
 
   centerLat?: number

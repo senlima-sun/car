@@ -430,7 +430,11 @@ async function convertCircuit(circuitName: string): Promise<void> {
 
   console.log(`\n🏎️  Converting ${config.displayName}...`)
 
-  const query = buildOverpassQuery(config.overpass.bbox, config.overpass.queryFilters)
+  const query = buildOverpassQuery(
+    config.overpass.bbox,
+    config.overpass.queryFilters,
+    config.overpass.relationId,
+  )
   const osmData = await fetchOSMData(query)
   const { nodes, ways } = extractNodesAndWays(osmData)
   console.log(`  📍 Fetched ${nodes.size} nodes, ${ways.length} ways`)
