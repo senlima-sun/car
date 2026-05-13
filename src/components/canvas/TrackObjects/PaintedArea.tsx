@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '../../../constants/trackLayers'
-import { buildRibbon } from './TrackRibbon'
+import { buildAsphaltGeometry } from './geometry/ribbonGeometry'
 import type { TrackRibbonPoint } from '../../../types/trackObjects'
 
 interface PaintedAreaProps {
@@ -16,8 +16,22 @@ interface PaintedAreaProps {
 
 const PAINTED_COLOR = '#a8d89c'
 
+interface PaintedAreaMeshData {
+  geometry: THREE.BufferGeometry
+  sensorVertices: Float32Array
+  sensorIndices: Uint32Array
+}
+
 export default function PaintedArea({ points, closed, width, isGhost = false }: PaintedAreaProps) {
-  const ribbon = useMemo(() => buildRibbon(points, closed, width), [points, closed, width])
+  const meshData = useMemo<PaintedAreaMeshData | null>(() => {
+    const result = buildAsphaltGeometry(points, closed, width)
+    if (!result || result.mainIndices.length === 0) return null
+    return {
+      geometry: result.geometry,
+      sensorVertices: result.positions,
+      sensorIndices: new Uint32Array(result.mainIndices),
+    }
+  }, [points, closed, width])
 
   const enterSurface = useSurfaceStore(s => s.enterSurface)
   const exitSurface = useSurfaceStore(s => s.exitSurface)
@@ -34,19 +48,15 @@ export default function PaintedArea({ points, closed, width, isGhost = false }: 
 
   useEffect(() => {
     return () => {
-      ribbon?.mainGeometry.dispose()
-      ribbon?.pitGeometry?.dispose()
-      ribbon?.leftEdgeGeometry?.dispose()
-      ribbon?.rightEdgeGeometry?.dispose()
+      meshData?.geometry.dispose()
     }
-  }, [ribbon])
+  }, [meshData])
 
-  if (!ribbon) return null
-  if (ribbon.mainSensorIndices.length === 0) return null
+  if (!meshData) return null
 
   return (
     <group>
-      <mesh geometry={ribbon.mainGeometry} receiveShadow>
+      <mesh geometry={meshData.geometry} receiveShadow>
         <meshStandardMaterial
           color={PAINTED_COLOR}
           roughness={0.7}
@@ -60,7 +70,7 @@ export default function PaintedArea({ points, closed, width, isGhost = false }: 
       {!isGhost && (
         <RigidBody type='fixed' colliders={false}>
           <TrimeshCollider
-            args={[ribbon.mainSensorVertices, ribbon.mainSensorIndices]}
+            args={[meshData.sensorVertices, meshData.sensorIndices]}
             sensor
             onIntersectionEnter={handleEnter}
             onIntersectionExit={handleExit}

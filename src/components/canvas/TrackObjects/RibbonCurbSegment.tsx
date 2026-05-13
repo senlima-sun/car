@@ -12,6 +12,7 @@ import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import type { CurbType, PlacedObject } from '../../../types/trackObjects'
+import { computeRibbonTangents } from './geometry/ribbonGeometry'
 import CurbSurfaceMaterial from './CurbSurfaceMaterial'
 
 const PROFILE_SUBDIVISIONS = 6
@@ -51,15 +52,7 @@ function buildRibbonCurb(curb: PlacedObject): BuildResult | null {
   const sign = curb.edgeSide === 'right' ? -1 : 1
   const isExit = curbType === 'exit'
 
-  const tangents: Array<{ x: number; z: number }> = []
-  for (let i = 0; i < center.length; i++) {
-    const prev = center[Math.max(0, i - 1)]!
-    const next = center[Math.min(center.length - 1, i + 1)]!
-    const tx = next.x - prev.x
-    const tz = next.z - prev.z
-    const len = Math.hypot(tx, tz) || 1
-    tangents.push({ x: tx / len, z: tz / len })
-  }
+  const tangents = computeRibbonTangents(center, false)
 
   let arcLength = 0
   const arcAt: number[] = [0]

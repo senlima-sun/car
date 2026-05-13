@@ -36,6 +36,30 @@ export interface RibbonLayers {
   pitSensorIndices: Uint32Array | null
 }
 
+export interface Tangent2D {
+  x: number
+  z: number
+}
+
+export function computeRibbonTangents(
+  points: { x: number; z: number }[],
+  closed: boolean,
+): Tangent2D[] {
+  const n = points.length
+  const tangents: Tangent2D[] = []
+  for (let i = 0; i < n; i++) {
+    const prevIdx = i === 0 ? (closed ? n - 1 : 0) : i - 1
+    const nextIdx = i === n - 1 ? (closed ? 0 : n - 1) : i + 1
+    const prev = points[prevIdx]!
+    const next = points[nextIdx]!
+    const tx = next.x - prev.x
+    const tz = next.z - prev.z
+    const len = Math.hypot(tx, tz) || 1
+    tangents.push({ x: tx / len, z: tz / len })
+  }
+  return tangents
+}
+
 export function computeRibbonFrames(
   points: TrackRibbonPoint[],
   closed: boolean,
@@ -45,29 +69,19 @@ export function computeRibbonFrames(
   if (n < 2) return null
   const halfWidth = width / 2
   const surfaceY = TRACK_LAYER_Y_OFFSETS.ASPHALT
+  const tangents = computeRibbonTangents(points, closed)
 
   const leftPositions: Vector3[] = []
   const rightPositions: Vector3[] = []
 
   for (let i = 0; i < n; i++) {
     const p = points[i]!
-    const prevIdx = i === 0 ? (closed ? n - 1 : 0) : i - 1
-    const nextIdx = i === n - 1 ? (closed ? 0 : n - 1) : i + 1
-    const prev = points[prevIdx]!
-    const next = points[nextIdx]!
+    const tan = tangents[i]!
+    const nx = -tan.z
+    const nz = tan.x
 
-    const tx = next.x - prev.x
-    const tz = next.z - prev.z
-    const len = Math.hypot(tx, tz) || 1
-    const dirX = tx / len
-    const dirZ = tz / len
-
-    const nx = -dirZ
-    const nz = dirX
-    const offset = halfWidth
-
-    leftPositions.push(new Vector3(p.x + nx * offset, p.y + surfaceY, p.z + nz * offset))
-    rightPositions.push(new Vector3(p.x - nx * offset, p.y + surfaceY, p.z - nz * offset))
+    leftPositions.push(new Vector3(p.x + nx * halfWidth, p.y + surfaceY, p.z + nz * halfWidth))
+    rightPositions.push(new Vector3(p.x - nx * halfWidth, p.y + surfaceY, p.z - nz * halfWidth))
   }
 
   return { leftPositions, rightPositions }
@@ -264,20 +278,20 @@ export function buildRibbonLayers(
   const leftEdgeGeometry = buildEdgeLineGeometry(frames, 'left', closed)
   const rightEdgeGeometry = buildEdgeLineGeometry(frames, 'right', closed)
 
-  const collisionIndicesArr = [...mainIndices, ...pitIndices]
-  const collisionIndices = new Uint32Array(collisionIndicesArr)
-  const collisionVertices = new Float32Array(positions)
+  const collisionIndices = new Uint32Array(mainIndices.length + pitIndices.length)
+  collisionIndices.set(mainIndices, 0)
+  collisionIndices.set(pitIndices, mainIndices.length)
 
   return {
     mainGeometry,
     pitGeometry,
     leftEdgeGeometry,
     rightEdgeGeometry,
-    collisionVertices,
+    collisionVertices: positions,
     collisionIndices,
-    mainSensorVertices: new Float32Array(positions),
+    mainSensorVertices: positions,
     mainSensorIndices: new Uint32Array(mainIndices),
-    pitSensorVertices: pitIndices.length > 0 ? new Float32Array(positions) : null,
+    pitSensorVertices: pitIndices.length > 0 ? positions : null,
     pitSensorIndices: pitIndices.length > 0 ? new Uint32Array(pitIndices) : null,
   }
 }

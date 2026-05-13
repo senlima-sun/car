@@ -14,7 +14,7 @@ interface TrackRibbonProps {
   isGhost?: boolean
 }
 
-/** @deprecated Use buildRibbonLayers from ./geometry/ribbonGeometry directly. Will be removed in Wave 2. */
+/** @deprecated Use buildRibbonLayers from ./geometry/ribbonGeometry directly. Will be removed at end of Wave 3. */
 export const buildRibbon = buildRibbonLayers
 
 export default function TrackRibbon({ points, closed, width, isGhost = false }: TrackRibbonProps) {

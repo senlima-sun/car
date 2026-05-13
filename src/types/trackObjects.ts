@@ -16,6 +16,7 @@ export type ObjectType =
 export type TrackMode = 'straight' | 'curve' | 'pitroad' | 'pitroad-curve'
 export type CheckpointType = 'start-finish' | 'sector'
 export type CurbType = 'apex' | 'exit' | 'flat'
+export type LayerGroup = 'surface' | 'edge' | 'painted' | 'curb' | 'pit'
 
 export interface PlacedObject {
   id: string
@@ -49,6 +50,7 @@ export interface PlacedObject {
   cornerNumber?: number
   ribbonPoints?: TrackRibbonPoint[]
   ribbonClosed?: boolean
+  layerGroup?: LayerGroup
 }
 
 export interface TrackRibbonPoint {
