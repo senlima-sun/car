@@ -54,6 +54,7 @@ const objectIcons: Record<ObjectType, string> = {
   grass_patch: '#4a8c3f',
   gravel_patch: '#8a7f6d',
   painted_area: '#a8d89c',
+  edge_line: '#ffffff',
 }
 
 export default function ObjectButton({ type, isSelected, onClick }: ObjectButtonProps) {

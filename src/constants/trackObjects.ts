@@ -157,6 +157,16 @@ export const OBJECT_CONFIGS: Record<ObjectType, ObjectConfig> = {
     friction: 0.6,
     restitution: 0.2,
   },
+  edge_line: {
+    type: 'edge_line',
+    label: 'Edge Line',
+    description: 'White edge line as a parent-anchored derived layer',
+    isLinear: false,
+    defaultSize: { width: 0.2, height: 0.02, depth: 1 },
+    color: '#ffffff',
+    friction: 1.0,
+    restitution: 0,
+  },
 }
 
 export const OBJECT_TYPES: ObjectType[] = [

@@ -70,4 +70,21 @@ describe('getLayerGroup', () => {
     expect(getLayerGroup(makeObject({ type: 'corner' }))).toBeNull()
     expect(getLayerGroup(makeObject({ type: 'wall' }))).toBeNull()
   })
+
+  test('edge_line -> edge', () => {
+    expect(getLayerGroup(makeObject({ type: 'edge_line' }))).toBe('edge')
+  })
+
+  test('parent-anchored edge_line still -> edge', () => {
+    expect(
+      getLayerGroup(
+        makeObject({
+          type: 'edge_line',
+          parentRibbonId: 'p1',
+          parentSide: 'left',
+          derivedWidth: 0.2,
+        }),
+      ),
+    ).toBe('edge')
+  })
 })

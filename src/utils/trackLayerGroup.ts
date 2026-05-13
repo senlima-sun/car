@@ -8,6 +8,8 @@ export function getLayerGroup(placed: PlacedObject): LayerGroup | null {
       return 'curb'
     case 'painted_area':
       return 'painted'
+    case 'edge_line':
+      return 'edge'
     case 'road':
       return isPitRoad(placed.trackMode) ? 'pit' : 'surface'
     case 'track_ribbon': {

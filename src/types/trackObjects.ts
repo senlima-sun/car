@@ -13,6 +13,7 @@ export type ObjectType =
   | 'painted_area'
   | 'wall'
   | 'wall_fence'
+  | 'edge_line'
 export type TrackMode = 'straight' | 'curve' | 'pitroad' | 'pitroad-curve'
 export type CheckpointType = 'start-finish' | 'sector'
 export type CurbType = 'apex' | 'exit' | 'flat'
@@ -51,6 +52,12 @@ export interface PlacedObject {
   ribbonPoints?: TrackRibbonPoint[]
   ribbonClosed?: boolean
   layerGroup?: LayerGroup
+  parentRibbonId?: string
+  parentSide?: 'left' | 'right'
+  innerOffset?: number
+  derivedWidth?: number
+  tRange?: [number, number]
+  parentClosedOverride?: boolean
 }
 
 export interface TrackRibbonPoint {

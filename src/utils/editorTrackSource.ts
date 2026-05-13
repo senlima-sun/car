@@ -35,6 +35,20 @@ export type EditorTrackSource = {
   raceDirection: RaceDirection
   pitBoxAreas?: PitBoxArea[]
   curbs?: CurbMarker[]
+  schemaVersion?: number
+}
+
+export const CURRENT_TRACK_SCHEMA_VERSION = 1
+
+export function validateSchemaVersion(source: EditorTrackSource): void {
+  if (
+    source.schemaVersion !== undefined &&
+    source.schemaVersion > CURRENT_TRACK_SCHEMA_VERSION
+  ) {
+    console.warn(
+      `[track] "${source.id}" has schemaVersion=${source.schemaVersion}, this runtime supports up to ${CURRENT_TRACK_SCHEMA_VERSION}. Forward-compat fields may be ignored.`,
+    )
+  }
 }
 
 export type RuntimePresetTrack = {
@@ -352,6 +366,7 @@ export function buildTrackObjectsFromEditorSource(input: EditorTrackDocument): P
 }
 
 export function buildRuntimePresetTrack(source: EditorTrackSource): RuntimePresetTrack {
+  validateSchemaVersion(source)
   return {
     id: source.id,
     name: source.name,
