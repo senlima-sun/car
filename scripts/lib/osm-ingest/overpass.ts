@@ -18,10 +18,31 @@ export interface OSMResponse {
 
 export async function fetchOSMData(query: string): Promise<OSMResponse> {
   const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`
-  console.log('Fetching OSM data...')
-  const res = await fetch(url, { headers: { 'User-Agent': 'F1-Track-Converter/1.0' } })
-  if (!res.ok) throw new Error(`Overpass API error: ${res.status}`)
-  return res.json() as Promise<OSMResponse>
+  const transientStatuses = new Set([429, 502, 503, 504])
+  const maxAttempts = 4
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    console.log(`Fetching OSM data (attempt ${attempt}/${maxAttempts})...`)
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'F1-Track-Converter/1.0' },
+      })
+      if (res.ok) return (await res.json()) as OSMResponse
+      if (!transientStatuses.has(res.status)) {
+        throw new Error(`Overpass API error: ${res.status}`)
+      }
+      lastError = new Error(`Overpass API error: ${res.status}`)
+    } catch (err) {
+      lastError = err as Error
+    }
+    if (attempt < maxAttempts) {
+      const backoffMs = 2000 * 2 ** (attempt - 1)
+      console.log(`  Transient failure (${lastError?.message}); retrying in ${backoffMs}ms...`)
+      await new Promise(resolve => setTimeout(resolve, backoffMs))
+    }
+  }
+  throw lastError ?? new Error('Overpass API: exhausted retries')
 }
 
 export function extractNodesAndWays(data: OSMResponse): {

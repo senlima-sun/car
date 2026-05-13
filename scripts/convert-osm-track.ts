@@ -60,6 +60,104 @@ function dist2D(a: Point2D, b: Point2D): number {
   return Math.sqrt(dx * dx + dz * dz)
 }
 
+function collapseNearbyPoints(points: Point2D[], minSpacing: number): Point2D[] {
+  if (points.length <= 2) return points
+  const out: Point2D[] = [points[0]]
+  for (let i = 1; i < points.length - 1; i++) {
+    if (dist2D(out[out.length - 1], points[i]) >= minSpacing) {
+      out.push(points[i])
+    }
+  }
+  const last = points[points.length - 1]
+  if (dist2D(out[out.length - 1], last) >= minSpacing) {
+    out.push(last)
+  } else if (out.length >= 2) {
+    out[out.length - 1] = last
+  } else {
+    out.push(last)
+  }
+  return out
+}
+
+function closeRingIfNear(points: Point2D[], maxGap: number): Point2D[] {
+  if (points.length < 3) return points
+  const first = points[0]!
+  const last = points[points.length - 1]!
+  const gap = dist2D(first, last)
+  if (gap < 1) {
+    if (gap === 0) return points
+    const out = points.slice(0, -1)
+    out.push({ x: first.x, z: first.z })
+    return out
+  }
+  if (gap > maxGap) return points
+  const out = points.slice()
+  out.push({ x: first.x, z: first.z })
+  return out
+}
+
+function resampleToUniformSpacing(points: Point2D[], targetSpacing: number): Point2D[] {
+  if (points.length < 2) return points
+  const out: Point2D[] = [points[0]!]
+  let carry = 0
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!
+    const b = points[i]!
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const segLen = Math.hypot(dx, dz)
+    if (segLen < 1e-6) continue
+    let dist = targetSpacing - carry
+    while (dist < segLen) {
+      const t = dist / segLen
+      out.push({ x: a.x + dx * t, z: a.z + dz * t })
+      dist += targetSpacing
+    }
+    carry = segLen - (dist - targetSpacing)
+  }
+  const last = points[points.length - 1]!
+  if (dist2D(out[out.length - 1]!, last) > targetSpacing * 0.25) {
+    out.push(last)
+  } else if (out.length >= 2) {
+    out[out.length - 1] = last
+  }
+  return out
+}
+
+function smoothSharpAngles(points: Point2D[], maxPasses: number): Point2D[] {
+  if (points.length < 3) return points
+  let current = points.slice()
+  for (let pass = 0; pass < maxPasses; pass++) {
+    let modified = false
+    const next: Point2D[] = [current[0]]
+    for (let i = 1; i < current.length - 1; i++) {
+      const prev = current[i - 1]
+      const here = current[i]
+      const after = current[i + 1]
+      const ax = here.x - prev.x
+      const az = here.z - prev.z
+      const bx = after.x - here.x
+      const bz = after.z - here.z
+      const aLen = Math.hypot(ax, az)
+      const bLen = Math.hypot(bx, bz)
+      if (aLen < 0.001 || bLen < 0.001) {
+        modified = true
+        continue
+      }
+      const cosTheta = (ax * bx + az * bz) / (aLen * bLen)
+      if (cosTheta < -0.5) {
+        modified = true
+        continue
+      }
+      next.push(here)
+    }
+    next.push(current[current.length - 1])
+    if (!modified) return next
+    current = next
+  }
+  return current
+}
+
 interface JunctionEdge {
   left: [number, number, number]
   right: [number, number, number]
@@ -373,12 +471,18 @@ async function convertCircuit(circuitName: string): Promise<void> {
   console.log(`  🌍 Converted ${worldPoints.length} GPS points to world coordinates`)
 
   const simplified = douglasPeucker(worldPoints, SIMPLIFY_TOLERANCE)
-  console.log(`  ✂️  Simplified: ${worldPoints.length} → ${simplified.length} points`)
+  const dedupedRaw = collapseNearbyPoints(simplified, 3)
+  const smoothed = smoothSharpAngles(dedupedRaw, 5)
+  const resampled = resampleToUniformSpacing(smoothed, 25)
+  const deduped = closeRingIfNear(resampled, 300)
+  console.log(
+    `  ✂️  Simplified: ${worldPoints.length} → ${simplified.length} → ${dedupedRaw.length} (collapsed) → ${smoothed.length} (smoothed) → ${resampled.length} (resampled@25m) → ${deduped.length} (closed) points`,
+  )
 
   let totalLength = 0
-  for (let i = 1; i < simplified.length; i++) {
-    const dx = simplified[i]!.x - simplified[i - 1]!.x
-    const dz = simplified[i]!.z - simplified[i - 1]!.z
+  for (let i = 1; i < deduped.length; i++) {
+    const dx = deduped[i]!.x - deduped[i - 1]!.x
+    const dz = deduped[i]!.z - deduped[i - 1]!.z
     totalLength += Math.sqrt(dx * dx + dz * dz)
   }
 
@@ -387,7 +491,7 @@ async function convertCircuit(circuitName: string): Promise<void> {
     sectorSplits = config.sectorSplits
     console.log(`  📐 Using manual sectorSplits override: [${sectorSplits.join(', ')}]`)
   } else {
-    sectorSplits = autoDetectSectorSplits(simplified)
+    sectorSplits = autoDetectSectorSplits(deduped)
     console.log(`  📐 Auto-detected sectorSplits: [${sectorSplits.join(', ')}]`)
   }
 
@@ -396,10 +500,24 @@ async function convertCircuit(circuitName: string): Promise<void> {
     name: config.displayName,
     trackLength: Math.round(totalLength),
     turns: config.expectedTurns,
-    points: simplified.map(point => ({ x: point.x, z: point.z })),
+    points: deduped.map(point => ({ x: point.x, z: point.z })),
     sectorSplits,
     startFinishFraction: config.startFinishFraction,
   })
+
+  for (const path of source.paths) {
+    if (!path.closed) continue
+    const anchors = path.anchors
+    if (anchors.length < 2) continue
+    const first = anchors[0]!
+    first.handleType = 'corner'
+    first.inHandle = { x: first.point.x, y: first.point.y }
+    first.outHandle = { x: first.point.x, y: first.point.y }
+    const last = anchors[anchors.length - 1]!
+    last.handleType = 'corner'
+    last.inHandle = { x: last.point.x, y: last.point.y }
+    last.outHandle = { x: last.point.x, y: last.point.y }
+  }
 
   const outPath = `src/constants/tracks/sources/${config.name}.json`
   await Bun.write(outPath, JSON.stringify(source, null, 2))
