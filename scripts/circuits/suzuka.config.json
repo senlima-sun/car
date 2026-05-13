@@ -1,35 +1,13 @@
 {
   "name": "suzuka",
   "displayName": "Suzuka International Racing Course",
-  "provenance": "osm",
-  "overpass": {
-    "bbox": [34.83, 136.52, 34.86, 136.55],
-    "queryFilters": ["\"highway\"=\"raceway\"", "\"sport\"=\"motor\""]
-  },
+  "provenance": "manual",
   "centerLat": 34.8431,
   "centerLon": 136.5407,
-  "startWayName": "メインストレート",
-  "wayNameDenyList": [
-    "Pit Lane",
-    "West Circuit Pit Lane",
-    "鈴鹿サーキット国際南コース",
-    "プッチグランプリ",
-    "DREAM R",
-    "アクロエックス",
-    "ene-1",
-    "ロッキーコースター",
-    "チララのフラワーワゴン",
-    "アドベンチャードライブ",
-    "日立オートモティブシステムズシケイン"
-  ],
-  "maxChainGap": 50,
-  "elevationZones": [
-    { "startFraction": 0.55, "endFraction": 0.62, "elevation": 6.0 }
-  ],
-  "reverseDirection": true,
+  "reverseDirection": false,
   "sectorSplits": [0.33, 0.66],
   "startFinishFraction": 0.0,
   "expectedTrackLengthMeters": 5807,
   "expectedTurns": 18,
-  "expectedStartHeadingDegrees": 138.0
+  "expectedStartHeadingDegrees": 39.7
 }
