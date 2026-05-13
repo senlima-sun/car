@@ -1,0 +1,35 @@
+{
+  "name": "hungaroring",
+  "displayName": "Hungaroring",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      47.57,
+      19.24,
+      47.6,
+      19.27
+    ],
+    "queryFilters": [
+      "\"highway\"=\"raceway\"",
+      "\"sport\"=\"motor\""
+    ]
+  },
+  "centerLat": 47.5822,
+  "centerLon": 19.2511,
+  "wayNameDenyList": [
+    "Pit Lane",
+    "Boxengasse",
+    "pit",
+    "Pit"
+  ],
+  "maxChainGap": 150,
+  "reverseDirection": false,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 4381,
+  "expectedTurns": 14,
+  "expectedStartHeadingDegrees": -141.7,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}
