@@ -1,18 +1,61 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { buildAsphaltGeometry, buildRibbonLayers } from '../components/canvas/TrackObjects/geometry/ribbonGeometry'
+import {
+  buildAsphaltGeometry,
+  buildRibbonLayers,
+} from '../components/canvas/TrackObjects/geometry/ribbonGeometry'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '../constants/trackLayers'
+import { resolveParentDerivedLayer } from '../utils/parentDerivedLayer'
 import type { PlacedObject } from '../types/trackObjects'
 
 interface PreviewTrackObjectProps {
   object: PlacedObject
+  allObjects: readonly PlacedObject[]
 }
 
-export default function PreviewTrackObject({ object }: PreviewTrackObjectProps) {
+export default function PreviewTrackObject({ object, allObjects }: PreviewTrackObjectProps) {
   if (object.type === 'track_ribbon') return <PreviewRibbon object={object} />
   if (object.type === 'painted_area') return <PreviewPainted object={object} />
   if (object.type === 'curb') return <PreviewCurb object={object} />
+  if (object.type === 'edge_line') return <PreviewEdgeLine object={object} allObjects={allObjects} />
   return null
+}
+
+function PreviewEdgeLine({
+  object,
+  allObjects,
+}: {
+  object: PlacedObject
+  allObjects: readonly PlacedObject[]
+}) {
+  const geometry = useMemo(() => {
+    const resolved = resolveParentDerivedLayer(object, { allObjects })
+    if (!resolved || resolved.points.length < 2) return null
+    const built = buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
+    return built?.geometry ?? null
+  }, [object, allObjects])
+
+  useEffect(
+    () => () => {
+      geometry?.dispose()
+    },
+    [geometry],
+  )
+
+  if (!geometry) return null
+  return (
+    <mesh geometry={geometry}>
+      <meshStandardMaterial
+        color='#ffffff'
+        roughness={0.5}
+        metalness={0}
+        side={THREE.DoubleSide}
+        polygonOffset
+        polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.factor}
+        polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.units}
+      />
+    </mesh>
+  )
 }
 
 function PreviewRibbon({ object }: { object: PlacedObject }) {
@@ -25,8 +68,6 @@ function PreviewRibbon({ object }: { object: PlacedObject }) {
     () => () => {
       layers?.mainGeometry.dispose()
       layers?.pitGeometry?.dispose()
-      layers?.leftEdgeGeometry?.dispose()
-      layers?.rightEdgeGeometry?.dispose()
     },
     [layers],
   )
@@ -56,28 +97,6 @@ function PreviewRibbon({ object }: { object: PlacedObject }) {
             polygonOffset
             polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.ASPHALT.factor}
             polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.ASPHALT.units}
-          />
-        </mesh>
-      )}
-      {layers.leftEdgeGeometry && (
-        <mesh geometry={layers.leftEdgeGeometry}>
-          <meshStandardMaterial
-            color='#ffffff'
-            side={THREE.DoubleSide}
-            polygonOffset
-            polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.factor}
-            polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.units}
-          />
-        </mesh>
-      )}
-      {layers.rightEdgeGeometry && (
-        <mesh geometry={layers.rightEdgeGeometry}>
-          <meshStandardMaterial
-            color='#ffffff'
-            side={THREE.DoubleSide}
-            polygonOffset
-            polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.factor}
-            polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.units}
           />
         </mesh>
       )}

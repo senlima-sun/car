@@ -24,7 +24,7 @@ export default function TrackPreviewScene({ track }: TrackPreviewSceneProps) {
   return (
     <group>
       {visibleObjects.map(obj => (
-        <PreviewTrackObject key={obj.id} object={obj} />
+        <PreviewTrackObject key={obj.id} object={obj} allObjects={track.objects} />
       ))}
     </group>
   )

@@ -3,7 +3,6 @@ import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
-import { EdgeLines } from './components/EdgeLines'
 import { buildRibbonLayers } from './geometry/ribbonGeometry'
 import type { TrackRibbonPoint } from '../../../types/trackObjects'
 
@@ -60,11 +59,6 @@ export default function TrackRibbon({ points, closed, width, isGhost = false }: 
       <mesh geometry={ribbon.mainGeometry} receiveShadow>
         <RoadSurfaceMaterial isGhost={isGhost} variant='road' />
       </mesh>
-      <EdgeLines
-        leftGeometry={ribbon.leftEdgeGeometry}
-        rightGeometry={ribbon.rightEdgeGeometry}
-        isGhost={isGhost}
-      />
       {ribbon.pitGeometry && (
         <mesh geometry={ribbon.pitGeometry} receiveShadow>
           <RoadSurfaceMaterial isGhost={isGhost} variant='pitroad' />

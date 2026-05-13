@@ -122,12 +122,10 @@ describe('buildEdgeLineGeometry', () => {
 })
 
 describe('buildRibbonLayers', () => {
-  test('returns legacy Ribbon shape with all expected fields', () => {
+  test('returns the expected runtime fields (no edge geometry; edge_line is its own PlacedObject)', () => {
     const layers = buildRibbonLayers(STRAIGHT, false, 12)!
     expect(layers.mainGeometry).toBeDefined()
     expect(layers.pitGeometry).toBeNull()
-    expect(layers.leftEdgeGeometry).not.toBeNull()
-    expect(layers.rightEdgeGeometry).not.toBeNull()
     expect(layers.collisionVertices.length).toBe(12)
     expect(layers.collisionIndices.length).toBe(6)
     expect(layers.mainSensorVertices.length).toBe(12)

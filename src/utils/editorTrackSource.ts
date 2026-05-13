@@ -11,7 +11,7 @@ import type {
   RaceDirection,
 } from '@/components/ui/TrackEditor/geometry/types'
 import { documentToRibbons } from '@/components/ui/TrackEditor/export/pathToRibbon'
-import { PAINTED_WIDTH, TRACK_WIDTH } from '@/constants/dimensions'
+import { PAINTED_WIDTH, TRACK_EDGE_LINE_WIDTH, TRACK_WIDTH } from '@/constants/dimensions'
 import { CURB_WIDTH } from '@/constants/curb'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 import { realignCheckpointToRibbons } from '@/utils/checkpointAlignment'
@@ -310,6 +310,23 @@ export function buildTrackObjectsFromEditorSource(input: EditorTrackDocument): P
     ribbon.flowDirection = input.raceDirection
   }
 
+  const edgeLineObjects: PlacedObject[] = []
+  for (const ribbon of ribbons) {
+    for (const side of ['left', 'right'] as const) {
+      edgeLineObjects.push({
+        id: genId('edge'),
+        type: 'edge_line',
+        position: ribbon.position,
+        rotation: 0,
+        parentRibbonId: ribbon.id,
+        parentSide: side,
+        innerOffset: -TRACK_EDGE_LINE_WIDTH,
+        derivedWidth: TRACK_EDGE_LINE_WIDTH,
+        width: TRACK_EDGE_LINE_WIDTH,
+      })
+    }
+  }
+
   const checkpointObjects: PlacedObject[] = []
   let sectorOrder = 0
   for (const checkpoint of input.checkpoints) {
@@ -357,6 +374,7 @@ export function buildTrackObjectsFromEditorSource(input: EditorTrackDocument): P
   }
   return [
     ...ribbons,
+    ...edgeLineObjects,
     ...checkpointObjects,
     ...pitBoxObjects,
     ...paintedObjects,

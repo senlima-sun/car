@@ -19,28 +19,35 @@ import CurvedCurbSegment from './CurvedCurbSegment'
 import RibbonCurbSegment from './RibbonCurbSegment'
 import SurfacePatch from './SurfacePatch'
 import PaintedArea from './PaintedArea'
+import EdgeLine from './EdgeLine'
 import Wall from './Wall'
 import WallFence from './WallFence'
 import SelectionHighlight from './SelectionHighlight'
 import FlowArrows from './FlowArrows'
+import { useParentRibbon } from './useParentRibbon'
 
 interface TrackObjectWrapperProps {
   object: PlacedObject
   parentRoad?: PlacedObject
+  allObjects?: readonly PlacedObject[]
   enablePhysics?: boolean
   isGhost?: boolean
   isSelected?: boolean
   isSelectedForCurb?: boolean
 }
 
+const EMPTY_OBJECTS: readonly PlacedObject[] = []
+
 function TrackObjectWrapper({
   object,
   parentRoad,
+  allObjects = EMPTY_OBJECTS,
   enablePhysics = true,
   isGhost = false,
   isSelected = false,
   isSelectedForCurb = false,
 }: TrackObjectWrapperProps) {
+  const parentRibbon = useParentRibbon(object.parentRibbonId, allObjects)
   const isCustomizeMode = useGameStore(s => s.status) === 'customize'
 
   const commonProps = {
@@ -219,6 +226,15 @@ function TrackObjectWrapper({
         )
       }
       break
+    case 'edge_line':
+      component = (
+        <EdgeLine
+          placed={object}
+          parentRibbon={parentRibbon}
+          isGhost={isGhost || !enablePhysics}
+        />
+      )
+      break
     default:
       console.warn(`Unknown object type: ${object.type}`)
       return null
@@ -253,12 +269,19 @@ function TrackObjectWrapper({
 }
 
 export default memo(TrackObjectWrapper, (prev, next) => {
-  return (
-    prev.object.id === next.object.id &&
-    prev.parentRoad?.id === next.parentRoad?.id &&
-    prev.enablePhysics === next.enablePhysics &&
-    prev.isGhost === next.isGhost &&
-    prev.isSelected === next.isSelected &&
-    prev.isSelectedForCurb === next.isSelectedForCurb
-  )
+  if (
+    prev.parentRoad?.id !== next.parentRoad?.id ||
+    prev.enablePhysics !== next.enablePhysics ||
+    prev.isGhost !== next.isGhost ||
+    prev.isSelected !== next.isSelected ||
+    prev.isSelectedForCurb !== next.isSelectedForCurb
+  ) {
+    return false
+  }
+
+  const isParentDerived = next.object.parentRibbonId !== undefined
+  if (isParentDerived) {
+    return prev.object === next.object && prev.allObjects === next.allObjects
+  }
+  return prev.object.id === next.object.id
 })

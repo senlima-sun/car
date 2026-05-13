@@ -26,8 +26,6 @@ export interface PitGeometryResult {
 export interface RibbonLayers {
   mainGeometry: BufferGeometry
   pitGeometry: BufferGeometry | null
-  leftEdgeGeometry: BufferGeometry | null
-  rightEdgeGeometry: BufferGeometry | null
   collisionVertices: Float32Array
   collisionIndices: Uint32Array
   mainSensorVertices: Float32Array
@@ -268,15 +266,12 @@ export function buildRibbonLayers(
   const asphalt = buildAsphaltGeometry(points, closed, width)
   if (!asphalt) return null
 
-  const { positions, uvs, normals, mainIndices, pitIndices, frames, geometry: mainGeometry } = asphalt
+  const { positions, uvs, normals, mainIndices, pitIndices, geometry: mainGeometry } = asphalt
 
   const pitGeometry =
     pitIndices.length > 0
       ? buildPitLaneGeometry(points, closed, width, { positions, uvs, normals, pitIndices })?.geometry ?? null
       : null
-
-  const leftEdgeGeometry = buildEdgeLineGeometry(frames, 'left', closed)
-  const rightEdgeGeometry = buildEdgeLineGeometry(frames, 'right', closed)
 
   const collisionIndices = new Uint32Array(mainIndices.length + pitIndices.length)
   collisionIndices.set(mainIndices, 0)
@@ -285,8 +280,6 @@ export function buildRibbonLayers(
   return {
     mainGeometry,
     pitGeometry,
-    leftEdgeGeometry,
-    rightEdgeGeometry,
     collisionVertices: positions,
     collisionIndices,
     mainSensorVertices: positions,

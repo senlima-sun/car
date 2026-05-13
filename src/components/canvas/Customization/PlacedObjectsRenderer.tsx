@@ -41,21 +41,20 @@ export default function PlacedObjectsRenderer({
   }, [placedObjects])
 
   const visibleObjects = useMemo(() => {
-    const baseObjects = placedObjects.filter(
-      obj => obj.type === 'track_ribbon' || obj.type === 'painted_area',
-    )
+    const isAlwaysVisible = (t: PlacedObject['type']) =>
+      t === 'track_ribbon' || t === 'painted_area' || t === 'edge_line'
+
+    const baseObjects = placedObjects.filter(obj => isAlwaysVisible(obj.type))
     const result: PlacedObject[] = [...baseObjects]
 
     if (visibleObjectIds.size === 0 && placedObjects.length > 0) {
-      result.push(
-        ...placedObjects.filter(obj => obj.type !== 'track_ribbon' && obj.type !== 'painted_area'),
-      )
+      result.push(...placedObjects.filter(obj => !isAlwaysVisible(obj.type)))
       return result
     }
 
     for (const id of visibleObjectIds) {
       const obj = objectMap.get(id)
-      if (obj && obj.type !== 'track_ribbon' && obj.type !== 'painted_area') result.push(obj)
+      if (obj && !isAlwaysVisible(obj.type)) result.push(obj)
     }
     return result
   }, [visibleObjectIds, objectMap, placedObjects])
@@ -147,6 +146,7 @@ export default function PlacedObjectsRenderer({
               <TrackObjectWrapper
                 object={object}
                 parentRoad={parentRoad}
+                allObjects={placedObjects}
                 enablePhysics={enablePhysics}
                 isSelected={selectedObjectId === object.id || multiSelectedIds.includes(object.id)}
                 isSelectedForCurb={autoCurbMode && selectedRoadIds.includes(object.id)}

@@ -27,6 +27,46 @@ describe('buildTrackObjectsFromEditorSource', () => {
     expect(objects.some(object => object.type === 'checkpoint')).toBe(true)
     expect(objects.some(object => object.type === 'pitbox')).toBe(true)
   })
+
+  test('auto-emits exactly two edge_line placedObjects per ribbon', () => {
+    const path = makePath(makeAnchor({ x: 0, y: 0 }))
+    path.anchors.push(makeAnchor({ x: 100, y: 0 }))
+
+    const objects = buildTrackObjectsFromEditorSource({
+      paths: [path],
+      checkpoints: [],
+      raceDirection: 'forward',
+    })
+
+    const ribbons = objects.filter(o => o.type === 'track_ribbon')
+    const edges = objects.filter(o => o.type === 'edge_line')
+    expect(ribbons.length).toBe(1)
+    expect(edges.length).toBe(2)
+    const ribbonId = ribbons[0]!.id
+    expect(edges.every(e => e.parentRibbonId === ribbonId)).toBe(true)
+    expect(edges.some(e => e.parentSide === 'left')).toBe(true)
+    expect(edges.some(e => e.parentSide === 'right')).toBe(true)
+  })
+
+  test('every parent-anchored layer references a real ribbon (id integrity)', () => {
+    const path = makePath(makeAnchor({ x: 0, y: 0 }))
+    path.anchors.push(makeAnchor({ x: 100, y: 0 }))
+
+    const objects = buildTrackObjectsFromEditorSource({
+      paths: [path],
+      checkpoints: [],
+      raceDirection: 'forward',
+    })
+
+    const ribbonIds = new Set(
+      objects.filter(o => o.type === 'track_ribbon').map(o => o.id),
+    )
+    for (const obj of objects) {
+      if (obj.parentRibbonId !== undefined) {
+        expect(ribbonIds.has(obj.parentRibbonId)).toBe(true)
+      }
+    }
+  })
 })
 
 describe('curb export sampler', () => {
