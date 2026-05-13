@@ -11,6 +11,7 @@ import spaSource from './sources/spa.json'
 import hungaroringSource from './sources/hungaroring.json'
 import zandvoortSource from './sources/zandvoort.json'
 import monzaSource from './sources/monza.json'
+import madridSource from './sources/madrid.json'
 import bakuSource from './sources/baku.json'
 import singaporeSource from './sources/singapore.json'
 import cotaSource from './sources/cota.json'
@@ -42,6 +43,7 @@ export const PRESET_TRACKS: PresetTrack[] = [
   hungaroringSource as EditorTrackSource,
   zandvoortSource as EditorTrackSource,
   monzaSource as EditorTrackSource,
+  madridSource as EditorTrackSource,
   bakuSource as EditorTrackSource,
   singaporeSource as EditorTrackSource,
   cotaSource as EditorTrackSource,

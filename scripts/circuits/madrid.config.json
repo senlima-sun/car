@@ -1,0 +1,12 @@
+{
+  "name": "madrid",
+  "displayName": "Circuito de Madring",
+  "provenance": "manual",
+  "centerLat": 40.4724,
+  "centerLon": -3.6175,
+  "reverseDirection": false,
+  "startFinishFraction": 0.0,
+  "expectedTrackLengthMeters": 5474,
+  "expectedTurns": 22,
+  "expectedStartHeadingDegrees": -80.1
+}
