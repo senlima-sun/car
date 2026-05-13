@@ -1,0 +1,18 @@
+{
+  "name": "zandvoort",
+  "displayName": "Circuit Zandvoort",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [52.37, 4.53, 52.41, 4.56],
+    "queryFilters": ["\"highway\"=\"raceway\"", "\"sport\"=\"motor\""]
+  },
+  "centerLat": 52.3889,
+  "centerLon": 4.5408,
+  "startWayName": "CM.com Circuit Zandvoort",
+  "wayNameDenyList": ["Pitstraat"],
+  "reverseDirection": false,
+  "startFinishFraction": 0.0,
+  "expectedTrackLengthMeters": 4408,
+  "expectedTurns": 14,
+  "expectedStartHeadingDegrees": -115.2
+}
