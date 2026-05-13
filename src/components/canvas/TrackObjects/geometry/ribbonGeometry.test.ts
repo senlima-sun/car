@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
   buildAsphaltGeometry,
-  buildEdgeLineGeometry,
   buildPitLaneGeometry,
   buildRibbonLayers,
   computeRibbonFrames,
@@ -93,31 +92,6 @@ describe('buildPitLaneGeometry', () => {
     })!
     expect(pit.indices.length).toBe(6)
     expect(pit.indices).toEqual([0, 2, 1, 2, 3, 1])
-  })
-})
-
-describe('buildEdgeLineGeometry', () => {
-  test('left edge places white line inside road surface', () => {
-    const frames = computeRibbonFrames(STRAIGHT, false, 12)!
-    const left = buildEdgeLineGeometry(frames, 'left', false)
-    const pos = left.getAttribute('position')
-    expect(pos.getZ(0)).toBeCloseTo(6)
-    expect(pos.getZ(1)).toBeCloseTo(6 - 0.2)
-  })
-
-  test('right edge places white line inside road surface', () => {
-    const frames = computeRibbonFrames(STRAIGHT, false, 12)!
-    const right = buildEdgeLineGeometry(frames, 'right', false)
-    const pos = right.getAttribute('position')
-    expect(pos.getZ(0)).toBeCloseTo(-6)
-    expect(pos.getZ(1)).toBeCloseTo(-6 + 0.2)
-  })
-
-  test('edge line sits 0.002 above asphalt y', () => {
-    const frames = computeRibbonFrames(STRAIGHT, false, 12)!
-    const left = buildEdgeLineGeometry(frames, 'left', false)
-    const pos = left.getAttribute('position')
-    expect(pos.getY(0)).toBeCloseTo(0.052, 6)
   })
 })
 

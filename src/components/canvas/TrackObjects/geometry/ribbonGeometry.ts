@@ -1,5 +1,4 @@
 import { BufferGeometry, Float32BufferAttribute, Vector3 } from 'three'
-import { TRACK_EDGE_LINE_WIDTH } from '../../../../constants/dimensions'
 import { TRACK_LAYER_Y_OFFSETS } from '../../../../constants/trackLayers'
 import type { TrackRibbonPoint } from '../../../../types/trackObjects'
 
@@ -200,62 +199,6 @@ export function buildPitLaneGeometry(
   geometry.computeBoundingSphere()
 
   return { geometry, indices: pitIndices }
-}
-
-const EDGE_LINE_Y_OVER_ASPHALT =
-  TRACK_LAYER_Y_OFFSETS.EDGE_LINE - TRACK_LAYER_Y_OFFSETS.ASPHALT
-
-export function buildEdgeLineGeometry(
-  frames: RibbonFrames,
-  side: 'left' | 'right',
-  closed: boolean,
-  inset: number = TRACK_EDGE_LINE_WIDTH,
-): BufferGeometry {
-  const n = frames.leftPositions.length
-  const segmentCount = closed ? n : n - 1
-  const vertices: number[] = []
-  const indices: number[] = []
-
-  for (let i = 0; i < n; i++) {
-    const L = frames.leftPositions[i]!
-    const R = frames.rightPositions[i]!
-    const edgeDir = new Vector3().subVectors(L, R)
-    const edgeDirLen = edgeDir.length()
-    if (edgeDirLen > 0) edgeDir.divideScalar(edgeDirLen)
-    const edgeY = Math.max(L.y, R.y) + EDGE_LINE_Y_OVER_ASPHALT
-
-    if (side === 'left') {
-      vertices.push(L.x, edgeY, L.z)
-      vertices.push(L.x - edgeDir.x * inset, edgeY, L.z - edgeDir.z * inset)
-    } else {
-      vertices.push(R.x, edgeY, R.z)
-      vertices.push(R.x + edgeDir.x * inset, edgeY, R.z + edgeDir.z * inset)
-    }
-  }
-
-  for (let i = 0; i < segmentCount; i++) {
-    const a = i
-    const b = (i + 1) % n
-    const iA_O = a * 2
-    const iA_I = a * 2 + 1
-    const iB_O = b * 2
-    const iB_I = b * 2 + 1
-    if (side === 'left') {
-      indices.push(iA_O, iB_O, iA_I)
-      indices.push(iB_O, iB_I, iA_I)
-    } else {
-      indices.push(iA_O, iA_I, iB_O)
-      indices.push(iB_O, iA_I, iB_I)
-    }
-  }
-
-  const geometry = new BufferGeometry()
-  geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3))
-  geometry.setIndex(indices)
-  geometry.computeVertexNormals()
-  geometry.computeBoundingBox()
-  geometry.computeBoundingSphere()
-  return geometry
 }
 
 export function buildRibbonLayers(

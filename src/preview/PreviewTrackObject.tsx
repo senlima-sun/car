@@ -112,13 +112,10 @@ function PreviewPainted({
   allObjects: readonly PlacedObject[]
 }) {
   const built = useMemo(() => {
-    if (object.parentRibbonId) {
-      const resolved = resolveParentDerivedLayer(object, { allObjects })
-      if (!resolved || resolved.points.length < 2) return null
-      return buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
-    }
-    if (!object.ribbonPoints || object.ribbonPoints.length < 2) return null
-    return buildAsphaltGeometry(object.ribbonPoints, object.ribbonClosed ?? false, object.width ?? 3)
+    if (!object.parentRibbonId) return null
+    const resolved = resolveParentDerivedLayer(object, { allObjects })
+    if (!resolved || resolved.points.length < 2) return null
+    return buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
   }, [object, allObjects])
 
   useEffect(

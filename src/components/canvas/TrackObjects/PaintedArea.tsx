@@ -23,20 +23,15 @@ interface PaintedAreaMeshData {
 
 export default function PaintedArea({ placed, parentRibbon, isGhost = false }: PaintedAreaProps) {
   const meshData = useMemo<PaintedAreaMeshData | null>(() => {
-    let points = placed.ribbonPoints
-    let closed = placed.ribbonClosed ?? false
-    let width = placed.width ?? 3
-
-    if (placed.parentRibbonId) {
-      const resolved = resolveParentDerivedLayer(placed, { parent: parentRibbon })
-      if (!resolved) return null
-      points = resolved.points
-      closed = resolved.closed
-      width = resolved.width
+    if (!placed.parentRibbonId) {
+      if (import.meta.env.DEV) {
+        console.warn(`[PaintedArea] ${placed.id} has no parentRibbonId; layer skipped.`)
+      }
+      return null
     }
-
-    if (!points || points.length < 2) return null
-    const result = buildAsphaltGeometry(points, closed, width)
+    const resolved = resolveParentDerivedLayer(placed, { parent: parentRibbon })
+    if (!resolved) return null
+    const result = buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
     if (!result || result.mainIndices.length === 0) return null
     return {
       geometry: result.geometry,
