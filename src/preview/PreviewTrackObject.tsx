@@ -28,33 +28,41 @@ function PreviewEdgeLine({
   object: PlacedObject
   allObjects: readonly PlacedObject[]
 }) {
-  const geometry = useMemo(() => {
-    const resolved = resolveParentDerivedLayer(object, { allObjects })
-    if (!resolved || resolved.points.length < 2) return null
-    const built = buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
-    return built?.geometry ?? null
+  const geometries = useMemo(() => {
+    const segments = resolveParentDerivedLayer(object, { allObjects })
+    const out: THREE.BufferGeometry[] = []
+    for (const seg of segments) {
+      if (seg.points.length < 2) continue
+      const built = buildAsphaltGeometry(seg.points, seg.closed, seg.width)
+      if (built) out.push(built.geometry)
+    }
+    return out
   }, [object, allObjects])
 
   useEffect(
     () => () => {
-      geometry?.dispose()
+      for (const g of geometries) g.dispose()
     },
-    [geometry],
+    [geometries],
   )
 
-  if (!geometry) return null
+  if (geometries.length === 0) return null
   return (
-    <mesh geometry={geometry}>
-      <meshStandardMaterial
-        color='#ffffff'
-        roughness={0.5}
-        metalness={0}
-        side={THREE.DoubleSide}
-        polygonOffset
-        polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.factor}
-        polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.units}
-      />
-    </mesh>
+    <group>
+      {geometries.map((g, i) => (
+        <mesh key={i} geometry={g}>
+          <meshStandardMaterial
+            color='#ffffff'
+            roughness={0.5}
+            metalness={0}
+            side={THREE.DoubleSide}
+            polygonOffset
+            polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.factor}
+            polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.EDGE_LINE.units}
+          />
+        </mesh>
+      ))}
+    </group>
   )
 }
 
@@ -111,34 +119,43 @@ function PreviewPainted({
   object: PlacedObject
   allObjects: readonly PlacedObject[]
 }) {
-  const built = useMemo(() => {
-    if (!object.parentRibbonId) return null
-    const resolved = resolveParentDerivedLayer(object, { allObjects })
-    if (!resolved || resolved.points.length < 2) return null
-    return buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
+  const geometries = useMemo(() => {
+    if (!object.parentRibbonId) return []
+    const segments = resolveParentDerivedLayer(object, { allObjects })
+    const out: THREE.BufferGeometry[] = []
+    for (const seg of segments) {
+      if (seg.points.length < 2) continue
+      const built = buildAsphaltGeometry(seg.points, seg.closed, seg.width)
+      if (built) out.push(built.geometry)
+    }
+    return out
   }, [object, allObjects])
 
   useEffect(
     () => () => {
-      built?.geometry.dispose()
+      for (const g of geometries) g.dispose()
     },
-    [built],
+    [geometries],
   )
 
-  if (!built || built.mainIndices.length === 0) return null
+  if (geometries.length === 0) return null
 
   return (
-    <mesh geometry={built.geometry}>
-      <meshStandardMaterial
-        color='#a8d89c'
-        roughness={0.7}
-        metalness={0}
-        side={THREE.DoubleSide}
-        polygonOffset
-        polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.factor}
-        polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.units}
-      />
-    </mesh>
+    <group>
+      {geometries.map((g, i) => (
+        <mesh key={i} geometry={g}>
+          <meshStandardMaterial
+            color='#a8d89c'
+            roughness={0.7}
+            metalness={0}
+            side={THREE.DoubleSide}
+            polygonOffset
+            polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.factor}
+            polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.units}
+          />
+        </mesh>
+      ))}
+    </group>
   )
 }
 
@@ -151,9 +168,14 @@ function PreviewCurb({
 }) {
   const built = useMemo(() => {
     if (object.parentRibbonId) {
-      const resolved = resolveParentDerivedLayer(object, { allObjects })
-      if (!resolved || resolved.points.length < 2) return null
-      return buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
+      const segments = resolveParentDerivedLayer(object, { allObjects })
+      if (segments.length === 0) return null
+      let longest = segments[0]!
+      for (const s of segments) {
+        if (s.points.length > longest.points.length) longest = s
+      }
+      if (longest.points.length < 2) return null
+      return buildAsphaltGeometry(longest.points, longest.closed, longest.width)
     }
     if (!object.curbCenterline || object.curbCenterline.length < 2) return null
     return buildAsphaltGeometry(object.curbCenterline, false, 1.5)

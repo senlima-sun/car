@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { BufferGeometry } from 'three'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '@/constants/trackLayers'
 import { GHOST_OPACITY } from '@/constants/trackObjects'
 import { resolveParentDerivedLayer } from '@/utils/parentDerivedLayer'
@@ -19,34 +20,42 @@ export default function EdgeLine({ placed, parentRibbon, isGhost = false }: Edge
     console.warn(`[EdgeLine] ${placed.id} parentSide is undefined; defaulting to 'right'.`)
   }
 
-  const geometry = useMemo(() => {
-    const resolved = resolveParentDerivedLayer(placed, { parent: parentRibbon })
-    if (!resolved || resolved.points.length < 2) return null
-    const built = buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
-    return built?.geometry ?? null
+  const geometries = useMemo<BufferGeometry[]>(() => {
+    const segments = resolveParentDerivedLayer(placed, { parent: parentRibbon })
+    const out: BufferGeometry[] = []
+    for (const seg of segments) {
+      if (seg.points.length < 2) continue
+      const built = buildAsphaltGeometry(seg.points, seg.closed, seg.width)
+      if (built) out.push(built.geometry)
+    }
+    return out
   }, [placed, parentRibbon])
 
   useEffect(
     () => () => {
-      geometry?.dispose()
+      for (const g of geometries) g.dispose()
     },
-    [geometry],
+    [geometries],
   )
 
-  if (!geometry) return null
+  if (geometries.length === 0) return null
 
   return (
-    <mesh geometry={geometry}>
-      <meshStandardMaterial
-        color='#ffffff'
-        transparent={isGhost}
-        opacity={isGhost ? GHOST_OPACITY : 1}
-        depthWrite={!isGhost}
-        polygonOffset
-        polygonOffsetFactor={EDGE_OFFSET_FACTOR}
-        polygonOffsetUnits={EDGE_OFFSET_UNITS}
-        side={2}
-      />
-    </mesh>
+    <group>
+      {geometries.map((g, i) => (
+        <mesh key={i} geometry={g}>
+          <meshStandardMaterial
+            color='#ffffff'
+            transparent={isGhost}
+            opacity={isGhost ? GHOST_OPACITY : 1}
+            depthWrite={!isGhost}
+            polygonOffset
+            polygonOffsetFactor={EDGE_OFFSET_FACTOR}
+            polygonOffsetUnits={EDGE_OFFSET_UNITS}
+            side={2}
+          />
+        </mesh>
+      ))}
+    </group>
   )
 }

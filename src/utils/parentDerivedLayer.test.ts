@@ -41,43 +41,48 @@ const CLOSED_SQUARE: TrackRibbonPoint[] = [
   { x: 0, y: 0, z: 100, isPitLane: false },
 ]
 
+function firstSeg(segments: ReturnType<typeof resolveParentDerivedLayer>) {
+  expect(segments.length).toBeGreaterThan(0)
+  return segments[0]!
+}
+
 describe('resolveParentDerivedLayer', () => {
-  test('returns null when parentRibbonId is missing', () => {
+  test('returns [] when parentRibbonId is missing', () => {
     const placed: PlacedObject = {
       id: 'x',
       type: 'painted_area',
       position: [0, 0, 0],
       rotation: 0,
     }
-    expect(resolveParentDerivedLayer(placed, { parent: undefined })).toBeNull()
+    expect(resolveParentDerivedLayer(placed, { parent: undefined })).toEqual([])
   })
 
-  test('returns null when parent is not found (parent ctx)', () => {
+  test('returns [] when parent is not found (parent ctx)', () => {
     const placed = makeDerived({})
-    expect(resolveParentDerivedLayer(placed, { parent: undefined })).toBeNull()
+    expect(resolveParentDerivedLayer(placed, { parent: undefined })).toEqual([])
   })
 
-  test('returns null when parent is not found (allObjects ctx)', () => {
+  test('returns [] when parent is not found (allObjects ctx)', () => {
     const placed = makeDerived({})
-    expect(resolveParentDerivedLayer(placed, { allObjects: [] })).toBeNull()
+    expect(resolveParentDerivedLayer(placed, { allObjects: [] })).toEqual([])
   })
 
   test('left side places derived band perpendicular to tangent at halfWidth + offset + halfDerived', () => {
     const parent = makeRibbon(STRAIGHT, false, 12)
     const placed = makeDerived({ parentSide: 'left', innerOffset: 0, derivedWidth: 3 })
-    const result = resolveParentDerivedLayer(placed, { parent })!
-    expect(result.points.length).toBe(3)
-    for (const p of result.points) {
+    const seg = firstSeg(resolveParentDerivedLayer(placed, { parent }))
+    expect(seg.points.length).toBe(3)
+    for (const p of seg.points) {
       expect(p.z).toBeCloseTo(7.5, 5)
     }
-    expect(result.width).toBe(3)
+    expect(seg.width).toBe(3)
   })
 
   test('right side mirrors via sign flip', () => {
     const parent = makeRibbon(STRAIGHT, false, 12)
     const placed = makeDerived({ parentSide: 'right' })
-    const result = resolveParentDerivedLayer(placed, { parent })!
-    for (const p of result.points) {
+    const seg = firstSeg(resolveParentDerivedLayer(placed, { parent }))
+    for (const p of seg.points) {
       expect(p.z).toBeCloseTo(-7.5, 5)
     }
   })
@@ -85,28 +90,26 @@ describe('resolveParentDerivedLayer', () => {
   test('closed loop parent + tRange [0.25, 0.75] returns middle half', () => {
     const parent = makeRibbon(CLOSED_SQUARE, true, 12)
     const placed = makeDerived({ tRange: [0.25, 0.75] })
-    const result = resolveParentDerivedLayer(placed, { parent })!
-    expect(result.points.length).toBeGreaterThan(0)
-    expect(result.points.length).toBeLessThan(CLOSED_SQUARE.length)
-    expect(result.closed).toBe(false)
+    const seg = firstSeg(resolveParentDerivedLayer(placed, { parent }))
+    expect(seg.points.length).toBeGreaterThan(0)
+    expect(seg.points.length).toBeLessThan(CLOSED_SQUARE.length)
+    expect(seg.closed).toBe(false)
   })
 
   test('full-range closed parent yields closed derived layer', () => {
     const parent = makeRibbon(CLOSED_SQUARE, true, 12)
     const placed = makeDerived({ tRange: [0, 1] })
-    const result = resolveParentDerivedLayer(placed, { parent })!
-    expect(result.closed).toBe(true)
+    const seg = firstSeg(resolveParentDerivedLayer(placed, { parent }))
+    expect(seg.closed).toBe(true)
   })
 
   test('terrainHeightAt overrides derived y values', () => {
     const parent = makeRibbon(STRAIGHT, false, 12)
     const placed = makeDerived({})
-    const result = resolveParentDerivedLayer(
-      placed,
-      { parent },
-      { terrainHeightAt: () => 4.2 },
-    )!
-    for (const p of result.points) {
+    const seg = firstSeg(
+      resolveParentDerivedLayer(placed, { parent }, { terrainHeightAt: () => 4.2 }),
+    )
+    for (const p of seg.points) {
       expect(p.y).toBeCloseTo(4.2, 5)
     }
   })
@@ -114,15 +117,17 @@ describe('resolveParentDerivedLayer', () => {
   test('resampleSpacing densifies parent walk', () => {
     const parent = makeRibbon(STRAIGHT, false, 12)
     const placed = makeDerived({})
-    const dense = resolveParentDerivedLayer(placed, { parent }, { resampleSpacing: 0.5 })!
-    expect(dense.points.length).toBeGreaterThan(STRAIGHT.length)
+    const seg = firstSeg(
+      resolveParentDerivedLayer(placed, { parent }, { resampleSpacing: 0.5 }),
+    )
+    expect(seg.points.length).toBeGreaterThan(STRAIGHT.length)
   })
 
   test('innerOffset shifts derived center outward', () => {
     const parent = makeRibbon(STRAIGHT, false, 12)
     const placed = makeDerived({ parentSide: 'left', innerOffset: 2, derivedWidth: 1 })
-    const result = resolveParentDerivedLayer(placed, { parent })!
-    for (const p of result.points) {
+    const seg = firstSeg(resolveParentDerivedLayer(placed, { parent }))
+    for (const p of seg.points) {
       expect(p.z).toBeCloseTo(6 + 2 + 0.5, 5)
     }
   })
@@ -130,7 +135,9 @@ describe('resolveParentDerivedLayer', () => {
   test('allObjects ctx finds parent by id', () => {
     const parent = makeRibbon(STRAIGHT, false, 12)
     const placed = makeDerived({})
-    const result = resolveParentDerivedLayer(placed, { allObjects: [placed, parent] })!
-    expect(result.points.length).toBeGreaterThan(0)
+    const seg = firstSeg(
+      resolveParentDerivedLayer(placed, { allObjects: [placed, parent] }),
+    )
+    expect(seg.points.length).toBeGreaterThan(0)
   })
 })

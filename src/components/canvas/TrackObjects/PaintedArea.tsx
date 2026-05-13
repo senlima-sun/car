@@ -15,29 +15,33 @@ interface PaintedAreaProps {
 
 const PAINTED_COLOR = '#a8d89c'
 
-interface PaintedAreaMeshData {
+interface PaintedAreaMesh {
   geometry: THREE.BufferGeometry
   sensorVertices: Float32Array
   sensorIndices: Uint32Array
 }
 
 export default function PaintedArea({ placed, parentRibbon, isGhost = false }: PaintedAreaProps) {
-  const meshData = useMemo<PaintedAreaMeshData | null>(() => {
+  const meshes = useMemo<PaintedAreaMesh[]>(() => {
     if (!placed.parentRibbonId) {
       if (import.meta.env.DEV) {
         console.warn(`[PaintedArea] ${placed.id} has no parentRibbonId; layer skipped.`)
       }
-      return null
+      return []
     }
-    const resolved = resolveParentDerivedLayer(placed, { parent: parentRibbon })
-    if (!resolved) return null
-    const result = buildAsphaltGeometry(resolved.points, resolved.closed, resolved.width)
-    if (!result || result.mainIndices.length === 0) return null
-    return {
-      geometry: result.geometry,
-      sensorVertices: result.positions,
-      sensorIndices: new Uint32Array(result.mainIndices),
+    const segments = resolveParentDerivedLayer(placed, { parent: parentRibbon })
+    const out: PaintedAreaMesh[] = []
+    for (const seg of segments) {
+      if (seg.points.length < 2) continue
+      const result = buildAsphaltGeometry(seg.points, seg.closed, seg.width)
+      if (!result || result.mainIndices.length === 0) continue
+      out.push({
+        geometry: result.geometry,
+        sensorVertices: result.positions,
+        sensorIndices: new Uint32Array(result.mainIndices),
+      })
     }
+    return out
   }, [placed, parentRibbon])
 
   const enterSurface = useSurfaceStore(s => s.enterSurface)
@@ -55,35 +59,39 @@ export default function PaintedArea({ placed, parentRibbon, isGhost = false }: P
 
   useEffect(() => {
     return () => {
-      meshData?.geometry.dispose()
+      for (const m of meshes) m.geometry.dispose()
     }
-  }, [meshData])
+  }, [meshes])
 
-  if (!meshData) return null
+  if (meshes.length === 0) return null
 
   return (
     <group>
-      <mesh geometry={meshData.geometry} receiveShadow>
-        <meshStandardMaterial
-          color={PAINTED_COLOR}
-          roughness={0.7}
-          metalness={0.0}
-          side={THREE.DoubleSide}
-          polygonOffset
-          polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.factor}
-          polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.units}
-        />
-      </mesh>
-      {!isGhost && (
-        <RigidBody type='fixed' colliders={false}>
-          <TrimeshCollider
-            args={[meshData.sensorVertices, meshData.sensorIndices]}
-            sensor
-            onIntersectionEnter={handleEnter}
-            onIntersectionExit={handleExit}
-          />
-        </RigidBody>
-      )}
+      {meshes.map((m, i) => (
+        <group key={i}>
+          <mesh geometry={m.geometry} receiveShadow>
+            <meshStandardMaterial
+              color={PAINTED_COLOR}
+              roughness={0.7}
+              metalness={0.0}
+              side={THREE.DoubleSide}
+              polygonOffset
+              polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.factor}
+              polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.units}
+            />
+          </mesh>
+          {!isGhost && (
+            <RigidBody type='fixed' colliders={false}>
+              <TrimeshCollider
+                args={[m.sensorVertices, m.sensorIndices]}
+                sensor
+                onIntersectionEnter={handleEnter}
+                onIntersectionExit={handleExit}
+              />
+            </RigidBody>
+          )}
+        </group>
+      ))}
     </group>
   )
 }

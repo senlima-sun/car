@@ -52,12 +52,19 @@ function resolveCurbCenter(
   parentRibbon?: PlacedObject,
 ): TrackRibbonPoint[] | null {
   if (curb.parentRibbonId) {
-    const resolved = resolveParentDerivedLayer(
+    const segments = resolveParentDerivedLayer(
       curb,
       { parent: parentRibbon },
       { resampleSpacing: 0.5 },
     )
-    return resolved?.points ?? null
+    if (segments.length === 0) return null
+    // Curb uses the longest viable segment (sharp tangent change at parent
+    // would otherwise produce a tiny stub).
+    let longest = segments[0]!
+    for (const s of segments) {
+      if (s.points.length > longest.points.length) longest = s
+    }
+    return longest.points
   }
   return curb.curbCenterline ?? null
 }
