@@ -15,6 +15,7 @@ import {
 } from '../../../shaders/asphaltSurface'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { GHOST_OPACITY } from '../../../constants/trackObjects'
+import { TRACK_LAYER_POLYGON_OFFSETS } from '../../../constants/trackLayers'
 
 const weatherState = { rainIntensity: 0, temperature: 25 }
 useEnvironmentStore.subscribe(state => {
@@ -53,8 +54,8 @@ export default function RoadSurfaceMaterial({
   depthWrite,
   side,
   polygonOffset = true,
-  polygonOffsetFactor = -1,
-  polygonOffsetUnits = -1,
+  polygonOffsetFactor = TRACK_LAYER_POLYGON_OFFSETS.ASPHALT.factor,
+  polygonOffsetUnits = TRACK_LAYER_POLYGON_OFFSETS.ASPHALT.units,
   color,
 }: RoadSurfaceMaterialProps) {
   const matRef = useRef<THREE.MeshStandardMaterial>(null)

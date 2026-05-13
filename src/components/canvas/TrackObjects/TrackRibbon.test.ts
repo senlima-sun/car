@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { Vector3 } from 'three'
 import { TRACK_EDGE_LINE_WIDTH } from '../../../constants/dimensions'
-import { PAINTED_AREA_Y_OFFSET } from './PaintedArea'
+import { TRACK_LAYER_Y_OFFSETS } from '../../../constants/trackLayers'
 import { buildRibbon } from './TrackRibbon'
 
 describe('buildRibbon', () => {
@@ -69,9 +69,10 @@ describe('buildRibbon', () => {
 
     const mainPositions = ribbon!.mainGeometry.getAttribute('position')
     const edgePositions = ribbon!.leftEdgeGeometry!.getAttribute('position')
-    const paintedY = mainPositions.getY(0) + PAINTED_AREA_Y_OFFSET
+    const paintedY = mainPositions.getY(0)
     const edgeY = edgePositions.getY(0)
     const grassVisualDisplacementMax = 0.04
+    expect(paintedY).toBeCloseTo(TRACK_LAYER_Y_OFFSETS.ASPHALT, 6)
 
     expect(paintedY).toBeGreaterThan(grassVisualDisplacementMax)
     expect(paintedY).toBeLessThan(edgeY)

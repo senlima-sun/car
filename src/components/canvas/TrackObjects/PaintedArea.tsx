@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
+import { TRACK_LAYER_POLYGON_OFFSETS } from '../../../constants/trackLayers'
 import { buildRibbon } from './TrackRibbon'
 import type { TrackRibbonPoint } from '../../../types/trackObjects'
 
@@ -14,7 +15,6 @@ interface PaintedAreaProps {
 }
 
 const PAINTED_COLOR = '#a8d89c'
-export const PAINTED_AREA_Y_OFFSET = 0
 
 export default function PaintedArea({ points, closed, width, isGhost = false }: PaintedAreaProps) {
   const ribbon = useMemo(() => buildRibbon(points, closed, width), [points, closed, width])
@@ -45,7 +45,7 @@ export default function PaintedArea({ points, closed, width, isGhost = false }: 
   if (ribbon.mainSensorIndices.length === 0) return null
 
   return (
-    <group position={[0, PAINTED_AREA_Y_OFFSET, 0]}>
+    <group>
       <mesh geometry={ribbon.mainGeometry} receiveShadow>
         <meshStandardMaterial
           color={PAINTED_COLOR}
@@ -53,8 +53,8 @@ export default function PaintedArea({ points, closed, width, isGhost = false }: 
           metalness={0.0}
           side={THREE.DoubleSide}
           polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
+          polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.factor}
+          polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.PAINTED_AREA.units}
         />
       </mesh>
       {!isGhost && (
