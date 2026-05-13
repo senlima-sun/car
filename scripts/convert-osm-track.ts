@@ -125,6 +125,48 @@ function resampleToUniformSpacing(points: Point2D[], targetSpacing: number): Poi
   return out
 }
 
+function curvatureAt(points: Point2D[], i: number): number {
+  const n = points.length
+  if (n < 3) return 0
+  const prev = points[(i - 1 + n) % n]!
+  const here = points[i]!
+  const next = points[(i + 1) % n]!
+  const ax = here.x - prev.x
+  const az = here.z - prev.z
+  const bx = next.x - here.x
+  const bz = next.z - here.z
+  const aLen = Math.hypot(ax, az)
+  const bLen = Math.hypot(bx, bz)
+  if (aLen < 0.001 || bLen < 0.001) return 0
+  const cross = ax * bz - az * bx
+  const triArea = Math.abs(cross) / 2
+  const chordLen = Math.hypot(next.x - prev.x, next.z - prev.z) || 0.001
+  return (4 * triArea) / (aLen * bLen * chordLen)
+}
+
+function adaptiveResample(points: Point2D[], baseSpacing: number, minSpacing: number): Point2D[] {
+  if (points.length < 3) return points
+  const uniform = resampleToUniformSpacing(points, baseSpacing)
+  const out: Point2D[] = [uniform[0]!]
+  for (let i = 1; i < uniform.length; i++) {
+    const a = out[out.length - 1]!
+    const b = uniform[i]!
+    const segLen = dist2D(a, b)
+    const curv = Math.max(curvatureAt(uniform, i - 1), curvatureAt(uniform, i))
+    const targetSpacing = Math.max(minSpacing, baseSpacing / (1 + curv * 60))
+    if (segLen <= targetSpacing * 1.5) {
+      out.push(b)
+      continue
+    }
+    const steps = Math.max(2, Math.ceil(segLen / targetSpacing))
+    for (let s = 1; s <= steps; s++) {
+      const t = s / steps
+      out.push({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t })
+    }
+  }
+  return out
+}
+
 function smoothSharpAngles(points: Point2D[], maxPasses: number): Point2D[] {
   if (points.length < 3) return points
   let current = points.slice()
@@ -504,10 +546,10 @@ async function convertCircuit(circuitName: string): Promise<void> {
   const simplified = douglasPeucker(worldPoints, SIMPLIFY_TOLERANCE)
   const dedupedRaw = collapseNearbyPoints(simplified, 3)
   const smoothed = smoothSharpAngles(dedupedRaw, 5)
-  const resampled = resampleToUniformSpacing(smoothed, 25)
+  const resampled = adaptiveResample(smoothed, 25, 8)
   const deduped = closeRingIfNear(resampled, 1500)
   console.log(
-    `  ✂️  Simplified: ${worldPoints.length} → ${simplified.length} → ${dedupedRaw.length} (collapsed) → ${smoothed.length} (smoothed) → ${resampled.length} (resampled@25m) → ${deduped.length} (closed) points`,
+    `  ✂️  Simplified: ${worldPoints.length} → ${simplified.length} → ${dedupedRaw.length} (collapsed) → ${smoothed.length} (smoothed) → ${resampled.length} (adaptive-resampled) → ${deduped.length} (closed) points`,
   )
 
   let totalLength = 0
@@ -539,15 +581,17 @@ async function convertCircuit(circuitName: string): Promise<void> {
   for (const path of source.paths) {
     if (!path.closed) continue
     const anchors = path.anchors
-    if (anchors.length < 2) continue
-    const first = anchors[0]!
-    first.handleType = 'corner'
-    first.inHandle = { x: first.point.x, y: first.point.y }
-    first.outHandle = { x: first.point.x, y: first.point.y }
-    const last = anchors[anchors.length - 1]!
-    last.handleType = 'corner'
-    last.inHandle = { x: last.point.x, y: last.point.y }
-    last.outHandle = { x: last.point.x, y: last.point.y }
+    if (anchors.length < 3) continue
+    for (let i = 0; i < anchors.length; i++) {
+      const a = anchors[i]!
+      const prev = anchors[(i - 1 + anchors.length) % anchors.length]!
+      const next = anchors[(i + 1) % anchors.length]!
+      const tangentX = (next.point.x - prev.point.x) / 6
+      const tangentY = (next.point.y - prev.point.y) / 6
+      a.handleType = 'smooth'
+      a.inHandle = { x: a.point.x - tangentX, y: a.point.y - tangentY }
+      a.outHandle = { x: a.point.x + tangentX, y: a.point.y + tangentY }
+    }
   }
 
   const outPath = `src/constants/tracks/sources/${config.name}.json`
