@@ -1,0 +1,23 @@
+{
+  "name": "melbourne",
+  "displayName": "Albert Park Circuit",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      -37.86,
+      144.96,
+      -37.84,
+      144.99
+    ],
+    "queryFilters": [],
+    "relationId": 280443
+  },
+  "centerLat": -37.8497,
+  "centerLon": 144.9683,
+  "maxChainGap": 2000,
+  "reverseDirection": false,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 5449,
+  "expectedTurns": 14,
+  "expectedStartHeadingDegrees": 85.2
+}

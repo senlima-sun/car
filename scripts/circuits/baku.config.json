@@ -1,0 +1,27 @@
+{
+  "name": "baku",
+  "displayName": "Baku City Circuit",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      40.36,
+      49.83,
+      40.39,
+      49.88
+    ],
+    "queryFilters": [],
+    "relationId": 11266687
+  },
+  "centerLat": 40.3725,
+  "centerLon": 49.8533,
+  "maxChainGap": 300,
+  "reverseDirection": true,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 6003,
+  "expectedTurns": 20,
+  "expectedStartHeadingDegrees": -156.4,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}

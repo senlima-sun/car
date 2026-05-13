@@ -14,6 +14,12 @@ import losailSource from './sources/losail.json'
 import yasMarinaSource from './sources/yas-marina.json'
 import catalunyaSource from './sources/catalunya.json'
 import imolaSource from './sources/imola.json'
+import monacoSource from './sources/monaco.json'
+import singaporeSource from './sources/singapore.json'
+import bakuSource from './sources/baku.json'
+import miamiSource from './sources/miami.json'
+import lasVegasSource from './sources/las-vegas.json'
+import melbourneSource from './sources/melbourne.json'
 import {
   buildRuntimePresetTrack,
   type EditorTrackSource,
@@ -39,6 +45,12 @@ export const PRESET_TRACKS: PresetTrack[] = [
   yasMarinaSource as EditorTrackSource,
   catalunyaSource as EditorTrackSource,
   imolaSource as EditorTrackSource,
+  monacoSource as EditorTrackSource,
+  singaporeSource as EditorTrackSource,
+  bakuSource as EditorTrackSource,
+  miamiSource as EditorTrackSource,
+  lasVegasSource as EditorTrackSource,
+  melbourneSource as EditorTrackSource,
 ].map(buildRuntimePresetTrack)
 
 export function getPresetTrack(id: string): PresetTrack | undefined {

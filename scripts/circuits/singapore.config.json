@@ -1,0 +1,27 @@
+{
+  "name": "singapore",
+  "displayName": "Marina Bay Street Circuit",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      1.28,
+      103.85,
+      1.31,
+      103.88
+    ],
+    "queryFilters": [],
+    "relationId": 421263
+  },
+  "centerLat": 1.2915,
+  "centerLon": 103.8639,
+  "maxChainGap": 200,
+  "reverseDirection": true,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 4927,
+  "expectedTurns": 19,
+  "expectedStartHeadingDegrees": -135.2,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}

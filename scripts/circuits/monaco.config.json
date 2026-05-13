@@ -1,0 +1,27 @@
+{
+  "name": "monaco",
+  "displayName": "Circuit de Monaco",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      43.73,
+      7.41,
+      43.75,
+      7.44
+    ],
+    "queryFilters": [],
+    "relationId": 148194
+  },
+  "centerLat": 43.7347,
+  "centerLon": 7.4206,
+  "maxChainGap": 200,
+  "reverseDirection": false,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 4197,
+  "expectedTurns": 19,
+  "expectedStartHeadingDegrees": -146.4,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}

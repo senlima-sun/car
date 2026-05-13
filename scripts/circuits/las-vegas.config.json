@@ -1,0 +1,27 @@
+{
+  "name": "las-vegas",
+  "displayName": "Las Vegas Strip Circuit",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      36.09,
+      -115.18,
+      36.13,
+      -115.14
+    ],
+    "queryFilters": [],
+    "relationId": 16696508
+  },
+  "centerLat": 36.11,
+  "centerLon": -115.1622,
+  "maxChainGap": 500,
+  "reverseDirection": true,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 6201,
+  "expectedTurns": 17,
+  "expectedStartHeadingDegrees": 122.4,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}
