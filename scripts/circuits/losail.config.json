@@ -1,0 +1,33 @@
+{
+  "name": "losail",
+  "displayName": "Lusail International Circuit",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      25.48,
+      51.44,
+      25.5,
+      51.47
+    ],
+    "queryFilters": [
+      "\"highway\"=\"raceway\"",
+      "\"sport\"=\"motor\""
+    ]
+  },
+  "centerLat": 25.49,
+  "centerLon": 51.4542,
+  "wayNameDenyList": [
+    "Pit Lane",
+    "pit"
+  ],
+  "maxChainGap": 150,
+  "reverseDirection": false,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 5419,
+  "expectedTurns": 16,
+  "expectedStartHeadingDegrees": -151.3,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}

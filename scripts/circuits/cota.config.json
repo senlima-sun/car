@@ -1,0 +1,33 @@
+{
+  "name": "cota",
+  "displayName": "Circuit of the Americas",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      30.12,
+      -97.66,
+      30.15,
+      -97.62
+    ],
+    "queryFilters": [
+      "\"highway\"=\"raceway\"",
+      "\"sport\"=\"motor\""
+    ]
+  },
+  "centerLat": 30.1328,
+  "centerLon": -97.6411,
+  "wayNameDenyList": [
+    "Pit Lane",
+    "pit"
+  ],
+  "maxChainGap": 150,
+  "reverseDirection": true,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 5514,
+  "expectedTurns": 20,
+  "expectedStartHeadingDegrees": 36.2,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}

@@ -6,6 +6,12 @@ import spaSource from './sources/spa.json'
 import zandvoortSource from './sources/zandvoort.json'
 import redBullRingSource from './sources/red-bull-ring.json'
 import hungaroringSource from './sources/hungaroring.json'
+import cotaSource from './sources/cota.json'
+import interlagosSource from './sources/interlagos.json'
+import mexicoCitySource from './sources/mexico-city.json'
+import montrealSource from './sources/montreal.json'
+import losailSource from './sources/losail.json'
+import yasMarinaSource from './sources/yas-marina.json'
 import {
   buildRuntimePresetTrack,
   type EditorTrackSource,
@@ -23,6 +29,12 @@ export const PRESET_TRACKS: PresetTrack[] = [
   zandvoortSource as EditorTrackSource,
   redBullRingSource as EditorTrackSource,
   hungaroringSource as EditorTrackSource,
+  cotaSource as EditorTrackSource,
+  interlagosSource as EditorTrackSource,
+  mexicoCitySource as EditorTrackSource,
+  montrealSource as EditorTrackSource,
+  losailSource as EditorTrackSource,
+  yasMarinaSource as EditorTrackSource,
 ].map(buildRuntimePresetTrack)
 
 export function getPresetTrack(id: string): PresetTrack | undefined {

@@ -474,7 +474,7 @@ async function convertCircuit(circuitName: string): Promise<void> {
   const dedupedRaw = collapseNearbyPoints(simplified, 3)
   const smoothed = smoothSharpAngles(dedupedRaw, 5)
   const resampled = resampleToUniformSpacing(smoothed, 25)
-  const deduped = closeRingIfNear(resampled, 300)
+  const deduped = closeRingIfNear(resampled, 1500)
   console.log(
     `  ✂️  Simplified: ${worldPoints.length} → ${simplified.length} → ${dedupedRaw.length} (collapsed) → ${smoothed.length} (smoothed) → ${resampled.length} (resampled@25m) → ${deduped.length} (closed) points`,
   )

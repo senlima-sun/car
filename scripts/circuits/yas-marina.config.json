@@ -1,0 +1,35 @@
+{
+  "name": "yas-marina",
+  "displayName": "Yas Marina Circuit",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      24.45,
+      54.59,
+      24.48,
+      54.62
+    ],
+    "queryFilters": [
+      "\"highway\"=\"raceway\"",
+      "\"sport\"=\"motor\""
+    ]
+  },
+  "centerLat": 24.4672,
+  "centerLon": 54.6031,
+  "wayNameDenyList": [
+    "Pit Lane",
+    "pit",
+    "North loop",
+    "south loop"
+  ],
+  "maxChainGap": 150,
+  "reverseDirection": false,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 3478,
+  "expectedTurns": 16,
+  "expectedStartHeadingDegrees": -171,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}

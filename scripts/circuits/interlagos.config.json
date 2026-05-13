@@ -1,0 +1,35 @@
+{
+  "name": "interlagos",
+  "displayName": "Autódromo José Carlos Pace",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      -23.71,
+      -46.71,
+      -23.69,
+      -46.68
+    ],
+    "queryFilters": [
+      "\"highway\"=\"raceway\"",
+      "\"sport\"=\"motor\""
+    ]
+  },
+  "centerLat": -23.7011,
+  "centerLon": -46.6972,
+  "wayNameDenyList": [
+    "Pit Lane",
+    "pit",
+    "Box",
+    "box"
+  ],
+  "maxChainGap": 150,
+  "reverseDirection": true,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 4309,
+  "expectedTurns": 15,
+  "expectedStartHeadingDegrees": -23.5,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}

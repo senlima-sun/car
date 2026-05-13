@@ -1,0 +1,34 @@
+{
+  "name": "mexico-city",
+  "displayName": "Autódromo Hermanos Rodríguez",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      19.39,
+      -99.11,
+      19.42,
+      -99.08
+    ],
+    "queryFilters": [
+      "\"highway\"=\"raceway\"",
+      "\"sport\"=\"motor\""
+    ]
+  },
+  "centerLat": 19.4061,
+  "centerLon": -99.0925,
+  "wayNameDenyList": [
+    "Pit Lane",
+    "pit",
+    "Box"
+  ],
+  "maxChainGap": 150,
+  "reverseDirection": false,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 4824,
+  "expectedTurns": 17,
+  "expectedStartHeadingDegrees": -98.8,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}
