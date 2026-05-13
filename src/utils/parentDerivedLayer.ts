@@ -81,6 +81,46 @@ function densifyParent(
   return { points: out, closed }
 }
 
+function filterInvertedDerivedPoints(
+  raw: Array<TrackRibbonPoint & { srcIdx: number }>,
+  parentTangents: Array<{ x: number; z: number }>,
+  sourcePoints: TrackRibbonPoint[],
+  centerOffset: number,
+): TrackRibbonPoint[] {
+  const out: TrackRibbonPoint[] = []
+  let prevSrcIdx = -1
+  for (let k = 0; k < raw.length; k++) {
+    const curr = raw[k]!
+    if (out.length === 0) {
+      out.push({ x: curr.x, y: curr.y, z: curr.z, isPitLane: curr.isPitLane })
+      prevSrcIdx = curr.srcIdx
+      continue
+    }
+    const prev = out[out.length - 1]!
+    const dx = curr.x - prev.x
+    const dz = curr.z - prev.z
+    const derivedStep = Math.hypot(dx, dz)
+    if (derivedStep < 1e-6) continue
+
+    const srcA = sourcePoints[prevSrcIdx]!
+    const srcB = sourcePoints[curr.srcIdx]!
+    const sourceStep = Math.hypot(srcB.x - srcA.x, srcB.z - srcA.z)
+    // If the derived step balloons relative to its parent step, the offset
+    // curve is fanning across a sharp tangent change — the derived sample
+    // would render as a spike. Drop it; the next in-bounds sample takes over.
+    const fanThreshold = Math.max(sourceStep * 3, centerOffset * 0.5)
+    if (derivedStep > fanThreshold) continue
+
+    const parentTan = parentTangents[curr.srcIdx]!
+    const dot = (dx / derivedStep) * parentTan.x + (dz / derivedStep) * parentTan.z
+    if (dot <= 0) continue
+
+    out.push({ x: curr.x, y: curr.y, z: curr.z, isPitLane: curr.isPitLane })
+    prevSrcIdx = curr.srcIdx
+  }
+  return out
+}
+
 export function resolveParentDerivedLayer(
   placed: PlacedObject,
   ctx: ResolveContext,
@@ -123,7 +163,7 @@ export function resolveParentDerivedLayer(
   const startArc = totalArc * Math.min(tStart, tEnd)
   const endArc = totalArc * Math.max(tStart, tEnd)
 
-  const points: TrackRibbonPoint[] = []
+  const rawPoints: Array<TrackRibbonPoint & { srcIdx: number }> = []
   for (let i = 0; i < dense.points.length; i++) {
     const arc = arcs[i]!
     if (arc < startArc - 1e-6 || arc > endArc + 1e-6) continue
@@ -134,9 +174,10 @@ export function resolveParentDerivedLayer(
     const wx = src.x + nx * centerOffset
     const wz = src.z + nz * centerOffset
     const wy = opts.terrainHeightAt ? opts.terrainHeightAt(wx, wz) : src.y
-    points.push({ x: wx, y: wy, z: wz, isPitLane: src.isPitLane })
+    rawPoints.push({ x: wx, y: wy, z: wz, isPitLane: src.isPitLane, srcIdx: i })
   }
 
+  const points = filterInvertedDerivedPoints(rawPoints, tangents, dense.points, centerOffset)
   if (points.length < 2) return null
   const fullSpan = (placed.tRange ?? [0, 1])[0] === 0 && (placed.tRange ?? [0, 1])[1] === 1
   const derivedClosed = fullSpan && dense.closed
