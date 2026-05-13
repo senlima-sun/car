@@ -1,0 +1,36 @@
+{
+  "name": "imola",
+  "displayName": "Imola Circuit",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      44.33,
+      11.7,
+      44.36,
+      11.73
+    ],
+    "queryFilters": [
+      "\"highway\"=\"raceway\"",
+      "\"sport\"=\"motor\""
+    ]
+  },
+  "centerLat": 44.3411,
+  "centerLon": 11.7133,
+  "wayNameDenyList": [
+    "Pit Lane",
+    "pit",
+    "Box",
+    "karting",
+    "Karting"
+  ],
+  "maxChainGap": 150,
+  "reverseDirection": true,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 4909,
+  "expectedTurns": 19,
+  "expectedStartHeadingDegrees": -25,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}

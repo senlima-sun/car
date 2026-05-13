@@ -1,0 +1,40 @@
+{
+  "name": "catalunya",
+  "displayName": "Circuit de Barcelona-Catalunya",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [
+      41.56,
+      2.24,
+      41.58,
+      2.28
+    ],
+    "queryFilters": [
+      "\"highway\"=\"raceway\"",
+      "\"sport\"=\"motor\""
+    ]
+  },
+  "centerLat": 41.57,
+  "centerLon": 2.2611,
+  "wayNameDenyList": [
+    "Pit Lane",
+    "pit",
+    "Box",
+    "Cutting Half",
+    "MotoGP Long Lap Penalty",
+    "Rallycross",
+    "Entrada al Pit",
+    "Sortida del Pit"
+  ],
+  "startWayName": "Circuit de Barcelona-Catalunya",
+  "maxChainGap": 150,
+  "reverseDirection": false,
+  "startFinishFraction": 0,
+  "expectedTrackLengthMeters": 4816,
+  "expectedTurns": 14,
+  "expectedStartHeadingDegrees": 53.1,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
+}
