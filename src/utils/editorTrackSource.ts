@@ -1,6 +1,5 @@
 import {
   pointOnPath,
-  pointOnPathAt,
   segmentCount,
 } from '@/components/ui/TrackEditor/geometry/closestPoint'
 import type {
@@ -16,7 +15,7 @@ import { CURB_WIDTH } from '@/constants/curb'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 import { realignCheckpointToRibbons } from '@/utils/checkpointAlignment'
 import { bezierTToArcT } from '@/utils/bezierToArcT'
-import type { PlacedObject, TrackRibbonPoint } from '@/types/trackObjects'
+import type { PlacedObject } from '@/types/trackObjects'
 
 export type EditorTrackDocument = {
   paths: Path[]
@@ -134,69 +133,35 @@ function pitBoxAreaToPlacedObject(area: PitBoxArea): PlacedObject {
   }
 }
 
-const CURB_SAMPLE_SPACING = 0.5
+export const CURB_SAMPLE_SPACING = 0.5
 
-function curbMarkerToPlacedObject(curb: CurbMarker, paths: Path[]): PlacedObject | null {
+function curbMarkerToPlacedObject(
+  curb: CurbMarker,
+  paths: Path[],
+  ribbon: PlacedObject,
+): PlacedObject | null {
   const path = paths.find(candidate => candidate.id === curb.pathId)
   if (!path) return null
   const lo = Math.min(curb.pathStart, curb.pathEnd)
   const hi = Math.max(curb.pathStart, curb.pathEnd)
-  const span = hi - lo
-  if (span < 1e-4) return null
+  if (hi - lo < 1e-4) return null
 
-  const sign = curb.edge === 'left' ? 1 : -1
-  const halfTrack = TRACK_WIDTH / 2
-  const offset = halfTrack + CURB_WIDTH / 2
+  const tStart = bezierTToArcT(path, lo, paths)
+  const tEnd = bezierTToArcT(path, hi, paths)
 
-  const samplesArr: TrackRibbonPoint[] = []
-  let prev: { x: number; y: number } | null = null
-  let approxLen = 0
-  const probe = Math.max(16, Math.ceil(span * 16))
-  for (let i = 0; i <= probe; i++) {
-    const p = lo + (span * i) / probe
-    const onPath = pointOnPathAt(path, p, paths)
-    if (!onPath) continue
-    if (prev) {
-      approxLen += Math.hypot(onPath.point.x - prev.x, onPath.point.y - prev.y)
-    }
-    prev = onPath.point
-  }
-  const steps = Math.max(4, Math.ceil(approxLen / CURB_SAMPLE_SPACING))
-
-  for (let i = 0; i <= steps; i++) {
-    const p = lo + (span * i) / steps
-    const onPath = pointOnPathAt(path, p, paths)
-    if (!onPath) continue
-    const wx = onPath.point.x + sign * -onPath.tangent.y * offset
-    const wz = onPath.point.y + sign * onPath.tangent.x * offset
-    samplesArr.push({
-      x: wx,
-      y: terrainHeightAt(wx, wz),
-      z: wz,
-      isPitLane: false,
-    })
-  }
-
-  if (samplesArr.length < 2) return null
-
-  let cx = 0
-  let cy = 0
-  let cz = 0
-  for (const p of samplesArr) {
-    cx += p.x
-    cy += p.y
-    cz += p.z
-  }
-  const n = samplesArr.length
   return {
     id: genId('curb'),
     type: 'curb',
-    position: [cx / n, cy / n, cz / n],
+    position: ribbon.position,
     rotation: 0,
     width: CURB_WIDTH,
+    derivedWidth: CURB_WIDTH,
     edgeSide: curb.edge,
     curbType: curb.variant,
-    curbCenterline: samplesArr,
+    parentRibbonId: ribbon.id,
+    parentSide: curb.edge,
+    innerOffset: 0,
+    tRange: [tStart, tEnd],
   }
 }
 
@@ -308,9 +273,18 @@ export function buildTrackObjectsFromEditorSource(input: EditorTrackDocument): P
   }
 
   const pitBoxObjects = (input.pitBoxAreas ?? []).map(pitBoxAreaToPlacedObject)
+  const pathIdToRibbon = new Map<string, PlacedObject>()
+  for (let i = 0; i < input.paths.length; i++) {
+    const path = input.paths[i]!
+    const ribbon = ribbons[i]
+    if (ribbon) pathIdToRibbon.set(path.id, ribbon)
+  }
+
   const curbObjects: PlacedObject[] = []
   for (const curb of input.curbs ?? []) {
-    const obj = curbMarkerToPlacedObject(curb, input.paths)
+    const parentRibbon = pathIdToRibbon.get(curb.pathId)
+    if (!parentRibbon) continue
+    const obj = curbMarkerToPlacedObject(curb, input.paths, parentRibbon)
     if (obj) curbObjects.push(obj)
   }
   const paintedObjects: PlacedObject[] = []

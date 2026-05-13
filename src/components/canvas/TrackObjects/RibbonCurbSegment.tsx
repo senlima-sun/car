@@ -11,8 +11,9 @@ import {
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
-import type { CurbType, PlacedObject } from '../../../types/trackObjects'
+import type { CurbType, PlacedObject, TrackRibbonPoint } from '../../../types/trackObjects'
 import { computeRibbonTangents } from './geometry/ribbonGeometry'
+import { resolveParentDerivedLayer } from '../../../utils/parentDerivedLayer'
 import CurbSurfaceMaterial from './CurbSurfaceMaterial'
 
 const PROFILE_SUBDIVISIONS = 6
@@ -21,6 +22,7 @@ const curbConfig = OBJECT_CONFIGS.curb
 
 interface RibbonCurbSegmentProps {
   curb: PlacedObject
+  parentRibbon?: PlacedObject
   isGhost?: boolean
 }
 
@@ -45,8 +47,23 @@ interface BuildResult {
   sensor: { center: [number, number, number]; halfDepth: number } | null
 }
 
-function buildRibbonCurb(curb: PlacedObject): BuildResult | null {
-  const center = curb.curbCenterline
+function resolveCurbCenter(
+  curb: PlacedObject,
+  parentRibbon?: PlacedObject,
+): TrackRibbonPoint[] | null {
+  if (curb.parentRibbonId) {
+    const resolved = resolveParentDerivedLayer(
+      curb,
+      { parent: parentRibbon },
+      { resampleSpacing: 0.5 },
+    )
+    return resolved?.points ?? null
+  }
+  return curb.curbCenterline ?? null
+}
+
+function buildRibbonCurb(curb: PlacedObject, parentRibbon?: PlacedObject): BuildResult | null {
+  const center = resolveCurbCenter(curb, parentRibbon)
   if (!center || center.length < 2) return null
   const curbType: CurbType = curb.curbType ?? 'apex'
   const sign = curb.edgeSide === 'right' ? -1 : 1
@@ -121,7 +138,11 @@ function buildRibbonCurb(curb: PlacedObject): BuildResult | null {
   }
 }
 
-export default function RibbonCurbSegment({ curb, isGhost = false }: RibbonCurbSegmentProps) {
+export default function RibbonCurbSegment({
+  curb,
+  parentRibbon,
+  isGhost = false,
+}: RibbonCurbSegmentProps) {
   const enterCurb = useCurbStore(state => state.enterCurb)
   const exitCurb = useCurbStore(state => state.exitCurb)
   const enterSurface = useSurfaceStore(s => s.enterSurface)
@@ -129,7 +150,7 @@ export default function RibbonCurbSegment({ curb, isGhost = false }: RibbonCurbS
 
   const curbType: CurbType = curb.curbType ?? 'apex'
   const peakHeight = CURB_PEAK_HEIGHTS[curbType]
-  const result = useMemo(() => buildRibbonCurb(curb), [curb])
+  const result = useMemo(() => buildRibbonCurb(curb, parentRibbon), [curb, parentRibbon])
 
   const handleEnter = useCallback(() => {
     if (isGhost || !curb.edgeSide) return

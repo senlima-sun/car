@@ -92,16 +92,18 @@ describe('curb export sampler', () => {
     })
 
     const curb = objects.find(o => o.type === 'curb')
+    const ribbon = objects.find(o => o.type === 'track_ribbon')
     expect(curb).toBeDefined()
+    expect(ribbon).toBeDefined()
     expect(curb!.curbType).toBe('apex')
     expect(curb!.edgeSide).toBe('left')
-    expect(curb!.curbCenterline).toBeDefined()
-    expect(curb!.curbCenterline!.length).toBeGreaterThanOrEqual(4)
-
-    const first = curb!.curbCenterline![0]!
-    expect(first.x).toBeGreaterThan(0)
-    expect(first.x).toBeLessThan(100)
-    expect(Math.abs(first.z)).toBeCloseTo(TRACK_WIDTH / 2 + CURB_WIDTH / 2)
+    expect(curb!.parentRibbonId).toBe(ribbon!.id)
+    expect(curb!.parentSide).toBe('left')
+    expect(curb!.derivedWidth).toBeCloseTo(CURB_WIDTH)
+    expect(curb!.tRange).toBeDefined()
+    expect(curb!.tRange![0]).toBeGreaterThanOrEqual(0)
+    expect(curb!.tRange![1]).toBeLessThanOrEqual(1)
+    expect(curb!.tRange![1]).toBeGreaterThan(curb!.tRange![0])
   })
 
   test('keeps curb and painted runoff outside the asphalt edge', () => {
@@ -136,8 +138,11 @@ describe('curb export sampler', () => {
     expect(leftPainted!.innerOffset).toBeCloseTo(CURB_WIDTH)
     expect(leftPainted!.derivedWidth).toBeCloseTo(PAINTED_WIDTH)
 
-    const curbInnerEdge = Math.abs(curb!.curbCenterline![0]!.z) - CURB_WIDTH / 2
-    expect(curbInnerEdge).toBeCloseTo(TRACK_WIDTH / 2)
+    // Curb is now also parent-anchored: innerOffset=0 (flush against ribbon edge).
+    expect(curb!.parentRibbonId).toBeDefined()
+    expect(curb!.parentSide).toBe('left')
+    expect(curb!.innerOffset).toBe(0)
+    expect(curb!.derivedWidth).toBeCloseTo(CURB_WIDTH)
   })
 
   test('creates curb-band painted apron only where curb is absent', () => {

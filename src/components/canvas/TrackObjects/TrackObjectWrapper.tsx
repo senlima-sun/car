@@ -164,7 +164,13 @@ function TrackObjectWrapper({
       break
     case 'curb':
       if (object.curbCenterline && object.curbCenterline.length >= 2) {
-        component = <RibbonCurbSegment curb={object} isGhost={isGhost || !enablePhysics} />
+        component = (
+          <RibbonCurbSegment
+            curb={object}
+            parentRibbon={parentRibbon}
+            isGhost={isGhost || !enablePhysics}
+          />
+        )
       } else if (object.parentRoadId && parentRoad) {
         if (isCurveMode(parentRoad.trackMode) && parentRoad.controlPoint) {
           component = (
