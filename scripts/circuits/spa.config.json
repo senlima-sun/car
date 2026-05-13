@@ -3,16 +3,33 @@
   "displayName": "Circuit de Spa-Francorchamps",
   "provenance": "osm",
   "overpass": {
-    "bbox": [50.42, 5.95, 50.47, 6.02],
-    "queryFilters": ["\"highway\"=\"raceway\"", "\"sport\"=\"motor\""]
+    "bbox": [
+      50.42,
+      5.95,
+      50.47,
+      6.02
+    ],
+    "queryFilters": [
+      "\"highway\"=\"raceway\"",
+      "\"sport\"=\"motor\""
+    ]
   },
   "centerLat": 50.4372,
   "centerLon": 5.9714,
   "startWayName": "La Source",
-  "wayNameDenyList": ["Pit Lane", "Support Pit Lane", "Moto layout", "Chicane"],
+  "wayNameDenyList": [
+    "Pit Lane",
+    "Support Pit Lane",
+    "Moto layout",
+    "Chicane"
+  ],
   "reverseDirection": false,
-  "startFinishFraction": 0.0,
+  "startFinishFraction": 0,
   "expectedTrackLengthMeters": 7004,
   "expectedTurns": 19,
-  "expectedStartHeadingDegrees": -150.0
+  "expectedStartHeadingDegrees": -150,
+  "sectorSplits": [
+    0.33,
+    0.66
+  ]
 }

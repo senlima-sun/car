@@ -14,10 +14,10 @@
   },
   "centerLat": -37.8497,
   "centerLon": 144.9683,
-  "maxChainGap": 2000,
+  "maxChainGap": 100,
   "reverseDirection": false,
   "startFinishFraction": 0,
-  "expectedTrackLengthMeters": 5449,
+  "expectedTrackLengthMeters": 5270,
   "expectedTurns": 14,
   "expectedStartHeadingDegrees": 85.2
 }

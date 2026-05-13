@@ -24,7 +24,7 @@
   "maxChainGap": 150,
   "reverseDirection": false,
   "startFinishFraction": 0,
-  "expectedTrackLengthMeters": 4824,
+  "expectedTrackLengthMeters": 4538,
   "expectedTurns": 17,
   "expectedStartHeadingDegrees": -98.8,
   "sectorSplits": [
