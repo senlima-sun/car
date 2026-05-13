@@ -1,27 +1,13 @@
 {
   "name": "miami",
   "displayName": "Miami International Autodrome",
-  "provenance": "osm",
-  "overpass": {
-    "bbox": [
-      25.94,
-      -80.25,
-      25.97,
-      -80.22
-    ],
-    "queryFilters": [],
-    "relationId": 20204221
-  },
+  "provenance": "manual",
   "centerLat": 25.9581,
   "centerLon": -80.2389,
-  "maxChainGap": 300,
   "reverseDirection": false,
-  "startFinishFraction": 0,
-  "expectedTrackLengthMeters": 2920,
+  "sectorSplits": [0.33, 0.66],
+  "startFinishFraction": 0.0,
+  "expectedTrackLengthMeters": 5412,
   "expectedTurns": 19,
-  "expectedStartHeadingDegrees": -92.4,
-  "sectorSplits": [
-    0.33,
-    0.66
-  ]
+  "expectedStartHeadingDegrees": 58.2
 }
