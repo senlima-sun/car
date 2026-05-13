@@ -1,0 +1,20 @@
+{
+  "name": "red-bull-ring",
+  "displayName": "Red Bull Ring",
+  "provenance": "osm",
+  "overpass": {
+    "bbox": [47.2, 14.75, 47.24, 14.78],
+    "queryFilters": ["\"highway\"=\"raceway\"", "\"sport\"=\"motor\""]
+  },
+  "centerLat": 47.2197,
+  "centerLon": 14.7647,
+  "wayNameDenyList": ["Boxenstraße", "Moto GP chicane", "MotoGP Long Lap Penalty", "Südschleife"],
+  "maxChainGap": 150,
+  "startWayName": "Würth Kurve",
+  "reverseDirection": false,
+  "sectorSplits": [0.33, 0.66],
+  "startFinishFraction": 0.0,
+  "expectedTrackLengthMeters": 4326,
+  "expectedTurns": 10,
+  "expectedStartHeadingDegrees": 32.1
+}
