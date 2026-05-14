@@ -94,13 +94,12 @@ impl Default for CarPhysicsState {
             fuel_flow_factor_prev: 1.0,
             differential: differential::DifferentialConfig::new(),
             shaft: driveshaft::ShaftConfig::new(),
-            // Default off in Wave 2: the path is wired and tested
-            // (soak + L/R symmetry pass) but a Pacejka sign-convention
-            // audit is needed before flipping defaults, since the
-            // 0.76 g calibration drop at flag-on suggests the
-            // Pacejka return sign disagrees with body +X / centripetal
-            // convention in a way the legacy lateral_correction
-            // damper masked. Tracked as a Wave 6 architecture item.
+            // Default off: the force-shaped path is wired, sign-correct,
+            // and passes 600-frame L/R symmetry + 1000-step soak, but
+            // flipping the default rebalances handling globally
+            // (drift entry/exit, peak cornering) in ways the existing
+            // calibration suite can't fully validate. Hosts opt in via
+            // `set_force_shaped_lateral(true)`.
             force_shaped_lateral: false,
         }
     }
@@ -538,12 +537,22 @@ impl CarPhysicsState {
                 (yaw, drift_rot, v_y_next)
             };
 
-        let response_rate = if self.drift.is_drifting() { 20.0 } else { 22.0 };
-        self.target_angular_velocity = lerp(
-            self.target_angular_velocity,
-            angular_velocity,
-            dt * response_rate,
-        );
+        // Legacy Ackermann path needs an explicit 22 Hz lerp because
+        // `angular_velocity` is a geometric target (turn radius / grip)
+        // that should ease in. The force-shaped path is already a
+        // physical centripetal output and has no such filter; passing
+        // it through the 22 Hz lag adds ~45 ms of artificial response
+        // delay on top of the Pacejka response.
+        if self.force_shaped_lateral {
+            self.target_angular_velocity = angular_velocity;
+        } else {
+            let response_rate = if self.drift.is_drifting() { 20.0 } else { 22.0 };
+            self.target_angular_velocity = lerp(
+                self.target_angular_velocity,
+                angular_velocity,
+                dt * response_rate,
+            );
+        }
 
         let new_forward_speed = forward_speed + (longitudinal_force / live_mass) * dt;
         let new_lateral_speed = new_lateral_speed_pre_clamp;
@@ -639,7 +648,7 @@ impl CarPhysicsState {
                 fx: wheel_force_out.fx_per_wheel,
                 fy: wheel_force_out.fy_per_wheel,
                 fz: resolved_wheel_loads,
-                slip_angle: [self.slip_angle_smoothed; 4],
+                slip_angle: wheel_force_out.slip_angle_per_wheel,
                 slip_ratio: wheel_force_out.slip_ratio_per_wheel,
             },
             boost_pressure_bar: sanitize(boost_pressure_bar, 1.0),

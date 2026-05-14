@@ -1547,6 +1547,22 @@ export function resetOverrideLapBudget(): void {
 }
 
 /**
+ * Wave-2 force-shaped lateral-dynamics path toggle. When `true`, body
+ * lateral velocity integrates the wheel-force lateral total and yaw
+ * derives from the bicycle centripetal model. When `false` (default),
+ * the legacy Ackermann + lateral-correction-damper path runs unchanged.
+ * Wired but not yet enabled by default — a Pacejka sign-convention
+ * audit is pending before flipping the default in Wave 6.
+ */
+export function setForceShapedLateral(enabled: boolean): void {
+  getPhysicsEngine().set_force_shaped_lateral(enabled)
+}
+
+export function getForceShapedLateral(): boolean {
+  return getPhysicsEngine().force_shaped_lateral()
+}
+
+/**
  * Get current aero mode
  */
 export function getAeroMode(): AeroMode {

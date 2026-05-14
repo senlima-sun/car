@@ -3,7 +3,7 @@ import type { Anchor, Path } from '../geometry/types'
 import { worldToScreen, type Viewport } from '../geometry/viewport'
 import { buildPreviewSegment } from './previewSegment'
 
-const identityViewport: Viewport = { pan: { x: 0, y: 0 }, zoom: 1 }
+const identityViewport: Viewport = { pan: { x: 0, y: 0 }, zoom: 1, rotation: 0 }
 
 function makeAnchor(point: { x: number; y: number }, outHandle?: { x: number; y: number }): Anchor {
   return {
@@ -85,7 +85,7 @@ describe('buildPreviewSegment', () => {
   it('uses worldToScreen for zoom/pan transforms', () => {
     const anchor = makeAnchor({ x: 0, y: 0 })
     const path = makePath('p1', [anchor])
-    const viewport: Viewport = { pan: { x: 10, y: 10 }, zoom: 2 }
+    const viewport: Viewport = { pan: { x: 10, y: 10 }, zoom: 2, rotation: 0 }
     const hover = { x: 5, y: 3 }
 
     const result = buildPreviewSegment({

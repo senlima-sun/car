@@ -1,7 +1,7 @@
 import { useTerrainBrushStore } from '@/stores/useTerrainBrushStore'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 import type { Point } from '../geometry/types'
-import type { Viewport } from '../geometry/viewport'
+import { worldToScreen, type Viewport } from '../geometry/viewport'
 
 const BRUSH_COLORS: Record<string, string> = {
   raise: '#ef4444',
@@ -23,8 +23,9 @@ export default function TerrainBrushCursor({
 
   if (!world) return null
 
-  const cx = world.x * viewport.zoom + viewport.pan.x
-  const cy = world.y * viewport.zoom + viewport.pan.y
+  const screen = worldToScreen(viewport, world)
+  const cx = screen.x
+  const cy = screen.y
   const r = radius * viewport.zoom
   const color = BRUSH_COLORS[brushType] ?? '#ffffff'
 

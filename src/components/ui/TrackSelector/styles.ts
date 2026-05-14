@@ -42,10 +42,12 @@ export const styles: Record<string, React.CSSProperties> = {
     top: 'calc(100% + 4px)',
     left: 0,
     minWidth: 250,
+    maxHeight: 'calc(100vh - 120px)',
     background: 'rgba(0, 0, 0, 0.95)',
     border: '1px solid rgba(255, 255, 255, 0.2)',
     borderRadius: 8,
-    overflow: 'hidden',
+    overflowY: 'auto' as const,
+    overscrollBehavior: 'contain' as const,
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
   },
   menuSection: {

@@ -81,6 +81,12 @@ pub struct WheelForceInputs {
 /// per the rigid-axle approximation, and the fallback keeps test
 /// fixtures that inject the chassis slip directly working without
 /// having to back-solve v_y from a target α.
+///
+/// Production safety: `CarPhysicsState::default()` explicitly sets
+/// `slip_angle_smoothed = 0.0` so post-spawn frames that briefly hit
+/// the no-kinematic-input branch see zero slip until the EMA picks
+/// up live `lateral_speed`. If you add a respawn path or any other
+/// re-initialiser, zero `slip_angle_smoothed` along with the rest.
 pub(crate) fn per_axle_slip_angle_deg(
     chassis_slip_deg: f32,
     lateral_speed_ms: f32,
@@ -107,10 +113,18 @@ pub(crate) fn per_axle_slip_angle_deg(
         lateral_speed_ms - axle_distance_m * yaw_rate_rad_s
     };
     let alpha_rad = (axle_lat_term / forward_speed_ms.abs()).atan();
+    // Front gets the steer δ; rear is un-steered. The leading minus on
+    // the rear that appears in Milliken's ISO 8855 formulation is
+    // dropped here because this codebase carries `lateral_speed_ms`
+    // with body +X = right (SAE J670 convention), and the engine's
+    // yaw convention is `ω < 0 = right turn`. Under those signs both
+    // axles need positive α to produce centripetal Pacejka Fy in a
+    // right turn — the rear's lat-term already inverts via `-b·ω`,
+    // so no extra negation is needed.
     let alpha_with_steer = if is_front_axle {
         steer_angle_rad - alpha_rad
     } else {
-        -alpha_rad
+        alpha_rad
     };
     alpha_with_steer.to_degrees()
 }
@@ -128,6 +142,10 @@ pub struct WheelForceOutput {
     pub fx_per_wheel: [f32; 4],
     pub fy_per_wheel: [f32; 4],
     pub slip_ratio_per_wheel: [f32; 4],
+    /// Per-wheel slip angle (degrees) actually used in the Pacejka
+    /// lateral evaluation this step. FL/FR carry α_front; RL/RR
+    /// carry α_rear. Telemetry coherence with `fy_per_wheel`.
+    pub slip_angle_per_wheel: [f32; 4],
     /// Drive torque (Nm) actually applied at each wheel after the LSD
     /// split. Front entries are always 0.0. Useful for debug + future
     /// driveshaft-compliance work (component #4).
@@ -225,6 +243,7 @@ impl WheelForceIntegrator {
         let mut wheel_fx_now = [0.0_f32; 4];
         let mut wheel_fy_now = [0.0_f32; 4];
         let mut wheel_slip_ratio_now = [0.0_f32; 4];
+        let mut wheel_slip_angle_now = [0.0_f32; 4];
         let mut driven_torque_per_wheel = [0.0_f32; 4];
         for wheel in 0..4 {
             let is_front = is_front_wheel(wheel);
@@ -311,6 +330,7 @@ impl WheelForceIntegrator {
             } else {
                 alpha_rear_deg
             };
+            wheel_slip_angle_now[wheel] = slip_angle_deg_for_wheel;
             let slip_angle_rad = slip_angle_deg_for_wheel.to_radians();
             let fx_pure = sanitize(
                 pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT),
@@ -368,6 +388,7 @@ impl WheelForceIntegrator {
             fx_per_wheel: wheel_fx_now,
             fy_per_wheel: wheel_fy_now,
             slip_ratio_per_wheel: wheel_slip_ratio_now,
+            slip_angle_per_wheel: wheel_slip_angle_now,
             driven_torque_per_wheel,
         }
     }
@@ -430,34 +451,54 @@ mod tests {
 
     #[test]
     fn per_axle_slip_pure_sideslip_matches_chassis_at_both_axles() {
-        // With ω = 0, δ = 0, both axles see the same lateral velocity
-        // and the result is atan(v_y / v_x) on both — i.e. the chassis
-        // slip angle. Sign convention: rear gives the negation so the
-        // *magnitude* is what's preserved.
+        // ω = 0, δ = 0: both axles see the chassis lateral velocity,
+        // so α_front ≈ -atan(v_y/v_x) and α_rear ≈ +atan(v_y/v_x).
+        // Front gets the leading minus via `δ - alpha_rad`; rear gets
+        // the same `alpha_rad` directly. The car-frame interpretation:
+        // a body sliding to +X (right) makes the front wheels see slip
+        // that drives a restoring force in -X, and the rear axle's lat
+        // term equals lateral_speed (ω = 0) so α_rear has the same
+        // sign as v_y in body-frame convention.
         let v_x = 30.0_f32;
         let v_y = 2.0_f32;
         let chassis_deg = (v_y / v_x).atan().to_degrees();
         let alpha_front = per_axle_slip_angle_deg(0.0, v_y, 0.0, v_x, 0.0, 1.8, true);
         let alpha_rear = per_axle_slip_angle_deg(0.0, v_y, 0.0, v_x, 0.0, 1.6, false);
         assert!((alpha_front + chassis_deg).abs() < 0.05);
-        assert!((alpha_rear + chassis_deg).abs() < 0.05);
+        assert!((alpha_rear - chassis_deg).abs() < 0.05);
     }
 
     #[test]
-    fn per_axle_slip_yaw_rate_increases_front_alpha_decreases_rear() {
-        // Right-yaw rate ω > 0 with no sideslip: front sees +a·ω lateral
-        // term → larger |α|, rear sees −b·ω → smaller |α| (sign flip
-        // because rear's lat-term is negative).
-        let v_x = 30.0;
-        let yaw = 0.5; // rad/s
-        let a = 1.8;
-        let b = 1.6;
-        let alpha_front =
-            per_axle_slip_angle_deg(0.0, 0.0, yaw, v_x, 0.0, a, true);
-        let alpha_rear =
-            per_axle_slip_angle_deg(0.0, 0.0, yaw, v_x, 0.0, b, false);
-        assert!(alpha_front < 0.0, "front α should be negative, got {}", alpha_front);
+    fn per_axle_slip_right_turn_both_axles_positive() {
+        // Right turn in this engine: ω_y < 0 (per `calculate_turn_dynamics`
+        // emitting `-steer_angle.signum()`). With δ ≈ 0.04 rad (right
+        // steer) and ω_y = -0.5 rad/s, both axles produce positive α so
+        // the Pacejka Fy is positive on all four wheels — i.e. centripetal
+        // in the body +X direction.
+        let v_x = 30.0_f32;
+        let yaw = -0.5_f32;
+        let steer = 0.04_f32;
+        let a = 1.8_f32;
+        let b = 1.6_f32;
+        let alpha_front = per_axle_slip_angle_deg(0.0, 0.0, yaw, v_x, steer, a, true);
+        let alpha_rear = per_axle_slip_angle_deg(0.0, 0.0, yaw, v_x, steer, b, false);
+        assert!(alpha_front > 0.0, "front α should be positive, got {}", alpha_front);
         assert!(alpha_rear > 0.0, "rear α should be positive, got {}", alpha_rear);
+    }
+
+    #[test]
+    fn per_axle_slip_left_turn_both_axles_negative() {
+        // Left turn: ω_y > 0. Both axles produce negative α →
+        // Pacejka Fy negative → centripetal toward body -X.
+        let v_x = 30.0_f32;
+        let yaw = 0.5_f32;
+        let steer = -0.04_f32;
+        let a = 1.8_f32;
+        let b = 1.6_f32;
+        let alpha_front = per_axle_slip_angle_deg(0.0, 0.0, yaw, v_x, steer, a, true);
+        let alpha_rear = per_axle_slip_angle_deg(0.0, 0.0, yaw, v_x, steer, b, false);
+        assert!(alpha_front < 0.0, "front α should be negative, got {}", alpha_front);
+        assert!(alpha_rear < 0.0, "rear α should be negative, got {}", alpha_rear);
     }
 
     #[test]

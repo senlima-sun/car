@@ -298,6 +298,7 @@ export function fitViewportToEditorState(
     return {
       pan: { x: screenWidth / 2, y: screenHeight / 2 },
       zoom: 1,
+      rotation: 0,
     }
   }
 
@@ -320,6 +321,7 @@ export function fitViewportToEditorState(
       x: screenWidth / 2 - centerX * zoom,
       y: screenHeight / 2 - centerY * zoom,
     },
+    rotation: 0,
   }
 }
 

@@ -231,7 +231,8 @@ export default function HeightmapOverlay({
 
   if (!minor && !major) return null
 
-  const transform = `translate(${viewport.pan.x} ${viewport.pan.y}) scale(${viewport.zoom})`
+  const rotDeg = (viewport.rotation * 180) / Math.PI
+  const transform = `translate(${viewport.pan.x} ${viewport.pan.y}) rotate(${rotDeg}) scale(${viewport.zoom})`
 
   return (
     <g transform={transform} style={{ pointerEvents: 'none', userSelect: 'none' }}>

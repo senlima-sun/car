@@ -19,7 +19,8 @@ export default function PenCanvasPaths() {
         const d = pathToSvgD(path, doc.paths)
         const isActive = path.id === pen.activePathId
         const isSelectedPath = tool === 'select' && selectedPathId === path.id
-        const transform = `translate(${viewport.pan.x} ${viewport.pan.y}) scale(${viewport.zoom})`
+        const rotDeg = (viewport.rotation * 180) / Math.PI
+        const transform = `translate(${viewport.pan.x} ${viewport.pan.y}) rotate(${rotDeg}) scale(${viewport.zoom})`
         return (
           <g key={path.id} transform={transform}>
             {(tool === 'select' || isActive) && (

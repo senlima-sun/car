@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTrackEditorStore } from './state/useTrackEditorStore'
-import { worldToScreen } from './geometry/viewport'
+import { rotateAt, worldToScreen } from './geometry/viewport'
 import { buildPreviewSegment } from './helpers/previewSegment'
 import { usePenCanvasInput } from './hooks/usePenCanvasInput'
 import { usePenCanvasKeyboard } from './hooks/usePenCanvasKeyboard'
@@ -18,7 +18,7 @@ import PitBoxAreaLayer from './layers/PitBoxAreaLayer'
 
 export default function PenCanvas() {
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const { spaceDown } = usePenCanvasKeyboard()
+  const { spaceDown } = usePenCanvasKeyboard(svgRef)
   const terrain = useTerrainBrushStroke()
 
   const snapshot = useTrackEditorStore(
@@ -41,6 +41,41 @@ export default function PenCanvas() {
     const handler = (e: WheelEvent) => e.preventDefault()
     el.addEventListener('wheel', handler, { passive: false })
     return () => el.removeEventListener('wheel', handler)
+  }, [])
+
+  useEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+    let lastRotationDeg = 0
+    const center = (): { x: number; y: number } => {
+      const rect = el.getBoundingClientRect()
+      return { x: rect.width / 2, y: rect.height / 2 }
+    }
+    const onGestureStart = (e: Event) => {
+      e.preventDefault()
+      lastRotationDeg = (e as unknown as { rotation: number }).rotation ?? 0
+    }
+    const onGestureChange = (e: Event) => {
+      e.preventDefault()
+      const current = (e as unknown as { rotation: number }).rotation ?? 0
+      const deltaDeg = current - lastRotationDeg
+      lastRotationDeg = current
+      if (deltaDeg === 0) return
+      const deltaRad = (deltaDeg * Math.PI) / 180
+      useTrackEditorStore.getState().setViewport(v => rotateAt(v, center(), deltaRad))
+    }
+    const onGestureEnd = (e: Event) => {
+      e.preventDefault()
+      lastRotationDeg = 0
+    }
+    el.addEventListener('gesturestart', onGestureStart as EventListener)
+    el.addEventListener('gesturechange', onGestureChange as EventListener)
+    el.addEventListener('gestureend', onGestureEnd as EventListener)
+    return () => {
+      el.removeEventListener('gesturestart', onGestureStart as EventListener)
+      el.removeEventListener('gesturechange', onGestureChange as EventListener)
+      el.removeEventListener('gestureend', onGestureEnd as EventListener)
+    }
   }, [])
 
   const previewSegment =
