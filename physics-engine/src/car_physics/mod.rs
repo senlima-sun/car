@@ -94,12 +94,9 @@ impl Default for CarPhysicsState {
             fuel_flow_factor_prev: 1.0,
             differential: differential::DifferentialConfig::new(),
             shaft: driveshaft::ShaftConfig::new(),
-            // Default off: the force-shaped path is wired, sign-correct,
-            // and passes 600-frame L/R symmetry + 1000-step soak, but
-            // flipping the default rebalances handling globally
-            // (drift entry/exit, peak cornering) in ways the existing
-            // calibration suite can't fully validate. Hosts opt in via
-            // `set_force_shaped_lateral(true)`.
+            // Default off: flipping rebalances handling (drift entry,
+            // peak cornering) globally and the calibration suite can't
+            // validate the shift.
             force_shaped_lateral: false,
         }
     }
@@ -466,18 +463,11 @@ impl CarPhysicsState {
 
         let yaw_grip = grip_coefficient * downforce_grip_bonus;
 
-        // Two lateral-dynamics paths gated on `force_shaped_lateral`:
-        //
-        // Force-shaped (Wave 2+, target architecture): yaw rate derives
-        // from total wheel lat force via the bicycle centripetal model;
-        // body lateral velocity integrates `F_y / m · dt` with a continuous
-        // damper that replaces the binary `is_drifting` lateral_correction
-        // step. Front/rear grip asymmetry from per-axle slip now reaches
-        // the body.
-        //
-        // Legacy (pre-Wave-2): Ackermann + grip-multiplier yaw, with
-        // binary drift_rotation and `lateral_correction` damper on v_y.
-        let (angular_velocity, drift_rotation, new_lateral_speed_pre_clamp) =
+        // Force-shaped: bicycle centripetal yaw + F_y/m·dt integration
+        // with slip-magnitude-dependent damper. Legacy: Ackermann yaw +
+        // binary drift damper. Front/rear grip asymmetry only reaches
+        // the body in the force-shaped path.
+        let (angular_velocity, drift_rotation, new_lateral_speed) =
             if self.force_shaped_lateral {
                 let steer_sign = if self.steer_angle.abs() > f32::EPSILON {
                     self.steer_angle.signum()
@@ -537,12 +527,8 @@ impl CarPhysicsState {
                 (yaw, drift_rot, v_y_next)
             };
 
-        // Legacy Ackermann path needs an explicit 22 Hz lerp because
-        // `angular_velocity` is a geometric target (turn radius / grip)
-        // that should ease in. The force-shaped path is already a
-        // physical centripetal output and has no such filter; passing
-        // it through the 22 Hz lag adds ~45 ms of artificial response
-        // delay on top of the Pacejka response.
+        // Geometric yaw target needs easing; the force-shaped output is
+        // already a physical centripetal value and bypasses the lag.
         if self.force_shaped_lateral {
             self.target_angular_velocity = angular_velocity;
         } else {
@@ -555,7 +541,6 @@ impl CarPhysicsState {
         }
 
         let new_forward_speed = forward_speed + (longitudinal_force / live_mass) * dt;
-        let new_lateral_speed = new_lateral_speed_pre_clamp;
 
         // Yaw moment uses dry mass: rotational inertia about the vertical axis
         // is dominated by the rigid chassis; fuel-tank slosh is not modelled.

@@ -142,9 +142,8 @@ pub struct WheelForceOutput {
     pub fx_per_wheel: [f32; 4],
     pub fy_per_wheel: [f32; 4],
     pub slip_ratio_per_wheel: [f32; 4],
-    /// Per-wheel slip angle (degrees) actually used in the Pacejka
-    /// lateral evaluation this step. FL/FR carry α_front; RL/RR
-    /// carry α_rear. Telemetry coherence with `fy_per_wheel`.
+    /// Slip angle (degrees) that produced `fy_per_wheel` this step
+    /// (FL/FR = α_front, RL/RR = α_rear).
     pub slip_angle_per_wheel: [f32; 4],
     /// Drive torque (Nm) actually applied at each wheel after the LSD
     /// split. Front entries are always 0.0. Useful for debug + future

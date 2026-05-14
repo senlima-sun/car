@@ -56,6 +56,8 @@ export {
   setShaftDampingNmSRad,
   setOnCurb,
   isOnCurb,
+  setForceShapedLateral,
+  isForceShapedLateral,
   setSurface,
   getSurface,
   isOnRoad,

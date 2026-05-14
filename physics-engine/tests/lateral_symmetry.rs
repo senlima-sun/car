@@ -6,6 +6,10 @@ use common::FIXED_DT;
 
 const FRAMES: usize = 600;
 const TOLERANCE: f32 = 1e-3;
+// Position bound = TOLERANCE × sim_time × this. Position integrates
+// velocity error so the bound scales with sim duration; 10× gives
+// headroom for per-frame asymmetries below TOLERANCE that don't cancel.
+const POSITION_DRIFT_BUDGET_VS_VEL: f32 = 10.0;
 
 fn make_engine(force_shaped: bool) -> PhysicsEngine {
     let mut e = PhysicsEngine::new();
@@ -95,17 +99,17 @@ fn assert_mirrored(left: State, right: State, label: &str) {
         left.angvel[1],
         right.angvel[1]
     );
-    // Position checks are coarser since they integrate frame-to-frame
-    // velocity differences; lateral asymmetries surface earliest in
-    // position, which is why they're the primary symmetry signal.
+    // Position is the most sensitive long-running symmetry signal —
+    // small per-frame velocity asymmetries integrate over the test.
+    let pos_bound = TOLERANCE * (FRAMES as f32 * FIXED_DT) * POSITION_DRIFT_BUDGET_VS_VEL;
     assert!(
-        dpx < TOLERANCE * (FRAMES as f32 * FIXED_DT) * 10.0,
+        dpx < pos_bound,
         "{label}: lateral X positions should mirror, left={} right={} sum_abs={dpx}",
         left.position[0],
         right.position[0]
     );
     assert!(
-        dpz < TOLERANCE * (FRAMES as f32 * FIXED_DT) * 10.0,
+        dpz < pos_bound,
         "{label}: forward Z positions should match, left={} right={} diff_abs={dpz}",
         left.position[2],
         right.position[2]
