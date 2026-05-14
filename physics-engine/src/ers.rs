@@ -637,12 +637,9 @@ fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
 /// (m/s). Below the corner speed `P_max / F_max` the motor is in the
 /// constant-torque regime; above it, constant power.
 fn electric_force_boost(deploy_power_kw: f32, speed_ms: f32) -> f32 {
-    /// Above-traction-limit sentinel. The wheel-force integrator's
-    /// friction ellipse clamps actual delivered force at the per-corner
-    /// μ·Fz envelope (≈ 6 kN per driven wheel under nominal load), so
-    /// any cap here above ~8 kN is effectively unbinding — chosen well
-    /// above the friction limit so the constant-power branch (P/v)
-    /// binds across the realistic speed envelope.
+    // Sits well above the ~6 kN/wheel μ·Fz envelope so the wheel-force
+    // friction ellipse is the binding cap, not this sentinel — the
+    // P/v branch dominates across the realistic speed envelope.
     const F_MAX_TORQUE_N: f32 = 15_000.0;
     const MIN_BOOST_SPEED_MS: f32 = 1.0;
     if speed_ms < MIN_BOOST_SPEED_MS {

@@ -244,6 +244,9 @@ impl WheelForceIntegrator {
         let mut wheel_slip_ratio_now = [0.0_f32; 4];
         let mut wheel_slip_angle_now = [0.0_f32; 4];
         let mut driven_torque_per_wheel = [0.0_f32; 4];
+        // Loop-invariant: same scalar applies to every wheel this step.
+        let grip_chain =
+            BASE_TIRE_GRIP_COEFFICIENT * i.downforce_grip_bonus * i.combined_grip_multiplier;
         for wheel in 0..4 {
             let is_front = is_front_wheel(wheel);
             let is_driven = !is_front;
@@ -359,21 +362,10 @@ impl WheelForceIntegrator {
                 slip_ratio,
                 &CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED,
             );
-            // Per-axis friction-ellipse cap with the grip-chain folded
-            // in both sides. The fold is algebraically equivalent to
-            // post-multiplying the legacy circle cap (homogeneity of
-            // degree 1), so peak traction is unchanged; the win is
-            // the **per-axis** ellipse — μ_long > μ_lat on racing
-            // slicks, and the prior `max(μx, μy)` isotropic radius
-            // over-permitted the smaller-axis contribution.
-            //
-            // Cap radii use `peak_force_*_at_fz` directly (returns N)
-            // rather than `μ × raw_fz`, since μ is computed against
-            // load-sensitivity-reduced effective_fz; the round-trip
-            // through raw Fz inflated the cap by `fz / effective_fz`
-            // at high corner loads.
-            let grip_chain =
-                BASE_TIRE_GRIP_COEFFICIENT * i.downforce_grip_bonus * i.combined_grip_multiplier;
+            // Per-axis friction-ellipse cap. Folding grip_chain into both
+            // sides is algebraically equivalent to post-multiplying the
+            // legacy circle cap (homogeneity of degree 1); the physics
+            // win is the per-axis ellipse, not the fold itself.
             let fx_combined = fx_pure * g_x * grip_chain;
             let fy_combined = fy_pure * g_y * grip_chain;
             let cap_x = peak_force_lon_at_fz(fz) * grip_chain;
