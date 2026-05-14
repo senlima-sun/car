@@ -127,6 +127,18 @@ pub const BASELINE_PARAMS_MONZA: [f32; LOOKAHEAD_PARAM_COUNT] = [
 //     --bc-generations 50 --generations 400 --bc-sigma-scale 0.5 --seed 7
 // Produced lap_time_s = 94.466, off_track_count = 12, wall-time = 64s.
 // BC training loss 0.149 (96% reduction from baseline 2.669).
+//
+// Phase 4.8 auto-iterate attempts (stronger off-track penalty + smoothness):
+//   --auto-iterate --seed 42 -> exhausted schedule, no lap completed
+//     (stuck at ~1669m progress across 8 iterations, ~448s wall).
+//   --auto-iterate --seed 7  -> exhausted schedule, lap_time=113.28s
+//     off_track_count=3 (smoother but slower; misses 99.4s gate and 1
+//     off-track gate). Improvement trajectory: iter1 126.42s/5,
+//     iter3 116.64s/2, iter6 113.16s/2, iter8 113.28s/3. ~970s wall.
+// Conclusion: stronger penalty correctly reduces off-track count from 12 -> 3
+// but the schedule's narrow sigma was insufficient to find a sub-99.4s clean
+// lap. Phase 4.7 champion is retained as the active baseline pending a
+// wider-exploration follow-up.
 pub const BASELINE_PARAMS_MONZA_CHAMPION: [f32; LOOKAHEAD_PARAM_COUNT] = [
     274.18375,
     152.5118,
