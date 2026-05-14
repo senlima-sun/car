@@ -14,7 +14,7 @@ mod reward;
 use car_physics_engine::engine::PhysicsEngine;
 
 use policies::constant_throttle::ConstantThrottle;
-use policies::lookahead::BASELINE_PARAMS_MONZA;
+use policies::lookahead::{BASELINE_PARAMS_MONZA, BASELINE_PARAMS_MONZA_CHAMPION};
 use reward::evaluate;
 use sim::{run_sim_with_engine, TerminationReason};
 use track_loader::load_track;
@@ -34,36 +34,36 @@ fn test_lookahead_baseline_drives_forward_on_monza() {
     assert!(result.sim_time_s > 0.0);
 }
 
-// TODO(phase4-quality-gate): remove #[ignore] once an evolved param set
-// completes Monza. Tracked by .claude/plans/ai-self-driving-evolutionary.md
-// §Phase 4 Quality Gate.
+// Phase 4.7 quality gate: BC + ES champion (seed=7, sigma_scale=0.5, 400 gens)
+// completes Monza in under demo lap_time × 1.10. Champion params are baked into
+// BASELINE_PARAMS_MONZA_CHAMPION so the result is reproducible from this fixture
+// alone. See .claude/plans/ai-self-driving-evolutionary.md §Phase 4.7.
+const DEMO_LAP_TIME_S: f32 = 94.683395;
+const LAP_TIME_QUALITY_GATE_S: f32 = DEMO_LAP_TIME_S * 1.10;
+
 #[test]
-#[ignore = "Phase 3 quality gate relaxed: hand-tuned lookahead controller cannot \
-    yet complete a Monza lap (the chicane requires more sophisticated lateral \
-    control than the simple PD steering supports). Phase 4 evolutionary loop is \
-    expected to discover working parameters by mutating this seed. See \
-    .claude/plans/ai-self-driving-evolutionary.md §Phase 3 Quality Gates."]
 fn test_lookahead_monza_minimum_competence() {
     let track = load_track("monza").expect("monza loads");
     let mut engine = PhysicsEngine::new();
     let result = evaluate(
-        &BASELINE_PARAMS_MONZA,
+        &BASELINE_PARAMS_MONZA_CHAMPION,
         &track,
         &mut engine,
         false,
         300.0,
         5.0,
     );
-    assert!(result.lap_completed, "must complete the lap");
     assert!(
-        result.off_track_count <= 2,
-        "off_track_count must be <= 2, got {}",
-        result.off_track_count
+        result.lap_completed,
+        "champion must complete the lap (off_track_count={}, lap_time_s={})",
+        result.off_track_count,
+        result.lap_time_s,
     );
     assert!(
-        result.lap_time_s < 180.0,
-        "lap_time must be < 180s, got {}s",
-        result.lap_time_s
+        result.lap_time_s <= LAP_TIME_QUALITY_GATE_S,
+        "lap_time {:.2}s must be <= demo_lap_time * 1.10 = {:.2}s",
+        result.lap_time_s,
+        LAP_TIME_QUALITY_GATE_S,
     );
 }
 

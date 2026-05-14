@@ -121,6 +121,39 @@ pub const BASELINE_PARAMS_MONZA: [f32; LOOKAHEAD_PARAM_COUNT] = [
     0.0,
 ];
 
+// Champion params from Phase 4.7.7 training run:
+//   ai_runner --mode train --track monza \
+//     --bc-seed apps/game/public/demos/f1_autodromo_nazionale_monza.demo.json \
+//     --bc-generations 50 --generations 400 --bc-sigma-scale 0.5 --seed 7
+// Produced lap_time_s = 94.466, off_track_count = 12, wall-time = 64s.
+// BC training loss 0.149 (96% reduction from baseline 2.669).
+pub const BASELINE_PARAMS_MONZA_CHAMPION: [f32; LOOKAHEAD_PARAM_COUNT] = [
+    274.18375,
+    152.5118,
+    0.0,
+    0.08015525,
+    -3.282829,
+    3.2393687,
+    0.1,
+    0.0,
+    0.013265899,
+    0.053698707,
+    1.0011088,
+    0.79306155,
+    0.49130064,
+    0.0,
+    0.0044210367,
+    0.01,
+    4.880074,
+    -1.8583239,
+    32.338844,
+    0.15553048,
+    0.5978072,
+    0.4171325,
+    0.8725595,
+    0.3125701,
+];
+
 pub struct LookaheadPolicy {
     pub params: LookaheadParams,
     smoothed_throttle: f32,
