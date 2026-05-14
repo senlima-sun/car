@@ -19,7 +19,7 @@
   "startFinishFraction": 0,
   "expectedTrackLengthMeters": 4927,
   "expectedTurns": 19,
-  "expectedStartHeadingDegrees": -135.2,
+  "expectedStartHeadingDegrees": -104.2,
   "sectorSplits": [
     0.33,
     0.66
