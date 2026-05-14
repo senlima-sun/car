@@ -10,7 +10,12 @@ const WASM_PKG_DIR = join(ROOT_DIR, 'src/wasm/pkg')
 const WASM_DIST_DIR = join(DIST_DIR, 'src/wasm/pkg')
 
 function assertWasmArtifacts(): void {
-  const required = ['car_physics_engine.js', 'car_physics_engine_bg.wasm']
+  const required = [
+    'car_physics_engine.js',
+    'car_physics_engine.d.ts',
+    'car_physics_engine_bg.wasm',
+    'car_physics_engine_bg.wasm.d.ts',
+  ]
   for (const file of required) {
     if (!existsSync(join(WASM_PKG_DIR, file))) {
       throw new Error(

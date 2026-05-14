@@ -77,3 +77,8 @@ pnpm --filter @car/game compress:glb
 ## Deprecated commands
 
 - `pnpm run dev:wasm` — superseded by `pnpm run dev`, which starts the in-process Rust watcher automatically.
+
+## Known follow-ups
+
+- **WASM debug vs release**: `pnpm run build:wasm` produces debug WASM and is the cached task. `pnpm run build:wasm:release` is uncached and produces optimized WASM. Before wiring `pnpm run build` to a production deploy, decide whether to add a separate `//#build:wasm:release` turbo task with its own output dir, or to switch the default `build:wasm` to release once dev iteration speed is no longer the dominant concern.
+- **packages/physics build inputs**: The `build` task's input globs (`src/**`, `build/**`, `public/**`, `index.html`, `bunfig.toml`) are `@car/game`-shaped. When `packages/physics` gets a real `build` script in Phase 2, give it a per-package input override so its cache key tracks only its own files.

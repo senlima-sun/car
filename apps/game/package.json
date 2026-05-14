@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "bun --hot build/dev.ts",
-    "dev:wasm": "bun run build/watch-wasm.ts",
     "build": "bun run build/build.ts",
     "preview": "bunx --bun serve -p 4173 dist",
     "typecheck": "tsc --noEmit",

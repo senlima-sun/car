@@ -2,10 +2,13 @@
 /**
  * Sanity-check turbo remote cache wiring.
  *
- * Asserts that the four env vars resolve and that `turbo run --dry=json --summarize=false`
- * reports `remoteCacheEnabled: true`. Exits non-zero with a helpful message otherwise.
+ * Verifies (a) required env vars resolve, (b) turbo can parse turbo.json,
+ * (c) turbo emits a valid task graph. Exits non-zero with actionable
+ * messages otherwise. Intended for CI (post-env-var setup) and local
+ * debugging.
  *
- * Intended for CI (post-env-var setup) and local debugging.
+ * Note: actual HIT/MISS verification against the remote requires a real
+ * build run — see docs/monorepo.md for the --summarize recipe.
  */
 
 import { spawnSync } from 'bun'
@@ -42,24 +45,36 @@ const result = spawnSync({
 })
 
 if (result.exitCode !== 0) {
-  exitWith(`[turbo-cache] turbo --dry-run failed with exit code ${result.exitCode}.`)
+  exitWith(`[turbo-cache] turbo --dry=json failed with exit code ${result.exitCode}.`)
 }
 
 const stdout = new TextDecoder().decode(result.stdout)
-let parsed: { remoteCacheEnabled?: boolean }
+let parsed: { tasks?: Array<{ taskId: string; hash: string }>; turboVersion?: string }
 try {
-  parsed = JSON.parse(stdout) as { remoteCacheEnabled?: boolean }
+  parsed = JSON.parse(stdout) as typeof parsed
 } catch (err) {
   exitWith(
-    `[turbo-cache] Failed to parse turbo --dry-run output as JSON: ${(err as Error).message}`,
+    `[turbo-cache] Failed to parse turbo --dry=json output as JSON: ${(err as Error).message}`,
   )
 }
 
-if (parsed.remoteCacheEnabled !== true) {
+if (!parsed.turboVersion || !parsed.tasks || parsed.tasks.length === 0) {
   exitWith(
-    `[turbo-cache] remoteCacheEnabled !== true in turbo --dry-run output.\n` +
-      `Check turbo.json remoteCache config and env vars.`,
+    `[turbo-cache] Unexpected turbo --dry=json shape — turboVersion or tasks missing.\n` +
+      `Check that turbo.json is valid and tasks are declared.`,
   )
 }
 
-console.log('[turbo-cache] OK: remote cache enabled and env vars resolved.')
+const buildWasm = parsed.tasks.find(t => t.taskId === '//#build:wasm')
+if (!buildWasm || !buildWasm.hash) {
+  exitWith(
+    `[turbo-cache] //#build:wasm task not found in graph or missing hash.\n` +
+      `Check turbo.json root tasks.`,
+  )
+}
+
+console.log(
+  `[turbo-cache] OK: env vars resolved, turbo ${parsed.turboVersion} parsed graph, ` +
+    `//#build:wasm hash=${buildWasm.hash}.\n` +
+    `Run 'pnpm turbo run build --summarize' for actual HIT/MISS verification (see docs/monorepo.md).`,
+)

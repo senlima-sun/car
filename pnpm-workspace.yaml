@@ -2,7 +2,9 @@ packages:
   - apps/*
   - packages/*
 
+# pnpm requires explicit consent before running install lifecycle scripts.
+# Add a new package here only after reviewing its postinstall behavior.
 allowBuilds:
-  bun: true
-  core-js: false
-  protobufjs: false
+  bun: true           # needed: bun's postinstall fetches platform-specific binary
+  core-js: false      # not needed: pure JS polyfill, postinstall is a banner
+  protobufjs: false   # not needed: postinstall is a deprecation notice

@@ -15,7 +15,7 @@
       "outputs": ["apps/game/src/wasm/pkg/**"]
     },
     "build": {
-      "dependsOn": ["//#build:wasm"],
+      "dependsOn": ["^build", "//#build:wasm"],
       "inputs": [
         "src/**",
         "build/**",
@@ -47,12 +47,9 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["//#build:wasm"],
+      "dependsOn": ["^build", "//#build:wasm"],
       "inputs": ["src/**", "tsconfig.json"],
       "outputs": []
-    },
-    "format": {
-      "cache": false
     }
   }
 }
