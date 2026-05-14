@@ -1,9 +1,15 @@
 use serde::{Deserialize, Serialize};
 
 pub mod bezier;
+pub mod off_track;
 pub mod sample;
 
 pub use bezier::{cubic_point, sample_segment_dense, segment_endpoints, segment_length};
+pub use off_track::{
+    check_off_track, forward_right_from_quat, nearest_centerline_full, nearest_centerline_windowed,
+    wheel_world_positions, wheel_world_positions_quat, NearestResult, OffTrackResult, OffTrackState,
+    DEFAULT_ENTER_THRESHOLD_M, DEFAULT_EXIT_THRESHOLD_M, DEFAULT_WINDOW,
+};
 pub use sample::{sample_path, sample_track_source};
 
 pub const POINT_EPS: f32 = 1e-6;
