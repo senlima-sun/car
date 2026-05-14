@@ -12,6 +12,8 @@ mod pit_lane;
 mod surface;
 mod terrain;
 mod tires;
+#[cfg(feature = "headless")]
+pub mod track_geometry;
 mod track_temperature;
 pub mod types;
 mod utils;
