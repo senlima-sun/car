@@ -1,7 +1,12 @@
+mod policies;
+mod sim;
 mod track_loader;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
+
+use policies::constant_throttle::ConstantThrottle;
+use sim::{run_sim, TerminationReason};
 
 const HELP: &str = "\
 ai_runner — headless physics driver for AI policy evaluation
@@ -127,5 +132,44 @@ fn main() -> ExitCode {
         spawn_pos[0], spawn_pos[1], spawn_pos[2], spawn_fwd[0], spawn_fwd[1],
     );
 
+    match args.mode {
+        Mode::Run => run_mode(&track, &args),
+        Mode::Perf => {
+            eprintln!("ai_runner: --mode perf not wired yet (Step 2.5)");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
+    if args.policy != "constant-throttle" {
+        eprintln!(
+            "ai_runner: unknown policy '{}'; only 'constant-throttle' is wired",
+            args.policy
+        );
+        return ExitCode::FAILURE;
+    }
+    let mut policy = ConstantThrottle::default();
+    let result = run_sim(track, &mut policy, 600.0, 5.0);
+    print_run_summary(&result);
     ExitCode::SUCCESS
+}
+
+fn print_run_summary(result: &sim::SimResult) {
+    let frames = result.telemetry.len();
+    let last_t = result.telemetry.last().map(|f| f.t_s).unwrap_or(0.0);
+    println!(
+        "  sim done: frames={} sim_time={:.2}s lap={} off_track_count={} off_track_s={:.2} terminated={:?}",
+        frames,
+        last_t,
+        result.lap_completed,
+        result.off_track_count,
+        result.off_track_seconds,
+        result.terminated_by,
+    );
+    println!(
+        "  final pos=({:.2}, {:.2}) distance_from_spawn={:.2}m",
+        result.final_xz[0], result.final_xz[1], result.distance_to_spawn_m,
+    );
+    let _ = TerminationReason::Timeout;
 }

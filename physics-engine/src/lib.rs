@@ -3,7 +3,7 @@
 mod active_aero;
 mod brakes;
 mod car_physics;
-mod constants;
+pub mod constants;
 mod curb;
 pub mod engine;
 mod engine_temp;
@@ -15,7 +15,7 @@ mod tires;
 pub mod track_geometry;
 mod track_temperature;
 pub mod types;
-mod utils;
+pub mod utils;
 mod weather;
 mod wind;
 
