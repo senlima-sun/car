@@ -15,6 +15,8 @@ import { useCarRubberAndTrails } from './useCarRubberAndTrails'
 import { useTelemetryRecorder } from '../../../../telemetry/useTelemetryRecorder'
 import { useSteeringDebugStore } from '../../../../stores/useSteeringDebugStore'
 import { useStartLightsStore } from '../../../../stores/useStartLightsStore'
+import { useSurfaceStore } from '../../../../stores/useSurfaceStore'
+import { useTrackLimitsStore } from '../../../../stores/useTrackLimitsStore'
 import { IS_DEV } from '../../../../utils/isDev'
 import { type CarState } from './types'
 
@@ -164,6 +166,34 @@ export function useCarFrame({
     const chassis = chassisRef.current
     const pos = chassis.translation()
     const rot = chassis.rotation()
+
+    if (physics.hasTrackCenterline()) {
+      const offTrackResult = physics.checkOffTrackByGeometry(
+        pos.x,
+        pos.z,
+        rot.x,
+        rot.y,
+        rot.z,
+        rot.w,
+      )
+      useTrackLimitsStore.getState().setOffTrack(offTrackResult.isOffTrack)
+
+      if (
+        IS_DEV &&
+        typeof localStorage !== 'undefined' &&
+        localStorage.getItem('debug.offTrackCompare') === 'true'
+      ) {
+        const surfaceSaysGrass = useSurfaceStore.getState().currentSurface === 'grass'
+        if (surfaceSaysGrass !== offTrackResult.isOffTrack) {
+          console.warn(
+            '[off-track-compare] geometry:',
+            offTrackResult.isOffTrack,
+            'surface(grass):',
+            surfaceSaysGrass,
+          )
+        }
+      }
+    }
 
     telemetryRecorder.record(output, syncResult, pos, accumulator.fixedTimeStep)
 

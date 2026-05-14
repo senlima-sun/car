@@ -11,6 +11,7 @@ import WetTrails from './parts/WetTrails'
 import { useCarFrame } from './hooks/useCarFrame'
 import { usePhysicsSync } from './hooks/usePhysicsSync'
 import { useStartPosition } from './hooks/useStartPosition'
+import { useTrackCenterlineSync } from './hooks/useTrackCenterlineSync'
 
 // Car with WASM physics engine
 const Car = forwardRef<Group>((_, ref) => {
@@ -18,6 +19,8 @@ const Car = forwardRef<Group>((_, ref) => {
   const groupRef = useRef<Group>(null)
 
   const { physics, windEnabled } = usePhysicsSync()
+
+  useTrackCenterlineSync()
 
   // Calculate start position from checkpoint
   const { startPosition, startRotation } = useStartPosition()
