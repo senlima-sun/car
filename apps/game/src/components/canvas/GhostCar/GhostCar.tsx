@@ -2,6 +2,8 @@ import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useGhostCarStore } from '@/stores/useGhostCarStore'
+import { useAiGhostStore } from '@/stores/useAiGhostStore'
+import { useGhostPreferenceStore } from '@/stores/useGhostPreferenceStore'
 import { useLapTimeStore } from '@/stores/useLapTimeStore'
 import { useCarStore } from '@/stores/useCarStore'
 import { useTrackStore } from '@/stores/useTrackStore'
@@ -16,8 +18,10 @@ export default function GhostCar() {
   const trackerRef = useRef(createGhostTimeDeltaTracker())
   const prevShouldShowRef = useRef(false)
 
-  const replayData = useGhostCarStore(s => s.replayData)
+  const humanReplay = useGhostCarStore(s => s.replayData)
   const loadReplayForTrack = useGhostCarStore(s => s.loadReplayForTrack)
+  const aiReplay = useAiGhostStore(s => s.replayData)
+  const preferAiGhost = useGhostPreferenceStore(s => s.preferAiGhost)
 
   const isActive = useLapTimeStore(s => s.isActive)
   const isRecording = useLapTimeStore(s => s.isRecording)
@@ -25,6 +29,9 @@ export default function GhostCar() {
   const currentLapStart = useLapTimeStore(s => s.currentLapStart)
 
   const activeTrackId = useTrackStore(s => s.trackLibrary.activeTrackId)
+
+  const activeReplay = preferAiGhost && aiReplay !== null ? aiReplay : humanReplay
+  const isAiActive = preferAiGhost && aiReplay !== null
 
   useEffect(() => {
     if (activeTrackId) {
@@ -39,7 +46,7 @@ export default function GhostCar() {
   }, [lapCount])
 
   const shouldShow =
-    isActive && isRecording && lapCount >= 1 && replayData !== null && currentLapStart !== null
+    isActive && isRecording && lapCount >= 1 && activeReplay !== null && currentLapStart !== null
 
   useFrame(() => {
     const { setGhostFrameState } = useGhostCarStore.getState()
@@ -47,11 +54,14 @@ export default function GhostCar() {
     if (!shouldShow && prevShouldShowRef.current) {
       trackerRef.current.reset()
       setGhostFrameState(null, null)
+      useAiGhostStore.getState().setGhostFrameState(null, null)
     }
     prevShouldShowRef.current = shouldShow
 
     if (!groupRef.current || !shouldShow) return
-    const replay = useGhostCarStore.getState().replayData
+    const replay = isAiActive
+      ? useAiGhostStore.getState().replayData
+      : useGhostCarStore.getState().replayData
     if (!replay) return
     const lapStart = useLapTimeStore.getState().currentLapStart
     if (lapStart === null) return
@@ -59,7 +69,11 @@ export default function GhostCar() {
     const state = interpolateGhostState(replay, lapTime)
     if (!state) {
       groupRef.current.visible = false
-      setGhostFrameState(null, null)
+      if (isAiActive) {
+        useAiGhostStore.getState().setGhostFrameState(null, null)
+      } else {
+        setGhostFrameState(null, null)
+      }
       return
     }
     groupRef.current.visible = true
@@ -75,7 +89,11 @@ export default function GhostCar() {
       state.position.y,
       state.position.z,
     ]
-    setGhostFrameState(ghostPos, result?.deltaMs ?? null)
+    if (isAiActive) {
+      useAiGhostStore.getState().setGhostFrameState(ghostPos, result?.deltaMs ?? null)
+    } else {
+      setGhostFrameState(ghostPos, result?.deltaMs ?? null)
+    }
   })
 
   if (!shouldShow) return null
