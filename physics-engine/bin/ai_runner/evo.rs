@@ -223,6 +223,46 @@ impl Population {
         self.finalize_generation(offspring)
     }
 
+    pub fn step_par<F>(&mut self, eval_fn: F) -> GenerationResult
+    where
+        F: Fn(&[f32], usize) -> f32 + Sync + Send,
+    {
+        use rayon::prelude::*;
+
+        let parent_picker = Uniform::from(0..self.parents.len());
+        let mut prepared: Vec<(usize, Vec<f32>, Vec<f32>)> = Vec::with_capacity(self.lambda);
+        for child_idx in 0..self.lambda {
+            let seed = child_seed(self.master_seed, self.generation, child_idx);
+            let mut rng = StdRng::seed_from_u64(seed);
+            let parent_idx = parent_picker.sample(&mut rng);
+            let parent = &self.parents[parent_idx];
+            let (params, sigma) =
+                mutate_child(&parent.params, &parent.sigma, &mut rng, self.dim);
+            prepared.push((child_idx, params, sigma));
+        }
+
+        let mut fitnesses: Vec<f32> = vec![0.0; self.lambda];
+        prepared
+            .par_iter()
+            .map(|(idx, params, _)| eval_fn(params, *idx))
+            .collect_into_vec(&mut fitnesses);
+
+        let generation_born = self.generation + 1;
+        let offspring: Vec<Individual> = prepared
+            .into_iter()
+            .zip(fitnesses.into_iter())
+            .map(|((child_index, params, sigma), fitness)| Individual {
+                params,
+                fitness,
+                sigma,
+                child_index,
+                generation_born,
+            })
+            .collect();
+
+        self.finalize_generation(offspring)
+    }
+
     pub fn finalize_generation(&mut self, offspring: Vec<Individual>) -> GenerationResult {
         let mut combined: Vec<Individual> =
             Vec::with_capacity(self.parents.len() + offspring.len());

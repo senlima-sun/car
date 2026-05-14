@@ -1,5 +1,6 @@
 mod evo;
 mod obs;
+mod parallel_eval;
 mod perf;
 mod policies;
 mod reward;
