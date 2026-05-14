@@ -112,7 +112,11 @@ pub fn combined_slip_ellipse(
     mu_x_fz: f32,
     mu_y_fz: f32,
 ) -> (f32, f32) {
-    if mu_x_fz <= 1e-3 || mu_y_fz <= 1e-3 {
+    // 1% of MIN_FZ_NEWTONS — anything below this corresponds to a
+    // load well under the "wheel off contact" threshold, so the
+    // tire is treated as producing zero force.
+    const ELLIPSE_EPS: f32 = MIN_FZ_NEWTONS * 0.01;
+    if mu_x_fz <= ELLIPSE_EPS || mu_y_fz <= ELLIPSE_EPS {
         return (0.0, 0.0);
     }
     let nx = fx_pure / mu_x_fz;
@@ -139,6 +143,30 @@ pub fn peak_mu_at_fz(fz: f32, coeffs: &PacejkaCoeffs) -> f32 {
     let peak_slip = PEAK_LATERAL_SLIP_DEG.to_radians();
     let peak_force = pacejka_force(peak_slip, effective_fz, coeffs).abs();
     peak_force / effective_fz
+}
+
+/// Peak Pacejka force (Newtons) for the supplied coefficient set at this
+/// per-wheel load. Uses load-sensitivity-reduced `effective_fz` for the
+/// Pacejka evaluation; the returned newtons match the actual physical
+/// peak the tire can produce, with no μ × raw_fz round-trip dimension
+/// mismatch.
+pub fn peak_force_at_fz(fz: f32, coeffs: &PacejkaCoeffs) -> f32 {
+    if fz < MIN_FZ_NEWTONS {
+        return 0.0;
+    }
+    let effective_fz = effective_fz_with_load_sensitivity(fz, DEFAULT_LOAD_SENSITIVITY);
+    let peak_slip = PEAK_LATERAL_SLIP_DEG.to_radians();
+    pacejka_force(peak_slip, effective_fz, coeffs).abs()
+}
+
+/// Peak lateral force (N) at this Fz under the default lateral coeffs.
+pub fn peak_force_lat_at_fz(fz: f32) -> f32 {
+    peak_force_at_fz(fz, &PacejkaCoeffs::LATERAL_DEFAULT)
+}
+
+/// Peak longitudinal force (N) at this Fz under the default longitudinal coeffs.
+pub fn peak_force_lon_at_fz(fz: f32) -> f32 {
+    peak_force_at_fz(fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT)
 }
 
 /// Peak lateral μ at this Fz under the default lateral coefficient set.
@@ -248,6 +276,12 @@ pub struct WheelForces {
     pub slip_ratio: f32,
 }
 
+/// Test-only helper that runs a one-shot Pacejka evaluation with the
+/// isotropic-circle friction cap. **Diverges from the production
+/// `WheelForceIntegrator` path** (no grip_chain, isotropic not per-axis
+/// ellipse, Fx uses effective_fz). Kept as a fixture for the in-module
+/// Pacejka tests; do not call from new production code.
+#[doc(hidden)]
 pub fn calculate_per_wheel_forces(
     slip_angle_deg: f32,
     slip_ratio: f32,

@@ -635,19 +635,15 @@ fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
 
 /// Electric-motor force at a given deploy power (kW) and car speed
 /// (m/s). Below the corner speed `P_max / F_max` the motor is in the
-/// constant-torque regime; above it, constant power. Approximation of
-/// the 350 kW MGU-K curve through gearbox + final drive at the wheels.
+/// constant-torque regime; above it, constant power.
 fn electric_force_boost(deploy_power_kw: f32, speed_ms: f32) -> f32 {
-    /// Wheel-level torque-limited force ceiling. Derived from MGU-K
-    /// peak torque (~250 Nm at the crank) × total drivetrain ratio
-    /// (1st-gear 3.6 × final-drive 2.9) / tire radius (0.36 m) ≈
-    /// 7240 N. Set higher because the boost rides through 1st gear
-    /// for only the launch transient; an averaged ratio gives ~15 kN
-    /// in the steady-state launch regime where 350 kW = 35 kN at
-    /// 10 m/s is the constant-power-curve ceiling anyway.
+    /// Above-traction-limit sentinel. The wheel-force integrator's
+    /// friction ellipse clamps actual delivered force at the per-corner
+    /// μ·Fz envelope (≈ 6 kN per driven wheel under nominal load), so
+    /// any cap here above ~8 kN is effectively unbinding — chosen well
+    /// above the friction limit so the constant-power branch (P/v)
+    /// binds across the realistic speed envelope.
     const F_MAX_TORQUE_N: f32 = 15_000.0;
-    /// Below this speed, the motor is held at peak torque and the
-    /// hyperbolic P/v branch is undefined.
     const MIN_BOOST_SPEED_MS: f32 = 1.0;
     if speed_ms < MIN_BOOST_SPEED_MS {
         return F_MAX_TORQUE_N;

@@ -3,7 +3,7 @@ use crate::car_physics::driveshaft::{decay_first_order, ShaftConfig};
 use crate::car_physics::powertrain::{ENGINE_INERTIA, TIRE_RADIUS};
 use crate::car_physics::tire_model::{
     combined_slip_ellipse, gx_combined, gy_combined, pacejka_lateral_per_wheel,
-    pacejka_longitudinal, peak_mu_lat_at_fz, peak_mu_lon_at_fz, CombinedSlipCoeffs,
+    pacejka_longitudinal, peak_force_lat_at_fz, peak_force_lon_at_fz, CombinedSlipCoeffs,
     PacejkaCoeffs, TIRE_DEFAULT_LOAD_SENSITIVITY,
 };
 use crate::constants::car::BASE_TIRE_GRIP_COEFFICIENT;
@@ -359,22 +359,27 @@ impl WheelForceIntegrator {
                 slip_ratio,
                 &CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED,
             );
-            // Unified grip-chain scaling applied to both the pure-slip
-            // Pacejka outputs and the friction-ellipse cap. Wave 3:
-            // by scaling both sides equally, the cap binds at the
-            // physical friction circle (μ × Fz × grip_chain) instead
-            // of being applied after a sub-circle cap (the pre-Wave-3
-            // path multiplied by grip_chain *after* clipping at μ × Fz,
-            // which let combined forces exceed the real circle by the
-            // grip_chain factor).
+            // Per-axis friction-ellipse cap with the grip-chain folded
+            // in both sides. The fold is algebraically equivalent to
+            // post-multiplying the legacy circle cap (homogeneity of
+            // degree 1), so peak traction is unchanged; the win is
+            // the **per-axis** ellipse — μ_long > μ_lat on racing
+            // slicks, and the prior `max(μx, μy)` isotropic radius
+            // over-permitted the smaller-axis contribution.
+            //
+            // Cap radii use `peak_force_*_at_fz` directly (returns N)
+            // rather than `μ × raw_fz`, since μ is computed against
+            // load-sensitivity-reduced effective_fz; the round-trip
+            // through raw Fz inflated the cap by `fz / effective_fz`
+            // at high corner loads.
             let grip_chain =
                 BASE_TIRE_GRIP_COEFFICIENT * i.downforce_grip_bonus * i.combined_grip_multiplier;
             let fx_combined = fx_pure * g_x * grip_chain;
             let fy_combined = fy_pure * g_y * grip_chain;
-            let mu_x_fz = peak_mu_lon_at_fz(fz) * fz * grip_chain;
-            let mu_y_fz = peak_mu_lat_at_fz(fz) * fz * grip_chain;
+            let cap_x = peak_force_lon_at_fz(fz) * grip_chain;
+            let cap_y = peak_force_lat_at_fz(fz) * grip_chain;
             let (fx, fy) =
-                combined_slip_ellipse(fx_combined, fy_combined, mu_x_fz, mu_y_fz);
+                combined_slip_ellipse(fx_combined, fy_combined, cap_x, cap_y);
             wheel_fx_now[wheel] = fx;
             wheel_fy_now[wheel] = fy;
             wheel_long_force += fx;
