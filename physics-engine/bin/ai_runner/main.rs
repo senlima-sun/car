@@ -31,22 +31,27 @@ USAGE:
     ai_runner [OPTIONS]
 
 OPTIONS:
-    --track <name>         Circuit to load (default: silverstone)
-    --policy <name>        Policy to drive (default: constant-throttle)
-    --out <dir>            Output directory (default: target/ai-runner-outputs)
-    --out-dir <dir>        Ghost output directory for --mode train
-                           (default: apps/game/public/ai-replays)
-    --seed <n>             RNG seed (default: 42)
-    --mode <run|perf|train> Execution mode (default: run)
-    --generations <n>      Number of evo generations (default: 200)
-    --mu <n>               Parents kept per generation (default: 8)
-    --lambda <n>           Offspring per generation (default: 24)
-    -h, --help             Print this help
+    --track <name>             Circuit to load (default: silverstone)
+    --policy <name>            Policy to drive (default: constant-throttle)
+    --out <dir>                Output directory (default: target/ai-runner-outputs)
+    --out-dir <dir>            Ghost output directory for --mode train
+                               (default: apps/game/public/ai-replays)
+    --seed <n>                 RNG seed (default: 42)
+    --mode <run|perf|train>    Execution mode (default: run)
+    --generations <n>          Number of evo generations (default: 200)
+    --mu <n>                   Parents kept per generation (default: 8)
+    --lambda <n>               Offspring per generation (default: 24)
+    --bc-seed <path>           Path to human demo JSON to BC-seed ES
+    --bc-generations <n>       BC inner generations when --bc-seed (default: 50)
+    --bc-sigma-scale <f>       Sigma scale for ES after BC (default: 0.3)
+    --bc-only                  Run BC fit + dump ghost, skip ES
+    -h, --help                 Print this help
 
 EXAMPLES:
     ai_runner --track silverstone --policy constant-throttle
     ai_runner --mode perf
     ai_runner --mode train --track monza --seed 42 --generations 200
+    ai_runner --mode train --track monza --bc-seed demo.json --generations 200
 ";
 
 #[derive(Debug, Clone)]
@@ -60,6 +65,10 @@ struct Args {
     generations: u32,
     mu: usize,
     lambda: usize,
+    bc_seed: Option<PathBuf>,
+    bc_generations: u32,
+    bc_sigma_scale: f32,
+    bc_only: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -97,6 +106,10 @@ fn parse_args() -> Result<Args, pico_args::Error> {
     let generations: Option<u32> = pargs.opt_value_from_str("--generations")?;
     let mu: Option<usize> = pargs.opt_value_from_str("--mu")?;
     let lambda: Option<usize> = pargs.opt_value_from_str("--lambda")?;
+    let bc_seed: Option<PathBuf> = pargs.opt_value_from_str("--bc-seed")?;
+    let bc_generations: Option<u32> = pargs.opt_value_from_str("--bc-generations")?;
+    let bc_sigma_scale: Option<f32> = pargs.opt_value_from_str("--bc-sigma-scale")?;
+    let bc_only = pargs.contains("--bc-only");
 
     let remaining = pargs.finish();
     if !remaining.is_empty() {
@@ -125,6 +138,10 @@ fn parse_args() -> Result<Args, pico_args::Error> {
         generations: generations.unwrap_or(200),
         mu: mu.unwrap_or(8),
         lambda: lambda.unwrap_or(24),
+        bc_seed,
+        bc_generations: bc_generations.unwrap_or(50),
+        bc_sigma_scale: bc_sigma_scale.unwrap_or(0.3),
+        bc_only,
     })
 }
 
@@ -239,25 +256,49 @@ fn train_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let mut pop = Population::init(
-        LOOKAHEAD_PARAM_COUNT,
-        args.mu,
-        args.lambda,
-        args.seed,
-        &BASELINE_PARAMS_MONZA,
-        &INITIAL_SIGMA_MONZA,
-    );
     let max_t_s = 300.0_f32;
     let off_track_kill_s = 5.0_f32;
-    let eval = make_par_eval_fn(track, max_t_s, off_track_kill_s);
 
     let slug = slug_from_track_id(&track.id);
     let bin_path = args.out_dir.join(format!("{slug}.ghost.bin"));
     let json_path = args.out_dir.join(format!("{slug}.ghost.json"));
 
+    let (baseline_params, baseline_sigma, bc_seeded) = match args.bc_seed.as_ref() {
+        Some(path) => match run_bc_phase(track, &args, path, &bin_path, &json_path) {
+            BcPhaseOutcome::Success { params } => {
+                if args.bc_only {
+                    println!(
+                        "ai_runner: --bc-only set; skipping ES. BC ghost written: bin={} json={}",
+                        bin_path.display(),
+                        json_path.display(),
+                    );
+                    return ExitCode::SUCCESS;
+                }
+                let scale = args.bc_sigma_scale.max(1e-6);
+                let mut sigma = INITIAL_SIGMA_MONZA;
+                for s in sigma.iter_mut() {
+                    *s *= scale;
+                }
+                (params, sigma, true)
+            }
+            BcPhaseOutcome::Fatal(code) => return code,
+        },
+        None => (BASELINE_PARAMS_MONZA, INITIAL_SIGMA_MONZA, false),
+    };
+
+    let mut pop = Population::init(
+        LOOKAHEAD_PARAM_COUNT,
+        args.mu,
+        args.lambda,
+        args.seed,
+        &baseline_params,
+        &baseline_sigma,
+    );
+    let eval = make_par_eval_fn(track, max_t_s, off_track_kill_s);
+
     println!(
-        "ai_runner: train start track={} slug={} generations={} mu={} lambda={} seed={}",
-        track.id, slug, args.generations, args.mu, args.lambda, args.seed
+        "ai_runner: train start track={} slug={} generations={} mu={} lambda={} seed={} bc_seeded={}",
+        track.id, slug, args.generations, args.mu, args.lambda, args.seed, bc_seeded
     );
     println!(
         "  output: bin={} json={}",
@@ -365,6 +406,138 @@ fn train_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
+}
+
+enum BcPhaseOutcome {
+    Success { params: [f32; LOOKAHEAD_PARAM_COUNT] },
+    Fatal(ExitCode),
+}
+
+fn run_bc_phase(
+    track: &track_loader::LoadedTrack,
+    args: &Args,
+    demo_path: &std::path::Path,
+    bin_path: &std::path::Path,
+    json_path: &std::path::Path,
+) -> BcPhaseOutcome {
+    let demo = match bc::load_demo(demo_path) {
+        Ok(d) => d,
+        Err(bc::BcError::Io(e)) if e.kind() == std::io::ErrorKind::NotFound => {
+            eprintln!("ai_runner: --bc-seed path not found: {}", demo_path.display());
+            return BcPhaseOutcome::Fatal(ExitCode::from(2));
+        }
+        Err(bc::BcError::SchemaMismatch { found, expected }) => {
+            eprintln!(
+                "ai_runner: unsupported demo schemaVersion = {found} (expected {expected})"
+            );
+            return BcPhaseOutcome::Fatal(ExitCode::from(2));
+        }
+        Err(e) => {
+            eprintln!("ai_runner: BC demo load failed: {e}");
+            return BcPhaseOutcome::Fatal(ExitCode::from(2));
+        }
+    };
+
+    if demo.track_id != track.id {
+        eprintln!(
+            "ai_runner: warning: demo trackId='{}' but loaded track.id='{}'; continuing anyway",
+            demo.track_id, track.id
+        );
+    }
+
+    println!(
+        "ai_runner: BC fit start frames={} lapTime={:.2}ms generations={} seed={}",
+        demo.frame_count, demo.lap_time, args.bc_generations, args.seed,
+    );
+    let bc_start = Instant::now();
+    let bc_result = bc::fit_bc(&demo, track, args.seed, args.bc_generations);
+    let bc_wall = bc_start.elapsed().as_secs_f32();
+    let r = &bc_result.report;
+    println!(
+        "  BC fit done in {:.2}s: baseline_loss={:.5} training_loss={:.5} \
+         training_frames={} holdout_frames={} \
+         rms_steer={:.4} rms_throttle={:.4} rms_brake={:.4}",
+        bc_wall,
+        r.baseline_loss,
+        r.training_loss,
+        r.training_frame_count,
+        r.holdout_frame_count,
+        r.holdout_rms_steer,
+        r.holdout_rms_throttle,
+        r.holdout_rms_brake,
+    );
+
+    let report_path = args
+        .out
+        .join(format!("{}-bc-fit.json", slug_from_track_id(&track.id)));
+    if let Err(err) = bc::write_bc_report_atomic(&report_path, &bc_result.report) {
+        eprintln!("ai_runner: failed to write BC report: {err}");
+    } else {
+        println!("  wrote BC report: {}", report_path.display());
+    }
+
+    let eval_result = evaluate_on_thread_engine(
+        &bc_result.params,
+        track,
+        true,
+        300.0,
+        5.0,
+    );
+    let lap_time_display = if eval_result.lap_completed {
+        format!("{:.2}s", eval_result.lap_time_s)
+    } else {
+        "-".to_string()
+    };
+    println!(
+        "  BC replay: lap_completed={} lap_time={} off_track_count={} sim_time={:.2}s arc_progress={:.1}m terminated={:?}",
+        eval_result.lap_completed,
+        lap_time_display,
+        eval_result.off_track_count,
+        eval_result.sim_time_s,
+        eval_result.arc_length_progress_m,
+        eval_result.terminated_by,
+    );
+
+    let telemetry = match eval_result.telemetry {
+        Some(t) => t,
+        None => {
+            eprintln!("ai_runner: BC replay produced no telemetry");
+            return BcPhaseOutcome::Fatal(ExitCode::FAILURE);
+        }
+    };
+    let subs = subsample_telemetry(&telemetry, GHOST_STRIDE_120_TO_20_HZ);
+    let frame_count = subs.len() as u32;
+
+    if let Err(err) = write_ghost_bin_atomic(bin_path, &subs) {
+        eprintln!("ai_runner: BC ghost bin write failed: {err}");
+        return BcPhaseOutcome::Fatal(ExitCode::FAILURE);
+    }
+    let meta = GhostMeta {
+        schema_version: GHOST_SCHEMA_VERSION,
+        track_id: track.id.clone(),
+        lap_time: if eval_result.lap_completed {
+            eval_result.lap_time_s
+        } else {
+            0.0
+        },
+        frame_count,
+        recorder_type: "ai_runner_bc".into(),
+        recorded_at: ghost_writer::now_iso8601_utc(),
+    };
+    if let Err(err) = write_ghost_meta_atomic(json_path, &meta) {
+        eprintln!("ai_runner: BC ghost meta write failed: {err}");
+        return BcPhaseOutcome::Fatal(ExitCode::FAILURE);
+    }
+    println!(
+        "  BC ghost written: bin={} json={} frames={}",
+        bin_path.display(),
+        json_path.display(),
+        frame_count,
+    );
+
+    BcPhaseOutcome::Success {
+        params: bc_result.params,
+    }
 }
 
 struct DumpResult {

@@ -608,4 +608,44 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn bc_seed_path_does_not_exist_yields_io_error() {
+        let path = Path::new("/nonexistent/definitely_no_demo_here.json");
+        let err = load_demo(path).unwrap_err();
+        match err {
+            BcError::Io(_) => {}
+            other => panic!("expected Io, got {other:?}"),
+        }
+    }
+
+    #[test]
+    #[ignore = "smoke: takes ~30s; runs 50-gen BC then replay verify on Monza"]
+    fn bc_seed_smoke_replay_progress() {
+        use crate::reward::evaluate;
+        use car_physics_engine::engine::PhysicsEngine;
+
+        let path = Path::new(MONZA_DEMO_PATH);
+        let demo = load_demo(path).expect("demo loads");
+        let track = load_track("monza").expect("monza loads");
+        let bc_result = fit_bc(&demo, &track, 42, 50);
+        let mut engine = PhysicsEngine::new();
+        let eval = evaluate(&bc_result.params, &track, &mut engine, false, 300.0, 5.0);
+        let mut baseline_engine = PhysicsEngine::new();
+        let baseline = evaluate(
+            &BASELINE_PARAMS_MONZA,
+            &track,
+            &mut baseline_engine,
+            false,
+            300.0,
+            5.0,
+        );
+        assert!(
+            eval.arc_length_progress_m > baseline.arc_length_progress_m,
+            "BC must out-progress baseline (BC={}m, baseline={}m, lap_completed={})",
+            eval.arc_length_progress_m,
+            baseline.arc_length_progress_m,
+            eval.lap_completed,
+        );
+    }
 }
