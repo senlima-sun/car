@@ -880,7 +880,8 @@ impl PhysicsEngine {
                     .unwrap_or([TerrainQueryResult::default(); 4])
             };
             self.prev_wheel_terrain = results;
-            self.terrain_step_counter = self.terrain_step_counter.wrapping_add(1);
+            self.terrain_step_counter =
+                (self.terrain_step_counter + 1) % TERRAIN_QUERY_INTERVAL_STEPS;
             Some(results)
         } else {
             None
@@ -931,7 +932,7 @@ impl PhysicsEngine {
         } else {
             0.0
         };
-        let ers_boost = self.ers.update(
+        let raw_ers_boost = self.ers.update(
             dt,
             input.forward && !input.brake,
             input.backward || input.brake,
@@ -956,7 +957,7 @@ impl PhysicsEngine {
         } else {
             0.0
         };
-        let ers_boost = ers_boost + override_boost_n;
+        let ers_boost_with_override = raw_ers_boost + override_boost_n;
 
         // Update active aero wing positions (auto mode uses speed for adjustment)
         self.active_aero.update(dt, speed_ms);
@@ -982,12 +983,7 @@ impl PhysicsEngine {
         // wheel so left/right wheels see different track-cell temperatures
         // (e.g. one wheel on hot rubber'd line, the other on cool offline).
         let tire_temps_now = self.tire_temperature.get_temperatures();
-        let per_wheel_tire_temp = [
-            (tire_temps_now.front_left_inner + tire_temps_now.front_left_outer) * 0.5,
-            (tire_temps_now.front_right_inner + tire_temps_now.front_right_outer) * 0.5,
-            (tire_temps_now.rear_left_inner + tire_temps_now.rear_left_outer) * 0.5,
-            (tire_temps_now.rear_right_inner + tire_temps_now.rear_right_outer) * 0.5,
-        ];
+        let per_wheel_tire_temp = tire_temps_now.per_wheel_avg();
         let tire_heat_deltas = self.track_temperature.update_tire_track_exchange_per_wheel(
             &wheel_xz,
             per_wheel_tire_temp,
@@ -1117,7 +1113,7 @@ impl PhysicsEngine {
 
         let air_density = self.weather.get_air_density();
 
-        let ers_boost = ers_boost * pit_lane_throttle;
+        let ers_boost = ers_boost_with_override * pit_lane_throttle;
         let engine_power_multiplier = engine_power_multiplier * pit_lane_throttle;
 
         let mut output = self.car.step(
@@ -1281,14 +1277,8 @@ impl PhysicsEngine {
         // Calculate weight transfer for tire wear (use actual G-forces from output)
         let weight_transfer_wear = weight_transfer_post;
 
-        // Get per-wheel tire temperatures for wear calculation
         let tire_temps = self.tire_temperature.get_temperatures();
-        let tire_temp_array = [
-            (tire_temps.front_left_inner + tire_temps.front_left_outer) / 2.0,
-            (tire_temps.front_right_inner + tire_temps.front_right_outer) / 2.0,
-            (tire_temps.rear_left_inner + tire_temps.rear_left_outer) / 2.0,
-            (tire_temps.rear_right_inner + tire_temps.rear_right_outer) / 2.0,
-        ];
+        let tire_temp_array = tire_temps.per_wheel_avg();
 
         // Update per-wheel tire wear
         let wear_input = WearInput {

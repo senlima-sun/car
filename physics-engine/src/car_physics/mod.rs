@@ -696,7 +696,12 @@ impl CarPhysicsState {
     }
 
     pub fn live_mass_kg(&self) -> f32 {
-        crate::constants::car::CAR_MASS_DRY + self.fuel.fuel_mass_kg()
+        // Floor at MIN_LIVE_MASS_KG. CAR_MASS_DRY + fuel should never
+        // approach zero in normal operation, but a NaN/negative fuel
+        // value from a corrupted state would propagate inf/nan through
+        // every `force / mass` division downstream.
+        const MIN_LIVE_MASS_KG: f32 = 100.0;
+        (crate::constants::car::CAR_MASS_DRY + self.fuel.fuel_mass_kg()).max(MIN_LIVE_MASS_KG)
     }
 
     pub fn get_diff_preload_nm(&self) -> f32 {

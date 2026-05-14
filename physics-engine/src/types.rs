@@ -1172,15 +1172,30 @@ pub struct PerWheelTemperature {
 }
 
 impl PerWheelTemperature {
-    /// Get average temperature for a single wheel
+    /// Get average temperature for a single wheel. Out-of-range `wheel`
+    /// returns `f32::NAN` so downstream sanitization catches the
+    /// programmer error; the prior `0.5` fallback returned a plausible-
+    /// looking median that masked indexing bugs.
     pub fn wheel_avg(&self, wheel: usize) -> f32 {
         match wheel {
             0 => (self.front_left_inner + self.front_left_outer) / 2.0,
             1 => (self.front_right_inner + self.front_right_outer) / 2.0,
             2 => (self.rear_left_inner + self.rear_left_outer) / 2.0,
             3 => (self.rear_right_inner + self.rear_right_outer) / 2.0,
-            _ => 0.5,
+            _ => f32::NAN,
         }
+    }
+
+    /// Per-wheel averaged temperatures as a `[f32; 4]`. Centralizes the
+    /// `(inner + outer) / 2` aggregation that was duplicated across
+    /// pre-step and post-step paths in `engine.rs`.
+    pub fn per_wheel_avg(&self) -> [f32; 4] {
+        [
+            (self.front_left_inner + self.front_left_outer) * 0.5,
+            (self.front_right_inner + self.front_right_outer) * 0.5,
+            (self.rear_left_inner + self.rear_left_outer) * 0.5,
+            (self.rear_right_inner + self.rear_right_outer) * 0.5,
+        ]
     }
 
     /// Convert normalized temp to Celsius (20C - 150C range)
@@ -1415,22 +1430,6 @@ pub struct TireMaterialOutput {
 // Utility Functions
 // ============================================================================
 
-#[inline]
-pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t
-}
-
-#[inline]
-pub fn smoothstep(t: f32) -> f32 {
-    let t = t.clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
-
-#[inline]
-pub fn clamp(value: f32, min: f32, max: f32) -> f32 {
-    value.max(min).min(max)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1445,61 +1444,6 @@ mod tests {
             b,
             (a - b).abs()
         );
-    }
-
-    #[test]
-    fn lerp_returns_start_at_t_zero() {
-        assert_approx(lerp(10.0, 20.0, 0.0), 10.0);
-    }
-
-    #[test]
-    fn lerp_returns_end_at_t_one() {
-        assert_approx(lerp(10.0, 20.0, 1.0), 20.0);
-    }
-
-    #[test]
-    fn lerp_returns_midpoint_at_t_half() {
-        assert_approx(lerp(10.0, 20.0, 0.5), 15.0);
-    }
-
-    #[test]
-    fn smoothstep_returns_zero_at_zero() {
-        assert_approx(smoothstep(0.0), 0.0);
-    }
-
-    #[test]
-    fn smoothstep_returns_one_at_one() {
-        assert_approx(smoothstep(1.0), 1.0);
-    }
-
-    #[test]
-    fn smoothstep_returns_half_at_half() {
-        assert_approx(smoothstep(0.5), 0.5);
-    }
-
-    #[test]
-    fn smoothstep_clamps_below_zero() {
-        assert_approx(smoothstep(-1.0), 0.0);
-    }
-
-    #[test]
-    fn smoothstep_clamps_above_one() {
-        assert_approx(smoothstep(2.0), 1.0);
-    }
-
-    #[test]
-    fn clamp_returns_value_in_range() {
-        assert_approx(clamp(5.0, 0.0, 10.0), 5.0);
-    }
-
-    #[test]
-    fn clamp_returns_min_when_below() {
-        assert_approx(clamp(-5.0, 0.0, 10.0), 0.0);
-    }
-
-    #[test]
-    fn clamp_returns_max_when_above() {
-        assert_approx(clamp(15.0, 0.0, 10.0), 10.0);
     }
 
     #[test]
@@ -1672,10 +1616,10 @@ mod tests {
     }
 
     #[test]
-    fn per_wheel_temperature_wheel_avg_invalid_index_returns_half() {
+    fn per_wheel_temperature_wheel_avg_invalid_index_returns_nan() {
         let temps = PerWheelTemperature::default();
-        assert_approx(temps.wheel_avg(4), 0.5);
-        assert_approx(temps.wheel_avg(99), 0.5);
+        assert!(temps.wheel_avg(4).is_nan());
+        assert!(temps.wheel_avg(99).is_nan());
     }
 
     #[test]
