@@ -27,6 +27,14 @@ const TRACK_WEATHER_UPDATE_INTERVAL: f32 = 1.0 / 30.0;
 const TERRAIN_QUERY_INTERVAL_STEPS: u32 = 6;
 const TERRAIN_QUERY_DISTANCE_M: f32 = 0.85;
 
+/// Compile-time assertion that `PhysicsEngine` is `Send`. Required so the
+/// AI evolutionary loop (Phase 4) can drive a per-thread engine inside a
+/// rayon parallel evaluator.
+const _ASSERT_PHYSICS_ENGINE_IS_SEND: fn() = || {
+    fn is_send<T: Send>() {}
+    is_send::<PhysicsEngine>();
+};
+
 /// Main physics engine that orchestrates all physics systems
 #[derive(Debug)]
 pub struct PhysicsEngine {
@@ -1395,6 +1403,97 @@ impl PhysicsEngine {
             speed_kmh: self.car.get_speed_kmh(),
             is_drifting: self.car.is_drifting(),
         }
+    }
+
+    // ========================================================================
+    // AI Evolutionary Loop Support (Phase 3+)
+    // ========================================================================
+
+    /// Reset every cross-evaluation state field so a subsequent `step()`
+    /// sequence is bit-identical to a fresh engine driven with the same
+    /// inputs. Scenario-level state (`weather`, `wind`, `terrain`) is
+    /// intentionally preserved — those are inputs to the simulation, not
+    /// per-evaluation accumulators.
+    pub fn reset_for_replay(&mut self) {
+        self.tires.reset_wear();
+        self.tire_temperature = TireTemperatureState::new();
+        self.tire_material = TireMaterialSystem::new(self.tires.get_compound());
+        self.engine_temperature = EngineTemperatureState::new();
+        self.ers = ErsPhysicsState::new();
+        self.active_aero = ActiveAeroPhysicsState::new();
+        self.brakes = BrakePhysicsState::new();
+        self.surface = SurfaceState::new();
+        self.curb = CurbState::new();
+        self.pit_lane = PitLaneState::new();
+        self.car = CarPhysicsState::new();
+        self.car.set_fuel_mass_kg(crate::car_physics::fuel::DEFAULT_STARTING_FUEL_KG);
+        self.override_mode = crate::car_physics::override_mode::OverrideModeState::new();
+        self.override_requested = false;
+        self.override_proximity_eligible = true;
+        self.ride_height = crate::car_physics::aerodynamics::RideHeightSmoother::new();
+        self.track_temperature.reset();
+        self.track_weather_accumulator = 0.0;
+        self.terrain_step_counter = 0;
+        self.cached_terrain_results = None;
+        self.cached_wheel_positions = None;
+        self.cached_center_terrain_height = 0.0;
+        self.prev_wheel_terrain = Default::default();
+    }
+
+    /// Hash a representative subset of the engine's mutable state. Used
+    /// by reset-determinism tests; not part of any per-frame hot path.
+    /// Floats are hashed via `to_bits` so NaN bit patterns don't poison
+    /// the hash (no float comparison is performed).
+    pub fn state_hash(&self) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = rustc_hash::FxHasher::default();
+
+        let wear = self.tires.get_per_wheel_wear();
+        wear.front_left.to_bits().hash(&mut hasher);
+        wear.front_right.to_bits().hash(&mut hasher);
+        wear.rear_left.to_bits().hash(&mut hasher);
+        wear.rear_right.to_bits().hash(&mut hasher);
+
+        for blown in self.tire_temperature.get_is_blown() {
+            blown.hash(&mut hasher);
+        }
+        for risk in self.tire_temperature.get_blowout_risk() {
+            risk.to_bits().hash(&mut hasher);
+        }
+
+        let temps = self.tire_temperature.get_temperatures();
+        for t in [
+            temps.front_left_inner,
+            temps.front_left_outer,
+            temps.front_right_inner,
+            temps.front_right_outer,
+            temps.rear_left_inner,
+            temps.rear_left_outer,
+            temps.rear_right_inner,
+            temps.rear_right_outer,
+        ] {
+            t.to_bits().hash(&mut hasher);
+        }
+
+        self.car.get_fuel_mass_kg().to_bits().hash(&mut hasher);
+        self.car.get_boost_pressure_bar().to_bits().hash(&mut hasher);
+        self.car.get_speed_kmh().to_bits().hash(&mut hasher);
+
+        self.ers.get_battery_charge().to_bits().hash(&mut hasher);
+        self.engine_temperature.get_state().temperature.to_bits().hash(&mut hasher);
+
+        for t in self.brakes.get_brake_temperatures() {
+            t.to_bits().hash(&mut hasher);
+        }
+
+        (self.surface.get_surface() as u8).hash(&mut hasher);
+        self.track_temperature.get_cell_count().hash(&mut hasher);
+        self.track_weather_accumulator.to_bits().hash(&mut hasher);
+        self.terrain_step_counter.hash(&mut hasher);
+
+        self.override_mode.energy_used_pct().to_bits().hash(&mut hasher);
+
+        hasher.finish()
     }
 }
 

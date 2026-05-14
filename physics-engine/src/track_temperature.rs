@@ -89,6 +89,13 @@ impl TrackTemperatureGrid {
         self.texture_dirty = true;
     }
 
+    pub fn reset(&mut self) {
+        self.cells.clear();
+        self.texture_dirty = true;
+        self.time = 0.0;
+        self.prune_timer = 0.0;
+    }
+
     /// Convert world position to grid cell coordinates
     #[inline]
     fn world_to_cell(&self, x: f32, z: f32) -> (i32, i32) {
