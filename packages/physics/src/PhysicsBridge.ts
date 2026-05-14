@@ -3,6 +3,7 @@
  */
 
 import init, { PhysicsEngine, TireCompound, SurfaceType } from '../pkg/car_physics_engine'
+import wasmUrl from '../pkg/car_physics_engine_bg.wasm?url'
 import { emitWasmCall } from './internal/perfHook'
 import { publishStepBundle } from './stepBundleSnapshot'
 import { isDevFlag } from './internal/isDev'
@@ -424,7 +425,7 @@ export async function initPhysicsEngine(): Promise<void> {
 
   initializing = (async () => {
     try {
-      await init({ module_or_path: '/src/wasm/pkg/car_physics_engine_bg.wasm' })
+      await init({ module_or_path: wasmUrl })
       engine = new PhysicsEngine()
       initialized = true
       console.log('[PhysicsBridge] WASM physics engine initialized')
