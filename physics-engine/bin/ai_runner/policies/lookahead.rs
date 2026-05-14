@@ -21,7 +21,11 @@ pub struct LookaheadParams {
     pub entry_speed_bias: f32,
     pub exit_throttle_bias: f32,
     pub understeer_recovery_gain: f32,
-    pub oversteer_recovery_gain: f32,
+    // Direct lateral-distance feedback. Param[13] used to be the unwired
+    // `oversteer_recovery_gain`; reviewer flagged it as a dangling evo
+    // dimension. lateral_p_gain gives evo a clean knob for chicane lateral
+    // divergence (see plan §Phase 3 Review Notes).
+    pub lateral_p_gain: f32,
     pub coast_curvature_thresh: f32,
     pub throttle_smoothing_tau: f32,
 }
@@ -42,7 +46,7 @@ impl LookaheadParams {
             self.entry_speed_bias,
             self.exit_throttle_bias,
             self.understeer_recovery_gain,
-            self.oversteer_recovery_gain,
+            self.lateral_p_gain,
             self.coast_curvature_thresh,
             self.throttle_smoothing_tau,
         ]
@@ -63,7 +67,7 @@ impl LookaheadParams {
             entry_speed_bias: p[10],
             exit_throttle_bias: p[11],
             understeer_recovery_gain: p[12],
-            oversteer_recovery_gain: p[13],
+            lateral_p_gain: p[13],
             coast_curvature_thresh: p[14],
             throttle_smoothing_tau: p[15],
         }
@@ -192,11 +196,13 @@ impl Policy for LookaheadPolicy {
         let lat_offset = obs.lateral_distance_m - p.target_lateral_offset;
         let lat_correction =
             (-lat_offset * p.understeer_recovery_gain * 0.05).clamp(-0.3, 0.3);
+        let lat_p = (-lat_offset * p.lateral_p_gain).clamp(-0.5, 0.5);
 
         let raw_steer = p.steer_p_gain * obs.heading_error_rad
             + heading_d
             + curvature_ff_clamped
-            + lat_correction;
+            + lat_correction
+            + lat_p;
         let steer = raw_steer.clamp(-1.0, 1.0);
 
         let brake_active = brake > 0.5;

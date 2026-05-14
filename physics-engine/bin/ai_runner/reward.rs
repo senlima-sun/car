@@ -179,6 +179,28 @@ pub fn sample_reward_trace(telemetry: &[TelemetryFrame]) -> Vec<RewardTraceRow> 
         next_sample_t = (frame.t_s.floor() + 1.0).max(next_sample_t + 1.0);
     }
 
+    // Final tail row: capture state at termination so early-exit runs
+    // (chicane crash, off-track kill) don't lose their terminal frame.
+    if let Some(last) = telemetry.last() {
+        let need_tail = rows.last().map(|r| r.t_s).unwrap_or(f32::MIN) < last.t_s - 1e-3;
+        if need_tail {
+            let progress_delta = (last.arc_length_m - prev_arc).max(0.0);
+            let off_track_penalty_delta =
+                (off_track_seconds_cum - prev_off_track_seconds) * 50.0;
+            let avg_speed_kmh = (last.arc_length_m / last.t_s.max(1.0)) * 3.6;
+            let speed_factor = (avg_speed_kmh / 100.0).clamp(0.5, 4.0);
+            let instantaneous_fitness =
+                progress_delta * speed_factor - off_track_penalty_delta - 5.0;
+            rows.push(RewardTraceRow {
+                t_s: last.t_s,
+                progress_delta_m: progress_delta,
+                speed_factor,
+                off_track_penalty_delta,
+                instantaneous_fitness,
+            });
+        }
+    }
+
     rows
 }
 

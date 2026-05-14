@@ -64,6 +64,8 @@ fn drive_n_steps(engine: &mut PhysicsEngine, n: usize) {
 fn arm_scenario(engine: &mut PhysicsEngine) {
     engine.set_surface(SurfaceType::Road);
     engine.set_tire_compound(TireCompound::Medium);
+    engine.set_wind(0.4, 8.0);
+    engine.set_wind_enabled(true);
 }
 
 #[test]

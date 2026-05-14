@@ -34,6 +34,9 @@ fn test_lookahead_baseline_drives_forward_on_monza() {
     assert!(result.sim_time_s > 0.0);
 }
 
+// TODO(phase4-quality-gate): remove #[ignore] once an evolved param set
+// completes Monza. Tracked by .claude/plans/ai-self-driving-evolutionary.md
+// §Phase 4 Quality Gate.
 #[test]
 #[ignore = "Phase 3 quality gate relaxed: hand-tuned lookahead controller cannot \
     yet complete a Monza lap (the chicane requires more sophisticated lateral \

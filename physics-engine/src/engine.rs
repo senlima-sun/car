@@ -1432,6 +1432,11 @@ impl PhysicsEngine {
         self.override_proximity_eligible = true;
         self.ride_height = crate::car_physics::aerodynamics::RideHeightSmoother::new();
         self.track_temperature.reset();
+        // Wind gust_timer + weather source field advance each step; without
+        // reset, two evaluations on a thread-local engine see different gust
+        // phases and aero noise corrupts evo fitness comparisons.
+        self.wind = WindState::default();
+        self.weather = WeatherState::new();
         self.track_weather_accumulator = 0.0;
         self.terrain_step_counter = 0;
         self.cached_terrain_results = None;
@@ -1490,6 +1495,10 @@ impl PhysicsEngine {
         self.track_temperature.get_cell_count().hash(&mut hasher);
         self.track_weather_accumulator.to_bits().hash(&mut hasher);
         self.terrain_step_counter.hash(&mut hasher);
+
+        self.wind.gust_timer.to_bits().hash(&mut hasher);
+        self.wind.current_speed.to_bits().hash(&mut hasher);
+        self.wind.gust_intensity.to_bits().hash(&mut hasher);
 
         self.override_mode.energy_used_pct().to_bits().hash(&mut hasher);
 
