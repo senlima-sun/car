@@ -805,10 +805,9 @@ impl PhysicsEngine {
         self.track_weather_accumulator += dt;
         let ambient = self.weather.get_ambient_conditions();
         if self.track_weather_accumulator >= TRACK_WEATHER_UPDATE_INTERVAL {
-            // Subtract consumed dt instead of zeroing — preserves
-            // sub-interval residual. The host-side accumulator already
-            // caps a single dt at 0.25 s; the `.min(0.25)` here is
-            // belt-and-suspenders for a runaway weather_accumulator.
+            // `.min(0.25)` is defensive against a runaway accumulator;
+            // the host's fixed-step accumulator caps a single dt below
+            // this in normal operation.
             let weather_dt = self.track_weather_accumulator.min(0.25);
             self.track_weather_accumulator -= weather_dt;
             self.track_temperature.update_weather_with_ambient(
@@ -888,26 +887,20 @@ impl PhysicsEngine {
         };
 
         if let Some(ref results) = terrain_results {
-            // Strict-majority rule: require ≥3 of 4 wheels on the same
-            // material before switching the car-global surface. On a
-            // tie or split, keep the previously-set surface — the prior
-            // "lowest-grip wheel wins" rule produced absurd behaviour
-            // where one wheel briefly grazing grass triggered a full-car
-            // penalty.
+            // Require ≥3 of 4 wheels on the same material before
+            // switching the car-global surface; ties keep the previous.
+            let mut best_material = results[0].material;
             let mut best_count = 0usize;
-            let mut best_material = None;
             for i in 0..4 {
                 let material = results[i].material;
                 let count = results.iter().filter(|r| r.material == material).count();
                 if count > best_count {
                     best_count = count;
-                    best_material = Some(material);
+                    best_material = material;
                 }
             }
             if best_count >= 3 {
-                if let Some(m) = best_material {
-                    self.surface.set_surface(m.to_surface_type());
-                }
+                self.surface.set_surface(best_material.to_surface_type());
             }
         }
 

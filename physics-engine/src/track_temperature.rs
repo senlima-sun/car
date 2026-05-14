@@ -1,4 +1,5 @@
 use crate::types::{AmbientConditions, AquaplaningState, GridCell, TrackBounds};
+use crate::utils::smoothstep;
 use rustc_hash::FxHashMap;
 
 const DEFAULT_CELL_SIZE: f32 = 2.0;
@@ -813,8 +814,7 @@ impl TrackTemperatureGrid {
 fn aquaplaning_speed_factor(speed_ms: f32) -> f32 {
     let v_lo = AQUAPLANING_CRITICAL_SPEED_MS - AQUAPLANING_CLIFF_HALF_WIDTH_MS;
     let v_hi = AQUAPLANING_CRITICAL_SPEED_MS + AQUAPLANING_CLIFF_HALF_WIDTH_MS;
-    let t = ((speed_ms - v_lo) / (v_hi - v_lo)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
+    smoothstep((speed_ms - v_lo) / (v_hi - v_lo))
 }
 
 /// Calculate rubber deposit intensity for a single wheel
