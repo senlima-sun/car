@@ -39,11 +39,15 @@ const ROAD_RAIN_DECAY_MULTIPLIER: f32 = 2.5; // Rain significantly accelerates r
 const WATER_ACCUMULATION_RATE: f32 = 0.08; // Water pools during rain
 const WATER_DRAINAGE_BASE_RATE: f32 = 0.03; // Base drainage when rain stops
 const MAX_WATER_DEPTH: f32 = 1.0;
-const AQUAPLANING_MIN_SPEED: f32 = 22.2; // 80 km/h in m/s
 const AQUAPLANING_WATER_THRESHOLD: f32 = 0.7; // Minimum water depth for aquaplaning
 /// `v_crit = 10.35 × √psi` (m/s). For F1 wet-spec ~24 psi cold,
-/// v_crit ≈ 51 m/s (~182 km/h). Hard cliff in `check_aquaplaning`.
+/// v_crit ≈ 51 m/s (~182 km/h). Smoothstep cliff in `check_aquaplaning`.
 const AQUAPLANING_CRITICAL_SPEED_MS: f32 = 51.0;
+const AQUAPLANING_CLIFF_HALF_WIDTH_MS: f32 = 10.0;
+/// Below this speed the smoothstep is at zero, so an early-return
+/// skips the unnecessary `get_water_depth_at` sample.
+const AQUAPLANING_MIN_SPEED: f32 =
+    AQUAPLANING_CRITICAL_SPEED_MS - AQUAPLANING_CLIFF_HALF_WIDTH_MS;
 const AQUAPLANING_INTENSITY_THRESHOLD: f32 = 0.3; // Min intensity to trigger
 const SHELTERED_DRYING_MULTIPLIER: f32 = 3.0; // Sheltered areas dry faster
 
@@ -549,15 +553,7 @@ impl TrackTemperatureGrid {
             return AquaplaningState::default();
         }
 
-        // Smoothstep cliff: 0 below (v_crit - half-width), 1 above
-        // (v_crit + half-width). Half-width = 10 m/s ≈ 36 km/h around
-        // the critical speed.
-        const CLIFF_HALF_WIDTH_MS: f32 = 10.0;
-        let v_lo = AQUAPLANING_CRITICAL_SPEED_MS - CLIFF_HALF_WIDTH_MS;
-        let v_hi = AQUAPLANING_CRITICAL_SPEED_MS + CLIFF_HALF_WIDTH_MS;
-        let t = ((speed_ms - v_lo) / (v_hi - v_lo)).clamp(0.0, 1.0);
-        let speed_factor = t * t * (3.0 - 2.0 * t);
-
+        let speed_factor = aquaplaning_speed_factor(speed_ms);
         let water_factor = (water_depth - AQUAPLANING_WATER_THRESHOLD)
             / (MAX_WATER_DEPTH - AQUAPLANING_WATER_THRESHOLD);
         let intensity = (speed_factor * water_factor).clamp(0.0, 1.0);
@@ -579,13 +575,7 @@ impl TrackTemperatureGrid {
             return AquaplaningState::default();
         }
 
-        // Same critical-speed cliff as `check_aquaplaning`.
-        const CLIFF_HALF_WIDTH_MS: f32 = 10.0;
-        let v_lo = AQUAPLANING_CRITICAL_SPEED_MS - CLIFF_HALF_WIDTH_MS;
-        let v_hi = AQUAPLANING_CRITICAL_SPEED_MS + CLIFF_HALF_WIDTH_MS;
-        let t = ((speed_ms - v_lo) / (v_hi - v_lo)).clamp(0.0, 1.0);
-        let speed_factor = t * t * (3.0 - 2.0 * t);
-
+        let speed_factor = aquaplaning_speed_factor(speed_ms);
         let mut affected = [false; 4];
         let mut max_intensity: f32 = 0.0;
 
@@ -816,6 +806,15 @@ impl TrackTemperatureGrid {
             .map(|c| c.wetness)
             .unwrap_or(0.0)
     }
+}
+
+/// Smoothstep cliff around `AQUAPLANING_CRITICAL_SPEED_MS`. Returns
+/// 0 below `v_crit − half_width`, 1 above `v_crit + half_width`.
+fn aquaplaning_speed_factor(speed_ms: f32) -> f32 {
+    let v_lo = AQUAPLANING_CRITICAL_SPEED_MS - AQUAPLANING_CLIFF_HALF_WIDTH_MS;
+    let v_hi = AQUAPLANING_CRITICAL_SPEED_MS + AQUAPLANING_CLIFF_HALF_WIDTH_MS;
+    let t = ((speed_ms - v_lo) / (v_hi - v_lo)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
 }
 
 /// Calculate rubber deposit intensity for a single wheel

@@ -805,10 +805,10 @@ impl PhysicsEngine {
         self.track_weather_accumulator += dt;
         let ambient = self.weather.get_ambient_conditions();
         if self.track_weather_accumulator >= TRACK_WEATHER_UPDATE_INTERVAL {
-            // Subtract the consumed time instead of zeroing — preserves
-            // sub-interval residual so long stalls don't silently drop
-            // simulated weather time. Capped at 0.25 s so a catastrophic
-            // catch-up doesn't apply a huge weather step in one call.
+            // Subtract consumed dt instead of zeroing — preserves
+            // sub-interval residual. The host-side accumulator already
+            // caps a single dt at 0.25 s; the `.min(0.25)` here is
+            // belt-and-suspenders for a runaway weather_accumulator.
             let weather_dt = self.track_weather_accumulator.min(0.25);
             self.track_weather_accumulator -= weather_dt;
             self.track_temperature.update_weather_with_ambient(
@@ -895,17 +895,19 @@ impl PhysicsEngine {
             // where one wheel briefly grazing grass triggered a full-car
             // penalty.
             let mut best_count = 0usize;
-            let mut best_material = results[0].material;
+            let mut best_material = None;
             for i in 0..4 {
                 let material = results[i].material;
                 let count = results.iter().filter(|r| r.material == material).count();
                 if count > best_count {
                     best_count = count;
-                    best_material = material;
+                    best_material = Some(material);
                 }
             }
             if best_count >= 3 {
-                self.surface.set_surface(best_material.to_surface_type());
+                if let Some(m) = best_material {
+                    self.surface.set_surface(m.to_surface_type());
+                }
             }
         }
 
