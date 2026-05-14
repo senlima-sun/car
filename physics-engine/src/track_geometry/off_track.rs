@@ -40,6 +40,14 @@ impl OffTrackState {
             arc_cursor: 0,
         }
     }
+
+    pub fn seed_from_position(polyline: &Polyline, x: f32, z: f32) -> Self {
+        let near = nearest_centerline_full(polyline, x, z);
+        Self {
+            is_off_track: false,
+            arc_cursor: near.nearest_index,
+        }
+    }
 }
 
 impl Default for OffTrackState {

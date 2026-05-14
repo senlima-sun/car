@@ -837,27 +837,17 @@ impl PhysicsEngine {
         // Wheel world positions (FL/FR/RL/RR) for per-wheel aquaplaning.
         let fwd = quat.forward();
         let right = quat.right();
-        let half_wb = WHEELBASE / 2.0;
-        let half_tw_front = TRACK_WIDTH_FRONT / 2.0;
-        let half_tw_rear = TRACK_WIDTH_REAR / 2.0;
-        let wheel_xz: [[f32; 2]; 4] = [
-            [
-                car_position[0] - right.x * half_tw_front + fwd.x * half_wb,
-                car_position[2] - right.z * half_tw_front + fwd.z * half_wb,
-            ], // FL
-            [
-                car_position[0] + right.x * half_tw_front + fwd.x * half_wb,
-                car_position[2] + right.z * half_tw_front + fwd.z * half_wb,
-            ], // FR
-            [
-                car_position[0] - right.x * half_tw_rear - fwd.x * half_wb,
-                car_position[2] - right.z * half_tw_rear - fwd.z * half_wb,
-            ], // RL
-            [
-                car_position[0] + right.x * half_tw_rear - fwd.x * half_wb,
-                car_position[2] + right.z * half_tw_rear - fwd.z * half_wb,
-            ], // RR
-        ];
+        let wheel_xz = crate::track_geometry::wheel_world_positions_quat(
+            car_position[0],
+            car_position[2],
+            quat.x,
+            quat.y,
+            quat.z,
+            quat.w,
+            WHEELBASE,
+            TRACK_WIDTH_FRONT,
+            TRACK_WIDTH_REAR,
+        );
 
         let aquaplaning = self
             .track_temperature

@@ -384,6 +384,15 @@ fn off_track_windowed_equals_full_for_local_query() {
 }
 
 #[test]
+fn off_track_state_seed_picks_nearest_segment() {
+    let pl = straight_z_polyline(200.0, 1.0);
+    let state = OffTrackState::seed_from_position(&pl, 0.0, 73.4);
+    assert!(!state.is_off_track);
+    let full = nearest_centerline_full(&pl, 0.0, 73.4);
+    assert_eq!(state.arc_cursor, full.nearest_index);
+}
+
+#[test]
 fn sensor_regression_outer_tire_pressing_line_stays_on_track() {
     let pl = straight_z_polyline(200.0, 1.0);
     let q = yaw_quat(0.0);

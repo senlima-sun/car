@@ -22,6 +22,17 @@ import { type CarState } from './types'
 
 const STEER_DEBUG_SYNC_EVERY = 4
 
+const OFF_TRACK_COMPARE_ENABLED =
+  IS_DEV &&
+  typeof localStorage !== 'undefined' &&
+  (() => {
+    try {
+      return localStorage.getItem('debug.offTrackCompare') === 'true'
+    } catch {
+      return false
+    }
+  })()
+
 type PhysicsContext = ReturnType<typeof import('../../../../wasm').usePhysics>
 
 interface UseCarFrameOptions {
@@ -178,11 +189,7 @@ export function useCarFrame({
       )
       useTrackLimitsStore.getState().setOffTrack(offTrackResult.isOffTrack)
 
-      if (
-        IS_DEV &&
-        typeof localStorage !== 'undefined' &&
-        localStorage.getItem('debug.offTrackCompare') === 'true'
-      ) {
+      if (OFF_TRACK_COMPARE_ENABLED) {
         const surfaceSaysGrass = useSurfaceStore.getState().currentSurface === 'grass'
         if (surfaceSaysGrass !== offTrackResult.isOffTrack) {
           console.warn(

@@ -50,6 +50,9 @@ struct OffTrackJsResult {
     has_track_data: bool,
 }
 
+// Mirrors apps/game/src/constants/dimensions.ts TRACK_WIDTH = 12 (and ROAD_HALF_WIDTH).
+// All in-game tracks share one width; per-track widths can be threaded through later
+// if Phase 5 needs them.
 const TRACK_HALF_WIDTH_M: f32 = 6.0;
 
 #[wasm_bindgen]
