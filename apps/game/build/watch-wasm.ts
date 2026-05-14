@@ -23,7 +23,7 @@ async function buildWasm() {
 
   try {
     const proc = spawn({
-      cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../apps/game/src/wasm/pkg'],
+      cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../packages/physics/pkg'],
       cwd: join(import.meta.dir, '../../../physics-engine'),
       stdout: 'pipe',
       stderr: 'pipe',

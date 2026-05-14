@@ -15,11 +15,16 @@ if (major < MIN_BUN_MAJOR || (major === MIN_BUN_MAJOR && minor < MIN_BUN_MINOR))
 
 const ROOT_DIR = resolve(import.meta.dir, '..')
 const PUBLIC_DIR = join(ROOT_DIR, 'public')
+const PHYSICS_PKG_DIR = resolve(ROOT_DIR, '../../packages/physics/pkg')
 
-const STATIC_PREFIXES: Array<{ urlPrefix: string; diskRoot: string }> = [
+const STATIC_PREFIXES: Array<{
+  urlPrefix: string
+  diskRoot: string
+  stripPrefix?: string
+}> = [
   { urlPrefix: '/textures/', diskRoot: PUBLIC_DIR },
   { urlPrefix: '/models/', diskRoot: PUBLIC_DIR },
-  { urlPrefix: '/src/wasm/pkg/', diskRoot: ROOT_DIR },
+  { urlPrefix: '/src/wasm/pkg/', diskRoot: PHYSICS_PKG_DIR, stripPrefix: '/src/wasm/pkg/' },
 ]
 
 const STATIC_FILES: Record<string, string> = {
@@ -70,7 +75,7 @@ function isSafeChild(parent: string, child: string): boolean {
 async function buildWasmInitial(): Promise<boolean> {
   console.log('[Dev] Building WASM...')
   const proc = spawn({
-    cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../apps/game/src/wasm/pkg'],
+    cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../packages/physics/pkg'],
     cwd: join(ROOT_DIR, '../../physics-engine'),
     stdout: 'inherit',
     stderr: 'inherit',
@@ -141,9 +146,10 @@ const server = serve({
       if (res) return res
     }
 
-    for (const { urlPrefix, diskRoot } of STATIC_PREFIXES) {
+    for (const { urlPrefix, diskRoot, stripPrefix } of STATIC_PREFIXES) {
       if (pathname.startsWith(urlPrefix)) {
-        const abs = join(diskRoot, pathname)
+        const rel = stripPrefix ? pathname.slice(stripPrefix.length) : pathname
+        const abs = join(diskRoot, rel)
         if (!isSafeChild(diskRoot, abs)) {
           return new Response('Forbidden', { status: 403 })
         }

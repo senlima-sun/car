@@ -6,7 +6,7 @@ import tailwind from 'bun-plugin-tailwind'
 const ROOT_DIR = resolve(import.meta.dir, '..')
 const DIST_DIR = join(ROOT_DIR, 'dist')
 const PUBLIC_DIR = join(ROOT_DIR, 'public')
-const WASM_PKG_DIR = join(ROOT_DIR, 'src/wasm/pkg')
+const WASM_PKG_DIR = resolve(ROOT_DIR, '../../packages/physics/pkg')
 const WASM_DIST_DIR = join(DIST_DIR, 'src/wasm/pkg')
 
 function assertWasmArtifacts(): void {
@@ -19,7 +19,7 @@ function assertWasmArtifacts(): void {
   for (const file of required) {
     if (!existsSync(join(WASM_PKG_DIR, file))) {
       throw new Error(
-        `[Build] WASM artifact missing: ${file}. Run 'pnpm turbo run build:wasm' first, or use 'pnpm run build' from repo root (which chains the WASM step via turbo).`,
+        `[Build] WASM artifact missing in packages/physics/pkg/: ${file}. Run 'pnpm turbo run build:wasm' first, or use 'pnpm run build' from repo root (which chains the WASM step via turbo).`,
       )
     }
   }

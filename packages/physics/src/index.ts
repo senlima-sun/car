@@ -1,3 +1,4 @@
-export type WasmModuleLocation = 'apps/game/src/wasm/pkg'
-
-export const WASM_MODULE_LOCATION: WasmModuleLocation = 'apps/game/src/wasm/pkg'
+export * from './PhysicsBridge'
+export * from './stepBundleSnapshot'
+export { setPerfHook } from './internal/perfHook'
+export { setIsDev } from './internal/isDev'

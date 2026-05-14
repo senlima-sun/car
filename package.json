@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "build:wasm": "cd physics-engine && wasm-pack build --target web --out-dir ../apps/game/src/wasm/pkg",
-    "build:wasm:release": "cd physics-engine && wasm-pack build --target web --out-dir ../apps/game/src/wasm/pkg --release",
+    "build:wasm": "cd physics-engine && wasm-pack build --target web --out-dir ../packages/physics/pkg",
+    "build:wasm:release": "cd physics-engine && wasm-pack build --target web --out-dir ../packages/physics/pkg --release",
     "test": "turbo run test",
     "test:wasm": "cd physics-engine && cargo test",
     "test:scripts": "bun test scripts/lib/",

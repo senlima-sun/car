@@ -1,155 +1,17 @@
 /**
- * WASM Physics Engine exports
+ * WASM Physics Engine — app-side shim.
+ *
+ * Re-exports the platform-agnostic @car/physics package and the React-coupled
+ * PhysicsProvider. Also wires the package's perf/dev hooks to app utilities
+ * once at module-load time.
  */
 
-// Core bridge functions
-export {
-  initPhysicsEngine,
-  isPhysicsEngineInitialized,
-  getPhysicsEngine,
-  stepPhysics,
-  stepAndSync,
-  getWeatherModifiers,
-  getAmbientConditions,
-  // Weather API
-  setCustomWeather,
-  getRainIntensity,
-  // Environment API
-  setEnvironment,
-  getAirDensity,
-  getSurfaceFrictionBreakdown,
-  // Weather sources API
-  addWeatherSource,
-  clearWeatherSources,
-  replaceWeatherSources,
-  getWeatherSources,
-  getWeatherSourceCount,
-  sampleWeatherIntensity,
-  getWeatherSourceMax,
-  // Wind API
-  setWind,
-  setWindEnabled,
-  isWindEnabled,
-  getWindState,
-  getWindModifiers,
-  // Tire API
-  setTireCompound,
-  getTireCompound,
-  getTireWear,
-  resetTireWear,
-  getEffectiveGrip,
-  getBoostPressureBar,
-  getFuelMassKg,
-  getFuelFlowFactor,
-  setFuelMassKg,
-  getFuelMixMode,
-  setFuelMixMode,
-  getDiffPreloadNm,
-  setDiffPreloadNm,
-  getDiffPowerRampDeg,
-  setDiffPowerRampDeg,
-  getDiffCoastRampDeg,
-  setDiffCoastRampDeg,
-  getShaftStiffnessNmRad,
-  setShaftStiffnessNmRad,
-  getShaftDampingNmSRad,
-  setShaftDampingNmSRad,
-  setOnCurb,
-  isOnCurb,
-  setForceShapedLateral,
-  isForceShapedLateral,
-  setSurface,
-  getSurface,
-  isOnRoad,
-  isOffTrack,
-  getSurfaceModifiers,
-  getTrackCellCount,
-  updateCarDriving,
-  // Road temperature API
-  setRoadCell,
-  setRoadRegion,
-  // Water depth
-  getWaterDepth,
-  getActiveSurfaceCells,
-  getDebugState,
-  createDefaultInput,
-  inputFromKeyboard,
-  TireCompound,
-  SurfaceType,
-  // ERS API
-  setErsMode,
-  getErsMode,
-  getErsBatteryCharge,
-  setErsBatteryCharge,
-  setErsOvertakeAvailable,
-  getErsState,
-  // Semi-Auto ERS API
-  setErsSemiAutoPreset,
-  getErsSemiAutoPreset,
-  getErsSemiAutoConfig,
-  setErsLapMode,
-  setErsExpertMode,
-  activateErsOvertake,
-  deactivateErsOvertake,
-  isErsOvertakeOverride,
-  // Active Aero API
-  setAeroMode,
-  getAeroMode,
-  getActiveAeroState,
-  toggleAeroAuto,
-  setDrsZone,
-  disableDrsOnBrake,
-  resetErsLap,
-  // Brake System API
-  setBrakeBias,
-  getBrakeBias,
-  increaseBrakeBias,
-  decreaseBrakeBias,
-  setEngineBrakingLevel,
-  getEngineBrakingLevel,
-  cycleEngineBrakingLevel,
-  getBrakeState,
-  // Terrain API
-  initTerrain,
-  setTerrainCell,
-  setTerrainRegion,
-  setTerrainHeight,
-  queryTerrain,
-  isTerrainInitialized,
-  loadTerrainHeightmap,
-  clearTerrain,
-} from './PhysicsBridge'
+import { setPerfHook, setIsDev } from '@car/physics'
+import { incrementWasmCalls } from '../debug/perfCounters'
+import { IS_DEV } from '../utils/isDev'
 
-export type {
-  CarInput,
-  CarPhysicsOutput,
-  GripBreakdown,
-  WeatherSource,
-  TireMaterialOutput,
-  SurfaceFrictionBreakdown,
-  WeatherModifiers,
-  SurfaceModifiers,
-  AmbientConditions,
-  WindState,
-  WindModifiers,
-  ErsMode,
-  ErsState,
-  HarvestSource,
-  SemiAutoPreset,
-  SemiAutoConfig,
-  SemiAutoState,
-  AeroMode,
-  ActiveAeroState,
-  EngineBrakingLevel,
-  BrakeState,
-  FuelMixMode,
-  StepAndSyncOutput,
-  TerrainQueryResult,
-  TerrainMaterialProperties,
-  TerrainMaterial,
-  PerWheelTerrain,
-  BottomingOutState,
-} from './PhysicsBridge'
+setPerfHook(incrementWasmCalls)
+setIsDev(IS_DEV)
 
-// React provider
+export * from '@car/physics'
 export { PhysicsProvider, usePhysics, usePhysicsOptional } from './PhysicsProvider'

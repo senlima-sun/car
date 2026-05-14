@@ -133,7 +133,7 @@ import {
   BottomingOutState,
   TireCompound,
   SurfaceType,
-} from './PhysicsBridge'
+} from '@car/physics'
 
 // Re-export types
 export type {

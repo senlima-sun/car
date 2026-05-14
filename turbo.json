@@ -12,7 +12,7 @@
         "physics-engine/Cargo.toml",
         "physics-engine/Cargo.lock"
       ],
-      "outputs": ["apps/game/src/wasm/pkg/**"]
+      "outputs": ["packages/physics/pkg/**"]
     },
     "build": {
       "dependsOn": ["^build", "//#build:wasm"],
