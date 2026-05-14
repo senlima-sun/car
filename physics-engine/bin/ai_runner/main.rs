@@ -45,6 +45,9 @@ OPTIONS:
     --bc-generations <n>       BC inner generations when --bc-seed (default: 50)
     --bc-sigma-scale <f>       Sigma scale for ES after BC (default: 0.3)
     --bc-only                  Run BC fit + dump ghost, skip ES
+    --auto-iterate             Train through staged-sigma schedule until quality gate
+    --gate-lap-time <f>        Auto-iterate gate: max lap_time_s (default: 99.4)
+    --gate-off-track <n>       Auto-iterate gate: max off_track_count (default: 1)
     -h, --help                 Print this help
 
 EXAMPLES:
@@ -52,6 +55,7 @@ EXAMPLES:
     ai_runner --mode perf
     ai_runner --mode train --track monza --seed 42 --generations 200
     ai_runner --mode train --track monza --bc-seed demo.json --generations 200
+    ai_runner --mode train --track monza --bc-seed demo.json --auto-iterate
 ";
 
 #[derive(Debug, Clone)]
@@ -69,6 +73,9 @@ struct Args {
     bc_generations: u32,
     bc_sigma_scale: f32,
     bc_only: bool,
+    auto_iterate: bool,
+    gate_lap_time: f32,
+    gate_off_track: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -110,6 +117,9 @@ fn parse_args() -> Result<Args, pico_args::Error> {
     let bc_generations: Option<u32> = pargs.opt_value_from_str("--bc-generations")?;
     let bc_sigma_scale: Option<f32> = pargs.opt_value_from_str("--bc-sigma-scale")?;
     let bc_only = pargs.contains("--bc-only");
+    let auto_iterate = pargs.contains("--auto-iterate");
+    let gate_lap_time: Option<f32> = pargs.opt_value_from_str("--gate-lap-time")?;
+    let gate_off_track: Option<u32> = pargs.opt_value_from_str("--gate-off-track")?;
 
     let remaining = pargs.finish();
     if !remaining.is_empty() {
@@ -142,6 +152,9 @@ fn parse_args() -> Result<Args, pico_args::Error> {
         bc_generations: bc_generations.unwrap_or(50),
         bc_sigma_scale: bc_sigma_scale.unwrap_or(0.3),
         bc_only,
+        auto_iterate,
+        gate_lap_time: gate_lap_time.unwrap_or(99.4),
+        gate_off_track: gate_off_track.unwrap_or(1),
     })
 }
 
@@ -286,6 +299,18 @@ fn train_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
         None => (BASELINE_PARAMS_MONZA, INITIAL_SIGMA_MONZA, false),
     };
 
+    if args.auto_iterate {
+        return auto_iterate(
+            track,
+            args,
+            &baseline_params,
+            &bin_path,
+            &json_path,
+            max_t_s,
+            off_track_kill_s,
+        );
+    }
+
     let mut pop = Population::init(
         LOOKAHEAD_PARAM_COUNT,
         args.mu,
@@ -346,6 +371,7 @@ fn train_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
             &json_path,
             max_t_s,
             off_track_kill_s,
+            "ai_runner",
         ) {
             Ok(dump) => {
                 let first_lap_complete = dump.lap_completed && !best_lap_completed;
@@ -406,6 +432,210 @@ fn train_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
+}
+
+const AUTO_ITERATE_SCHEDULE: &[(f32, u32)] = &[
+    (0.30, 200),
+    (0.20, 300),
+    (0.15, 400),
+    (0.10, 500),
+    (0.10, 600),
+    (0.05, 600),
+    (0.05, 800),
+    (0.03, 1000),
+];
+
+fn auto_iterate(
+    track: &track_loader::LoadedTrack,
+    args: &Args,
+    bc_seed_params: &[f32; LOOKAHEAD_PARAM_COUNT],
+    bin_path: &std::path::Path,
+    json_path: &std::path::Path,
+    max_t_s: f32,
+    off_track_kill_s: f32,
+) -> ExitCode {
+    let slug = slug_from_track_id(&track.id);
+    let eval = make_par_eval_fn(track, max_t_s, off_track_kill_s);
+
+    println!(
+        "ai_runner: auto-iterate start gate_lap_time={:.2}s gate_off_track={} mu={} lambda={} seed={}",
+        args.gate_lap_time, args.gate_off_track, args.mu, args.lambda, args.seed,
+    );
+
+    let start = Instant::now();
+    let mut current_params: [f32; LOOKAHEAD_PARAM_COUNT] = *bc_seed_params;
+    let mut last_probe_lap_time = f32::INFINITY;
+    let mut last_probe_off_track = u32::MAX;
+    let mut last_probe_lap_complete = false;
+
+    for (iteration_idx, (sigma_scale, gens)) in AUTO_ITERATE_SCHEDULE.iter().enumerate() {
+        let iteration = (iteration_idx + 1) as u64;
+        let iter_wall_start = start.elapsed().as_secs_f32();
+        println!(
+            "=== iteration {} sigma_scale={} gens={} (cumulative_wall={:.1}s) ===",
+            iteration, sigma_scale, gens, iter_wall_start,
+        );
+
+        let mut initial_sigma = INITIAL_SIGMA_MONZA;
+        for s in initial_sigma.iter_mut() {
+            *s *= *sigma_scale;
+        }
+
+        let mut pop = Population::init(
+            LOOKAHEAD_PARAM_COUNT,
+            args.mu,
+            args.lambda,
+            args.seed.wrapping_add(iteration),
+            &current_params,
+            &initial_sigma,
+        );
+
+        let mut iter_best_fitness = f32::NEG_INFINITY;
+        let mut iter_best_params: Vec<f32> = current_params.to_vec();
+
+        for _ in 0..*gens {
+            let gen = pop.step_par(&eval);
+            if gen.best_fitness > iter_best_fitness {
+                iter_best_fitness = gen.best_fitness;
+                iter_best_params = gen.best_params.clone();
+            }
+        }
+
+        if iter_best_params.len() == LOOKAHEAD_PARAM_COUNT {
+            current_params.copy_from_slice(&iter_best_params);
+        }
+
+        let probe = parallel_eval::evaluate_on_thread_engine(
+            &current_params,
+            track,
+            true,
+            max_t_s,
+            off_track_kill_s,
+        );
+        last_probe_lap_complete = probe.lap_completed;
+        last_probe_lap_time = probe.lap_time_s;
+        last_probe_off_track = probe.off_track_count;
+
+        let lap_display = if probe.lap_completed {
+            format!("{:.2}s", probe.lap_time_s)
+        } else {
+            "-".to_string()
+        };
+        println!(
+            "  iter {} best: fitness={:.2} lap_completed={} lap_time={} off_track_count={} progress={:.1}m",
+            iteration,
+            iter_best_fitness,
+            probe.lap_completed,
+            lap_display,
+            probe.off_track_count,
+            probe.arc_length_progress_m,
+        );
+
+        if gate_passes(
+            probe.lap_completed,
+            probe.off_track_count,
+            probe.lap_time_s,
+            args.gate_off_track,
+            args.gate_lap_time,
+        ) {
+            println!(
+                "  *** QUALITY GATE PASSED at iteration {} (lap_time={:.2}s, off_track={}) ***",
+                iteration, probe.lap_time_s, probe.off_track_count,
+            );
+            match write_dump(
+                &current_params,
+                track,
+                &slug,
+                bin_path,
+                json_path,
+                max_t_s,
+                off_track_kill_s,
+                "ai_runner_auto",
+            ) {
+                Ok(dump) => {
+                    let total_wall = start.elapsed().as_secs_f32();
+                    println!(
+                        "  ghost written: bin={} json={} frames={} wall={:.1}s",
+                        bin_path.display(),
+                        json_path.display(),
+                        dump.frame_count,
+                        total_wall,
+                    );
+                    print_champion_params(&current_params);
+                    return ExitCode::SUCCESS;
+                }
+                Err(err) => {
+                    eprintln!("ai_runner: auto-iterate dump failed: {err}");
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
+    }
+
+    let total_wall = start.elapsed().as_secs_f32();
+    eprintln!(
+        "ai_runner: auto-iterate exhausted schedule without passing quality gate (last_lap_complete={} last_lap_time={} last_off_track={} wall={:.1}s)",
+        last_probe_lap_complete,
+        if last_probe_lap_time.is_finite() {
+            format!("{:.2}s", last_probe_lap_time)
+        } else {
+            "-".into()
+        },
+        if last_probe_off_track == u32::MAX {
+            "-".into()
+        } else {
+            format!("{last_probe_off_track}")
+        },
+        total_wall,
+    );
+    match write_dump(
+        &current_params,
+        track,
+        &slug,
+        bin_path,
+        json_path,
+        max_t_s,
+        off_track_kill_s,
+        "ai_runner_auto_fallback",
+    ) {
+        Ok(dump) => {
+            println!(
+                "  fallback ghost written: bin={} json={} frames={}",
+                bin_path.display(),
+                json_path.display(),
+                dump.frame_count,
+            );
+            print_champion_params(&current_params);
+        }
+        Err(err) => {
+            eprintln!("ai_runner: auto-iterate fallback dump failed: {err}");
+        }
+    }
+    ExitCode::FAILURE
+}
+
+fn print_champion_params(params: &[f32; LOOKAHEAD_PARAM_COUNT]) {
+    println!("  champion_params: [");
+    for (i, p) in params.iter().enumerate() {
+        let sep = if i + 1 == params.len() { "" } else { "," };
+        println!("    {}{}", p, sep);
+    }
+    println!("  ]");
+}
+
+#[inline]
+fn gate_passes(lap_completed: bool, off_track_count: u32, lap_time_s: f32, gate_off_track: u32, gate_lap_time: f32) -> bool {
+    lap_completed && off_track_count <= gate_off_track && lap_time_s <= gate_lap_time
+}
+
+#[inline]
+fn auto_iterate_total_generations() -> u64 {
+    AUTO_ITERATE_SCHEDULE.iter().map(|(_, g)| *g as u64).sum()
+}
+
+#[inline]
+fn auto_iterate_sigma_for_iteration(iteration_idx: usize) -> f32 {
+    AUTO_ITERATE_SCHEDULE[iteration_idx].0
 }
 
 enum BcPhaseOutcome {
@@ -555,6 +785,7 @@ fn write_dump(
     json_path: &std::path::Path,
     max_t_s: f32,
     off_track_kill_s: f32,
+    recorder_type: &str,
 ) -> Result<DumpResult, String> {
     let mut arr = [0.0_f32; LOOKAHEAD_PARAM_COUNT];
     if params.len() != LOOKAHEAD_PARAM_COUNT {
@@ -582,7 +813,7 @@ fn write_dump(
         track_id: track.id.clone(),
         lap_time: if lap_time_s.is_finite() { lap_time_s } else { 0.0 },
         frame_count,
-        recorder_type: "ai_runner".into(),
+        recorder_type: recorder_type.into(),
         recorded_at,
     };
     let _ = slug;
@@ -613,3 +844,86 @@ fn print_run_summary(result: &sim::SimResult) {
     );
     let _ = TerminationReason::Timeout;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::evo::{child_seed, Population};
+    use crate::policies::lookahead::BASELINE_PARAMS_MONZA;
+
+    #[test]
+    fn gate_passes_requires_lap_completed() {
+        assert!(!gate_passes(false, 0, 90.0, 1, 99.4));
+        assert!(gate_passes(true, 0, 90.0, 1, 99.4));
+    }
+
+    #[test]
+    fn gate_passes_enforces_off_track_ceiling() {
+        assert!(gate_passes(true, 1, 95.0, 1, 99.4));
+        assert!(!gate_passes(true, 2, 95.0, 1, 99.4));
+    }
+
+    #[test]
+    fn gate_passes_enforces_lap_time_ceiling() {
+        assert!(gate_passes(true, 0, 99.4, 1, 99.4));
+        assert!(!gate_passes(true, 0, 99.41, 1, 99.4));
+    }
+
+    #[test]
+    fn auto_iterate_schedule_is_monotonic_sigma() {
+        for w in AUTO_ITERATE_SCHEDULE.windows(2) {
+            let (s0, _) = w[0];
+            let (s1, _) = w[1];
+            assert!(
+                s1 <= s0,
+                "sigma_scale must be non-increasing across iterations: {s0} -> {s1}",
+            );
+        }
+    }
+
+    #[test]
+    fn auto_iterate_schedule_total_generations_matches_plan() {
+        let total = auto_iterate_total_generations();
+        assert_eq!(total, 4400, "schedule must total 4400 generations, got {total}");
+    }
+
+    #[test]
+    fn auto_iterate_schedule_first_iteration_sigma_is_03() {
+        let s = auto_iterate_sigma_for_iteration(0);
+        assert!((s - 0.30).abs() < 1e-6, "first sigma should be 0.30, got {s}");
+    }
+
+    #[test]
+    fn auto_iterate_inner_loop_with_stub_eval_runs_to_completion() {
+        // Smoke-test the inner ES iteration shape: a stub eval that returns a
+        // deterministic finite fitness function of params[0]. Verifies the
+        // population steps and best_params tracking are wired correctly without
+        // actually running physics (Phase 4.8.2 contract).
+        let mut params: [f32; LOOKAHEAD_PARAM_COUNT] = BASELINE_PARAMS_MONZA;
+        let stub_eval = |p: &[f32], _idx: usize| -> f32 { -p[0].abs() };
+        let mut initial_sigma = INITIAL_SIGMA_MONZA;
+        for s in initial_sigma.iter_mut() {
+            *s *= 0.30;
+        }
+        let mut pop = Population::init(LOOKAHEAD_PARAM_COUNT, 4, 8, 42, &params, &initial_sigma);
+        let mut iter_best_fitness = f32::NEG_INFINITY;
+        let mut iter_best_params: Vec<f32> = params.to_vec();
+        for _ in 0..5 {
+            let gen = pop.step_par(&stub_eval);
+            assert!(gen.best_fitness.is_finite());
+            if gen.best_fitness > iter_best_fitness {
+                iter_best_fitness = gen.best_fitness;
+                iter_best_params = gen.best_params.clone();
+            }
+        }
+        params.copy_from_slice(&iter_best_params);
+        for v in params.iter() {
+            assert!(v.is_finite(), "param became NaN/Inf during inner loop");
+        }
+        assert!(iter_best_fitness.is_finite());
+        assert!(iter_best_fitness > f32::NEG_INFINITY);
+        // child_seed must still be deterministic after the loop
+        assert_eq!(child_seed(42, 0, 0), 0xbdd732262feb6e95);
+    }
+}
+
