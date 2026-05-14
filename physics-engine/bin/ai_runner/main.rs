@@ -1,3 +1,4 @@
+mod perf;
 mod policies;
 mod sim;
 mod telemetry;
@@ -135,8 +136,29 @@ fn main() -> ExitCode {
 
     match args.mode {
         Mode::Run => run_mode(&track, &args),
-        Mode::Perf => {
-            eprintln!("ai_runner: --mode perf not wired yet (Step 2.5)");
+        Mode::Perf => perf_mode(&track),
+    }
+}
+
+fn perf_mode(track: &track_loader::LoadedTrack) -> ExitCode {
+    let report = perf::run_perf_benchmark(track);
+    let text = perf::format_report(&report);
+    print!("{text}");
+
+    let out = std::path::PathBuf::from("tests/fixtures/perf-baseline.txt");
+    if let Some(parent) = out.parent() {
+        if let Err(err) = std::fs::create_dir_all(parent) {
+            eprintln!("ai_runner: could not create {}: {err}", parent.display());
+            return ExitCode::FAILURE;
+        }
+    }
+    match std::fs::write(&out, &text) {
+        Ok(()) => {
+            println!("  wrote: {}", out.display());
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("ai_runner: perf write failed: {err}");
             ExitCode::FAILURE
         }
     }
