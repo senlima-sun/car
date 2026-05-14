@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import { type GhostReplayData, loadReplay, saveReplay as dbSaveReplay } from '@/utils/ghostReplayDB'
+import {
+  CURRENT_GHOST_SCHEMA_VERSION,
+  type GhostReplayData,
+  loadReplay,
+  saveReplay as dbSaveReplay,
+} from '@/utils/ghostReplayDB'
 import { useLapTimeStore } from './useLapTimeStore'
 import { useTrackStore } from './useTrackStore'
 
@@ -33,7 +38,7 @@ interface GhostCarState {
   saveReplay: (
     trackId: string,
     lapTime: number,
-    data: Omit<GhostReplayData, 'trackId' | 'lapTime'>,
+    data: Omit<GhostReplayData, 'trackId' | 'lapTime' | 'schemaVersion'>,
   ) => Promise<void>
   clearReplay: () => void
   setGhostFrameState: (pos: [number, number, number] | null, delta: number | null) => void
@@ -81,6 +86,7 @@ export const useGhostCarStore = create<GhostCarState>()((set, get) => ({
     if (current && current.lapTime <= lapTime) return
     set({
       replayData: {
+        schemaVersion: CURRENT_GHOST_SCHEMA_VERSION,
         trackId,
         lapTime,
         ...data,

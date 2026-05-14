@@ -2,7 +2,10 @@ const DB_NAME = 'f1-ghost-replays'
 const DB_VERSION = 1
 const STORE_NAME = 'replays'
 
+export const CURRENT_GHOST_SCHEMA_VERSION = 1
+
 export interface GhostReplayData {
+  schemaVersion: number
   trackId: string
   lapTime: number
   frameCount: number
@@ -28,6 +31,7 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 interface StoredReplay {
+  schemaVersion?: number
   trackId: string
   lapTime: number
   frameCount: number
@@ -41,7 +45,7 @@ interface StoredReplay {
 export async function saveReplay(
   trackId: string,
   lapTime: number,
-  data: Omit<GhostReplayData, 'trackId' | 'lapTime'>,
+  data: Omit<GhostReplayData, 'trackId' | 'lapTime' | 'schemaVersion'>,
 ): Promise<boolean> {
   const db = await openDB()
 
@@ -58,6 +62,7 @@ export async function saveReplay(
   }
 
   const record: StoredReplay = {
+    schemaVersion: CURRENT_GHOST_SCHEMA_VERSION,
     trackId,
     lapTime,
     frameCount: data.frameCount,
@@ -96,7 +101,16 @@ export async function loadReplay(trackId: string): Promise<GhostReplayData | nul
         resolve(null)
         return
       }
+      const schemaVersion = record.schemaVersion ?? 1
+      if (schemaVersion > CURRENT_GHOST_SCHEMA_VERSION) {
+        console.warn(
+          `[ghost-replay] refusing to load record with schemaVersion=${schemaVersion} (current=${CURRENT_GHOST_SCHEMA_VERSION})`,
+        )
+        resolve(null)
+        return
+      }
       resolve({
+        schemaVersion,
         trackId: record.trackId,
         lapTime: record.lapTime,
         frameCount: record.frameCount,

@@ -19,6 +19,7 @@ function makeReplay(frames: { x: number; z: number; t: number }[]): GhostReplayD
   }
 
   return {
+    schemaVersion: 1,
     trackId: 'test',
     lapTime: frames[frameCount - 1]?.t ?? 0,
     frameCount,
