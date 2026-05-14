@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import App from '@/App'
-import { useSyncGameStatus } from './_internal/useSyncGameStatus'
+import { useSyncGameStatus } from './-useSyncGameStatus'
 
 function TrackEditorLayout() {
   useSyncGameStatus('customize')

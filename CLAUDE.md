@@ -9,16 +9,17 @@ A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM
 ## Prerequisites
 
 - **pnpm 11+** - Dependency manager + workspace orchestrator (`pnpm-lock.yaml` is authoritative)
-- **Bun 1.2+** - Runtime, dev server (HMR + React Fast Refresh), test runner, bundler (`Bun.build`)
+- **Vite 8** - Dev server (HMR + React Fast Refresh) and production bundler
+- **Bun 1.2+** - Runtime (`bun test`, script execution)
 - **Turborepo 2.x** - Task orchestration + content-hashed caching (local + self-hosted remote)
 - **Rust + wasm-pack** - For compiling `physics-engine/` to WASM
 - **cargo** - Rust package manager (comes with Rust)
 
 ## Monorepo Layout
 
-- `apps/game/` — SPA (React + Three.js + WASM). This is the current app code.
+- `apps/game/` — SPA (React + Three.js + WASM). Vite-bundled. Routes under `apps/game/src/routes/`.
 - `physics-engine/` — Rust crate, stays at repo root (it's a Cargo crate, not a pnpm package).
-- `packages/physics/` — TS stub for the future WASM bridge re-export (Phase 2).
+- `packages/physics/` — `@car/physics` package: WASM bridge + wasm-pack output. The app imports physics via `@car/physics`.
 - `scripts/` — root-level data pipeline (track ingest, perf smoke, validation).
 
 See `docs/monorepo.md` for `pnpm -w` vs `--filter` conventions and remote cache details.

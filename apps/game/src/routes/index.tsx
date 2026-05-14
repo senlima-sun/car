@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import App from '@/App'
-import { useSyncGameStatus } from './_internal/useSyncGameStatus'
+import { useSyncGameStatus } from './-useSyncGameStatus'
 
 function MenuRoute() {
   useSyncGameStatus('menu')

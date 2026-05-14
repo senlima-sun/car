@@ -2,10 +2,12 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import wasm from 'vite-plugin-wasm'
 import tailwindcss from '@tailwindcss/vite'
-import tsconfigPaths from 'vite-tsconfig-paths'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
+  resolve: {
+    tsconfigPaths: true,
+  },
   plugins: [
     tanstackRouter({
       target: 'react',
@@ -14,7 +16,6 @@ export default defineConfig({
     react(),
     wasm(),
     tailwindcss(),
-    tsconfigPaths(),
   ],
   build: {
     target: 'esnext',

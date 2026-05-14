@@ -12,9 +12,27 @@ This repo is a pnpm + Turborepo workspace.
 ## Tooling
 
 - **pnpm** — dependency manager + workspace orchestrator. `pnpm-lock.yaml` is authoritative.
-- **Bun** — runtime, dev server (HMR + React Fast Refresh), test runner, bundler.
+- **Vite 8** — dev server (HMR + React Fast Refresh) and production bundler. Tailwind 4 via `@tailwindcss/vite`. WASM via `vite-plugin-wasm`. Routes via `@tanstack/router-plugin`.
+- **Bun** — runtime (`bun test`, script runtime). Not the bundler.
 - **Turborepo** — task orchestration + content-hashed caching (local + self-hosted remote).
 - **Rust + wasm-pack** — physics engine compilation.
+
+## Routing
+
+File-based routes live at `apps/game/src/routes/`:
+
+- `__root.tsx` — root layout with `<Outlet />`.
+- `index.tsx` → `/` — main menu.
+- `race.$trackId.tsx` → `/race/:trackId` — session.
+- `track-editor.tsx` + `track-editor.$trackId.tsx` → `/track-editor`, `/track-editor/:trackId`.
+- `showroom.tsx` → `/showroom`.
+- `test-mode.tsx` → `/test-mode` (placeholder).
+- `track-preview.tsx` (layout) + `track-preview.index.tsx` + `track-preview.$presetId.tsx` → preset list + single preview.
+- `-useSyncGameStatus.ts` — internal hook (the `-` prefix tells TanStack's plugin to skip it as a route).
+
+The `useSyncGameStatus(status)` hook synchronizes the route with `useGameStore.status`. URL is the source of truth; the store reflects it. The existing HUD branches on `GameStatus` to decide what overlay renders.
+
+Routes regenerate `apps/game/src/routeTree.gen.ts` on every Vite invocation. The file is force-tracked (committed) but gitignored — `tsc` reads the committed stub without needing a prior Vite run.
 
 ## Remote cache
 
@@ -76,11 +94,11 @@ pnpm --filter @car/game compress:glb
 
 ## Deprecated commands
 
-- `pnpm run dev:wasm` — superseded by `pnpm run dev`, which starts the in-process Rust watcher automatically.
+- `pnpm run dev:wasm` — superseded by `pnpm run dev`, which uses `concurrently` to run Vite + the Rust watcher.
 
 ## Known follow-ups
 
 - **WASM debug vs release**: `pnpm run build:wasm` produces debug WASM and is the cached task. `pnpm run build:wasm:release` is uncached and produces optimized WASM. Before wiring `pnpm run build` to a production deploy, decide whether to add a separate `//#build:wasm:release` turbo task with its own output dir, or to switch the default `build:wasm` to release once dev iteration speed is no longer the dominant concern.
 - **`PhysicsProvider` package promotion**: `apps/game/src/wasm/PhysicsProvider.tsx` is the remaining React-coupled surface that has not been moved into `@car/physics`. A future `packages/physics-react/` is a candidate when a second React consumer (e.g. a marketing demo) needs the provider.
-- **`/src/wasm/pkg/...` hardcoded URL**: `packages/physics/src/PhysicsBridge.ts` fetches the WASM binary via the absolute URL `/src/wasm/pkg/car_physics_engine_bg.wasm`. The dev server's `STATIC_PREFIXES` and `apps/game/build/build.ts` `WASM_DIST_DIR` keep the disk-to-URL mapping aligned. Phase 2B (bundler swap) will replace this hardcoded URL with a Vite asset import.
-- **First run after this phase is a cache MISS**: the `//#build:wasm` outputs glob changed from `apps/game/src/wasm/pkg/**` to `packages/physics/pkg/**`. The first turbo run after pulling this commit must MISS once; subsequent runs HIT normally.
+- **Rename `GameStatus` enum to match URL names**: internal values (`'customize'`, `'preview'`) differ from user-facing URLs (`/track-editor`, `/showroom`). The mismatch is benign (sync layer aligns them) but renaming the enum to match URLs reduces cognitive load. Deferred to Phase 3 — touches every consumer of `useGameStore.status`.
+- **First run after a wasm-pack output dir change is a cache MISS**: turbo's content-hashed cache treats outputs glob changes as full invalidation. Expected behavior.
