@@ -36,10 +36,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 7234,
   },
   preview: {
-    port: 4173,
+    port: 7235,
   },
   assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr', '**/*.exr'],
 })
