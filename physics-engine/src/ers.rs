@@ -1,3 +1,4 @@
+use crate::constants::car::MGUK_PEAK_POWER_W;
 use crate::types::{
     ErsMode, ErsState, HarvestSource, SemiAutoConfig, SemiAutoPreset, SemiAutoState,
 };
@@ -29,9 +30,10 @@ const DEPLOY_FULL_THROTTLE: f32 = 0.7;
 // above the 8.5 MJ regulation cap would be wasteful, below ~2 MJ underuses.
 const LAP_DEPLOY_TARGET_MJ: f32 = 4.0;
 
-// 2026 Power levels (350kW MGU-K, up from 120kW)
-const MAX_DEPLOY_POWER_KW: f32 = 350.0; // 2026: 350kW max deployment
-const MAX_HARVEST_POWER_KW: f32 = 350.0; // 2026: 350kW max brake harvest
+// 2026 Power levels (350kW MGU-K, up from 120kW). Derive from the
+// shared MGU-K cap so deploy and harvest can't drift apart.
+const MAX_DEPLOY_POWER_KW: f32 = MGUK_PEAK_POWER_W / 1000.0;
+const MAX_HARVEST_POWER_KW: f32 = MGUK_PEAK_POWER_W / 1000.0;
 const MAX_COAST_POWER_KW: f32 = 200.0;
 const MAX_SUPER_CLIP_POWER_KW: f32 = 150.0; // 2026: Super clipping (was 50, now significant)
 const SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW: f32 = 25.0;

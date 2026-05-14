@@ -8,9 +8,9 @@
 //!   * Fuel mass decreases each step at the integrated mass-flow rate.
 //!
 //! FIA 2026 anchors (Article 5.4):
-//!   * Total fuel-energy flow ≤ 3000 MJ/h (= 833 333 W) at any RPM.
-//!   * Below 10,500 RPM: `EF(MJ/h) = 0.27 × N` → 75 W per RPM. At 10,500
-//!     this gives 2835 MJ/h, then steps up to the flat 3000 MJ/h above.
+//!   * Total fuel-energy flow ≤ 3000 MJ/h (= 833 333 W) at all RPM.
+//!     The 2014-era mass-based RPM-linear-below-10500 ramp was
+//!     removed — the cap is now regime-independent.
 //!   * Sustainable fuel energy density 38–41 MJ/kg; we use 40 MJ/kg.
 //!   * Tank capacity ≤ 110 kg (race-day load typically 70–100 kg).
 //!
@@ -142,8 +142,13 @@ impl FuelState {
 /// parameter for API stability and so downstream code that derives
 /// per-RPM heat or fuel demand can still query a regulation ceiling
 /// — but the function is now regime-independent.
+///
+/// At RPM = 0 (engine off / stalled / pre-launch) the regulation cap
+/// is unchanged at 3000 MJ/h — the engine speed isn't part of the
+/// 2026 formula. Invalid RPM (NaN, negative) returns 0 as a defensive
+/// guard so downstream `fuel_flow_factor` can't be fed garbage.
 pub fn fia_max_energy_flow_w(rpm: f32) -> f32 {
-    if !rpm.is_finite() || rpm <= 0.0 {
+    if !rpm.is_finite() || rpm < 0.0 {
         return 0.0;
     }
     FIA_FUEL_FLOW_FLAT_CAP_W
@@ -179,8 +184,13 @@ mod tests {
     }
 
     #[test]
+    fn fia_max_at_zero_rpm_returns_flat_cap() {
+        // 2026 regs: cap is RPM-independent, including RPM=0.
+        assert!((fia_max_energy_flow_w(0.0) - FIA_FUEL_FLOW_FLAT_CAP_W).abs() < EPS);
+    }
+
+    #[test]
     fn fia_max_handles_invalid_rpm() {
-        assert_eq!(fia_max_energy_flow_w(0.0), 0.0);
         assert_eq!(fia_max_energy_flow_w(-100.0), 0.0);
         assert_eq!(fia_max_energy_flow_w(f32::NAN), 0.0);
     }

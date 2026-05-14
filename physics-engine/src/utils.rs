@@ -31,6 +31,22 @@ pub fn rad_to_deg(rad: f32) -> f32 {
     rad * 180.0 / PI
 }
 
+/// Conversion factor for metres-per-second → kilometres-per-hour.
+pub const MS_TO_KMH: f32 = 3.6;
+
+/// Conversion factor for kilometres-per-hour → metres-per-second.
+pub const KMH_TO_MS: f32 = 1.0 / 3.6;
+
+#[inline]
+pub fn ms_to_kmh(speed_ms: f32) -> f32 {
+    speed_ms * MS_TO_KMH
+}
+
+#[inline]
+pub fn kmh_to_ms(speed_kmh: f32) -> f32 {
+    speed_kmh * KMH_TO_MS
+}
+
 /// Sanitize a number, returning fallback if NaN or infinite
 #[inline]
 pub fn sanitize(value: f32, fallback: f32) -> f32 {

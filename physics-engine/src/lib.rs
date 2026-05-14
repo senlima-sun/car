@@ -246,12 +246,27 @@ impl PhysicsEngine {
         self.inner.reset_tire_blowout();
     }
 
-    /// Wave 4 Phase 5: driver requests Override Mode (DRS replacement).
-    /// 350 kW MGU-K burst with 0.5 MJ/lap budget. Holds the request
-    /// between frames; pass `false` to release.
+    /// Driver requests Overtake Mode (2026 DRS replacement).
+    /// Holds the request between frames; pass `false` to release.
     #[wasm_bindgen]
     pub fn set_override_requested(&mut self, requested: bool) {
         self.inner.set_override_requested(requested);
+    }
+
+    /// Proximity gate for Overtake Mode (FIA 2026: within 1.0s of car
+    /// ahead at detection point). Host must call this each lap or per
+    /// timing-sector when running multi-car races. Defaults to `true`
+    /// for single-car / dev compatibility.
+    #[wasm_bindgen]
+    pub fn set_override_proximity_eligible(&mut self, eligible: bool) {
+        self.inner.set_override_proximity_eligible(eligible);
+    }
+
+    /// Read the current proximity-gate state. Hosts can assert this
+    /// was wired before counting on the regulation to bind.
+    #[wasm_bindgen]
+    pub fn get_override_proximity_eligible(&self) -> bool {
+        self.inner.get_override_proximity_eligible()
     }
 
     /// Override Mode budget used this lap (0.0..1.0).

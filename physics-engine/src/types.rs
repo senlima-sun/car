@@ -1,3 +1,4 @@
+use crate::brakes::DEFAULT_FRONT_BIAS;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -212,12 +213,13 @@ pub struct BrakeConfig {
 }
 
 impl Default for BrakeConfig {
-    /// Race-default brake bias of 58% front — within the regulator
-    /// clamp [0.50, 0.70] in `lib.rs::set_brake_front_bias`. Derived
-    /// Default returned 0.0 (100% rear, worst possible setup).
+    /// Race-default brake bias from `brakes::DEFAULT_FRONT_BIAS`,
+    /// within the regulator clamp `[0.50, 0.70]`. Manual impl (vs
+    /// derived) so the unspecified-field-with-`..Default` pattern
+    /// doesn't silently zero the bias.
     fn default() -> Self {
         Self {
-            front_bias: 0.58,
+            front_bias: DEFAULT_FRONT_BIAS,
             engine_braking: EngineBrakingLevel::default(),
         }
     }
@@ -234,7 +236,7 @@ pub struct BrakeState {
 impl Default for BrakeState {
     fn default() -> Self {
         Self {
-            front_bias: 0.58,
+            front_bias: DEFAULT_FRONT_BIAS,
             engine_braking: EngineBrakingLevel::default(),
             front_brake_force: 0.0,
             rear_brake_force: 0.0,
@@ -1896,16 +1898,15 @@ mod tests {
 
     #[test]
     fn brake_config_default_is_race_bias() {
-        // 58% front — typical race setup, within regulator clamp.
         let bc = BrakeConfig::default();
-        assert_approx(bc.front_bias, 0.58);
+        assert_approx(bc.front_bias, DEFAULT_FRONT_BIAS);
         assert_eq!(bc.engine_braking, EngineBrakingLevel::Medium);
     }
 
     #[test]
     fn brake_state_default_matches_config() {
         let bs = BrakeState::default();
-        assert_approx(bs.front_bias, 0.58);
+        assert_approx(bs.front_bias, DEFAULT_FRONT_BIAS);
         assert_approx(bs.front_brake_force, 0.0);
         assert_approx(bs.rear_brake_force, 0.0);
     }

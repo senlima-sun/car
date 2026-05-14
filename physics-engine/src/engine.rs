@@ -57,17 +57,12 @@ pub struct PhysicsEngine {
     /// 25-float legacy FFI caller (no ride-height input) sees no
     /// behaviour change.
     ride_height: crate::car_physics::aerodynamics::RideHeightSmoother,
-    /// Override Mode (2026 F1 DRS replacement). Wave 4 Phase 5.
-    /// Driver-toggled 350 kW MGU-K boost with 0.5 MJ/lap budget.
-    /// Auto-deactivates on brake or budget exhaustion.
+    /// Overtake Mode state (2026 DRS replacement).
     override_mode: crate::car_physics::override_mode::OverrideModeState,
-    /// Driver-requested Override activation, set via `set_override_requested`.
-    /// Polled each step.
+    /// Driver-held activation request. Polled each step.
     override_requested: bool,
-    /// Proximity gate for Overtake Mode (2026 sporting reg requires
-    /// being within 1.0 s of the car ahead at the detection point).
-    /// Set from the host; defaults to `true` for single-car testing /
-    /// fallback when proximity tracking isn't wired.
+    /// Proximity gate per FIA 2026 (within 1.0s of car ahead). Defaults
+    /// to `true` so single-car / dev mode works without explicit wiring.
     override_proximity_eligible: bool,
 }
 
@@ -318,6 +313,14 @@ impl PhysicsEngine {
     /// tests and dev mode work.
     pub fn set_override_proximity_eligible(&mut self, eligible: bool) {
         self.override_proximity_eligible = eligible;
+    }
+
+    /// Companion getter so the host can assert the proximity gate was
+    /// wired (defaults to `true` for single-car compatibility, but
+    /// multi-car simulations must call `set_override_proximity_eligible`
+    /// each lap or per detection point).
+    pub fn get_override_proximity_eligible(&self) -> bool {
+        self.override_proximity_eligible
     }
 
     /// Returns the percentage of the per-lap Override budget used (0..1).
@@ -818,9 +821,7 @@ impl PhysicsEngine {
             .track_temperature
             .get_water_depth_at(car_position[0], car_position[2]);
 
-        // Compute wheel world positions for per-wheel aquaplaning.
-        // FIA 2026: front track 1.9 m, rear track 1.8 m, wheelbase 3.4 m.
-        // SSOT via constants — do not inline literals here.
+        // Wheel world positions (FL/FR/RL/RR) for per-wheel aquaplaning.
         let fwd = quat.forward();
         let right = quat.right();
         let half_wb = WHEELBASE / 2.0;
@@ -927,10 +928,6 @@ impl PhysicsEngine {
             throttle_input,
         );
 
-        // Overtake Mode boost (2026 DRS replacement). FIA P(v) profile
-        // saturates at 350 kW up to ~337 km/h then tapers to zero by
-        // 355 km/h. Activation gated by proximity (host-driven) and
-        // deactivates on brake or budget exhaustion.
         let override_out =
             self.override_mode.update(crate::car_physics::override_mode::OverrideInput {
                 dt,
@@ -939,12 +936,12 @@ impl PhysicsEngine {
                 speed_ms,
                 proximity_eligible: self.override_proximity_eligible,
             });
-        // Convert additional power to force at current speed. Below the
-        // ERS torque-limit floor (Wave 3 introduces the torque curve),
-        // gate the boost above a minimum speed to avoid div-by-zero
-        // and unphysical launch impulses.
-        let override_boost_n = if override_out.active && speed_ms > 5.0 {
-            override_out.additional_power_w / speed_ms.max(5.0)
+        // Gate above MIN_BOOST_SPEED_MS to avoid div-by-zero and
+        // unphysical launch impulses; Wave 3 will replace this with
+        // the electric-motor torque-limited curve.
+        const MIN_BOOST_SPEED_MS: f32 = 5.0;
+        let override_boost_n = if override_out.active && speed_ms > MIN_BOOST_SPEED_MS {
+            override_out.additional_power_w / speed_ms
         } else {
             0.0
         };
