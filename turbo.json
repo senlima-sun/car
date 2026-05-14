@@ -18,10 +18,9 @@
       "dependsOn": ["^build", "//#build:wasm"],
       "inputs": [
         "src/**",
-        "build/**",
         "public/**",
         "index.html",
-        "bunfig.toml",
+        "vite.config.ts",
         "tsconfig.json",
         "package.json"
       ],

@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { useNavigate } from '@tanstack/react-router'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
 
@@ -65,6 +66,7 @@ const itemVariants = {
 }
 
 export default function MainMenu() {
+  const navigate = useNavigate()
   const gameActions = {
     enterSessionShell: useGameStore(s => s.enterSessionShell),
     openTrackEditor: useGameStore(s => s.openTrackEditor),
@@ -92,11 +94,13 @@ export default function MainMenu() {
 
     if (actionKey === 'openTrackEditor') {
       gameActions.openTrackEditor()
+      navigate({ to: '/track-editor' })
       return
     }
 
     if (actionKey === 'openShowroom') {
       gameActions.openShowroom()
+      navigate({ to: '/showroom' })
       return
     }
 

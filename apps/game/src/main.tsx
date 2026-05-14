@@ -1,5 +1,7 @@
-import { StrictMode, Suspense, lazy } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
 import './styles.css'
 import { IS_DEV } from './utils/isDev'
 
@@ -13,37 +15,16 @@ if ('serviceWorker' in navigator && !IS_DEV) {
   })
 }
 
-const App = lazy(() => import('./App'))
-const TrackPreviewApp = lazy(() => import('./preview/TrackPreviewApp'))
+const router = createRouter({ routeTree, defaultPreload: 'intent' })
 
-const isTrackPreviewRoute = window.location.pathname.startsWith('/track-preview')
-const Root = isTrackPreviewRoute ? TrackPreviewApp : App
-
-function AppLoading() {
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#1a1a2e',
-        color: '#eee',
-        fontFamily: 'system-ui, sans-serif',
-      }}
-    >
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '1.25rem', marginBottom: 8 }}>Loading...</div>
-      </div>
-    </div>
-  )
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
+  }
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Suspense fallback={<AppLoading />}>
-      <Root />
-    </Suspense>
+    <RouterProvider router={router} />
   </StrictMode>,
 )
