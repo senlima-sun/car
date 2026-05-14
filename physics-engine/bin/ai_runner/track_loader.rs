@@ -6,8 +6,13 @@ use serde::{Deserialize, Serialize};
 
 const SILVERSTONE_JSON: &[u8] =
     include_bytes!("../../../apps/game/src/constants/tracks/sources/silverstone.json");
+const MONZA_JSON: &[u8] =
+    include_bytes!("../../../apps/game/src/constants/tracks/sources/monza.json");
 
-const TRACK_REGISTRY: &[(&str, &[u8])] = &[("silverstone", SILVERSTONE_JSON)];
+const TRACK_REGISTRY: &[(&str, &[u8])] = &[
+    ("silverstone", SILVERSTONE_JSON),
+    ("monza", MONZA_JSON),
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

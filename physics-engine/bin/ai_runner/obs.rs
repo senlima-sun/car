@@ -5,7 +5,7 @@ use car_physics_engine::track_geometry::{
 use crate::sim::{angle_diff, Observation, SimState, CURVATURE_LOOKAHEAD_M, DT};
 use crate::track_loader::{LoadedTrack, RaceDirection};
 
-const CURVATURE_HALF_WINDOW_M: f32 = 0.5;
+const CURVATURE_HALF_WINDOW_M: f32 = 5.0;
 
 pub struct ObservationContext {
     pub prev_speed_ms: f32,
@@ -81,11 +81,21 @@ pub fn build_observation(
     let longitudinal_accel_ms2 = (speed_ms - ctx.prev_speed_ms) / DT;
     ctx.prev_speed_ms = speed_ms;
 
+    let nearest = &track.polyline.points[near.nearest_index];
+    let to_car_x = state.position[0] - nearest[0];
+    let to_car_z = state.position[2] - nearest[1];
+    let cross = near.tangent[0] * to_car_z - near.tangent[1] * to_car_x;
+    let signed_lat = if backward {
+        -near.lateral_distance * cross.signum()
+    } else {
+        near.lateral_distance * cross.signum()
+    };
+
     let obs = Observation {
         car_xz: [state.position[0], state.position[2]],
         yaw,
         speed_kmh: speed_ms * 3.6,
-        lateral_distance_m: near.lateral_distance,
+        lateral_distance_m: signed_lat,
         heading_error_rad: heading_error,
         arc_cursor: near.nearest_index,
         arc_length_m: near.arc_length,

@@ -71,22 +71,22 @@ impl LookaheadParams {
 }
 
 pub const BASELINE_PARAMS_MONZA: [f32; LOOKAHEAD_PARAM_COUNT] = [
-    310.0,
-    80.0,
+    120.0,
+    40.0,
+    150.0,
+    0.04,
+    0.0,
     2.0,
-    0.05,
-    0.0,
-    1.5,
-    1.0,
-    0.05,
+    1.2,
     0.005,
-    0.02,
-    0.8,
-    1.1,
-    0.5,
-    0.0,
     0.003,
-    0.15,
+    0.01,
+    1.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0015,
+    0.10,
 ];
 
 pub struct LookaheadPolicy {
@@ -145,48 +145,33 @@ impl Policy for LookaheadPolicy {
         let curvature_delta = abs_curvature_speed - self.prev_curvature_for_speed;
         self.prev_curvature_for_speed = abs_curvature_speed;
 
-        let phase_bias = if curvature_delta > 0.0 {
-            p.entry_speed_bias.max(0.01)
-        } else {
-            p.exit_throttle_bias.max(0.01)
-        };
-
-        let v_target_raw = (p.max_speed_kmh
+        let v_target = (p.max_speed_kmh
             - p.brake_curvature_gain * abs_curvature_speed * 1000.0)
             .max(p.min_corner_speed_kmh);
-        let v_target = if curvature_delta > 0.0 {
-            v_target_raw * phase_bias
-        } else {
-            v_target_raw
-        };
+        let _ = curvature_delta;
 
         let speed_error_kmh = v_target - obs.speed_kmh;
-        let abs_curvature_speed_thresh = abs_curvature_speed;
 
         let throttle_desired: f32;
         let brake: f32;
-        if speed_error_kmh > 0.0 {
+        if speed_error_kmh > 5.0 {
             let mut t = p.throttle_recovery_gain * speed_error_kmh;
             if curvature_delta < 0.0 {
                 t *= p.exit_throttle_bias.max(0.5);
             }
             throttle_desired = t.clamp(0.0, 1.0);
             brake = 0.0;
-        } else if abs_curvature_speed_thresh > p.full_brake_curvature_thresh {
-            throttle_desired = 0.0;
-            brake = 1.0;
-        } else if abs_curvature_speed_thresh > p.off_throttle_curvature_thresh
-            && abs_curvature_speed_thresh <= p.full_brake_curvature_thresh
-            && abs_curvature_speed_thresh > p.coast_curvature_thresh
-        {
-            throttle_desired = 0.0;
-            brake = (p.brake_curvature_gain * (-speed_error_kmh) * 0.01).clamp(0.0, 1.0);
-        } else if abs_curvature_speed_thresh <= p.coast_curvature_thresh {
+        } else if speed_error_kmh > -5.0 {
             throttle_desired = 0.0;
             brake = 0.0;
+        } else if abs_curvature_speed > p.full_brake_curvature_thresh
+            || (-speed_error_kmh) > 30.0
+        {
+            throttle_desired = 0.0;
+            brake = 1.0;
         } else {
             throttle_desired = 0.0;
-            brake = (p.brake_curvature_gain * (-speed_error_kmh) * 0.01).clamp(0.0, 1.0);
+            brake = (p.brake_curvature_gain * (-speed_error_kmh) * 0.02).clamp(0.0, 1.0);
         }
 
         let tau = p.throttle_smoothing_tau.max(1e-3);
@@ -197,29 +182,21 @@ impl Policy for LookaheadPolicy {
         }
         let throttle = self.smoothed_throttle.clamp(0.0, 1.0);
 
-        let lateral_sign = if curvature_for_steer >= 0.0 { 1.0 } else { -1.0 };
-        let lateral_error = obs.lateral_distance_m * lateral_sign - p.target_lateral_offset;
-        let lateral_error_clamped = lateral_error.clamp(-6.0, 6.0);
-
-        let heading_d =
+        let heading_d_raw =
             p.steer_d_gain * (obs.heading_error_rad - self.prev_heading_error) / DT;
         self.prev_heading_error = obs.heading_error_rad;
+        let heading_d = heading_d_raw.clamp(-0.1, 0.1);
 
-        let curvature_feedforward = curvature_for_steer * 6.0;
+        let curvature_ff_clamped = (curvature_for_steer * 12.0).clamp(-0.6, 0.6);
 
-        let oversteer = if obs.heading_error_rad.signum() != lateral_error.signum()
-            && obs.heading_error_rad.abs() > 0.1
-        {
-            -obs.heading_error_rad * p.oversteer_recovery_gain
-        } else {
-            0.0
-        };
+        let lat_offset = obs.lateral_distance_m - p.target_lateral_offset;
+        let lat_correction =
+            (-lat_offset * p.understeer_recovery_gain * 0.05).clamp(-0.3, 0.3);
 
         let raw_steer = p.steer_p_gain * obs.heading_error_rad
             + heading_d
-            + p.understeer_recovery_gain * lateral_error_clamped * 0.1
-            + curvature_feedforward
-            + oversteer;
+            + curvature_ff_clamped
+            + lat_correction;
         let steer = raw_steer.clamp(-1.0, 1.0);
 
         let brake_active = brake > 0.5;

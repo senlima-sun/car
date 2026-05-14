@@ -13,7 +13,7 @@ pub const TRACK_HALF_WIDTH_M: f32 = 6.0;
 
 pub const LAP_COMPLETE_TOLERANCE_FRAC: f32 = 0.001;
 
-pub const CURVATURE_LOOKAHEAD_M: [f32; 5] = [5.0, 10.0, 20.0, 40.0, 80.0];
+pub const CURVATURE_LOOKAHEAD_M: [f32; 5] = [10.0, 30.0, 60.0, 100.0, 150.0];
 
 const WHEELBASE: f32 = car_physics_engine::constants::car::WHEELBASE;
 const TRACK_WIDTH_FRONT: f32 = car_physics_engine::constants::car::TRACK_WIDTH_FRONT;

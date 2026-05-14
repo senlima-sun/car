@@ -10,7 +10,8 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use policies::constant_throttle::ConstantThrottle;
-use sim::{run_sim, TerminationReason};
+use policies::lookahead::LookaheadPolicy;
+use sim::{run_sim, Policy, TerminationReason};
 
 const HELP: &str = "\
 ai_runner — headless physics driver for AI policy evaluation
@@ -168,15 +169,17 @@ fn perf_mode(track: &track_loader::LoadedTrack) -> ExitCode {
 }
 
 fn run_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
-    if args.policy != "constant-throttle" {
-        eprintln!(
-            "ai_runner: unknown policy '{}'; only 'constant-throttle' is wired",
-            args.policy
-        );
-        return ExitCode::FAILURE;
-    }
-    let mut policy = ConstantThrottle::default();
-    let result = run_sim(track, &mut policy, 600.0, 5.0);
+    let mut policy: Box<dyn Policy> = match args.policy.as_str() {
+        "constant-throttle" => Box::new(ConstantThrottle::default()),
+        "lookahead-baseline" => Box::new(LookaheadPolicy::baseline_monza()),
+        other => {
+            eprintln!(
+                "ai_runner: unknown policy '{other}'; expected 'constant-throttle' or 'lookahead-baseline'",
+            );
+            return ExitCode::FAILURE;
+        }
+    };
+    let result = run_sim(track, policy.as_mut(), 600.0, 5.0);
     print_run_summary(&result);
 
     let out_path = args
