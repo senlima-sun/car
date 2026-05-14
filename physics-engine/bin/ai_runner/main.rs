@@ -277,62 +277,61 @@ fn train_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
         let gen = pop.step_par(&eval);
         let gen_wall = start.elapsed().as_secs_f32();
 
-        let probe = probe_eval_for_dump(&gen.best_params, track, max_t_s, off_track_kill_s);
-        let lap_completed = probe.lap_completed;
-        let lap_time_s = if lap_completed {
-            probe.lap_time_s
-        } else {
-            f32::INFINITY
-        };
-        let off_track_count = probe.off_track_count;
-
         let improved_meaningfully =
             gen.best_fitness >= last_dump_fitness * 1.01 && gen.best_fitness > last_dump_fitness;
-        let first_lap_complete = lap_completed && !best_lap_completed;
-        let should_dump = first_lap_complete || improved_meaningfully;
+        // Best fitness gating is necessary-but-not-sufficient: we re-evaluate
+        // the champion with telemetry to learn lap_completed; that single
+        // telemetry-on eval is the source of truth for lap_time / off_track /
+        // ghost frames (Phase 4 review Important #5: no double-eval).
+        let should_dump = improved_meaningfully || !best_lap_completed;
 
-        println!(
-            "  gen={:4} best_fitness={:.2} lap_completed={} lap_time={:.2}s off_track_count={} wall={:.1}s dump={}",
-            gen.generation,
-            gen.best_fitness,
-            lap_completed,
-            if lap_completed { lap_time_s } else { -1.0 },
-            off_track_count,
-            gen_wall,
-            should_dump
-        );
-
-        if should_dump {
-            match write_dump(
-                &gen.best_params,
-                track,
-                &slug,
-                &bin_path,
-                &json_path,
-                lap_time_s,
-                max_t_s,
-                off_track_kill_s,
-            ) {
-                Ok(frame_count) => {
-                    dumps_written += 1;
-                    last_dump_fitness = gen.best_fitness;
-                    if gen.best_fitness > best_fitness {
-                        best_fitness = gen.best_fitness;
-                    }
-                    if first_lap_complete {
-                        best_lap_completed = true;
-                    }
-                    champion_params = gen.best_params.clone();
-                    champion_lap_time = lap_time_s;
-                    champion_off_track = off_track_count;
-                    println!("    wrote ghost ({frame_count} frames) -> {}", bin_path.display());
-                }
-                Err(err) => {
-                    eprintln!("    dump failed: {err}");
-                }
+        if !should_dump {
+            println!(
+                "  gen={:4} best_fitness={:.2} (no champion change) wall={:.1}s",
+                gen.generation, gen.best_fitness, gen_wall,
+            );
+            if gen.best_fitness > best_fitness {
+                best_fitness = gen.best_fitness;
             }
-        } else if gen.best_fitness > best_fitness {
-            best_fitness = gen.best_fitness;
+            continue;
+        }
+
+        match write_dump(
+            &gen.best_params,
+            track,
+            &slug,
+            &bin_path,
+            &json_path,
+            max_t_s,
+            off_track_kill_s,
+        ) {
+            Ok(dump) => {
+                let first_lap_complete = dump.lap_completed && !best_lap_completed;
+                println!(
+                    "  gen={:4} best_fitness={:.2} lap_completed={} lap_time={:.2}s off_track_count={} wall={:.1}s frames={}",
+                    gen.generation,
+                    gen.best_fitness,
+                    dump.lap_completed,
+                    if dump.lap_completed { dump.lap_time_s } else { -1.0 },
+                    dump.off_track_count,
+                    gen_wall,
+                    dump.frame_count,
+                );
+                dumps_written += 1;
+                last_dump_fitness = gen.best_fitness;
+                if gen.best_fitness > best_fitness {
+                    best_fitness = gen.best_fitness;
+                }
+                if first_lap_complete {
+                    best_lap_completed = true;
+                }
+                champion_params = gen.best_params.clone();
+                champion_lap_time = dump.lap_time_s;
+                champion_off_track = dump.off_track_count;
+            }
+            Err(err) => {
+                eprintln!("  gen={} dump failed: {err}", gen.generation);
+            }
         }
     }
 
@@ -367,28 +366,11 @@ fn train_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-struct DumpProbe {
+struct DumpResult {
+    frame_count: u32,
     lap_completed: bool,
     lap_time_s: f32,
     off_track_count: u32,
-}
-
-fn probe_eval_for_dump(
-    params: &[f32],
-    track: &track_loader::LoadedTrack,
-    max_t_s: f32,
-    off_track_kill_s: f32,
-) -> DumpProbe {
-    let mut arr = [0.0_f32; LOOKAHEAD_PARAM_COUNT];
-    if params.len() == LOOKAHEAD_PARAM_COUNT {
-        arr.copy_from_slice(params);
-    }
-    let result = evaluate_on_thread_engine(&arr, track, false, max_t_s, off_track_kill_s);
-    DumpProbe {
-        lap_completed: result.lap_completed,
-        lap_time_s: result.lap_time_s,
-        off_track_count: result.off_track_count,
-    }
 }
 
 fn write_dump(
@@ -397,10 +379,9 @@ fn write_dump(
     slug: &str,
     bin_path: &std::path::Path,
     json_path: &std::path::Path,
-    lap_time_s: f32,
     max_t_s: f32,
     off_track_kill_s: f32,
-) -> Result<u32, String> {
+) -> Result<DumpResult, String> {
     let mut arr = [0.0_f32; LOOKAHEAD_PARAM_COUNT];
     if params.len() != LOOKAHEAD_PARAM_COUNT {
         return Err(format!(
@@ -411,6 +392,9 @@ fn write_dump(
     }
     arr.copy_from_slice(params);
     let result = evaluate_on_thread_engine(&arr, track, true, max_t_s, off_track_kill_s);
+    let lap_completed = result.lap_completed;
+    let lap_time_s = result.lap_time_s;
+    let off_track_count = result.off_track_count;
     let telemetry = result
         .telemetry
         .ok_or_else(|| "dump: telemetry was not recorded".to_string())?;
@@ -429,7 +413,12 @@ fn write_dump(
     };
     let _ = slug;
     write_ghost_meta_atomic(json_path, &meta).map_err(|e| format!("write ghost meta: {e}"))?;
-    Ok(frame_count)
+    Ok(DumpResult {
+        frame_count,
+        lap_completed,
+        lap_time_s,
+        off_track_count,
+    })
 }
 
 fn print_run_summary(result: &sim::SimResult) {

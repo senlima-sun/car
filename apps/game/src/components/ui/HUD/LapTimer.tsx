@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 
+import { useAiGhostStore } from '../../../stores/useAiGhostStore'
+import { useGhostCarStore } from '../../../stores/useGhostCarStore'
+import { useGhostPreferenceStore } from '../../../stores/useGhostPreferenceStore'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../stores/usePitStore'
-import { useGhostCarStore } from '../../../stores/useGhostCarStore'
 import { HUD_ACCENT, HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HUD_STATUS, HudPanel } from './hudChrome'
 
 const TIMER_UPDATE_INTERVAL = 50
@@ -43,7 +45,11 @@ export default function LapTimer() {
   const sectorTimes = useLapTimeStore(s => s.sectorTimes)
   const bestSectorTimes = useLapTimeStore(s => s.bestSectorTimes)
   const pitPenalty = usePitStore(s => s.pitLaneSpeedingPenalty)
-  const ghostTimeDelta = useGhostCarStore(s => s.ghostTimeDelta)
+  const preferAi = useGhostPreferenceStore(s => s.preferAiGhost)
+  const aiReplay = useAiGhostStore(s => s.replayData)
+  const aiDelta = useAiGhostStore(s => s.ghostTimeDelta)
+  const humanDelta = useGhostCarStore(s => s.ghostTimeDelta)
+  const ghostTimeDelta = preferAi && aiReplay !== null ? aiDelta : humanDelta
   const [displayLapTime, setDisplayLapTime] = useState(0)
 
   useEffect(() => {

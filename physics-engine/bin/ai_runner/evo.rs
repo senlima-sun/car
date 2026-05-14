@@ -7,7 +7,6 @@ use rand::distributions::Uniform;
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
-use rustc_hash::FxHasher;
 
 #[inline]
 fn sample_standard_normal(rng: &mut StdRng) -> f32 {
@@ -23,7 +22,9 @@ use crate::policies::lookahead::LOOKAHEAD_PARAM_COUNT;
 pub const PARAM_BOUNDS: [(f32, f32); LOOKAHEAD_PARAM_COUNT] = [
     (50.0, 400.0),
     (10.0, 200.0),
-    (0.0, 1000.0),
+    // brake_curvature_gain: floor at 0.5 so evo can't rediscover the
+    // zero-braking degenerate (Phase 4 review Consider #7).
+    (0.5, 1000.0),
     (0.0, 0.5),
     (-6.0, 6.0),
     (0.0, 4.0),
@@ -87,13 +88,24 @@ pub struct Population {
     pub generation: u32,
 }
 
+// Stable across Rust versions and platforms: splitmix64 mixer applied to
+// a structured combine of (master_seed, generation, child_idx). Reviewer
+// flagged FxHasher as not stability-guaranteed.
+#[inline]
+fn splitmix64(mut x: u64) -> u64 {
+    x = x.wrapping_add(0x9e3779b97f4a7c15);
+    let mut z = x;
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+    z ^ (z >> 31)
+}
+
 #[inline]
 pub fn child_seed(master_seed: u64, generation: u32, child_idx: usize) -> u64 {
-    let mut h = FxHasher::default();
-    h.write_u64(master_seed);
-    h.write_u32(generation);
-    h.write_u64(child_idx as u64);
-    h.finish()
+    let combined = master_seed
+        ^ ((generation as u64).wrapping_mul(0xd1342543de82ef95))
+        ^ ((child_idx as u64).wrapping_mul(0x9e3779b97f4a7c15));
+    splitmix64(combined)
 }
 
 #[inline]
@@ -407,5 +419,14 @@ mod tests {
         assert_eq!(s1, s2);
         assert_ne!(s1, s3);
         assert_ne!(s1, s4);
+    }
+
+    // Locks the splitmix64 algorithm: if the constants drift, this fails
+    // and the determinism contract across Rust versions is broken (see
+    // Phase 4 review Critical #1).
+    #[test]
+    fn child_seed_locked_values() {
+        assert_eq!(child_seed(42, 1, 3), 0x73662ffd86fcdeee);
+        assert_eq!(child_seed(42, 0, 0), 0xbdd732262feb6e95);
     }
 }

@@ -117,8 +117,9 @@ fn synthetic_100_frame_round_trip_to_temp_files() {
 }
 
 #[test]
-fn slug_from_track_id_known_prefixes() {
-    assert_eq!(slug_from_track_id("f1_monza"), "monza");
-    assert_eq!(slug_from_track_id("f1_silverstone_circuit"), "silverstone");
-    assert_eq!(slug_from_track_id("monza"), "monza");
+fn slug_from_track_id_is_identity() {
+    // Slug == track_id verbatim to match TS LoadAiGhostButton.resolveTrackSlug()
+    // which returns the preset's raw `id` field. See Phase 4 review Critical #3.
+    assert_eq!(slug_from_track_id("f1_monza"), "f1_monza");
+    assert_eq!(slug_from_track_id("f1_silverstone_circuit"), "f1_silverstone_circuit");
 }

@@ -188,10 +188,13 @@ pub fn write_ghost_meta_atomic(path: &Path, meta: &GhostMeta) -> io::Result<()> 
     atomic_write(path, json.as_bytes())
 }
 
+// The file slug is the full track_id verbatim. The TS LoadAiGhostButton
+// fetches `<presetId>.ghost.{bin,json}` where presetId == raw JSON `id`
+// field == this track_id. Phase 4 review Critical #3 flagged the previous
+// strip-prefix/strip-suffix dance as silently 404-ing on compound names
+// like "f1_silverstone_circuit".
 pub fn slug_from_track_id(track_id: &str) -> String {
-    let no_prefix = track_id.strip_prefix("f1_").unwrap_or(track_id);
-    let no_suffix = no_prefix.strip_suffix("_circuit").unwrap_or(no_prefix);
-    no_suffix.to_string()
+    track_id.to_string()
 }
 
 #[cfg(test)]
@@ -341,11 +344,12 @@ mod tests {
     }
 
     #[test]
-    fn slug_from_track_id_handles_known_prefixes() {
-        assert_eq!(slug_from_track_id("f1_monza"), "monza");
-        assert_eq!(slug_from_track_id("f1_silverstone_circuit"), "silverstone");
-        assert_eq!(slug_from_track_id("monza"), "monza");
-        assert_eq!(slug_from_track_id("f1_red_bull_ring"), "red_bull_ring");
+    fn slug_from_track_id_is_identity() {
+        // Slug == track_id verbatim so it matches the TS LoadAiGhostButton's
+        // resolveTrackSlug() which returns the preset's raw `id` field.
+        assert_eq!(slug_from_track_id("f1_monza"), "f1_monza");
+        assert_eq!(slug_from_track_id("f1_silverstone_circuit"), "f1_silverstone_circuit");
+        assert_eq!(slug_from_track_id("custom_track_123"), "custom_track_123");
     }
 
     #[test]

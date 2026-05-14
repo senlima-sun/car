@@ -9,15 +9,21 @@ use crate::reward::{evaluate, EvalResult};
 use crate::track_loader::LoadedTrack;
 
 thread_local! {
-    static THREAD_ENGINE: RefCell<PhysicsEngine> = RefCell::new(PhysicsEngine::new());
+    // Option<PhysicsEngine> + take/replace so a panic mid-`f` doesn't leave
+    // the RefCell borrowed and silo this rayon thread for the rest of the
+    // process (Phase 4 review Critical #2).
+    static THREAD_ENGINE: RefCell<Option<PhysicsEngine>> = RefCell::new(Some(PhysicsEngine::new()));
 }
 
 #[inline]
 pub fn with_thread_engine<R>(f: impl FnOnce(&mut PhysicsEngine) -> R) -> R {
-    THREAD_ENGINE.with(|cell| {
-        let mut engine = cell.borrow_mut();
-        f(&mut engine)
-    })
+    let mut engine = THREAD_ENGINE
+        .with(|cell| cell.borrow_mut().take())
+        .unwrap_or_else(PhysicsEngine::new);
+    // Borrow guard from `take()` is already dropped — f can panic safely.
+    let result = f(&mut engine);
+    THREAD_ENGINE.with(|cell| *cell.borrow_mut() = Some(engine));
+    result
 }
 
 pub fn evaluate_on_thread_engine(
