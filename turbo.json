@@ -45,6 +45,14 @@
       ],
       "outputs": []
     },
+    "//#check:wasm-clean": {
+      "inputs": [
+        "physics-engine/src/**",
+        "physics-engine/Cargo.toml",
+        "physics-engine/Cargo.lock"
+      ],
+      "outputs": []
+    },
     "typecheck": {
       "dependsOn": ["^build", "//#build:wasm"],
       "inputs": ["src/**", "tsconfig.json"],

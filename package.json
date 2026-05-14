@@ -11,6 +11,7 @@
     "build:wasm:release": "cd physics-engine && wasm-pack build --target web --out-dir ../packages/physics/pkg --release",
     "test": "turbo run test",
     "test:wasm": "cd physics-engine && cargo test",
+    "check:wasm-clean": "cd physics-engine && cargo check --target wasm32-unknown-unknown --no-default-features",
     "test:scripts": "bun test scripts/lib/",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
