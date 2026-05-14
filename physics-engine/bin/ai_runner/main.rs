@@ -1,3 +1,5 @@
+mod track_loader;
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -95,12 +97,34 @@ fn main() -> ExitCode {
     };
 
     println!(
-        "ai_runner: would run track={} policy={} mode={:?} out={} seed={}",
+        "ai_runner: track={} policy={} mode={:?} out={} seed={}",
         args.track,
         args.policy,
         args.mode,
         args.out.display(),
         args.seed,
+    );
+
+    let track = match track_loader::load_track(&args.track) {
+        Ok(t) => t,
+        Err(err) => {
+            eprintln!("ai_runner: track load failed: {err}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let (spawn_pos, _spawn_rot, spawn_fwd) = track_loader::spawn_pose(&track);
+    println!(
+        "  loaded {} ({}): {} polyline points, {} sectors, raceDirection={:?}",
+        track.name,
+        track.id,
+        track.polyline.points.len(),
+        track.sector_checkpoints.len(),
+        track.race_direction,
+    );
+    println!(
+        "  spawn pos=({:.2}, {:.2}, {:.2}) fwd=({:.3}, {:.3})",
+        spawn_pos[0], spawn_pos[1], spawn_pos[2], spawn_fwd[0], spawn_fwd[1],
     );
 
     ExitCode::SUCCESS
