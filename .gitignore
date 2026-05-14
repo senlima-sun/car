@@ -26,3 +26,6 @@ phase1-menu.png
 
 # Build / validation cache artefacts
 .cache/
+
+# Turborepo
+.turbo/
