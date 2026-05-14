@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import {
   buildAsphaltGeometry,
   buildEdgeLineGeometry,
+  buildParentSideBandGeometry,
   buildRibbonLayers,
 } from '../components/canvas/TrackObjects/geometry/ribbonGeometry'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '../constants/trackLayers'
@@ -20,6 +21,10 @@ export default function PreviewTrackObject({ object, allObjects }: PreviewTrackO
   if (object.type === 'curb') return <PreviewCurb object={object} allObjects={allObjects} />
   if (object.type === 'edge_line') return <PreviewEdgeLine object={object} allObjects={allObjects} />
   return null
+}
+
+function isFullParentRange(range: [number, number] | undefined): boolean {
+  return range === undefined || (range[0] === 0 && range[1] === 1)
 }
 
 function PreviewEdgeLine({
@@ -138,6 +143,24 @@ function PreviewPainted({
   allObjects: readonly PlacedObject[]
 }) {
   const geometries = useMemo(() => {
+    const parentRibbon = allObjects.find(o => o.id === object.parentRibbonId)
+    if (
+      parentRibbon?.ribbonPoints &&
+      parentRibbon.ribbonPoints.length >= 2 &&
+      object.parentSide &&
+      isFullParentRange(object.tRange)
+    ) {
+      const built = buildParentSideBandGeometry(
+        parentRibbon.ribbonPoints,
+        parentRibbon.ribbonClosed ?? false,
+        parentRibbon.width ?? 12,
+        object.parentSide,
+        object.innerOffset ?? 0,
+        object.derivedWidth ?? object.width ?? 3,
+      )
+      return built ? [built.geometry] : []
+    }
+
     if (!object.parentRibbonId) return []
     const segments = resolveParentDerivedLayer(object, { allObjects })
     const out: THREE.BufferGeometry[] = []

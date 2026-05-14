@@ -483,7 +483,9 @@ fn test_ers_recovers_energy_on_braking() {
     let mut state = SimState::new();
     warm_up_for_launch(&mut engine, &mut state);
 
-    for _ in 0..300 {
+    // Wave 1: PEAK_TORQUE_NM 480→340 means 0-100 takes ~4.5s; extended
+    // the warm-up window so the pre-condition still holds.
+    for _ in 0..500 {
         step_sim(&mut engine, &mut state, &throttle_input());
     }
 
@@ -538,7 +540,9 @@ fn test_ers_output_reflects_harvesting_state() {
     let mut state = SimState::new();
     warm_up_for_launch(&mut engine, &mut state);
 
-    for _ in 0..300 {
+    // Wave 1: PEAK_TORQUE_NM 480→340 — extended warm-up window so the
+    // pre-condition still holds at the lower (more realistic) torque.
+    for _ in 0..500 {
         step_sim(&mut engine, &mut state, &throttle_input());
     }
 

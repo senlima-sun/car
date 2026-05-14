@@ -31,9 +31,12 @@ fn full_throttle_from_rest_increases_forward_speed() {
         ..Default::default()
     };
     let linvel = run(&mut engine, input, [0.0, 0.0, 0.0], 60);
+    // Threshold 0.5 m/s after 0.5s — just enough to prove movement,
+    // loose enough to survive the Wave-1 PEAK_TORQUE_NM 480→340 drop
+    // (2026 ICE spec correction).
     assert!(
-        linvel[2] > 1.0,
-        "After 0.5s of full throttle, forward speed should be > 1 m/s, got {:?}",
+        linvel[2] > 0.5,
+        "After 0.5s of full throttle, forward speed should be > 0.5 m/s, got {:?}",
         linvel
     );
 }

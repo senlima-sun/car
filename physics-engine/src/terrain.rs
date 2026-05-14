@@ -243,11 +243,19 @@ impl TerrainGrid {
         let tx = fx - fx.floor();
         let tz = fz - fz.floor();
 
+        // Fill the 4×4 stencil using the *checked* accessor. Any missing
+        // cell falls back to bilinear (which has its own checked/default
+        // path) — otherwise the Catmull-Rom interpolant pulls toward 0
+        // at track borders, producing spurious dips that break suspension.
         let mut heights = [[0.0f32; 4]; 4];
         let mut roughness_vals = [[0.0f32; 4]; 4];
         for dz in 0..4 {
             for dx in 0..4 {
-                let cell = self.get_cell_by_index(ix - 1 + dx as i32, iz - 1 + dz as i32);
+                let Some(cell) =
+                    self.get_cell_by_index_checked(ix - 1 + dx as i32, iz - 1 + dz as i32)
+                else {
+                    return self.query_point_bilinear(x, z);
+                };
                 heights[dz][dx] = cell.height_m();
                 roughness_vals[dz][dx] = cell.roughness();
             }

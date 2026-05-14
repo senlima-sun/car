@@ -12,9 +12,14 @@ pub const ENGINE_INERTIA: f32 = 0.15;
 const REDLINE_RPM: f32 = 15000.0;
 const IDLE_RPM: f32 = 4000.0;
 const PEAK_TORQUE_RPM: f32 = 10500.0;
-// Wave 4 Phase 4: 2026 F1 ICE peak torque ≈ 480 Nm (1.6L V6 turbo
-// hybrid; published spec). Was 380 Nm = 2025-spec.
-const PEAK_TORQUE_NM: f32 = 480.0;
+// 2026 F1 ICE peak torque is not officially published by FIA. Derived
+// from 2026 PU regs: ICE peak power ≈ 400 kW at ~10,500-12,000 rpm,
+// giving ~320-360 Nm (back-calculated from P = τ·ω). Mid-band 340 Nm
+// matches widely-cited press estimates. The previous 480 Nm was the
+// 2014-spec MGU-H-equipped wet figure; 2026 removed MGU-H, lowering
+// ICE peak.
+// Sources: FIA 2026 PU Technical Regs Art. 5.x; F1.com PU explainer.
+const PEAK_TORQUE_NM: f32 = 340.0;
 const SHIFT_TIME_S: f32 = 0.05;
 const UPSHIFT_RPM_THRESHOLD: f32 = 13500.0;
 const DOWNSHIFT_RPM_THRESHOLD: f32 = 6500.0;
@@ -535,7 +540,9 @@ mod tests {
 
         // Wave 4 Phase 3 dropped 6505 → 5919 (radius 0.33 → 0.36).
         // Wave 4 Phase 4 lifts to 7477 (PEAK_TORQUE_NM 380 → 480 = +26%).
-        const BASELINE_DRIVE_FORCE_N: f32 = 7477.1807;
+        // Plan Wave 1: PEAK_TORQUE_NM 480 → 340 (2026 spec correction).
+        // Drive force = 5296.3364 × (340/480) ≈ 5296.34.
+        const BASELINE_DRIVE_FORCE_N: f32 = 5296.3364;
         const TOLERANCE_PCT: f32 = 0.01;
         let delta = (out.drive_force - BASELINE_DRIVE_FORCE_N).abs();
         let allowed = BASELINE_DRIVE_FORCE_N.abs() * TOLERANCE_PCT;
@@ -557,7 +564,7 @@ mod tests {
             boost_multiplier: 0.5,
             ..PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true)
         });
-        let baseline_at_unit_boost: f32 = 7477.1807;
+        let baseline_at_unit_boost: f32 = 5296.3364;
         let expected = baseline_at_unit_boost * 0.5;
         let delta = (out.drive_force - expected).abs();
         assert!(
@@ -574,7 +581,7 @@ mod tests {
         pt.current_gear = 1;
         pt.engine_rpm = 8500.0;
         let out = pt.update(&PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true));
-        let baseline: f32 = 7477.1807;
+        let baseline: f32 = 5296.3364;
         let delta = (out.drive_force - baseline).abs();
         assert!(
             delta <= baseline.abs() * 0.01,
@@ -593,7 +600,7 @@ mod tests {
             boost_multiplier: f32::NAN,
             ..PowertrainInput::baseline(1.0 / 60.0, 30.0, 97.0, true)
         });
-        let baseline: f32 = 7477.1807;
+        let baseline: f32 = 5296.3364;
         let delta = (out_nan.drive_force - baseline).abs();
         assert!(
             delta <= baseline.abs() * 0.01,

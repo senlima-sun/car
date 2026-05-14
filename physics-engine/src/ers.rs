@@ -7,9 +7,15 @@ use crate::types::{
 // ============================================================================
 
 const BATTERY_CAPACITY_KJ: f32 = 4000.0; // 4 MJ = 4000 kJ
-// 2026 F1 FIA Technical Regs: per-lap recovery and deploy caps are both 9.0 MJ.
+// FIA 2026 PU Technical Regs: deploy and recovery caps are asymmetric.
+// Recovery (harvest under braking + on-throttle) ≤ 9.0 MJ/lap.
+// Deploy (electrical energy delivered through MGU-K) ≤ 8.5 MJ/lap.
+// The recovery > deploy asymmetry forces battery-management strategy:
+// drivers harvest more than they can deploy, with surplus banking
+// against next-lap usage limited by battery storage (~4 MJ).
+// Sources: motorsport.tech FIA 2026 PU regs analysis; F1.com PU explainer.
 pub const LAP_RECOVERY_CAP_MJ: f32 = 9.0;
-pub const LAP_DEPLOY_CAP_MJ: f32 = 9.0;
+pub const LAP_DEPLOY_CAP_MJ: f32 = 8.5;
 
 // Deployment scheduler thresholds (pacing regulates deploy under throttle)
 // so the battery no longer drains in seconds at full throttle in Balanced.
@@ -917,12 +923,13 @@ mod tests {
         assert!(state.current.power_flow >= SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW);
     }
 
-    /// 2026 F1 spec: once `lap_deployed_mj` reaches 9.0 MJ, deploy stops until lap reset.
+    /// 2026 F1 spec: once `lap_deployed_mj` reaches LAP_DEPLOY_CAP_MJ (8.5 MJ),
+    /// deploy stops until lap reset.
     #[test]
-    fn test_lap_deploy_cap_at_9mj() {
+    fn test_lap_deploy_cap_at_deploy_cap() {
         let mut state = ErsPhysicsState::new();
         state.set_mode(ErsMode::Attack);
-        state.current.lap_deployed_mj = 8.95;
+        state.current.lap_deployed_mj = LAP_DEPLOY_CAP_MJ - 0.05;
         state.current.battery_charge = 1.0;
         for _ in 0..120 {
             state.update(1.0 / 120.0, true, false, 80.0, 1.0);

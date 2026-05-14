@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   buildAsphaltGeometry,
   buildEdgeLineGeometry,
+  buildParentSideBandGeometry,
   buildPitLaneGeometry,
   buildRibbonLayers,
   computeRibbonFrames,
@@ -151,6 +152,27 @@ describe('buildEdgeLineGeometry', () => {
 
   test('closed edge line keeps the parent segment count', () => {
     const result = buildEdgeLineGeometry(CLOSED_LOOP, true, 12, 'left', 0.2)!
+    expect(result.indices.length).toBe(CLOSED_LOOP.length * 6)
+  })
+})
+
+describe('buildParentSideBandGeometry', () => {
+  test('left outside band starts at parent asphalt edge and extends outward', () => {
+    const result = buildParentSideBandGeometry(STRAIGHT, false, 12, 'left', 0, 0.8)!
+    expect(result.indices.length).toBe(6)
+    expect(result.positions[2]).toBeCloseTo(6.8)
+    expect(result.positions[5]).toBeCloseTo(6)
+  })
+
+  test('right outside band starts at parent asphalt edge and extends outward', () => {
+    const result = buildParentSideBandGeometry(STRAIGHT, false, 12, 'right', 0, 0.8)!
+    expect(result.indices.length).toBe(6)
+    expect(result.positions[2]).toBeCloseTo(-6)
+    expect(result.positions[5]).toBeCloseTo(-6.8)
+  })
+
+  test('closed side band keeps the parent segment count', () => {
+    const result = buildParentSideBandGeometry(CLOSED_LOOP, true, 12, 'right', 0.8, 3)!
     expect(result.indices.length).toBe(CLOSED_LOOP.length * 6)
   })
 })

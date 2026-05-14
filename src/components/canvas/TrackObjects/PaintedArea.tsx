@@ -4,7 +4,7 @@ import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '../../../constants/trackLayers'
 import { resolveParentDerivedLayer } from '../../../utils/parentDerivedLayer'
-import { buildAsphaltGeometry } from './geometry/ribbonGeometry'
+import { buildAsphaltGeometry, buildParentSideBandGeometry } from './geometry/ribbonGeometry'
 import type { PlacedObject } from '../../../types/trackObjects'
 
 interface PaintedAreaProps {
@@ -21,6 +21,10 @@ interface PaintedAreaMesh {
   sensorIndices: Uint32Array
 }
 
+function isFullParentRange(range: [number, number] | undefined): boolean {
+  return range === undefined || (range[0] === 0 && range[1] === 1)
+}
+
 export default function PaintedArea({ placed, parentRibbon, isGhost = false }: PaintedAreaProps) {
   const meshes = useMemo<PaintedAreaMesh[]>(() => {
     if (!placed.parentRibbonId) {
@@ -29,6 +33,31 @@ export default function PaintedArea({ placed, parentRibbon, isGhost = false }: P
       }
       return []
     }
+    if (
+      parentRibbon?.ribbonPoints &&
+      parentRibbon.ribbonPoints.length >= 2 &&
+      placed.parentSide &&
+      isFullParentRange(placed.tRange)
+    ) {
+      const result = buildParentSideBandGeometry(
+        parentRibbon.ribbonPoints,
+        parentRibbon.ribbonClosed ?? false,
+        parentRibbon.width ?? 12,
+        placed.parentSide,
+        placed.innerOffset ?? 0,
+        placed.derivedWidth ?? placed.width ?? 3,
+      )
+      return result && result.indices.length > 0
+        ? [
+            {
+              geometry: result.geometry,
+              sensorVertices: result.positions,
+              sensorIndices: new Uint32Array(result.indices),
+            },
+          ]
+        : []
+    }
+
     const segments = resolveParentDerivedLayer(placed, { parent: parentRibbon })
     const out: PaintedAreaMesh[] = []
     for (const seg of segments) {

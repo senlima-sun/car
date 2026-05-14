@@ -21,15 +21,16 @@
 use crate::utils::sanitize;
 
 pub const FUEL_ENERGY_DENSITY_J_PER_KG: f32 = 40.0e6;
-pub const FIA_FUEL_FLOW_RPM_BREAK: f32 = 10_500.0;
 
-// FIA Art 5.4.3: 3000 MJ/h flat cap → W. Expressed as the regulation
-// figure ÷ seconds-per-hour so a future spec change touches one number.
+// FIA 2026 PU Technical Regs Art 5.4: fuel-flow regulation switched
+// from the 2014-era mass-based linear-below-10500-rpm scheme to a
+// flat **energy-based** cap of 3000 MJ/h at all RPM. The old below-
+// break linear ramp (0.27 MJ/h per RPM) was removed. The cap is now
+// regime-independent — it binds whenever instantaneous demand
+// exceeds 3000 MJ/h regardless of engine speed.
+// Source: motorsport.tech 2026 PU regs analysis; F1.com PU explainer.
 pub const FIA_FUEL_FLOW_FLAT_CAP_W: f32 = 3_000.0e6 / 3600.0;
 
-// FIA Art 5.4.4: below the break rpm the cap is `0.27 MJ/h × N`. Same
-// per-hour-to-per-second conversion as the flat cap.
-pub const FIA_FUEL_FLOW_BELOW_BREAK_W_PER_RPM: f32 = 0.27e6 / 3600.0;
 pub const ICE_THERMAL_EFFICIENCY: f32 = 0.50;
 pub const TANK_CAPACITY_KG: f32 = 110.0;
 pub const DEFAULT_STARTING_FUEL_KG: f32 = 100.0;
@@ -135,18 +136,17 @@ impl FuelState {
     }
 }
 
-/// FIA 2026 Art 5.4 max fuel-energy flow as a function of engine RPM.
-/// Below 10,500 rpm the cap is `0.27 × N MJ/h = 75 × N W`; above the
-/// break it is the flat 3000 MJ/h ceiling.
+/// FIA 2026 Art 5.4 max fuel-energy flow. The 2026 regs replaced the
+/// 2014-era RPM-linear-below-10500 + flat-above scheme with a single
+/// flat **energy-based** cap at all engine speeds. `rpm` is kept as a
+/// parameter for API stability and so downstream code that derives
+/// per-RPM heat or fuel demand can still query a regulation ceiling
+/// — but the function is now regime-independent.
 pub fn fia_max_energy_flow_w(rpm: f32) -> f32 {
     if !rpm.is_finite() || rpm <= 0.0 {
         return 0.0;
     }
-    if rpm >= FIA_FUEL_FLOW_RPM_BREAK {
-        FIA_FUEL_FLOW_FLAT_CAP_W
-    } else {
-        rpm * FIA_FUEL_FLOW_BELOW_BREAK_W_PER_RPM
-    }
+    FIA_FUEL_FLOW_FLAT_CAP_W
 }
 
 /// Fraction of demanded energy the regulation allows through. `1.0` when
@@ -168,26 +168,14 @@ mod tests {
     const EPS: f32 = 1e-3;
 
     #[test]
-    fn fia_max_at_rpm_break_matches_flat_cap() {
-        let v = fia_max_energy_flow_w(FIA_FUEL_FLOW_RPM_BREAK);
-        assert!((v - FIA_FUEL_FLOW_FLAT_CAP_W).abs() < EPS);
-    }
-
-    #[test]
-    fn fia_max_above_break_is_flat() {
-        let a = fia_max_energy_flow_w(11_000.0);
-        let b = fia_max_energy_flow_w(15_000.0);
-        assert!((a - FIA_FUEL_FLOW_FLAT_CAP_W).abs() < EPS);
-        assert!((b - FIA_FUEL_FLOW_FLAT_CAP_W).abs() < EPS);
-    }
-
-    #[test]
-    fn fia_max_below_break_is_linear_in_rpm() {
+    fn fia_max_is_flat_at_all_running_rpm() {
+        // 2026 regs: regime-independent flat cap above zero RPM.
         let lo = fia_max_energy_flow_w(5_000.0);
-        let hi = fia_max_energy_flow_w(9_000.0);
-        assert!((lo - 5_000.0 * FIA_FUEL_FLOW_BELOW_BREAK_W_PER_RPM).abs() < EPS);
-        assert!((hi - 9_000.0 * FIA_FUEL_FLOW_BELOW_BREAK_W_PER_RPM).abs() < EPS);
-        assert!(hi > lo);
+        let mid = fia_max_energy_flow_w(10_500.0);
+        let hi = fia_max_energy_flow_w(15_000.0);
+        assert!((lo - FIA_FUEL_FLOW_FLAT_CAP_W).abs() < EPS);
+        assert!((mid - FIA_FUEL_FLOW_FLAT_CAP_W).abs() < EPS);
+        assert!((hi - FIA_FUEL_FLOW_FLAT_CAP_W).abs() < EPS);
     }
 
     #[test]

@@ -91,7 +91,7 @@ pub struct SurfaceFrictionBreakdown {
     pub effective_mu: f32,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct WeatherModifiers {
     pub friction_slip_multiplier: f32,
     pub drag_multiplier: f32,
@@ -103,6 +103,29 @@ pub struct WeatherModifiers {
     pub drift_entry_slip_angle_multiplier: f32,
     pub drift_lateral_correction_multiplier: f32,
     pub max_speed_multiplier: f32,
+}
+
+impl Default for WeatherModifiers {
+    /// Identity modifiers — every field is the multiplicative identity
+    /// (1.0). Construction via struct-shorthand-with-`..Default::default()`
+    /// gets a no-op weather modifier for the unspecified fields, which
+    /// is the safe contract for a multiplier struct. (Derived Default
+    /// previously returned all-zeros which silently disabled the
+    /// referenced physics quantity.)
+    fn default() -> Self {
+        Self {
+            friction_slip_multiplier: 1.0,
+            drag_multiplier: 1.0,
+            downforce_multiplier: 1.0,
+            engine_efficiency_multiplier: 1.0,
+            brake_efficiency_multiplier: 1.0,
+            steer_response_multiplier: 1.0,
+            max_steer_angle_multiplier: 1.0,
+            drift_entry_slip_angle_multiplier: 1.0,
+            drift_lateral_correction_multiplier: 1.0,
+            max_speed_multiplier: 1.0,
+        }
+    }
 }
 
 // ============================================================================
@@ -182,18 +205,41 @@ pub enum EngineBrakingLevel {
     High,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct BrakeConfig {
     pub front_bias: f32, // 0.50-0.70 (50-70% front)
     pub engine_braking: EngineBrakingLevel,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
+impl Default for BrakeConfig {
+    /// Race-default brake bias of 58% front — within the regulator
+    /// clamp [0.50, 0.70] in `lib.rs::set_brake_front_bias`. Derived
+    /// Default returned 0.0 (100% rear, worst possible setup).
+    fn default() -> Self {
+        Self {
+            front_bias: 0.58,
+            engine_braking: EngineBrakingLevel::default(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct BrakeState {
     pub front_bias: f32,
     pub engine_braking: EngineBrakingLevel,
     pub front_brake_force: f32, // Current front brake force (N)
     pub rear_brake_force: f32,  // Current rear brake force (N)
+}
+
+impl Default for BrakeState {
+    fn default() -> Self {
+        Self {
+            front_bias: 0.58,
+            engine_braking: EngineBrakingLevel::default(),
+            front_brake_force: 0.0,
+            rear_brake_force: 0.0,
+        }
+    }
 }
 
 // ============================================================================
@@ -1455,11 +1501,20 @@ mod tests {
     }
 
     #[test]
-    fn weather_modifiers_default_is_all_zeros() {
+    fn weather_modifiers_default_is_identity() {
+        // Multiplicative identity (1.0) so struct-init-with-..Default
+        // doesn't silently zero out the unspecified fields.
         let def = WeatherModifiers::default();
-        assert_approx(def.friction_slip_multiplier, 0.0);
-        assert_approx(def.drag_multiplier, 0.0);
-        assert_approx(def.max_speed_multiplier, 0.0);
+        assert_approx(def.friction_slip_multiplier, 1.0);
+        assert_approx(def.drag_multiplier, 1.0);
+        assert_approx(def.downforce_multiplier, 1.0);
+        assert_approx(def.engine_efficiency_multiplier, 1.0);
+        assert_approx(def.brake_efficiency_multiplier, 1.0);
+        assert_approx(def.steer_response_multiplier, 1.0);
+        assert_approx(def.max_steer_angle_multiplier, 1.0);
+        assert_approx(def.drift_entry_slip_angle_multiplier, 1.0);
+        assert_approx(def.drift_lateral_correction_multiplier, 1.0);
+        assert_approx(def.max_speed_multiplier, 1.0);
     }
 
     #[test]
@@ -1840,16 +1895,17 @@ mod tests {
     }
 
     #[test]
-    fn brake_config_default_zero_bias() {
+    fn brake_config_default_is_race_bias() {
+        // 58% front — typical race setup, within regulator clamp.
         let bc = BrakeConfig::default();
-        assert_approx(bc.front_bias, 0.0);
+        assert_approx(bc.front_bias, 0.58);
         assert_eq!(bc.engine_braking, EngineBrakingLevel::Medium);
     }
 
     #[test]
-    fn brake_state_default_zeros() {
+    fn brake_state_default_matches_config() {
         let bs = BrakeState::default();
-        assert_approx(bs.front_bias, 0.0);
+        assert_approx(bs.front_bias, 0.58);
         assert_approx(bs.front_brake_force, 0.0);
         assert_approx(bs.rear_brake_force, 0.0);
     }

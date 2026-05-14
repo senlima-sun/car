@@ -31,6 +31,8 @@ export interface EdgeLineGeometryResult {
   frames: RibbonFrames
 }
 
+export type SideBandGeometryResult = EdgeLineGeometryResult
+
 export interface RibbonLayers {
   mainGeometry: BufferGeometry
   pitGeometry: BufferGeometry | null
@@ -174,12 +176,32 @@ export function buildEdgeLineGeometry(
   side: 'left' | 'right',
   lineWidth: number,
 ): EdgeLineGeometryResult | null {
+  return buildParentSideBandGeometry(
+    points,
+    closed,
+    parentWidth,
+    side,
+    -lineWidth,
+    lineWidth,
+    TRACK_LAYER_Y_OFFSETS.EDGE_LINE,
+  )
+}
+
+export function buildParentSideBandGeometry(
+  points: TrackRibbonPoint[],
+  closed: boolean,
+  parentWidth: number,
+  side: 'left' | 'right',
+  innerOffset: number,
+  bandWidth: number,
+  yOffset = TRACK_LAYER_Y_OFFSETS.PAINTED_AREA,
+): SideBandGeometryResult | null {
   const n = points.length
-  if (n < 2 || parentWidth <= 0 || lineWidth <= 0) return null
+  if (n < 2 || parentWidth <= 0 || bandWidth <= 0) return null
 
   const halfParent = parentWidth / 2
-  const innerHalf = Math.max(0, halfParent - lineWidth)
-  const surfaceY = TRACK_LAYER_Y_OFFSETS.EDGE_LINE
+  const innerDistance = halfParent + innerOffset
+  const outerDistance = innerDistance + bandWidth
   const tangents = computeRibbonTangents(points, closed)
   const leftPositions: Vector3[] = []
   const rightPositions: Vector3[] = []
@@ -189,14 +211,14 @@ export function buildEdgeLineGeometry(
     const tan = tangents[i]!
     const nx = -tan.z
     const nz = tan.x
-    const y = p.y + surfaceY
+    const y = p.y + yOffset
 
     if (side === 'left') {
-      leftPositions.push(new Vector3(p.x + nx * halfParent, y, p.z + nz * halfParent))
-      rightPositions.push(new Vector3(p.x + nx * innerHalf, y, p.z + nz * innerHalf))
+      leftPositions.push(new Vector3(p.x + nx * outerDistance, y, p.z + nz * outerDistance))
+      rightPositions.push(new Vector3(p.x + nx * innerDistance, y, p.z + nz * innerDistance))
     } else {
-      leftPositions.push(new Vector3(p.x - nx * innerHalf, y, p.z - nz * innerHalf))
-      rightPositions.push(new Vector3(p.x - nx * halfParent, y, p.z - nz * halfParent))
+      leftPositions.push(new Vector3(p.x - nx * innerDistance, y, p.z - nz * innerDistance))
+      rightPositions.push(new Vector3(p.x - nx * outerDistance, y, p.z - nz * outerDistance))
     }
   }
 
