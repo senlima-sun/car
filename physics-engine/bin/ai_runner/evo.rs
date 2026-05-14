@@ -22,9 +22,7 @@ use crate::policies::lookahead::LOOKAHEAD_PARAM_COUNT;
 pub const PARAM_BOUNDS: [(f32, f32); LOOKAHEAD_PARAM_COUNT] = [
     (50.0, 400.0),
     (10.0, 200.0),
-    // brake_curvature_gain: floor at 0.5 so evo can't rediscover the
-    // zero-braking degenerate (Phase 4 review Consider #7).
-    (0.5, 1000.0),
+    (0.0, 1000.0),
     (0.0, 0.5),
     (-6.0, 6.0),
     (0.0, 4.0),
@@ -38,6 +36,14 @@ pub const PARAM_BOUNDS: [(f32, f32); LOOKAHEAD_PARAM_COUNT] = [
     (0.0, 2.0),
     (0.0, 0.05),
     (0.01, 1.0),
+    (0.0, 10.0),
+    (-3.0, 3.0),
+    (0.0, 60.0),
+    (0.0, 5.0),
+    (-1.0, 1.0),
+    (-1.0, 1.0),
+    (-1.0, 1.0),
+    (-1.0, 1.0),
 ];
 
 pub const INITIAL_SIGMA_MONZA: [f32; LOOKAHEAD_PARAM_COUNT] = [
@@ -57,7 +63,21 @@ pub const INITIAL_SIGMA_MONZA: [f32; LOOKAHEAD_PARAM_COUNT] = [
     0.2,
     0.005,
     0.099,
+    1.0,
+    0.5,
+    6.0,
+    0.5,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
 ];
+
+const _: () = {
+    assert!(PARAM_BOUNDS.len() == LOOKAHEAD_PARAM_COUNT);
+    assert!(INITIAL_SIGMA_MONZA.len() == LOOKAHEAD_PARAM_COUNT);
+    assert!(crate::policies::lookahead::BASELINE_PARAMS_MONZA.len() == LOOKAHEAD_PARAM_COUNT);
+};
 
 #[derive(Debug, Clone)]
 pub struct Individual {

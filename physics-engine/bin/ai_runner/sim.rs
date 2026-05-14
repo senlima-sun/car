@@ -1,11 +1,11 @@
 use car_physics_engine::engine::PhysicsEngine;
 use car_physics_engine::track_geometry::{
-    check_off_track, nearest_centerline_windowed, OffTrackState,
+    check_off_track, nearest_centerline_windowed, OffTrackState, Polyline,
     DEFAULT_ENTER_THRESHOLD_M, DEFAULT_EXIT_THRESHOLD_M, DEFAULT_WINDOW,
 };
 use car_physics_engine::types::{CarInput, SurfaceType, TireCompound};
 
-use crate::obs::{build_observation, ObservationContext};
+use crate::obs::{build_observation, curvature_at_arc, ObservationContext};
 use crate::track_loader::{LoadedTrack, RaceDirection};
 
 pub const DT: f32 = 1.0 / 120.0;
@@ -41,8 +41,25 @@ pub struct Observation {
     pub longitudinal_accel_ms2: f32,
 }
 
+pub struct PolicyContext<'a> {
+    pub polyline: &'a Polyline,
+    pub total_arc: f32,
+    pub backward: bool,
+}
+
+impl<'a> PolicyContext<'a> {
+    pub fn curvature_at_arc_offset(&self, current_arc: f32, offset_m: f32) -> f32 {
+        let target = if self.backward {
+            current_arc - offset_m
+        } else {
+            current_arc + offset_m
+        };
+        curvature_at_arc(self.polyline, target, self.total_arc, 0.5, self.backward)
+    }
+}
+
 pub trait Policy {
-    fn act(&mut self, obs: &Observation) -> CarInput;
+    fn act(&mut self, obs: &Observation, ctx: &PolicyContext) -> CarInput;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -160,6 +177,11 @@ pub fn run_sim_with_engine(
     let mut arc_progress_m: f32 = 0.0;
     let backward = track.race_direction == RaceDirection::Backward;
     let mut obs_ctx = ObservationContext::new();
+    let policy_ctx = PolicyContext {
+        polyline: &track.polyline,
+        total_arc,
+        backward,
+    };
 
     while max_steps > 0 {
         max_steps -= 1;
@@ -168,7 +190,7 @@ pub fn run_sim_with_engine(
         let obs = products.obs;
         let near = products.near;
 
-        let input = policy.act(&obs);
+        let input = policy.act(&obs, &policy_ctx);
 
         let output = engine.step(
             DT,

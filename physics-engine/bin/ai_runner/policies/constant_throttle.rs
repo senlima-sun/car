@@ -1,6 +1,6 @@
 use car_physics_engine::types::CarInput;
 
-use crate::sim::{Observation, Policy};
+use crate::sim::{Observation, Policy, PolicyContext};
 
 pub struct ConstantThrottle {
     pub gain: f32,
@@ -17,7 +17,7 @@ impl Default for ConstantThrottle {
 }
 
 impl Policy for ConstantThrottle {
-    fn act(&mut self, obs: &Observation) -> CarInput {
+    fn act(&mut self, obs: &Observation, _ctx: &PolicyContext) -> CarInput {
         let steer = (obs.heading_error_rad * self.gain).clamp(-1.0, 1.0);
         CarInput {
             forward: true,

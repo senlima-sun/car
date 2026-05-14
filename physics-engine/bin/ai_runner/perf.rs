@@ -6,8 +6,8 @@ use car_physics_engine::types::{CarInput, SurfaceType, TireCompound};
 
 use crate::obs::{build_observation, ObservationContext};
 use crate::policies::constant_throttle::ConstantThrottle;
-use crate::sim::{integrate_yaw, Policy, SimState, DT};
-use crate::track_loader::{spawn_pose, LoadedTrack};
+use crate::sim::{integrate_yaw, Policy, PolicyContext, SimState, DT};
+use crate::track_loader::{spawn_pose, LoadedTrack, RaceDirection};
 
 const PERF_STEPS: usize = 10_000;
 
@@ -37,12 +37,24 @@ pub fn run_perf_benchmark(track: &LoadedTrack) -> PerfReport {
         OffTrackState::seed_from_position(&track.polyline, spawn_pos[0], spawn_pos[2]);
     let mut policy = ConstantThrottle::default();
     let mut obs_ctx = ObservationContext::new();
+    let total_arc = track
+        .polyline
+        .cumulative_arc
+        .last()
+        .copied()
+        .unwrap_or(0.0)
+        .max(1.0);
+    let policy_ctx = PolicyContext {
+        polyline: &track.polyline,
+        total_arc,
+        backward: track.race_direction == RaceDirection::Backward,
+    };
 
     let mut samples_ns: Vec<u128> = Vec::with_capacity(PERF_STEPS);
 
     for _ in 0..PERF_STEPS {
         let products = build_observation(track, &state, off_track_state.arc_cursor, &mut obs_ctx);
-        let input: CarInput = policy.act(&products.obs);
+        let input: CarInput = policy.act(&products.obs, &policy_ctx);
 
         let start = Instant::now();
         let output = engine.step(
