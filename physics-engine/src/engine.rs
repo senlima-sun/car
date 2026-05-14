@@ -805,8 +805,12 @@ impl PhysicsEngine {
         self.track_weather_accumulator += dt;
         let ambient = self.weather.get_ambient_conditions();
         if self.track_weather_accumulator >= TRACK_WEATHER_UPDATE_INTERVAL {
+            // Subtract the consumed time instead of zeroing — preserves
+            // sub-interval residual so long stalls don't silently drop
+            // simulated weather time. Capped at 0.25 s so a catastrophic
+            // catch-up doesn't apply a huge weather step in one call.
             let weather_dt = self.track_weather_accumulator.min(0.25);
-            self.track_weather_accumulator = 0.0;
+            self.track_weather_accumulator -= weather_dt;
             self.track_temperature.update_weather_with_ambient(
                 &ambient,
                 wind_modifiers.cooling_multiplier,
@@ -884,23 +888,25 @@ impl PhysicsEngine {
         };
 
         if let Some(ref results) = terrain_results {
-            let mut dominant_idx = 0usize;
-            let mut dominant_count = 0usize;
+            // Strict-majority rule: require ≥3 of 4 wheels on the same
+            // material before switching the car-global surface. On a
+            // tie or split, keep the previously-set surface — the prior
+            // "lowest-grip wheel wins" rule produced absurd behaviour
+            // where one wheel briefly grazing grass triggered a full-car
+            // penalty.
+            let mut best_count = 0usize;
+            let mut best_material = results[0].material;
             for i in 0..4 {
                 let material = results[i].material;
                 let count = results.iter().filter(|r| r.material == material).count();
-                if count > dominant_count
-                    || (count == dominant_count
-                        && results[i].properties.grip_coefficient
-                            < results[dominant_idx].properties.grip_coefficient)
-                {
-                    dominant_idx = i;
-                    dominant_count = count;
+                if count > best_count {
+                    best_count = count;
+                    best_material = material;
                 }
             }
-            let dominant = results[dominant_idx].material;
-            let derived_surface = dominant.to_surface_type();
-            self.surface.set_surface(derived_surface);
+            if best_count >= 3 {
+                self.surface.set_surface(best_material.to_surface_type());
+            }
         }
 
         self.surface.update(dt);

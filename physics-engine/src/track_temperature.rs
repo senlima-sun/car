@@ -2,7 +2,10 @@ use crate::types::{AmbientConditions, AquaplaningState, GridCell, TrackBounds};
 use rustc_hash::FxHashMap;
 
 const DEFAULT_CELL_SIZE: f32 = 2.0;
-const MAX_CELLS: usize = 5000;
+// At 2 m × 2 m cells, 30 000 covers ~120 000 m² — enough for any real
+// F1 circuit's full racing surface. Was 5 000 (~140 × 140 m, only a
+// third of a track), silently dropping updates once the cap was hit.
+const MAX_CELLS: usize = 30_000;
 const TEXTURE_SIZE: usize = 512;
 const HEAT_RADIUS: f32 = 3.0;
 const DRIVING_RADIUS: f32 = 2.0; // Smaller radius for normal driving (just under car)
@@ -38,7 +41,9 @@ const WATER_DRAINAGE_BASE_RATE: f32 = 0.03; // Base drainage when rain stops
 const MAX_WATER_DEPTH: f32 = 1.0;
 const AQUAPLANING_MIN_SPEED: f32 = 22.2; // 80 km/h in m/s
 const AQUAPLANING_WATER_THRESHOLD: f32 = 0.7; // Minimum water depth for aquaplaning
-const AQUAPLANING_SPEED_FACTOR: f32 = 0.02; // Higher speed = more likely
+/// `v_crit = 10.35 × √psi` (m/s). For F1 wet-spec ~24 psi cold,
+/// v_crit ≈ 51 m/s (~182 km/h). Hard cliff in `check_aquaplaning`.
+const AQUAPLANING_CRITICAL_SPEED_MS: f32 = 51.0;
 const AQUAPLANING_INTENSITY_THRESHOLD: f32 = 0.3; // Min intensity to trigger
 const SHELTERED_DRYING_MULTIPLIER: f32 = 3.0; // Sheltered areas dry faster
 
@@ -334,6 +339,12 @@ impl TrackTemperatureGrid {
                 cell.water_depth = (cell.water_depth - drain_rate).max(0.0);
             }
 
+            // Invariant: standing water implies a wet surface. Without
+            // this clamp the two state buckets can desync (e.g. a cell
+            // with water_depth = 1.0 but wetness = 0.0, which is
+            // nonsense — puddle but a dry surface).
+            cell.wetness = cell.wetness.max(cell.water_depth);
+
             // Ice formation/melting
             if is_freezing {
                 let ice_potential = cell.wetness.max(ambient.humidity * 0.5);
@@ -523,28 +534,33 @@ impl TrackTemperatureGrid {
         self.texture_dirty = true;
     }
 
-    /// Check for aquaplaning conditions at a position
-    /// Returns aquaplaning state with intensity based on speed and water depth
+    /// Aquaplaning state at a world position. Uses the hydroplaning
+    /// critical-speed formula `v_crit = 10.35 × √psi` (m/s) — below
+    /// `v_crit`, the tread channels can clear water; above, the film
+    /// can't be displaced and grip falls off steeply. Modelled as a
+    /// smoothstep cliff around `v_crit`, scaled by water depth.
     pub fn check_aquaplaning(&self, world_x: f32, world_z: f32, speed_ms: f32) -> AquaplaningState {
-        // No aquaplaning below minimum speed
         if speed_ms < AQUAPLANING_MIN_SPEED {
             return AquaplaningState::default();
         }
 
         let water_depth = self.get_water_depth_at(world_x, world_z);
-
-        // No aquaplaning without enough standing water
         if water_depth < AQUAPLANING_WATER_THRESHOLD {
             return AquaplaningState::default();
         }
 
-        // Calculate aquaplaning intensity based on speed and water depth
-        let speed_factor = (speed_ms - AQUAPLANING_MIN_SPEED) * AQUAPLANING_SPEED_FACTOR;
+        // Smoothstep cliff: 0 below (v_crit - half-width), 1 above
+        // (v_crit + half-width). Half-width = 10 m/s ≈ 36 km/h around
+        // the critical speed.
+        const CLIFF_HALF_WIDTH_MS: f32 = 10.0;
+        let v_lo = AQUAPLANING_CRITICAL_SPEED_MS - CLIFF_HALF_WIDTH_MS;
+        let v_hi = AQUAPLANING_CRITICAL_SPEED_MS + CLIFF_HALF_WIDTH_MS;
+        let t = ((speed_ms - v_lo) / (v_hi - v_lo)).clamp(0.0, 1.0);
+        let speed_factor = t * t * (3.0 - 2.0 * t);
+
         let water_factor = (water_depth - AQUAPLANING_WATER_THRESHOLD)
             / (MAX_WATER_DEPTH - AQUAPLANING_WATER_THRESHOLD);
         let intensity = (speed_factor * water_factor).clamp(0.0, 1.0);
-
-        // Only trigger if intensity exceeds threshold
         let is_aquaplaning = intensity > AQUAPLANING_INTENSITY_THRESHOLD;
 
         AquaplaningState {
@@ -563,6 +579,13 @@ impl TrackTemperatureGrid {
             return AquaplaningState::default();
         }
 
+        // Same critical-speed cliff as `check_aquaplaning`.
+        const CLIFF_HALF_WIDTH_MS: f32 = 10.0;
+        let v_lo = AQUAPLANING_CRITICAL_SPEED_MS - CLIFF_HALF_WIDTH_MS;
+        let v_hi = AQUAPLANING_CRITICAL_SPEED_MS + CLIFF_HALF_WIDTH_MS;
+        let t = ((speed_ms - v_lo) / (v_hi - v_lo)).clamp(0.0, 1.0);
+        let speed_factor = t * t * (3.0 - 2.0 * t);
+
         let mut affected = [false; 4];
         let mut max_intensity: f32 = 0.0;
 
@@ -571,7 +594,6 @@ impl TrackTemperatureGrid {
             if water_depth < AQUAPLANING_WATER_THRESHOLD {
                 continue;
             }
-            let speed_factor = (speed_ms - AQUAPLANING_MIN_SPEED) * AQUAPLANING_SPEED_FACTOR;
             let water_factor = (water_depth - AQUAPLANING_WATER_THRESHOLD)
                 / (MAX_WATER_DEPTH - AQUAPLANING_WATER_THRESHOLD);
             let intensity = (speed_factor * water_factor).clamp(0.0, 1.0);
