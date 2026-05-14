@@ -1,14 +1,13 @@
 use std::time::Instant;
 
 use car_physics_engine::engine::PhysicsEngine;
-use car_physics_engine::track_geometry::{
-    nearest_centerline_windowed, OffTrackState, DEFAULT_WINDOW,
-};
+use car_physics_engine::track_geometry::OffTrackState;
 use car_physics_engine::types::{CarInput, SurfaceType, TireCompound};
 
+use crate::obs::{build_observation, ObservationContext};
 use crate::policies::constant_throttle::ConstantThrottle;
-use crate::sim::{angle_diff, integrate_yaw, Observation, Policy, DT};
-use crate::track_loader::{spawn_pose, LoadedTrack, RaceDirection};
+use crate::sim::{integrate_yaw, Policy, SimState, DT};
+use crate::track_loader::{spawn_pose, LoadedTrack};
 
 const PERF_STEPS: usize = 10_000;
 
@@ -27,62 +26,48 @@ pub fn run_perf_benchmark(track: &LoadedTrack) -> PerfReport {
     engine.set_tire_compound(TireCompound::Medium);
 
     let (spawn_pos, spawn_rot, _) = spawn_pose(track);
-    let mut position = spawn_pos;
-    let mut rotation = spawn_rot;
-    let mut linvel = [0.0_f32; 3];
-    let mut angvel = [0.0_f32; 3];
+    let mut state = SimState {
+        position: spawn_pos,
+        rotation: spawn_rot,
+        linvel: [0.0_f32; 3],
+        angvel: [0.0_f32; 3],
+    };
 
     let mut off_track_state =
         OffTrackState::seed_from_position(&track.polyline, spawn_pos[0], spawn_pos[2]);
-    let backward = track.race_direction == RaceDirection::Backward;
     let mut policy = ConstantThrottle::default();
+    let mut obs_ctx = ObservationContext::new();
 
     let mut samples_ns: Vec<u128> = Vec::with_capacity(PERF_STEPS);
 
     for _ in 0..PERF_STEPS {
-        let near = nearest_centerline_windowed(
-            &track.polyline,
-            position[0],
-            position[2],
-            off_track_state.arc_cursor,
-            DEFAULT_WINDOW,
-        );
-        let tangent_yaw = near.tangent[0].atan2(near.tangent[1]);
-        let race_tangent_yaw = if backward {
-            tangent_yaw + std::f32::consts::PI
-        } else {
-            tangent_yaw
-        };
-        let yaw = car_physics_engine::utils::Quat::from_array(rotation).yaw();
-        let diff = angle_diff(race_tangent_yaw, yaw);
-        let speed_ms = (linvel[0].powi(2) + linvel[2].powi(2)).sqrt();
-        let obs = Observation {
-            car_xz: [position[0], position[2]],
-            yaw,
-            speed_kmh: speed_ms * 3.6,
-            lateral_distance_m: near.lateral_distance,
-            heading_error_rad: diff,
-            arc_cursor: near.nearest_index,
-            arc_length_m: near.arc_length,
-            curvatures: [0.0; 5],
-        };
-        let input: CarInput = policy.act(&obs);
+        let products = build_observation(track, &state, off_track_state.arc_cursor, &mut obs_ctx);
+        let input: CarInput = policy.act(&products.obs);
 
         let start = Instant::now();
-        let output = engine.step(DT, input, position, rotation, linvel, angvel, [0.0, 1.0, 0.0], None);
+        let output = engine.step(
+            DT,
+            input,
+            state.position,
+            state.rotation,
+            state.linvel,
+            state.angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
         let elapsed = start.elapsed().as_nanos();
         samples_ns.push(elapsed);
 
-        linvel = output.linear_velocity;
-        angvel = output.angular_velocity;
-        position[0] += linvel[0] * DT;
-        position[1] += linvel[1] * DT;
-        position[2] += linvel[2] * DT;
-        integrate_yaw(&mut rotation, angvel[1], DT);
+        state.linvel = output.linear_velocity;
+        state.angvel = output.angular_velocity;
+        state.position[0] += state.linvel[0] * DT;
+        state.position[1] += state.linvel[1] * DT;
+        state.position[2] += state.linvel[2] * DT;
+        integrate_yaw(&mut state.rotation, state.angvel[1], DT);
 
         off_track_state = OffTrackState {
             is_off_track: false,
-            arc_cursor: near.nearest_index,
+            arc_cursor: products.near.nearest_index,
         };
     }
 

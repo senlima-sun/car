@@ -1,3 +1,4 @@
+mod obs;
 mod perf;
 mod policies;
 mod sim;
