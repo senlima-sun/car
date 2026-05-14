@@ -17,6 +17,7 @@
     "preview": "pnpm --filter @car/game preview",
     "compress:glb": "pnpm --filter @car/game compress:glb",
     "perf:smoke": "bun run scripts/perf-smoke.ts",
+    "check:turbo-cache": "bun run scripts/check-turbo-cache.ts",
     "track:ingest": "bun run scripts/convert-osm-track.ts",
     "track:validate-source": "bun run scripts/validate-track-source.ts",
     "track:add": "bun run scripts/track-add.ts"

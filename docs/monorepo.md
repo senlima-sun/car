@@ -29,7 +29,29 @@ export TURBO_REMOTE_CACHE_SIGNATURE_KEY=<hmac-key>
 
 `turbo.json` commits only the non-secret config (`apiUrl`, `teamSlug`, `signature: true`).
 
-Sanity-check before running CI: `pnpm run scripts/check-turbo-cache.ts` (added in Phase 1.4) confirms the four env vars resolve and remote caching is wired.
+Sanity-check before running CI:
+
+```sh
+pnpm -w run check:turbo-cache
+```
+
+This confirms env vars resolve and `turbo --dry=json` reports `remoteCacheEnabled: true`. Exits non-zero with a helpful message otherwise.
+
+### Verifying HIT/MISS
+
+After exporting all four env vars:
+
+```sh
+# Cold: should upload to remote
+rm -rf .turbo apps/game/dist apps/game/src/wasm/pkg
+pnpm turbo run build --summarize
+
+# Warm-remote: should pull from remote (fast)
+rm -rf .turbo apps/game/dist apps/game/src/wasm/pkg
+pnpm turbo run build --summarize
+```
+
+Inspect `.turbo/runs/<timestamp>.json` for per-task `"remote": "HIT"` entries on the second run.
 
 ## Running root-scoped scripts
 
