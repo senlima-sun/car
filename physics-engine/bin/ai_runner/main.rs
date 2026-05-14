@@ -1,5 +1,6 @@
 mod policies;
 mod sim;
+mod telemetry;
 mod track_loader;
 
 use std::path::PathBuf;
@@ -152,7 +153,20 @@ fn run_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
     let mut policy = ConstantThrottle::default();
     let result = run_sim(track, &mut policy, 600.0, 5.0);
     print_run_summary(&result);
-    ExitCode::SUCCESS
+
+    let out_path = args
+        .out
+        .join(format!("{}-baseline.json", args.track));
+    match telemetry::write_telemetry_atomic(&out_path, &result) {
+        Ok(()) => {
+            println!("  wrote telemetry: {}", out_path.display());
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("ai_runner: telemetry write failed: {err}");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 fn print_run_summary(result: &sim::SimResult) {
