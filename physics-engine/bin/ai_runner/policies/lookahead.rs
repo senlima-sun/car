@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use car_physics_engine::types::CarInput;
 
 use crate::sim::{Observation, Policy, DT};

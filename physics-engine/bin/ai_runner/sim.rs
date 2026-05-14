@@ -104,6 +104,17 @@ pub fn run_sim(
     off_track_kill_s: f32,
 ) -> SimResult {
     let mut engine = PhysicsEngine::new();
+    run_sim_with_engine(track, policy, &mut engine, max_t_s, off_track_kill_s)
+}
+
+pub fn run_sim_with_engine(
+    track: &LoadedTrack,
+    policy: &mut dyn Policy,
+    engine: &mut PhysicsEngine,
+    max_t_s: f32,
+    off_track_kill_s: f32,
+) -> SimResult {
+    engine.reset_for_replay();
     engine.set_surface(SurfaceType::Road);
     engine.set_tire_compound(TireCompound::Medium);
 

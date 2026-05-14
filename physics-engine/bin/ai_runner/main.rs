@@ -1,6 +1,7 @@
 mod obs;
 mod perf;
 mod policies;
+mod reward;
 mod sim;
 mod telemetry;
 mod track_loader;
