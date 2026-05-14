@@ -26,16 +26,16 @@ const TIRE_TEMP_NORM_SPAN_C: f32 = 130.0;
 /// follow an Arrhenius-style exponential.
 const DISC_OXIDATION_TEMP_C: f32 = 700.0;
 /// Per-second wear rate at the oxidation threshold. Above the
-/// threshold, rate doubles every `WEAR_TEMP_SCALE_C` of additional
+/// threshold, rate doubles every `WEAR_DOUBLING_TEMP_C` of additional
 /// temperature.
 const DISC_WEAR_BASE_RATE: f32 = 5.0e-5;
-const WEAR_TEMP_SCALE_C: f32 = 80.0;
+const WEAR_DOUBLING_TEMP_C: f32 = 80.0;
 /// Disc temperature at which catastrophic-failure risk begins to
 /// accumulate. Carbon discs structurally fail above ~1200 °C.
 const DISC_FAILURE_TEMP_C: f32 = 1100.0;
 const DISC_FAILURE_RISK_RATE: f32 = 0.05;
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct BrakeDiscTemperatures {
     pub temps: [f32; 4],
     pub wear: [f32; 4],
@@ -43,6 +43,15 @@ pub struct BrakeDiscTemperatures {
     /// Compounds exponentially past `DISC_OXIDATION_TEMP_C` and saturates
     /// at 1.0 (effectively failed disc — brake-by-wire warning territory).
     pub failure_risk: [f32; 4],
+}
+
+impl Default for BrakeDiscTemperatures {
+    /// Matches `new()`. `derive(Default)` would give temps = 0 K =
+    /// -273 °C, which cascades into nonsense Stefan-Boltzmann terms
+    /// (negative T^4 deltas, near-NaN `powi(4)` on tiny floats).
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BrakeDiscTemperatures {
@@ -67,18 +76,22 @@ impl BrakeDiscTemperatures {
             let q_rad = DISC_EMISSIVITY * STEFAN_BOLTZMANN * (2.0 * DISC_AREA) * t4_diff;
             let q_net = q_in - q_conv - q_rad;
             let dt_temp = q_net / (DISC_MASS_KG * DISC_CP);
-            self.temps[i] = (self.temps[i] + dt_temp * dt).clamp(ambient_k, 1200.0);
+            // Hard ceiling = 1200 °C in Kelvin. The prior literal 1200
+            // was Kelvin (=927 °C), capping discs below the failure
+            // threshold and silently killing the `failure_risk` path.
+            const DISC_MAX_TEMP_K: f32 = 1200.0 + 273.15;
+            self.temps[i] = (self.temps[i] + dt_temp * dt).clamp(ambient_k, DISC_MAX_TEMP_K);
 
-            // Carbon-carbon disc oxidation follows an Arrhenius-style
-            // exponential above ~700 °C. The legacy code only ticked
-            // wear past 1100 °C — leaving 700-1100 °C operation
-            // effectively wear-free, which contradicts measured F1 disc
-            // mass loss across a race. `WEAR_TEMP_SCALE_C` controls
-            // the doubling-rate per °C above the reference.
+            // Carbon-carbon disc oxidation follows a doubling-per-Δ°C
+            // curve above ~700 °C. The legacy cliff at 1100 °C left
+            // 700-1100 °C effectively wear-free, contradicting measured
+            // F1 disc mass loss. `2^(excess / WEAR_DOUBLING_TEMP_C)`
+            // gives a true doubling (vs `exp` which e-folds at ×2.718).
             let disc_c = self.temps[i] - 273.15;
             if disc_c > DISC_OXIDATION_TEMP_C {
                 let excess = disc_c - DISC_OXIDATION_TEMP_C;
-                let wear_rate = DISC_WEAR_BASE_RATE * (excess / WEAR_TEMP_SCALE_C).exp();
+                let wear_rate =
+                    DISC_WEAR_BASE_RATE * 2.0_f32.powf(excess / WEAR_DOUBLING_TEMP_C);
                 self.wear[i] = (self.wear[i] + wear_rate * dt).min(1.0);
             }
 
@@ -472,17 +485,29 @@ mod tests {
     }
 
     #[test]
-    fn test_disc_temp_stays_reasonable() {
+    fn test_disc_temp_stays_within_safe_envelope() {
+        // 60 s of 8 kN sustained braking at 30 m/s = 240 kW heat-in per
+        // disc, which exceeds the ~35 kW convective+radiative envelope.
+        // The hard clamp at 1200 °C keeps temp bounded; we verify the
+        // system doesn't run away past the disc's structural ceiling
+        // and the failure_risk path correctly accumulates under stress.
         let mut discs = BrakeDiscTemperatures::new();
         for _ in 0..3600 {
             discs.update(1.0 / 60.0, 30.0, [8000.0; 4], 25.0);
         }
         for i in 0..4 {
             assert!(
-                discs.celsius()[i] < 1000.0,
-                "Disc {} temp {} should stay under 1000C with cooling",
+                discs.celsius()[i] <= 1200.0 + 1e-3,
+                "Disc {} temp {} exceeded 1200C ceiling",
                 i,
                 discs.celsius()[i]
+            );
+            // Under sustained over-temp the failure-risk accumulator
+            // should engage (not necessarily saturate).
+            assert!(
+                discs.failure_risk[i] > 0.0,
+                "Disc {} failure_risk should accumulate above 1100 °C",
+                i
             );
         }
     }

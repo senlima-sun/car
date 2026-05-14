@@ -85,8 +85,10 @@ impl EngineTemperatureState {
 
         // Floor at ambient mapped to engine-temp normalized scale
         // (0 = 20 °C, span = 140 °C). Convective cooling can't drop
-        // the coolant below the air around the radiator.
-        let ambient_normalized = ((ambient_celsius - 20.0) / 140.0).max(0.0);
+        // the coolant below the air around the radiator. Clamped to
+        // [0, 1] so degenerate ambient inputs can't bypass the
+        // soft-ceiling path.
+        let ambient_normalized = ((ambient_celsius - 20.0) / 140.0).clamp(0.0, 1.0);
 
         // Net temperature change with soft ceiling.
         let net_change = (heat_rate - cooling_rate) * dt;
