@@ -27,7 +27,15 @@ export function useCarTelemetryLogging() {
   const prevLoggedDriftRef = useRef(false)
   const prevLoggedGripRef = useRef(1)
 
-  const update = (output: CarPhysicsOutput, pos: Vector, rot: Rotation, steer: number, dt: number) => {
+  const update = (
+    output: CarPhysicsOutput,
+    pos: Vector,
+    rot: Rotation,
+    steer: number,
+    dt: number,
+    throttle: number,
+    brakeAnalog: number,
+  ) => {
     const now = performance.now()
     const logger = IS_DEV ? getLogger() : null
 
@@ -114,6 +122,8 @@ export function useCarTelemetryLogging() {
       rot.w,
       steerVal,
       wheelRotationsRef.current,
+      throttle,
+      brakeAnalog,
     )
     checkPitLaneSpeed(output.speed_kmh / 3.6)
   }

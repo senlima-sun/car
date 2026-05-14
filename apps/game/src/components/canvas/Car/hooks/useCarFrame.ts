@@ -204,7 +204,7 @@ export function useCarFrame({
 
     telemetryRecorder.record(output, syncResult, pos, accumulator.fixedTimeStep)
 
-    telemetry.update(output, pos, rot, keys.steer, dt)
+    telemetry.update(output, pos, rot, keys.steer, dt, input.throttle ?? 0, input.brake_analog ?? 0)
 
     rubberTrails.update(
       output,

@@ -9,7 +9,7 @@ import { useLapTimeStore } from './useLapTimeStore'
 import { useTrackStore } from './useTrackStore'
 
 const MAX_GHOST_SAMPLES = 12000
-const GHOST_SAMPLE_INTERVAL_MS = 50
+export const GHOST_SAMPLE_INTERVAL_MS = 50
 
 export interface GhostBuffers {
   frameCount: number
@@ -18,6 +18,8 @@ export interface GhostBuffers {
   steerAngles: Float32Array
   wheelRotations: Float32Array
   timestamps: Float32Array
+  throttles: Float32Array
+  brakes: Float32Array
 }
 
 interface GhostCarState {
@@ -31,6 +33,8 @@ interface GhostCarState {
   ghostSteerAngles: Float32Array
   ghostWheelRotations: Float32Array
   ghostTimestamps: Float32Array
+  ghostThrottles: Float32Array
+  ghostBrakes: Float32Array
   ghostHead: number
   ghostLastSampleTime: number
 
@@ -52,6 +56,8 @@ interface GhostCarState {
     qw: number,
     steer: number,
     wheels: [number, number, number, number],
+    throttle: number,
+    brakeAnalog: number,
   ) => void
   getGhostBuffers: () => GhostBuffers
   resetGhostRecording: () => void
@@ -68,6 +74,8 @@ export const useGhostCarStore = create<GhostCarState>()((set, get) => ({
   ghostSteerAngles: new Float32Array(MAX_GHOST_SAMPLES),
   ghostWheelRotations: new Float32Array(MAX_GHOST_SAMPLES * 4),
   ghostTimestamps: new Float32Array(MAX_GHOST_SAMPLES),
+  ghostThrottles: new Float32Array(MAX_GHOST_SAMPLES),
+  ghostBrakes: new Float32Array(MAX_GHOST_SAMPLES),
   ghostHead: 0,
   ghostLastSampleTime: 0,
 
@@ -108,7 +116,7 @@ export const useGhostCarStore = create<GhostCarState>()((set, get) => ({
     set({ ghostPosition: pos, ghostTimeDelta: delta })
   },
 
-  recordGhostFrame: (x, y, z, qx, qy, qz, qw, steer, wheels) => {
+  recordGhostFrame: (x, y, z, qx, qy, qz, qw, steer, wheels, throttle, brakeAnalog) => {
     const lapState = useLapTimeStore.getState()
     if (!lapState.isRecording || lapState.currentLapStart === null) return
 
@@ -131,6 +139,8 @@ export const useGhostCarStore = create<GhostCarState>()((set, get) => ({
     state.ghostWheelRotations[h * 4 + 2] = wheels[2]
     state.ghostWheelRotations[h * 4 + 3] = wheels[3]
     state.ghostTimestamps[h] = now - lapState.currentLapStart
+    state.ghostThrottles[h] = throttle
+    state.ghostBrakes[h] = brakeAnalog
 
     set({ ghostHead: h + 1, ghostLastSampleTime: now })
   },
@@ -145,6 +155,8 @@ export const useGhostCarStore = create<GhostCarState>()((set, get) => ({
       steerAngles: new Float32Array(state.ghostSteerAngles.buffer.slice(0, n * 4)),
       wheelRotations: new Float32Array(state.ghostWheelRotations.buffer.slice(0, n * 4 * 4)),
       timestamps: new Float32Array(state.ghostTimestamps.buffer.slice(0, n * 4)),
+      throttles: new Float32Array(state.ghostThrottles.buffer.slice(0, n * 4)),
+      brakes: new Float32Array(state.ghostBrakes.buffer.slice(0, n * 4)),
     }
   },
 
