@@ -60,6 +60,14 @@ pub struct CarPhysicsState {
     fuel_flow_factor_prev: f32,
     differential: differential::DifferentialConfig,
     shaft: driveshaft::ShaftConfig,
+    /// Wave-2 feature flag: when `true`, the body lateral velocity
+    /// integrates `total_lat_force / m × dt` from the wheel-force
+    /// integrator and yaw rate derives from the force-shaped path
+    /// (`calculate_turn_dynamics_from_lateral_force`). When `false`,
+    /// the legacy lateral-correction damper + Ackermann yaw runs
+    /// unchanged. Behind a flag during plan execution so the swap
+    /// can be staged and rebaselined cleanly.
+    force_shaped_lateral: bool,
 }
 
 impl Default for CarPhysicsState {
@@ -86,6 +94,14 @@ impl Default for CarPhysicsState {
             fuel_flow_factor_prev: 1.0,
             differential: differential::DifferentialConfig::new(),
             shaft: driveshaft::ShaftConfig::new(),
+            // Default off in Wave 2: the path is wired and tested
+            // (soak + L/R symmetry pass) but a Pacejka sign-convention
+            // audit is needed before flipping defaults, since the
+            // 0.76 g calibration drop at flag-on suggests the
+            // Pacejka return sign disagrees with body +X / centripetal
+            // convention in a way the legacy lateral_correction
+            // damper masked. Tracked as a Wave 6 architecture item.
+            force_shaped_lateral: false,
         }
     }
 }
@@ -93,6 +109,19 @@ impl Default for CarPhysicsState {
 impl CarPhysicsState {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Wave-2 lateral-dynamics path selector. When `true`, body lateral
+    /// velocity integrates the wheel-force `total_lat_force` and yaw
+    /// derives from the force-shaped bicycle model; when `false` (the
+    /// pre-Wave-2 default), the Ackermann + lateral-correction damper
+    /// path runs unchanged.
+    pub fn set_force_shaped_lateral(&mut self, enabled: bool) {
+        self.force_shaped_lateral = enabled;
+    }
+
+    pub fn force_shaped_lateral(&self) -> bool {
+        self.force_shaped_lateral
     }
 
     /// Main physics step - computes all forces and returns new velocities
@@ -405,6 +434,11 @@ impl CarPhysicsState {
         // driven wheels and (b) gate the transmitted drive torque so the
         // energy balance stays physical.
         let clutch_engagement = self.clutch.engagement_for(self.rpm, dt);
+        // Bicycle-model axle distances. WEIGHT_DIST_FRONT is the static
+        // front-load fraction; CG sits `(1 - WEIGHT_DIST_FRONT) × L`
+        // behind the front axle for an F1 47/53 front/rear bias.
+        let a_front_m = WHEELBASE * (1.0 - WEIGHT_DIST_FRONT);
+        let b_rear_m = WHEELBASE * WEIGHT_DIST_FRONT;
         let wheel_force_out = self.wheel_force.step(&WheelForceInputs {
             dt,
             forward_speed,
@@ -419,6 +453,11 @@ impl CarPhysicsState {
             downforce_grip_bonus,
             combined_grip_multiplier,
             slip_angle_smoothed_deg: self.slip_angle_smoothed,
+            lateral_speed_ms: lateral_speed,
+            yaw_rate_rad_s: current_angvel.y,
+            steer_angle_rad: self.steer_angle,
+            a_front_m,
+            b_rear_m,
             clutch_engagement,
             total_gear_ratio: pt_out.total_gear_ratio,
             engine_side_omega_rad_s: gearbox_output_omega_rad_s(&pt_out),
@@ -426,28 +465,79 @@ impl CarPhysicsState {
         });
         longitudinal_force += wheel_force_out.total_long_force;
 
-        // Phase 6 (Wave 3): the lateral grip stack is unified inside the
-        // integrator (single `combined_grip_multiplier` chain for both Fx
-        // and Fy). The body-frame yaw computation stays on the legacy
-        // steering-geometry path because the force-shaped variant has a
-        // chicken-and-egg start-up problem: ω derives from Fy which
-        // derives from slip_angle which derives from ω. The legacy path
-        // sets ω directly from steering geometry + grip — wins on
-        // bootstrap stability. Force-shaped variant remains available for
-        // future use (Wave 4+ where chassis dynamics can be re-architected).
         let yaw_grip = grip_coefficient * downforce_grip_bonus;
-        let angular_velocity = if self.steer_angle.abs() > 0.005 && self.speed_ms > 0.3 {
-            steering::calculate_turn_dynamics(
-                self.steer_angle,
-                self.speed_ms,
-                yaw_grip,
-                self.drift.is_drifting(),
-            )
-        } else {
-            0.0
-        };
 
-        // Smooth angular velocity
+        // Two lateral-dynamics paths gated on `force_shaped_lateral`:
+        //
+        // Force-shaped (Wave 2+, target architecture): yaw rate derives
+        // from total wheel lat force via the bicycle centripetal model;
+        // body lateral velocity integrates `F_y / m · dt` with a continuous
+        // damper that replaces the binary `is_drifting` lateral_correction
+        // step. Front/rear grip asymmetry from per-axle slip now reaches
+        // the body.
+        //
+        // Legacy (pre-Wave-2): Ackermann + grip-multiplier yaw, with
+        // binary drift_rotation and `lateral_correction` damper on v_y.
+        let (angular_velocity, drift_rotation, new_lateral_speed_pre_clamp) =
+            if self.force_shaped_lateral {
+                let steer_sign = if self.steer_angle.abs() > f32::EPSILON {
+                    self.steer_angle.signum()
+                } else {
+                    0.0
+                };
+                let yaw = steering::calculate_turn_dynamics_from_lateral_force(
+                    wheel_force_out.total_lat_force,
+                    live_mass,
+                    self.speed_ms,
+                    steer_sign,
+                );
+                // Continuous slip-angle-dependent lateral damper. At zero
+                // slip the damping rate is small (no spurious decay);
+                // grows smoothly past the drift threshold so the car
+                // doesn't slide infinitely in a half-spin. Replaces the
+                // binary `lateral_correction` step.
+                let slip_mag_deg = self.slip_angle_smoothed.abs();
+                let damping_rate_hz = lerp(0.5, 4.0, (slip_mag_deg / 20.0).clamp(0.0, 1.0));
+                // In this codebase, positive `total_lat_force` corresponds
+                // to a right turn (see `calculate_turn_dynamics_from_lateral_force`
+                // sign-convention doc). Right turn → body accelerates
+                // toward +X (right) = positive lateral_speed delta.
+                let lat_accel = wheel_force_out.total_lat_force / live_mass;
+                let wind_lat_accel = wind_modifiers.lateral_force / live_mass;
+                let banking_accel = -banking_lateral_force / live_mass;
+                let v_y_next = lateral_speed
+                    + (lat_accel + wind_lat_accel + banking_accel) * dt
+                    - lateral_speed * damping_rate_hz * dt;
+                (yaw, 0.0, v_y_next)
+            } else {
+                let yaw = if self.steer_angle.abs() > 0.005 && self.speed_ms > 0.3 {
+                    steering::calculate_turn_dynamics(
+                        self.steer_angle,
+                        self.speed_ms,
+                        yaw_grip,
+                        self.drift.is_drifting(),
+                    )
+                } else {
+                    0.0
+                };
+                let drift_rot = if self.drift.is_drifting() {
+                    self.slip_angle_smoothed.to_radians() * 0.015
+                } else {
+                    0.0
+                };
+                let lateral_correction = self.drift.get_lateral_correction(
+                    yaw_grip,
+                    weather_modifiers.drift_lateral_correction_multiplier,
+                    if is_on_curb { 1.1 } else { 1.0 },
+                    tire_degradation.lateral_correction_penalty,
+                );
+                let wind_lat_accel = wind_modifiers.lateral_force / live_mass;
+                let banking_accel = -banking_lateral_force / live_mass;
+                let v_y_next =
+                    lateral_speed * lateral_correction + (wind_lat_accel + banking_accel) * dt;
+                (yaw, drift_rot, v_y_next)
+            };
+
         let response_rate = if self.drift.is_drifting() { 20.0 } else { 22.0 };
         self.target_angular_velocity = lerp(
             self.target_angular_velocity,
@@ -455,31 +545,8 @@ impl CarPhysicsState {
             dt * response_rate,
         );
 
-        // Add drift rotation
-        let drift_rotation = if self.drift.is_drifting() {
-            self.slip_angle_smoothed.to_radians() * 0.015
-        } else {
-            0.0
-        };
-
-        // Calculate lateral correction with tire degradation effects.
-        // Phase 6 (Wave 3) replaces the legacy axle-averaged μ-scalar
-        // `combined_grip` with `yaw_grip` (BASE × tire-deg × weather ×
-        // combined_grip_multiplier × downforce_grip_bonus).
-        let lateral_correction = self.drift.get_lateral_correction(
-            yaw_grip,
-            weather_modifiers.drift_lateral_correction_multiplier,
-            if is_on_curb { 1.1 } else { 1.0 },
-            tire_degradation.lateral_correction_penalty,
-        );
-
-        // Calculate new velocities
         let new_forward_speed = forward_speed + (longitudinal_force / live_mass) * dt;
-
-        let wind_lateral_accel = wind_modifiers.lateral_force / live_mass;
-        let banking_accel = -banking_lateral_force / live_mass;
-        let new_lateral_speed =
-            lateral_speed * lateral_correction + (wind_lateral_accel + banking_accel) * dt;
+        let new_lateral_speed = new_lateral_speed_pre_clamp;
 
         // Yaw moment uses dry mass: rotational inertia about the vertical axis
         // is dominated by the rigid chassis; fuel-tank slosh is not modelled.

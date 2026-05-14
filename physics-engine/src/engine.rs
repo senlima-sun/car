@@ -323,6 +323,16 @@ impl PhysicsEngine {
         self.override_proximity_eligible
     }
 
+    /// Wave-2 lateral-dynamics path selector. See
+    /// `CarPhysicsState::set_force_shaped_lateral`.
+    pub fn set_force_shaped_lateral(&mut self, enabled: bool) {
+        self.car.set_force_shaped_lateral(enabled);
+    }
+
+    pub fn force_shaped_lateral(&self) -> bool {
+        self.car.force_shaped_lateral()
+    }
+
     /// Returns the percentage of the per-lap Override budget used (0..1).
     pub fn get_override_energy_used_pct(&self) -> f32 {
         self.override_mode.energy_used_pct()

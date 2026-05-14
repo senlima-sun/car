@@ -24,9 +24,8 @@ pub struct WheelForceInputs {
     pub dt: f32,
     pub forward_speed: f32,
     pub drive_engaged: bool,
-    /// Total rear-axle drive torque (Nm). Component #3 (LSD) introduced
-    /// this in place of the per-corner value: the differential splits it
-    /// into RL/RR torques inside the integrator using live wheel angvel.
+    /// Total rear-axle drive torque (Nm). The LSD splits this into
+    /// RL/RR torques inside the integrator using live wheel angvel.
     pub driven_axle_torque: f32,
     pub differential: DifferentialConfig,
     pub braking_active: bool,
@@ -35,30 +34,85 @@ pub struct WheelForceInputs {
     pub rear_brake_force: f32,
     pub resolved_wheel_loads: [f32; 4],
     pub downforce_grip_bonus: f32,
-    /// Wave 3 Phase 6: full grip-stack multiplier (surface × material ×
-    /// weather × aqua × terrain × curb × thermal_shock). Both longitudinal
-    /// and lateral paths multiply this single value after G-method
-    /// weighting. Cold-rubber drop on launch is calibrated via
-    /// `BASE_TIRE_GRIP_COEFFICIENT` rather than a per-axis split.
+    /// Full grip-stack multiplier (surface × material × weather × aqua ×
+    /// terrain × curb × thermal_shock). Both longitudinal and lateral
+    /// paths multiply this single value after G-method weighting.
     pub combined_grip_multiplier: f32,
-    /// Chassis-level slip angle in degrees, after Wave 1 EMA smoothing.
-    /// Phase 1 (Wave 3) feeds it as the per-wheel slip angle (no kinematic
-    /// yaw-rate × wheel-offset correction yet — see Wave 4 backlog).
-    /// Used to compute per-wheel Fy alongside the existing Fx.
+    /// Chassis-level (body-frame) slip angle in degrees, after EMA
+    /// smoothing. Used as the low-speed fallback when bicycle
+    /// kinematics are ill-conditioned (forward_speed below threshold).
     pub slip_angle_smoothed_deg: f32,
-    /// Wave 3 Phase 5: clutch engagement on `[0, 1]`. Slipping clutch
-    /// (engagement < 1) reduces both transmitted drive torque and the
-    /// reflected engine inertia at the driven wheels.
+    /// Body-frame lateral velocity (m/s). Signed: positive = right.
+    /// Drives per-axle slip-angle decomposition.
+    pub lateral_speed_ms: f32,
+    /// Yaw rate (rad/s) about the body +Y axis from the previous step.
+    /// Combined with axle distance to produce per-axle slip angle.
+    pub yaw_rate_rad_s: f32,
+    /// Front road-wheel steer angle (radians). Applied to FL/FR slip.
+    /// Rear wheels (RL/RR) are assumed un-steered.
+    pub steer_angle_rad: f32,
+    /// CG-to-front-axle distance (m). Used in bicycle kinematics.
+    pub a_front_m: f32,
+    /// CG-to-rear-axle distance (m).
+    pub b_rear_m: f32,
+    /// Clutch engagement on `[0, 1]`. Slipping clutch reduces both
+    /// transmitted drive torque and reflected engine inertia.
     pub clutch_engagement: f32,
-    /// Wave 3 Phase 5: total transmission ratio (`gear_ratio × FINAL_DRIVE`).
-    /// Used to reflect engine inertia into the driven-wheel ODE via
-    /// `(total_gear_ratio × clutch_engagement)²`.
+    /// Total transmission ratio (`gear_ratio × FINAL_DRIVE`).
     pub total_gear_ratio: f32,
-    /// Component #4: gearbox-output angular velocity (rad/s) seen by both
-    /// rear half-shafts. Equals `engine_omega_rad_s / total_gear_ratio`
-    /// when the clutch is locked. Drives the shaft Δω.
+    /// Gearbox-output angular velocity (rad/s) seen by both rear
+    /// half-shafts. Equals `engine_omega / total_gear_ratio` at locked
+    /// clutch.
     pub engine_side_omega_rad_s: f32,
     pub shaft: ShaftConfig,
+}
+
+/// Per-wheel slip angle from bicycle kinematics. Returns degrees so the
+/// caller can keep the existing Pacejka call signature.
+///
+/// Standard formulation (Milliken & Milliken Ch. 5):
+///   α_f = δ − atan((v_y + a · ω) / |v_x|)
+///   α_r =     − atan((v_y − b · ω) / |v_x|)
+///
+/// Falls back to the chassis-level slip angle when (a) `|forward_speed|`
+/// is below `FORWARD_SPEED_FLOOR_MS` (the formula divides by v_x), or
+/// (b) no kinematic information is supplied (lateral_speed, yaw_rate,
+/// and steer all near zero) — that case is well-defined as `α = chassis`
+/// per the rigid-axle approximation, and the fallback keeps test
+/// fixtures that inject the chassis slip directly working without
+/// having to back-solve v_y from a target α.
+pub(crate) fn per_axle_slip_angle_deg(
+    chassis_slip_deg: f32,
+    lateral_speed_ms: f32,
+    yaw_rate_rad_s: f32,
+    forward_speed_ms: f32,
+    steer_angle_rad: f32,
+    axle_distance_m: f32,
+    is_front_axle: bool,
+) -> f32 {
+    const FORWARD_SPEED_FLOOR_MS: f32 = 1.0;
+    const KINEMATIC_INPUT_EPS: f32 = 1e-6;
+    if forward_speed_ms.abs() < FORWARD_SPEED_FLOOR_MS {
+        return chassis_slip_deg;
+    }
+    let no_kinematic_input = lateral_speed_ms.abs() < KINEMATIC_INPUT_EPS
+        && yaw_rate_rad_s.abs() < KINEMATIC_INPUT_EPS
+        && steer_angle_rad.abs() < KINEMATIC_INPUT_EPS;
+    if no_kinematic_input {
+        return chassis_slip_deg;
+    }
+    let axle_lat_term = if is_front_axle {
+        lateral_speed_ms + axle_distance_m * yaw_rate_rad_s
+    } else {
+        lateral_speed_ms - axle_distance_m * yaw_rate_rad_s
+    };
+    let alpha_rad = (axle_lat_term / forward_speed_ms.abs()).atan();
+    let alpha_with_steer = if is_front_axle {
+        steer_angle_rad - alpha_rad
+    } else {
+        -alpha_rad
+    };
+    alpha_with_steer.to_degrees()
 }
 
 const SHAFT_DISENGAGE_DECAY_TAU_S: f32 = 0.05;
@@ -123,7 +177,27 @@ impl WheelForceIntegrator {
         let omega_cap = (i.forward_speed.abs() / TIRE_RADIUS) * WHEEL_OMEGA_OVERSPEED_RATIO
             + WHEEL_OMEGA_OVERSPEED_BIAS_RAD_S;
         let v_floor = i.forward_speed.abs().max(SLIP_RATIO_VEL_FLOOR_MS);
-        let slip_angle_rad = i.slip_angle_smoothed_deg.to_radians();
+        // Per-axle slip angles from bicycle kinematics. Front and rear
+        // see different α once the car is yawing or sliding — the chassis
+        // slip angle alone collapses the front/rear balance.
+        let alpha_front_deg = per_axle_slip_angle_deg(
+            i.slip_angle_smoothed_deg,
+            i.lateral_speed_ms,
+            i.yaw_rate_rad_s,
+            i.forward_speed,
+            i.steer_angle_rad,
+            i.a_front_m,
+            true,
+        );
+        let alpha_rear_deg = per_axle_slip_angle_deg(
+            i.slip_angle_smoothed_deg,
+            i.lateral_speed_ms,
+            i.yaw_rate_rad_s,
+            i.forward_speed,
+            i.steer_angle_rad,
+            i.b_rear_m,
+            false,
+        );
         // Wave 3 Phase 5: reflected engine inertia for driven wheels.
         // I_eff = WHEEL_INERTIA + ENGINE_INERTIA × (total_gear_ratio × engagement)²
         // At locked clutch in 1st gear (gear=3.6 × final=2.9 ≈ 10.4) this is
@@ -199,10 +273,15 @@ impl WheelForceIntegrator {
                 }
                 let brake_torque_corner =
                     per_axle_brake * BRAKE_AXLE_TO_CORNER_SPLIT * i.brake_torque_modifier * TIRE_RADIUS;
-                // Brake opposes macro vehicle motion. Using ω.signum() causes
-                // a sign-flip oscillation when ω crosses zero (signum(0)=+1)
-                // which pumps spurious force into prev_wheel_fx.
-                let brake_signed_torque = -brake_torque_corner * i.forward_speed.signum();
+                // Brake opposes macro vehicle motion. `signum()` has a hard
+                // discontinuity at zero (signum(0) = +1) that pumps spurious
+                // force into prev_wheel_fx on sign crossings. A `tanh`
+                // smooth-sign with v_eps = 0.5 m/s is C¹-continuous, agrees
+                // with `signum` away from the origin, and goes through 0 at
+                // v = 0.
+                const BRAKE_SIGN_V_EPS: f32 = 0.5;
+                let smooth_sign = (i.forward_speed / BRAKE_SIGN_V_EPS).tanh();
+                let brake_signed_torque = -brake_torque_corner * smooth_sign;
                 let tire_reaction_torque = self.prev_wheel_fx[wheel] * TIRE_RADIUS;
                 let net_torque = drive_torque + brake_signed_torque - tire_reaction_torque;
                 let omega_before = self.wheel_angvel[wheel];
@@ -225,6 +304,14 @@ impl WheelForceIntegrator {
                     .clamp(-SLIP_RATIO_ABS_CLAMP, SLIP_RATIO_ABS_CLAMP);
             wheel_slip_ratio_now[wheel] = slip_ratio;
             let fz = i.resolved_wheel_loads[wheel].max(0.0);
+            // Per-axle slip angle: FL/FR see α_front (includes steer δ
+            // and +a·ω term); RL/RR see α_rear (no steer, −b·ω term).
+            let slip_angle_deg_for_wheel = if is_front {
+                alpha_front_deg
+            } else {
+                alpha_rear_deg
+            };
+            let slip_angle_rad = slip_angle_deg_for_wheel.to_radians();
             let fx_pure = sanitize(
                 pacejka_longitudinal(slip_ratio, fz, &PacejkaCoeffs::LONGITUDINAL_DEFAULT),
                 0.0,
@@ -238,11 +325,11 @@ impl WheelForceIntegrator {
                 ),
                 0.0,
             );
-            // Phase 2 (Wave 3): Pacejka G-method weights pure-slip Fx by
-            // lateral slip and pure-slip Fy by longitudinal slip. At zero
-            // off-axis slip both multipliers are 1.0 (pure-slip preserved).
-            // The friction-ellipse below is now a defensive guard since
-            // G-method already keeps total magnitude inside the circle.
+            // Pacejka G-method weights pure-slip Fx by lateral slip and
+            // pure-slip Fy by longitudinal slip. At zero off-axis slip
+            // both multipliers are 1.0 (pure-slip preserved). The
+            // friction-ellipse below is a defensive guard since G-method
+            // already keeps total magnitude inside the circle.
             let g_x = gx_combined(
                 slip_ratio,
                 slip_angle_rad,
@@ -309,6 +396,13 @@ mod tests {
             downforce_grip_bonus: 1.0,
             combined_grip_multiplier: 1.0,
             slip_angle_smoothed_deg: 0.0,
+            lateral_speed_ms: 0.0,
+            yaw_rate_rad_s: 0.0,
+            steer_angle_rad: 0.0,
+            // 2026 spec: 3.40 m wheelbase, 47/53 front/rear bias.
+            // a_front = L × (1 − 0.47), b_rear = L × 0.47.
+            a_front_m: 3.40 * 0.53,
+            b_rear_m: 3.40 * 0.47,
             // Default: idle (slipping clutch, low inertia coupling). Tests
             // that need locked-clutch behaviour override these explicitly.
             clutch_engagement: 0.1,
@@ -316,6 +410,66 @@ mod tests {
             engine_side_omega_rad_s: 0.0,
             shaft: ShaftConfig::new(),
         }
+    }
+
+    // -------- per_axle_slip_angle_deg --------
+
+    #[test]
+    fn per_axle_slip_falls_back_to_chassis_below_min_speed() {
+        let alpha = per_axle_slip_angle_deg(7.5, 0.5, 0.0, 0.5, 0.0, 1.8, true);
+        assert!((alpha - 7.5).abs() < 1e-3);
+    }
+
+    #[test]
+    fn per_axle_slip_falls_back_when_no_kinematic_input() {
+        // Speed is high enough but v_y, ω, δ are all zero — fall back so
+        // test fixtures that inject chassis slip continue to work.
+        let alpha = per_axle_slip_angle_deg(7.5, 0.0, 0.0, 20.0, 0.0, 1.8, true);
+        assert!((alpha - 7.5).abs() < 1e-3);
+    }
+
+    #[test]
+    fn per_axle_slip_pure_sideslip_matches_chassis_at_both_axles() {
+        // With ω = 0, δ = 0, both axles see the same lateral velocity
+        // and the result is atan(v_y / v_x) on both — i.e. the chassis
+        // slip angle. Sign convention: rear gives the negation so the
+        // *magnitude* is what's preserved.
+        let v_x = 30.0_f32;
+        let v_y = 2.0_f32;
+        let chassis_deg = (v_y / v_x).atan().to_degrees();
+        let alpha_front = per_axle_slip_angle_deg(0.0, v_y, 0.0, v_x, 0.0, 1.8, true);
+        let alpha_rear = per_axle_slip_angle_deg(0.0, v_y, 0.0, v_x, 0.0, 1.6, false);
+        assert!((alpha_front + chassis_deg).abs() < 0.05);
+        assert!((alpha_rear + chassis_deg).abs() < 0.05);
+    }
+
+    #[test]
+    fn per_axle_slip_yaw_rate_increases_front_alpha_decreases_rear() {
+        // Right-yaw rate ω > 0 with no sideslip: front sees +a·ω lateral
+        // term → larger |α|, rear sees −b·ω → smaller |α| (sign flip
+        // because rear's lat-term is negative).
+        let v_x = 30.0;
+        let yaw = 0.5; // rad/s
+        let a = 1.8;
+        let b = 1.6;
+        let alpha_front =
+            per_axle_slip_angle_deg(0.0, 0.0, yaw, v_x, 0.0, a, true);
+        let alpha_rear =
+            per_axle_slip_angle_deg(0.0, 0.0, yaw, v_x, 0.0, b, false);
+        assert!(alpha_front < 0.0, "front α should be negative, got {}", alpha_front);
+        assert!(alpha_rear > 0.0, "rear α should be positive, got {}", alpha_rear);
+    }
+
+    #[test]
+    fn per_axle_slip_steer_only_sets_front_alpha_to_steer() {
+        // Steady-state straight-line at zero v_y, ω: α_f = δ, α_r = 0.
+        let steer = 0.1_f32; // ~5.7°
+        let alpha_front =
+            per_axle_slip_angle_deg(0.0, 0.0, 0.0, 30.0, steer, 1.8, true);
+        let alpha_rear =
+            per_axle_slip_angle_deg(0.0, 0.0, 0.0, 30.0, steer, 1.6, false);
+        assert!((alpha_front - steer.to_degrees()).abs() < 1e-3);
+        assert!(alpha_rear.abs() < 1e-3);
     }
 
     #[test]

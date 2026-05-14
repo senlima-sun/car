@@ -269,6 +269,21 @@ impl PhysicsEngine {
         self.inner.get_override_proximity_eligible()
     }
 
+    /// Toggle the Wave-2 force-shaped lateral-dynamics path. When `true`,
+    /// body lateral velocity integrates total wheel lateral force and
+    /// yaw rate derives from the bicycle centripetal model. When `false`
+    /// (default), the legacy Ackermann + lateral-correction-damper path
+    /// runs unchanged.
+    #[wasm_bindgen]
+    pub fn set_force_shaped_lateral(&mut self, enabled: bool) {
+        self.inner.set_force_shaped_lateral(enabled);
+    }
+
+    #[wasm_bindgen]
+    pub fn force_shaped_lateral(&self) -> bool {
+        self.inner.force_shaped_lateral()
+    }
+
     /// Override Mode budget used this lap (0.0..1.0).
     #[wasm_bindgen]
     pub fn get_override_energy_used_pct(&self) -> f32 {

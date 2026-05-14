@@ -304,3 +304,46 @@ fn soak_override_mode_toggle_stress() {
         angvel = bundle.physics.angular_velocity;
     }
 }
+
+
+/// Wave-2 force-shaped lateral path: 1000-step soak with adversarial
+/// inputs. Asserts no NaN propagation and bounded velocities under the
+/// new bicycle-model lateral dynamics + per-axle slip.
+#[test]
+fn soak_force_shaped_lateral_dynamics() {
+    let mut engine = PhysicsEngine::new();
+    engine.set_force_shaped_lateral(true);
+    let mut rng = XorShift32::new(0x2C3D_4E5F);
+
+    let mut linvel = [0.0_f32; 3];
+    let mut angvel = [0.0_f32; 3];
+    let position = [0.0_f32, 1.0, 0.0];
+    let rotation = [0.0_f32, 0.0, 0.0, 1.0];
+
+    for frame in 0..1_000 {
+        let dt = pick_dt(&mut rng);
+        let input = build_input(&mut rng);
+        let surface_normal = pick_surface_normal(&mut rng);
+
+        let bundle = engine.step_and_sync(
+            dt,
+            input,
+            position,
+            rotation,
+            linvel,
+            angvel,
+            surface_normal,
+            None,
+        );
+        assert_output_finite(&bundle.physics, frame);
+        linvel = bundle.physics.linear_velocity;
+        angvel = bundle.physics.angular_velocity;
+        let lin_mag_sq = linvel[0] * linvel[0] + linvel[1] * linvel[1] + linvel[2] * linvel[2];
+        assert!(
+            lin_mag_sq < LIN_VEL_BLOWUP_LIMIT_SQ,
+            "linear velocity blow-up at frame {}: |v|^2={}",
+            frame,
+            lin_mag_sq
+        );
+    }
+}

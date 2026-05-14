@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "captured_at": "wave-1 plan execution: 2026 spec recalibration",
-  "notes": "Rebaselined after Wave-1 plan execution. Changes from the previous Wave-4 baseline: PEAK_TORQUE_NM 480→340 (2026 ICE spec, MGU-H removal), WHEELBASE 3.38→3.40 (FIA 2026 max), LAP_DEPLOY_CAP_MJ 9.0→8.5 (deploy ≠ recovery), Overtake Mode P(v) profile (7100−20v with proximity gate), fuel-flow flat 3000 MJ/h (dropped 2014-era RPM ramp), engine wheel-geometry SSOT (was hardcoded 1.525m track). The 0-100 increase from 3.68→4.47s reflects the realistic ICE peak torque drop; lat-g shifts are second-order downstream effects of the new wheel geometry and the wheel-position fix near the track-edge contact patches.",
+  "captured_at": "wave-2 step 1: per-axle slip-angle decomposition + brake-sign smoothing",
+  "notes": "Rebaselined after Wave-2 Step 1 (per-axle bicycle kinematics) + Step 5 (forward_speed.signum() → tanh smooth-sign at v_eps = 0.5 m/s). Front/rear now see different α once the car yaws or slides, which restores front-vs-rear grip asymmetry. Dry 80m lat-g rose 8.123 → 8.164 (+0.5%); oil 80m lat-g fell 7.871 → 7.741 (-1.7%) — the oil scenario has lower grip so the per-axle effect dominates over the dry case.",
   "scenarios": {
     "zero_to_100_kmh_seconds": 4.4750,
     "fifty_ms_to_zero_stop_distance_m": 52.6731,
-    "steady_state_80m_radius_peak_lat_g": 8.1228,
+    "steady_state_80m_radius_peak_lat_g": 8.1638,
     "drs_active_200_to_300_kmh_seconds": 7.6667,
     "hundred_kmh_to_zero_stop_distance_m": 18.5445,
     "wet_fifty_ms_to_zero_stop_distance_m": 88.2055,
     "wet_steady_state_80m_radius_peak_lat_g": 8.1588,
-    "oil_steady_state_80m_radius_peak_lat_g": 7.8710
+    "oil_steady_state_80m_radius_peak_lat_g": 7.7408
   }
 }
