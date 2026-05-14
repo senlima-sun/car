@@ -6,7 +6,7 @@ This repo is a pnpm + Turborepo workspace.
 
 - `apps/game/` — F1 simulator SPA (React + Three.js + WASM).
 - `physics-engine/` — Rust crate compiled to WASM. Lives at the repo root because it is a Cargo crate, not a pnpm package.
-- `packages/physics/` — TS stub (placeholder for future re-export of the WASM bridge).
+- `packages/physics/` — TS package owning the wasm-pack output + type-safe bridge. Consumed by `apps/game` as `@car/physics`. The React `PhysicsProvider` stays in `apps/game/src/wasm/` because it is React-coupled.
 - `scripts/` — root-level data pipeline (track ingest, perf smoke, validation).
 
 ## Tooling
@@ -43,11 +43,11 @@ After exporting all four env vars:
 
 ```sh
 # Cold: should upload to remote
-rm -rf .turbo apps/game/dist apps/game/src/wasm/pkg
+rm -rf .turbo apps/game/dist packages/physics/pkg
 pnpm turbo run build --summarize
 
 # Warm-remote: should pull from remote (fast)
-rm -rf .turbo apps/game/dist apps/game/src/wasm/pkg
+rm -rf .turbo apps/game/dist packages/physics/pkg
 pnpm turbo run build --summarize
 ```
 
@@ -81,4 +81,6 @@ pnpm --filter @car/game compress:glb
 ## Known follow-ups
 
 - **WASM debug vs release**: `pnpm run build:wasm` produces debug WASM and is the cached task. `pnpm run build:wasm:release` is uncached and produces optimized WASM. Before wiring `pnpm run build` to a production deploy, decide whether to add a separate `//#build:wasm:release` turbo task with its own output dir, or to switch the default `build:wasm` to release once dev iteration speed is no longer the dominant concern.
-- **packages/physics build inputs**: The `build` task's input globs (`src/**`, `build/**`, `public/**`, `index.html`, `bunfig.toml`) are `@car/game`-shaped. When `packages/physics` gets a real `build` script in Phase 2, give it a per-package input override so its cache key tracks only its own files.
+- **`PhysicsProvider` package promotion**: `apps/game/src/wasm/PhysicsProvider.tsx` is the remaining React-coupled surface that has not been moved into `@car/physics`. A future `packages/physics-react/` is a candidate when a second React consumer (e.g. a marketing demo) needs the provider.
+- **`/src/wasm/pkg/...` hardcoded URL**: `packages/physics/src/PhysicsBridge.ts` fetches the WASM binary via the absolute URL `/src/wasm/pkg/car_physics_engine_bg.wasm`. The dev server's `STATIC_PREFIXES` and `apps/game/build/build.ts` `WASM_DIST_DIR` keep the disk-to-URL mapping aligned. Phase 2B (bundler swap) will replace this hardcoded URL with a Vite asset import.
+- **First run after this phase is a cache MISS**: the `//#build:wasm` outputs glob changed from `apps/game/src/wasm/pkg/**` to `packages/physics/pkg/**`. The first turbo run after pulling this commit must MISS once; subsequent runs HIT normally.
