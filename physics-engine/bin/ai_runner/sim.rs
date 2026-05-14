@@ -339,3 +339,95 @@ fn arc_signed_delta(prev: f32, current: f32, total: f32, backward: bool) -> f32 
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use car_physics_engine::track_geometry::Polyline;
+
+    fn make_circle_polyline(radius: f32, n: usize) -> Polyline {
+        let mut points = Vec::with_capacity(n);
+        let mut cumulative_arc = Vec::with_capacity(n);
+        let step = std::f32::consts::TAU / (n as f32);
+        let chord = 2.0 * radius * (step * 0.5).sin();
+        for i in 0..n {
+            let theta = step * (i as f32);
+            points.push([radius * theta.cos(), radius * theta.sin()]);
+            cumulative_arc.push(chord * (i as f32));
+        }
+        Polyline {
+            points,
+            cumulative_arc,
+            closed: true,
+        }
+    }
+
+    #[test]
+    fn policy_context_curvature_offset_matches_obs() {
+        let radius = 50.0_f32;
+        let pl = make_circle_polyline(radius, 400);
+        let total_arc = pl.cumulative_arc.last().copied().unwrap();
+        let ctx = PolicyContext {
+            polyline: &pl,
+            total_arc,
+            backward: false,
+        };
+        let current_arc = 80.0_f32;
+        let offset_m = 10.0_f32;
+
+        let via_ctx = ctx.curvature_at_arc_offset(current_arc, offset_m);
+        let via_obs = curvature_at_arc(&pl, current_arc + offset_m, total_arc, 0.5, false);
+
+        assert_eq!(
+            via_ctx.to_bits(),
+            via_obs.to_bits(),
+            "PolicyContext lookahead must match obs::curvature_at_arc bit-for-bit (via_ctx={via_ctx}, via_obs={via_obs})",
+        );
+    }
+
+    #[test]
+    fn policy_context_curvature_offset_recovers_inverse_radius() {
+        let radius = 80.0_f32;
+        let pl = make_circle_polyline(radius, 2400);
+        let total_arc = pl.cumulative_arc.last().copied().unwrap();
+        let ctx = PolicyContext {
+            polyline: &pl,
+            total_arc,
+            backward: false,
+        };
+        let kappa = ctx.curvature_at_arc_offset(100.0, 50.0).abs();
+        let expected = 1.0 / radius;
+        assert!(
+            (kappa - expected).abs() < expected * 0.25,
+            "expected |kappa|≈{expected}, got {kappa}",
+        );
+    }
+
+    #[test]
+    fn policy_context_backward_flips_offset_direction() {
+        let radius = 50.0_f32;
+        let pl = make_circle_polyline(radius, 400);
+        let total_arc = pl.cumulative_arc.last().copied().unwrap();
+        let fwd = PolicyContext {
+            polyline: &pl,
+            total_arc,
+            backward: false,
+        };
+        let bwd = PolicyContext {
+            polyline: &pl,
+            total_arc,
+            backward: true,
+        };
+        let arc = 100.0_f32;
+        let offset = 25.0_f32;
+
+        let k_fwd = fwd.curvature_at_arc_offset(arc, offset);
+        let k_bwd = bwd.curvature_at_arc_offset(arc, offset);
+        let k_fwd_raw =
+            curvature_at_arc(&pl, arc + offset, total_arc, 0.5, false);
+        let k_bwd_raw =
+            curvature_at_arc(&pl, arc - offset, total_arc, 0.5, true);
+        assert_eq!(k_fwd.to_bits(), k_fwd_raw.to_bits());
+        assert_eq!(k_bwd.to_bits(), k_bwd_raw.to_bits());
+    }
+}
+
