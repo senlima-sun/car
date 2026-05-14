@@ -1,5 +1,9 @@
 #![allow(dead_code)]
 
+use std::fs;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
+
 use car_physics_engine::engine::PhysicsEngine;
 
 use crate::policies::lookahead::{LookaheadPolicy, LOOKAHEAD_PARAM_COUNT};
@@ -37,7 +41,35 @@ pub fn compute_fitness(
     arc_length_progress_m * speed_factor - 50.0 * off_track_seconds - 5.0 * sim_time_s + lap_bonus
 }
 
+pub fn evaluate_with_trace(
+    params: &[f32; LOOKAHEAD_PARAM_COUNT],
+    track: &LoadedTrack,
+    engine: &mut PhysicsEngine,
+    record_telemetry: bool,
+    max_t_s: f32,
+    off_track_kill_s: f32,
+    reward_trace_path: Option<&Path>,
+) -> EvalResult {
+    let result = evaluate_inner(params, track, engine, record_telemetry, max_t_s, off_track_kill_s);
+    if let (Some(path), Some(telemetry)) = (reward_trace_path, &result.telemetry) {
+        let rows = sample_reward_trace(telemetry);
+        let _ = write_reward_trace_csv_atomic(path, &rows);
+    }
+    result
+}
+
 pub fn evaluate(
+    params: &[f32; LOOKAHEAD_PARAM_COUNT],
+    track: &LoadedTrack,
+    engine: &mut PhysicsEngine,
+    record_telemetry: bool,
+    max_t_s: f32,
+    off_track_kill_s: f32,
+) -> EvalResult {
+    evaluate_inner(params, track, engine, record_telemetry, max_t_s, off_track_kill_s)
+}
+
+fn evaluate_inner(
     params: &[f32; LOOKAHEAD_PARAM_COUNT],
     track: &LoadedTrack,
     engine: &mut PhysicsEngine,
@@ -97,6 +129,100 @@ pub fn evaluate(
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct RewardTraceRow {
+    pub t_s: f32,
+    pub progress_delta_m: f32,
+    pub speed_factor: f32,
+    pub off_track_penalty_delta: f32,
+    pub instantaneous_fitness: f32,
+}
+
+pub fn sample_reward_trace(telemetry: &[TelemetryFrame]) -> Vec<RewardTraceRow> {
+    if telemetry.is_empty() {
+        return Vec::new();
+    }
+    let mut rows: Vec<RewardTraceRow> = Vec::with_capacity(telemetry.len() / 120 + 4);
+    let mut next_sample_t = 0.0_f32;
+    let mut prev_arc = telemetry[0].arc_length_m;
+    let mut off_track_seconds_cum: f32 = 0.0;
+    let mut prev_t = telemetry[0].t_s;
+    let mut prev_off_track_seconds: f32 = 0.0;
+
+    for frame in telemetry {
+        let dt = (frame.t_s - prev_t).max(0.0);
+        if frame.is_off_track {
+            off_track_seconds_cum += dt;
+        }
+        prev_t = frame.t_s;
+
+        if frame.t_s + 1e-6 < next_sample_t {
+            continue;
+        }
+        let progress_delta = (frame.arc_length_m - prev_arc).max(0.0);
+        prev_arc = frame.arc_length_m;
+        let off_track_penalty_delta = (off_track_seconds_cum - prev_off_track_seconds) * 50.0;
+        prev_off_track_seconds = off_track_seconds_cum;
+        let avg_speed_kmh = (frame.arc_length_m / frame.t_s.max(1.0)) * 3.6;
+        let speed_factor = (avg_speed_kmh / 100.0).clamp(0.5, 4.0);
+        let instantaneous_fitness =
+            progress_delta * speed_factor - off_track_penalty_delta - 5.0;
+
+        rows.push(RewardTraceRow {
+            t_s: frame.t_s,
+            progress_delta_m: progress_delta,
+            speed_factor,
+            off_track_penalty_delta,
+            instantaneous_fitness,
+        });
+
+        next_sample_t = (frame.t_s.floor() + 1.0).max(next_sample_t + 1.0);
+    }
+
+    rows
+}
+
+pub fn write_reward_trace_csv_atomic(
+    path: &Path,
+    rows: &[RewardTraceRow],
+) -> io::Result<()> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+
+    let mut tmp: PathBuf = path.to_path_buf();
+    let mut name = tmp
+        .file_name()
+        .map(|s| s.to_os_string())
+        .unwrap_or_else(|| std::ffi::OsString::from("reward-trace.csv"));
+    name.push(".tmp");
+    tmp.set_file_name(name);
+
+    {
+        let mut f = fs::File::create(&tmp)?;
+        writeln!(
+            f,
+            "t_s,progress_delta_m,speed_factor,off_track_penalty_delta,instantaneous_fitness"
+        )?;
+        for r in rows {
+            writeln!(
+                f,
+                "{:.3},{:.3},{:.4},{:.3},{:.3}",
+                r.t_s,
+                r.progress_delta_m,
+                r.speed_factor,
+                r.off_track_penalty_delta,
+                r.instantaneous_fitness
+            )?;
+        }
+        f.flush()?;
+    }
+    fs::rename(&tmp, path)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,6 +261,36 @@ mod tests {
             (clean - dirty - 5.0 * 50.0).abs() < 1e-3,
             "off-track penalty must be exactly 50 per second",
         );
+    }
+
+    #[test]
+    fn sample_reward_trace_emits_roughly_one_row_per_second() {
+        let mut frames: Vec<TelemetryFrame> = Vec::new();
+        for i in 0..1200 {
+            frames.push(TelemetryFrame {
+                t_s: (i as f32) / 120.0,
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                qx: 0.0,
+                qy: 0.0,
+                qz: 0.0,
+                qw: 1.0,
+                speed_kmh: 100.0,
+                throttle: 1.0,
+                brake: 0.0,
+                steer: 0.0,
+                is_off_track: false,
+                lateral_distance_m: 0.0,
+                arc_length_m: (i as f32) * 0.231,
+            });
+        }
+        let rows = sample_reward_trace(&frames);
+        assert!(rows.len() >= 9 && rows.len() <= 12, "got {} rows", rows.len());
+        for r in &rows {
+            assert!(r.instantaneous_fitness.is_finite());
+            assert!(r.speed_factor >= 0.5 && r.speed_factor <= 4.0);
+        }
     }
 
     #[test]
