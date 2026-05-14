@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import App from '@/App'
+import { ExportDemoButton } from '@/components/ui/HUD/ExportDemoButton'
 import { LoadAiGhostButton } from '@/components/ui/HUD/LoadAiGhostButton'
 import { useSessionStore } from '@/stores/useSessionStore'
 import { useSyncGameStatus } from './-useSyncGameStatus'
@@ -14,6 +15,7 @@ function TestModeRoute() {
     <>
       <App />
       <LoadAiGhostButton />
+      <ExportDemoButton />
     </>
   )
 }
