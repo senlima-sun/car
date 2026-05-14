@@ -384,6 +384,45 @@ fn off_track_windowed_equals_full_for_local_query() {
 }
 
 #[test]
+fn sensor_regression_outer_tire_pressing_line_stays_on_track() {
+    let pl = straight_z_polyline(200.0, 1.0);
+    let q = yaw_quat(0.0);
+    let car_x = HALF_WIDTH - TRACK_WIDTH_FRONT * 0.5;
+    let state = seed_state(&pl, car_x, 50.0);
+    let r = check_off_track(
+        &pl, car_x, 50.0, q[0], q[1], q[2], q[3], HALF_WIDTH, ENTER_TH, EXIT_TH, WHEELBASE,
+        TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, state,
+    );
+    assert!(
+        !r.is_off_track,
+        "outer wheel kissing the white line must not trigger (was a prod bug under sensor heuristic)",
+    );
+}
+
+#[test]
+fn sensor_regression_yaw_jitter_inside_ribbon_no_phantom_violations() {
+    let pl = straight_z_polyline(200.0, 1.0);
+    let mut state = seed_state(&pl, 0.0, 50.0);
+    let mut violations: u32 = 0;
+    for frame in 0..120 {
+        let jitter = ((frame as f32) * 0.7).sin() * 0.02;
+        let q = yaw_quat(jitter);
+        let r = check_off_track(
+            &pl, 0.0, 50.0 + jitter, q[0], q[1], q[2], q[3], HALF_WIDTH, ENTER_TH, EXIT_TH,
+            WHEELBASE, TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, state,
+        );
+        if !state.is_off_track && r.is_off_track {
+            violations += 1;
+        }
+        state = OffTrackState { is_off_track: r.is_off_track, arc_cursor: r.arc_cursor };
+    }
+    assert_eq!(
+        violations, 0,
+        "tiny yaw + position jitter inside ribbon must never trigger (sensor heuristic would fire here)",
+    );
+}
+
+#[test]
 fn wheel_positions_match_quat_construction() {
     let yaw = 0.4_f32;
     let pos = wheel_world_positions(10.0, 20.0, yaw, WHEELBASE, TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR);
