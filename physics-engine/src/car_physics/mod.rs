@@ -696,10 +696,12 @@ impl CarPhysicsState {
     }
 
     pub fn live_mass_kg(&self) -> f32 {
-        // Floor at MIN_LIVE_MASS_KG. CAR_MASS_DRY + fuel should never
-        // approach zero in normal operation, but a NaN/negative fuel
-        // value from a corrupted state would propagate inf/nan through
-        // every `force / mass` division downstream.
+        // Belt-and-suspenders floor. `fuel.rs` already sanitizes and
+        // clamps `fuel_mass_kg` at the write boundary; this floor is
+        // the last defense if a future change bypasses that path
+        // (e.g. direct field write) and lets a NaN/negative slip
+        // through. Without it the resulting `inf/nan` propagates
+        // through every `force / mass` division.
         const MIN_LIVE_MASS_KG: f32 = 100.0;
         (crate::constants::car::CAR_MASS_DRY + self.fuel.fuel_mass_kg()).max(MIN_LIVE_MASS_KG)
     }

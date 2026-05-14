@@ -1000,21 +1000,7 @@ impl PhysicsEngine {
         // Update thermal shock recovery
         self.tire_temperature.update_thermal_shock(dt);
 
-        // Update tire material science
-        let tire_temps_for_material = [
-            (self.tire_temperature.get_temperatures().front_left_inner
-                + self.tire_temperature.get_temperatures().front_left_outer)
-                / 2.0,
-            (self.tire_temperature.get_temperatures().front_right_inner
-                + self.tire_temperature.get_temperatures().front_right_outer)
-                / 2.0,
-            (self.tire_temperature.get_temperatures().rear_left_inner
-                + self.tire_temperature.get_temperatures().rear_left_outer)
-                / 2.0,
-            (self.tire_temperature.get_temperatures().rear_right_inner
-                + self.tire_temperature.get_temperatures().rear_right_outer)
-                / 2.0,
-        ];
+        let tire_temps_for_material = self.tire_temperature.get_temperatures().per_wheel_avg();
         self.tire_material.update(dt, &tire_temps_for_material);
 
         // Integrate material grip into combined_grip
