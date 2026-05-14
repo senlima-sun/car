@@ -23,11 +23,19 @@ pub struct EvalResult {
     pub telemetry: Option<Vec<TelemetryFrame>>,
 }
 
+pub const OFF_TRACK_SECONDS_PENALTY: f32 = 300.0;
+pub const OFF_TRACK_COUNT_PENALTY: f32 = 2.0;
+pub const INPUT_JITTER_PENALTY: f32 = 0.5;
+pub const SIM_TIME_PENALTY: f32 = 5.0;
+pub const INPUT_JITTER_WINDOW_FRAMES: usize = 120;
+
 #[inline]
 pub fn compute_fitness(
     arc_length_progress_m: f32,
     sim_time_s: f32,
     off_track_seconds: f32,
+    off_track_count: u32,
+    input_jitter: f32,
     lap_completed: bool,
     lap_time_s: f32,
 ) -> f32 {
@@ -38,7 +46,51 @@ pub fn compute_fitness(
     } else {
         0.0
     };
-    arc_length_progress_m * speed_factor - 50.0 * off_track_seconds - 5.0 * sim_time_s + lap_bonus
+    let off_track_count_f = off_track_count as f32;
+    arc_length_progress_m * speed_factor
+        - OFF_TRACK_SECONDS_PENALTY * off_track_seconds
+        - OFF_TRACK_COUNT_PENALTY * off_track_count_f
+        - SIM_TIME_PENALTY * sim_time_s
+        - INPUT_JITTER_PENALTY * input_jitter
+        + lap_bonus
+}
+
+#[inline]
+pub fn compute_input_jitter(telemetry: &[TelemetryFrame]) -> f32 {
+    if telemetry.len() < 2 {
+        return 0.0;
+    }
+    let window = INPUT_JITTER_WINDOW_FRAMES;
+    let mut sum = 0.0_f32;
+    let mut start = 0usize;
+    while start < telemetry.len() {
+        let end = (start + window).min(telemetry.len());
+        if end - start < 2 {
+            break;
+        }
+        let n = (end - start) as f32;
+        let mut steer_sum = 0.0_f32;
+        let mut throttle_sum = 0.0_f32;
+        for frame in &telemetry[start..end] {
+            steer_sum += frame.steer;
+            throttle_sum += frame.throttle;
+        }
+        let steer_mean = steer_sum / n;
+        let throttle_mean = throttle_sum / n;
+        let mut steer_var = 0.0_f32;
+        let mut throttle_var = 0.0_f32;
+        for frame in &telemetry[start..end] {
+            let ds = frame.steer - steer_mean;
+            let dt = frame.throttle - throttle_mean;
+            steer_var += ds * ds;
+            throttle_var += dt * dt;
+        }
+        let steer_std = (steer_var / n).sqrt();
+        let throttle_std = (throttle_var / n).sqrt();
+        sum += steer_std + throttle_std;
+        start += window;
+    }
+    sum
 }
 
 pub fn evaluate_with_trace(
@@ -102,10 +154,21 @@ fn evaluate_inner(
         arc_length_progress_m
     };
 
+    // input_jitter is only computed when telemetry is recorded. Training-mode
+    // evals (record_telemetry=false) use approximate fitness with jitter=0.0;
+    // the final champion dump (record_telemetry=true) measures it precisely.
+    let input_jitter = if record_telemetry {
+        compute_input_jitter(&result.telemetry)
+    } else {
+        0.0
+    };
+
     let fitness = compute_fitness(
         progress_for_fitness,
         sim_time_s,
         result.off_track_seconds,
+        result.off_track_count,
+        input_jitter,
         result.lap_completed,
         if result.lap_completed { lap_time_s } else { 1200.0 },
     );
@@ -161,12 +224,13 @@ pub fn sample_reward_trace(telemetry: &[TelemetryFrame]) -> Vec<RewardTraceRow> 
         }
         let progress_delta = (frame.arc_length_m - prev_arc).max(0.0);
         prev_arc = frame.arc_length_m;
-        let off_track_penalty_delta = (off_track_seconds_cum - prev_off_track_seconds) * 50.0;
+        let off_track_penalty_delta =
+            (off_track_seconds_cum - prev_off_track_seconds) * OFF_TRACK_SECONDS_PENALTY;
         prev_off_track_seconds = off_track_seconds_cum;
         let avg_speed_kmh = (frame.arc_length_m / frame.t_s.max(1.0)) * 3.6;
         let speed_factor = (avg_speed_kmh / 100.0).clamp(0.5, 4.0);
         let instantaneous_fitness =
-            progress_delta * speed_factor - off_track_penalty_delta - 5.0;
+            progress_delta * speed_factor - off_track_penalty_delta - SIM_TIME_PENALTY;
 
         rows.push(RewardTraceRow {
             t_s: frame.t_s,
@@ -186,11 +250,11 @@ pub fn sample_reward_trace(telemetry: &[TelemetryFrame]) -> Vec<RewardTraceRow> 
         if need_tail {
             let progress_delta = (last.arc_length_m - prev_arc).max(0.0);
             let off_track_penalty_delta =
-                (off_track_seconds_cum - prev_off_track_seconds) * 50.0;
+                (off_track_seconds_cum - prev_off_track_seconds) * OFF_TRACK_SECONDS_PENALTY;
             let avg_speed_kmh = (last.arc_length_m / last.t_s.max(1.0)) * 3.6;
             let speed_factor = (avg_speed_kmh / 100.0).clamp(0.5, 4.0);
             let instantaneous_fitness =
-                progress_delta * speed_factor - off_track_penalty_delta - 5.0;
+                progress_delta * speed_factor - off_track_penalty_delta - SIM_TIME_PENALTY;
             rows.push(RewardTraceRow {
                 t_s: last.t_s,
                 progress_delta_m: progress_delta,
@@ -253,8 +317,8 @@ mod tests {
 
     #[test]
     fn crawl_loses_to_fast_with_one_violation() {
-        let crawl = compute_fitness(5800.0, 700.0, 0.0, false, 1200.0);
-        let fast_with_violation = compute_fitness(5800.0, 100.0, 1.0, true, 100.0);
+        let crawl = compute_fitness(5800.0, 700.0, 0.0, 0, 0.0, false, 1200.0);
+        let fast_with_violation = compute_fitness(5800.0, 100.0, 1.0, 1, 0.0, true, 100.0);
         assert!(
             fast_with_violation > crawl,
             "fast-with-1-violation ({fast_with_violation}) should beat crawl ({crawl})",
@@ -263,8 +327,8 @@ mod tests {
 
     #[test]
     fn lap_complete_bonus_dominates_partial_progress() {
-        let complete_at_100s = compute_fitness(5800.0, 100.0, 0.0, true, 100.0);
-        let partial_at_1200s = compute_fitness(2900.0, 1200.0, 0.0, false, 1200.0);
+        let complete_at_100s = compute_fitness(5800.0, 100.0, 0.0, 0, 0.0, true, 100.0);
+        let partial_at_1200s = compute_fitness(2900.0, 1200.0, 0.0, 0, 0.0, false, 1200.0);
         assert!(
             complete_at_100s > partial_at_1200s,
             "complete-at-100s ({complete_at_100s}) should beat partial-at-1200s ({partial_at_1200s})",
@@ -273,16 +337,114 @@ mod tests {
 
     #[test]
     fn off_track_penalty_reduces_fitness() {
-        let clean = compute_fitness(5000.0, 200.0, 0.0, false, 1200.0);
-        let dirty = compute_fitness(5000.0, 200.0, 5.0, false, 1200.0);
+        let clean = compute_fitness(5000.0, 200.0, 0.0, 0, 0.0, false, 1200.0);
+        let dirty = compute_fitness(5000.0, 200.0, 5.0, 0, 0.0, false, 1200.0);
         assert!(
             dirty < clean,
             "off-track penalty must reduce fitness (clean={clean}, dirty={dirty})",
         );
         assert!(
-            (clean - dirty - 5.0 * 50.0).abs() < 1e-3,
-            "off-track penalty must be exactly 50 per second",
+            (clean - dirty - 5.0 * OFF_TRACK_SECONDS_PENALTY).abs() < 1e-3,
+            "off-track penalty must be exactly {} per second",
+            OFF_TRACK_SECONDS_PENALTY,
         );
+    }
+
+    #[test]
+    fn off_track_heavy_loses_to_off_track_light() {
+        let heavy = compute_fitness(5800.0, 94.0, 2.0, 10, 0.0, true, 94.0);
+        let light = compute_fitness(5800.0, 94.0, 0.2, 1, 0.0, true, 94.0);
+        assert!(
+            light > heavy,
+            "light off-track ({light}) must beat heavy off-track ({heavy})",
+        );
+        assert!(
+            light - heavy > 100.0,
+            "expected clear margin between light and heavy (diff={})",
+            light - heavy,
+        );
+    }
+
+    #[test]
+    fn smooth_input_beats_jittery_at_same_lap_time() {
+        let jittery = compute_fitness(5800.0, 95.0, 0.0, 0, 50.0, true, 95.0);
+        let smooth = compute_fitness(5800.0, 95.0, 0.0, 0, 5.0, true, 95.0);
+        assert!(
+            smooth > jittery,
+            "smooth ({smooth}) must beat jittery ({jittery}) at identical lap time",
+        );
+        assert!(
+            (smooth - jittery - 45.0 * INPUT_JITTER_PENALTY).abs() < 1e-3,
+            "input jitter penalty must be exactly {} per unit",
+            INPUT_JITTER_PENALTY,
+        );
+    }
+
+    #[test]
+    fn input_jitter_zero_when_no_telemetry() {
+        let fitness = compute_fitness(5800.0, 95.0, 0.0, 0, 0.0, true, 95.0);
+        assert!(fitness.is_finite());
+        assert!(fitness > 0.0, "lap-complete fitness must be positive: {fitness}");
+    }
+
+    #[test]
+    fn compute_input_jitter_zero_on_constant_inputs() {
+        let mut frames: Vec<TelemetryFrame> = Vec::with_capacity(240);
+        for i in 0..240 {
+            frames.push(TelemetryFrame {
+                t_s: (i as f32) / 120.0,
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                qx: 0.0,
+                qy: 0.0,
+                qz: 0.0,
+                qw: 1.0,
+                speed_kmh: 100.0,
+                throttle: 0.7,
+                brake: 0.0,
+                steer: 0.0,
+                is_off_track: false,
+                lateral_distance_m: 0.0,
+                arc_length_m: (i as f32) * 0.231,
+            });
+        }
+        let jitter = compute_input_jitter(&frames);
+        assert!(
+            jitter.abs() < 1e-5,
+            "constant inputs must produce zero jitter, got {jitter}",
+        );
+    }
+
+    #[test]
+    fn compute_input_jitter_nonzero_on_oscillating_inputs() {
+        let mut frames: Vec<TelemetryFrame> = Vec::with_capacity(240);
+        for i in 0..240 {
+            let alternating = if i % 2 == 0 { 1.0_f32 } else { -1.0_f32 };
+            frames.push(TelemetryFrame {
+                t_s: (i as f32) / 120.0,
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                qx: 0.0,
+                qy: 0.0,
+                qz: 0.0,
+                qw: 1.0,
+                speed_kmh: 100.0,
+                throttle: 0.5 + 0.4 * alternating,
+                brake: 0.0,
+                steer: 0.3 * alternating,
+                is_off_track: false,
+                lateral_distance_m: 0.0,
+                arc_length_m: (i as f32) * 0.231,
+            });
+        }
+        let jitter = compute_input_jitter(&frames);
+        assert!(
+            jitter > 0.5,
+            "oscillating inputs must produce significant jitter, got {jitter}",
+        );
+        assert!(jitter.is_finite());
     }
 
     #[test]
