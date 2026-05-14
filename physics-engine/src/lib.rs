@@ -12,7 +12,6 @@ mod pit_lane;
 mod surface;
 mod terrain;
 mod tires;
-#[cfg(feature = "headless")]
 pub mod track_geometry;
 mod track_temperature;
 pub mod types;
@@ -37,7 +36,21 @@ pub use types::TireCompound as TireCompoundEnum;
 #[wasm_bindgen]
 pub struct PhysicsEngine {
     inner: PhysicsEngineInternal,
+    track_centerline: Option<track_geometry::Polyline>,
+    off_track_state: track_geometry::OffTrackState,
 }
+
+#[derive(serde::Serialize)]
+struct OffTrackJsResult {
+    #[serde(rename = "isOffTrack")]
+    is_off_track: bool,
+    #[serde(rename = "maxLateralDistance")]
+    max_lateral_distance: f32,
+    #[serde(rename = "hasTrackData")]
+    has_track_data: bool,
+}
+
+const TRACK_HALF_WIDTH_M: f32 = 6.0;
 
 #[wasm_bindgen]
 impl PhysicsEngine {
@@ -50,7 +63,89 @@ impl PhysicsEngine {
 
         PhysicsEngine {
             inner: PhysicsEngineInternal::new(),
+            track_centerline: None,
+            off_track_state: track_geometry::OffTrackState::new(),
         }
+    }
+
+    // ========================================================================
+    // Track Geometry API (Phase 1 Step 1.3)
+    // ========================================================================
+
+    /// Upload the track centerline polyline as a flat `[x0, z0, x1, z1, ...]`
+    /// `Float32Array`. Currently always treated as a closed loop. Resets the
+    /// cached off-track hysteresis state so a fresh track doesn't inherit
+    /// the previous lap's cursor.
+    #[wasm_bindgen]
+    pub fn set_track_centerline(&mut self, flat: &[f32]) {
+        if let Some(polyline) = track_geometry::polyline_from_flat(flat, true) {
+            self.track_centerline = Some(polyline);
+            self.off_track_state = track_geometry::OffTrackState::new();
+        }
+    }
+
+    /// Whether a track centerline has been uploaded via `set_track_centerline`.
+    #[wasm_bindgen]
+    pub fn has_track_centerline(&self) -> bool {
+        self.track_centerline.is_some()
+    }
+
+    /// Geometry-driven off-track detection (Phase 1 Step 1.3). Returns
+    /// `{ isOffTrack, maxLateralDistance, hasTrackData }`. When no centerline
+    /// has been uploaded, `hasTrackData` is `false` and the call is a no-op
+    /// so callers can fall back to the legacy surface-driven signal.
+    #[wasm_bindgen]
+    pub fn check_off_track_geom(
+        &mut self,
+        car_pos_x: f32,
+        car_pos_z: f32,
+        qx: f32,
+        qy: f32,
+        qz: f32,
+        qw: f32,
+    ) -> JsValue {
+        use crate::constants::car::{TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, WHEELBASE};
+
+        let polyline = match self.track_centerline.as_ref() {
+            Some(p) => p,
+            None => {
+                return to_value(&OffTrackJsResult {
+                    is_off_track: false,
+                    max_lateral_distance: 0.0,
+                    has_track_data: false,
+                })
+                .unwrap_or(JsValue::NULL);
+            }
+        };
+
+        let result = track_geometry::check_off_track(
+            polyline,
+            car_pos_x,
+            car_pos_z,
+            qx,
+            qy,
+            qz,
+            qw,
+            TRACK_HALF_WIDTH_M,
+            track_geometry::DEFAULT_ENTER_THRESHOLD_M,
+            track_geometry::DEFAULT_EXIT_THRESHOLD_M,
+            WHEELBASE,
+            TRACK_WIDTH_FRONT,
+            TRACK_WIDTH_REAR,
+            self.off_track_state,
+        );
+
+        self.off_track_state = track_geometry::OffTrackState {
+            is_off_track: result.is_off_track,
+            arc_cursor: result.arc_cursor,
+        };
+
+        to_value(&OffTrackJsResult {
+            is_off_track: result.is_off_track,
+            max_lateral_distance: result.max_lateral_distance_m,
+            has_track_data: true,
+        })
+        .unwrap_or(JsValue::NULL)
     }
 
     // ========================================================================

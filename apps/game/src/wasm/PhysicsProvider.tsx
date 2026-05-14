@@ -118,6 +118,11 @@ import {
   isTerrainInitialized,
   loadTerrainHeightmap,
   clearTerrain,
+  // Track Geometry API (Phase 1 Step 1.3)
+  setTrackCenterline,
+  hasTrackCenterline,
+  checkOffTrackByGeometry,
+  OffTrackGeomResult,
   CarInput,
   CarPhysicsOutput,
   WeatherModifiers,
@@ -150,6 +155,7 @@ export type {
   TerrainMaterial,
   PerWheelTerrain,
   BottomingOutState,
+  OffTrackGeomResult,
 }
 export { TireCompound, SurfaceType }
 
@@ -266,6 +272,10 @@ interface PhysicsContextValue {
   isTerrainInitialized: typeof isTerrainInitialized
   loadTerrainHeightmap: typeof loadTerrainHeightmap
   clearTerrain: typeof clearTerrain
+  // Track Geometry API (Phase 1 Step 1.3)
+  setTrackCenterline: typeof setTrackCenterline
+  hasTrackCenterline: typeof hasTrackCenterline
+  checkOffTrackByGeometry: typeof checkOffTrackByGeometry
 }
 
 const PhysicsContext = createContext<PhysicsContextValue | null>(null)
@@ -410,6 +420,9 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       isTerrainInitialized,
       loadTerrainHeightmap,
       clearTerrain,
+      setTrackCenterline,
+      hasTrackCenterline,
+      checkOffTrackByGeometry,
     }),
     [initialized],
   )

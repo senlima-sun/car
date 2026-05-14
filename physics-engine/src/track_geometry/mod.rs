@@ -12,6 +12,32 @@ pub use off_track::{
 };
 pub use sample::{sample_path, sample_track_source};
 
+pub fn polyline_from_flat(flat: &[f32], closed: bool) -> Option<Polyline> {
+    if flat.len() < 4 || flat.len() % 2 != 0 {
+        return None;
+    }
+    if !flat.iter().all(|v| v.is_finite()) {
+        return None;
+    }
+    let n = flat.len() / 2;
+    let mut points: Vec<[f32; 2]> = Vec::with_capacity(n);
+    for chunk in flat.chunks_exact(2) {
+        points.push([chunk[0], chunk[1]]);
+    }
+    let mut cumulative_arc: Vec<f32> = Vec::with_capacity(n);
+    cumulative_arc.push(0.0);
+    for i in 1..n {
+        let dx = points[i][0] - points[i - 1][0];
+        let dy = points[i][1] - points[i - 1][1];
+        cumulative_arc.push(cumulative_arc[i - 1] + (dx * dx + dy * dy).sqrt());
+    }
+    Some(Polyline {
+        points,
+        cumulative_arc,
+        closed,
+    })
+}
+
 pub const POINT_EPS: f32 = 1e-6;
 pub const SAMPLE_SPACING_METERS: f32 = 1.0;
 pub const SEAM_DEDUP_FACTOR: f32 = 0.6;

@@ -1740,3 +1740,55 @@ export function clearTerrain(): void {
   const engine = getPhysicsEngine()
   engine.clear_terrain()
 }
+
+// ============================================================================
+// Track Geometry API (Phase 1 Step 1.3)
+// ============================================================================
+
+/**
+ * Upload the track centerline polyline used by the geometry-driven off-track
+ * detector. `flat` is `[x0, z0, x1, z1, ...]` in world meters. Currently
+ * always treated as a closed loop. Resets the cached off-track hysteresis
+ * state so a fresh track doesn't inherit the previous lap's cursor.
+ */
+export function setTrackCenterline(flat: Float32Array | number[]): void {
+  const buf = flat instanceof Float32Array ? flat : new Float32Array(flat)
+  getPhysicsEngine().set_track_centerline(buf)
+}
+
+export function hasTrackCenterline(): boolean {
+  return getPhysicsEngine().has_track_centerline()
+}
+
+export interface OffTrackGeomResult {
+  isOffTrack: boolean
+  maxLateralDistance: number
+  hasTrackData: boolean
+}
+
+/**
+ * Geometry-driven off-track detection. Returns `hasTrackData: false` until
+ * `setTrackCenterline` has been called, so callers can fall back to the
+ * legacy surface-driven `isOffTrack()` signal.
+ */
+export function checkOffTrackByGeometry(
+  carPosX: number,
+  carPosZ: number,
+  qx: number,
+  qy: number,
+  qz: number,
+  qw: number,
+): OffTrackGeomResult {
+  const raw = getPhysicsEngine().check_off_track_geom(
+    sanitize(carPosX),
+    sanitize(carPosZ),
+    sanitize(qx, 0),
+    sanitize(qy, 0),
+    sanitize(qz, 0),
+    sanitize(qw, 1),
+  ) as OffTrackGeomResult | null
+  if (!raw) {
+    return { isOffTrack: false, maxLateralDistance: 0, hasTrackData: false }
+  }
+  return raw
+}
