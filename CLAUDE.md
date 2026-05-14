@@ -8,22 +8,44 @@ A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM
 
 ## Prerequisites
 
-- **Bun** - Runtime, bundler, package manager
+- **pnpm 11+** - Dependency manager + workspace orchestrator (`pnpm-lock.yaml` is authoritative)
+- **Bun 1.2+** - Runtime, dev server (HMR + React Fast Refresh), test runner, bundler (`Bun.build`)
+- **Turborepo 2.x** - Task orchestration + content-hashed caching (local + self-hosted remote)
 - **Rust + wasm-pack** - For compiling `physics-engine/` to WASM
 - **cargo** - Rust package manager (comes with Rust)
 
+## Monorepo Layout
+
+- `apps/game/` — SPA (React + Three.js + WASM). This is the current app code.
+- `physics-engine/` — Rust crate, stays at repo root (it's a Cargo crate, not a pnpm package).
+- `packages/physics/` — TS stub for the future WASM bridge re-export (Phase 2).
+- `scripts/` — root-level data pipeline (track ingest, perf smoke, validation).
+
+See `docs/monorepo.md` for `pnpm -w` vs `--filter` conventions and remote cache details.
+
 ## Commands
 
-- `bun run dev` - Start dev server (port 3000) with WASM hot-reload. Builds WASM first, then runs `Bun.serve` (HMR + React Fast Refresh) and the WASM file watcher concurrently.
-- `bun run build` - Build WASM + production bundle
-- `bun run build:wasm` - Compile Rust physics to WASM (debug)
-- `bun run build:wasm:release` - Optimized WASM with LTO
-- `bun run test:wasm` - Run Rust unit tests (`cargo test` in physics-engine/)
-- `bun test` - Run TypeScript tests (single file: `bun test src/utils/foo.test.ts`)
-- `bun run dev:wasm` - Watch Rust files and rebuild WASM on change (standalone)
-- `bun run preview` - Static-serve the built `dist/` output (port 4173)
-- `bun run format` - Format with Prettier
-- `bun run compress:glb` - Optimize GLTF model (WebP textures + Draco compression)
+Run from repo root unless noted. Most legacy `bun run <name>` invocations now go through pnpm/turbo.
+
+- `pnpm run dev` — Start dev server (port 3000) with WASM hot-reload via `turbo run dev`.
+- `pnpm run build` — Build WASM + production bundle via `turbo run build` (cached).
+- `pnpm run build:wasm` — Compile Rust physics to WASM (debug). Goes through turbo cache.
+- `pnpm run build:wasm:release` — Optimized WASM (skips turbo; use rarely).
+- `pnpm run test` — Run TypeScript tests inside `apps/game/` via turbo.
+- `pnpm run test:wasm` — Run Rust unit tests (`cargo test`).
+- `pnpm -w run test:scripts` — Run tests in `scripts/lib/` (split out of root `bun test`; NOT a turbo task).
+- `pnpm run typecheck` — `tsc --noEmit` for `@car/game` and `@car/physics` via turbo.
+- `pnpm run preview` — Static-serve `apps/game/dist/` on port 4173.
+- `pnpm run format` — Format with Prettier.
+- `pnpm run compress:glb` — Optimize GLTF model (WebP textures + Draco compression).
+- `pnpm -w run perf:smoke` — Headless perf smoke test (root-only script).
+- `pnpm -w run check:turbo-cache` — Sanity-check turbo remote cache env vars.
+
+Filter to a specific workspace:
+
+- `pnpm --filter @car/game dev` / `build` / `test` / `typecheck`
+
+Deprecated: `pnpm run dev:wasm` — the in-dev watcher now starts automatically as part of `pnpm run dev`.
 
 ## Architecture
 
@@ -32,7 +54,7 @@ A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM
 - **React 19** + TypeScript, **Three.js** via `@react-three/fiber`
 - **@react-three/rapier** - Rapier for collision detection (NOT vehicle physics)
 - **Rust/WASM** - Custom physics engine (`physics-engine/`) for all vehicle dynamics
-- **Zustand** - State management (~30 stores in `src/stores/`)
+- **Zustand** - State management (~30 stores in `apps/game/src/stores/`)
 - **Tailwind CSS v4** - UI styling (bundled via `bun-plugin-tailwind`)
 - **Bun** - Runtime, bundler (`Bun.build`), dev server (`Bun.serve` + HMR), package manager, test runner
 
@@ -53,7 +75,7 @@ useFrame (variable dt)
 
 Key: `stepAndSync` is preferred over `stepPhysics` — it combines the physics step with wind/aero/brake state sync in a single FFI call.
 
-### WASM Bridge Layer (`src/wasm/`)
+### WASM Bridge Layer (`apps/game/src/wasm/`)
 
 - `PhysicsBridge.ts` - Type-safe wrappers around raw WASM bindings. All values sanitized (NaN/Infinity → 0).
 - `PhysicsProvider.tsx` - React context. `usePhysics()` hook provides access. `usePhysicsOptional()` for components that may render before WASM loads.
@@ -70,9 +92,9 @@ GROUP_GROUND (0x0004) → interacts with GROUP_OBJECT | GROUP_RAY
 GROUP_RAY    (0x0010) → interacts with GROUP_TRACK | GROUP_GROUND
 ```
 
-Defined in `src/constants/dimensions.ts`. Car uses 4 `BallCollider` at wheel positions (for object collisions). `SUSPENSION_RAY_GROUPS` is used for the raycast queries.
+Defined in `apps/game/src/constants/dimensions.ts`. Car uses 4 `BallCollider` at wheel positions (for object collisions). `SUSPENSION_RAY_GROUPS` is used for the raycast queries.
 
-### Car Component Decomposition (`src/components/canvas/Car/`)
+### Car Component Decomposition (`apps/game/src/components/canvas/Car/`)
 
 - `Car.tsx` - RigidBody setup, colliders, visual effects (spray, trails, smoke)
 - `hooks/useCarFrame.ts` - Orchestrates the frame loop, delegates to sub-hooks:
@@ -100,30 +122,30 @@ Defined in `src/constants/dimensions.ts`. Car uses 4 `BallCollider` at wheel pos
 - `surface.rs` - Surface types (road/grass/curb) with grip/speed/wear modifiers
 - `curb.rs` - FIA-standard curb physics (3 types: rumble, sausage, apex) with speed-dependent forces
 
-### Zustand Stores (`src/stores/`)
+### Zustand Stores (`apps/game/src/stores/`)
 
 ~30 stores, each focused on a single domain. Pattern: WASM physics output is synced to stores each frame via `useCarStateSync`. UI components subscribe to stores (never call WASM directly).
 
 Major stores: `useGameStore` (game status, camera mode), `useCarStore` (speed, gear, RPM), `useEditorStore` (track editor state), `useCustomizationStore` (placed objects), `useErsStore`, `useActiveAeroStore`, `useBrakeStore`, `useTireStore`, `useWindStore`, `useEnvironmentStore`, `useLapTimeStore`, `useGhostCarStore`, `useVisibilityStore`.
 
-### Ghost Car Replay (`src/components/canvas/GhostCar/`)
+### Ghost Car Replay (`apps/game/src/components/canvas/GhostCar/`)
 
-Records and replays ghost laps. Uses IndexedDB persistence (`src/utils/ghostReplayDB.ts`), interpolation (`src/utils/ghostInterpolation.ts`), and time-delta display (`src/utils/ghostTimeDelta.ts`). State in `useGhostCarStore`.
+Records and replays ghost laps. Uses IndexedDB persistence (`apps/game/src/utils/ghostReplayDB.ts`), interpolation (`apps/game/src/utils/ghostInterpolation.ts`), and time-delta display (`apps/game/src/utils/ghostTimeDelta.ts`). State in `useGhostCarStore`.
 
 ### Visibility System
 
 `useVisibilityStore` + `useVisibilityUpdater` hook — performance optimization that culls/LODs objects based on camera distance. Prevents unnecessary renders of off-screen or distant components.
 
-### Scene Graph (`src/components/canvas/Scene.tsx`)
+### Scene Graph (`apps/game/src/components/canvas/Scene.tsx`)
 
 Root 3D scene: Ground (grass with vertex displacement shader) → PlacedObjectsRenderer → StartGrid → Weather effects (DynamicSky, CloudLayer, DynamicLighting, rain, lightning) → TrackTemperatureOverlay → SkidMarkRenderer → Car + CameraController. Customize mode conditionally renders ObjectPlacer, GhostPreview, ElevationHandles.
 
 ### Key Patterns
 
-- **1 world unit = 1 meter**. Car dimensions in `src/constants/dimensions.ts` match real 2026 F1 spec (5.5m long, 1.9m wide).
-- **Shaders**: Custom GLSL in `src/shaders/` — asphalt surface, grass surface with vertex displacement, curb surface, HDRI sky, tire smoke. Injected via `onBeforeCompile` or `ShaderMaterial`.
-- **Track data**: JSON files in `src/constants/tracks/` (silverstone, suzuka, monza). Loaded by `useTrackStore`.
-- **Debug system**: `src/debug/ActionLogger` — dev-only logging for physics actions, store changes.
+- **1 world unit = 1 meter**. Car dimensions in `apps/game/src/constants/dimensions.ts` match real 2026 F1 spec (5.5m long, 1.9m wide).
+- **Shaders**: Custom GLSL in `apps/game/src/shaders/` — asphalt surface, grass surface with vertex displacement, curb surface, HDRI sky, tire smoke. Injected via `onBeforeCompile` or `ShaderMaterial`.
+- **Track data**: JSON files in `apps/game/src/constants/tracks/` (silverstone, suzuka, monza). Loaded by `useTrackStore`.
+- **Debug system**: `apps/game/src/debug/ActionLogger` — dev-only logging for physics actions, store changes.
 
 ### Adding a Track
 
@@ -133,8 +155,8 @@ Drop `scripts/circuits/<name>.config.json` (use `provenance: "osm"` for OSM-sour
 
 1. Define Rust types/functions in `physics-engine/src/`
 2. Export via `#[wasm_bindgen]` in `lib.rs`
-3. Add typed wrapper in `src/wasm/PhysicsBridge.ts`
-4. Re-export from `src/wasm/index.ts`
+3. Add typed wrapper in `apps/game/src/wasm/PhysicsBridge.ts`
+4. Re-export from `apps/game/src/wasm/index.ts`
 5. Add to `PhysicsContextValue` in `PhysicsProvider.tsx`
 6. Access in React via `usePhysics()` hook
 
@@ -146,7 +168,7 @@ Drop `scripts/circuits/<name>.config.json` (use `provenance: "osm"` for OSM-sour
 
 ### Path Aliases
 
-`@/*` → `src/*` (configured in `tsconfig.json`; Bun's bundler reads tsconfig paths natively)
+`@/*` → `apps/game/src/*` (configured in `apps/game/tsconfig.json`; Bun's bundler reads tsconfig paths natively)
 
 ### Quality Standards
 
