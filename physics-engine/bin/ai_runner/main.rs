@@ -145,7 +145,8 @@ fn perf_mode(track: &track_loader::LoadedTrack) -> ExitCode {
     let text = perf::format_report(&report);
     print!("{text}");
 
-    let out = std::path::PathBuf::from("tests/fixtures/perf-baseline.txt");
+    let out = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/perf-baseline.txt");
     if let Some(parent) = out.parent() {
         if let Err(err) = std::fs::create_dir_all(parent) {
             eprintln!("ai_runner: could not create {}: {err}", parent.display());

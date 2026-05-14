@@ -836,7 +836,6 @@ impl PhysicsEngine {
 
         // Wheel world positions (FL/FR/RL/RR) for per-wheel aquaplaning.
         let fwd = quat.forward();
-        let right = quat.right();
         let wheel_xz = crate::track_geometry::wheel_world_positions_quat(
             car_position[0],
             car_position[2],

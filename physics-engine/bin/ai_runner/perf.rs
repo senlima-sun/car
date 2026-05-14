@@ -7,7 +7,7 @@ use car_physics_engine::track_geometry::{
 use car_physics_engine::types::{CarInput, SurfaceType, TireCompound};
 
 use crate::policies::constant_throttle::ConstantThrottle;
-use crate::sim::{Observation, Policy, DT};
+use crate::sim::{angle_diff, integrate_yaw, Observation, Policy, DT};
 use crate::track_loader::{spawn_pose, LoadedTrack, RaceDirection};
 
 const PERF_STEPS: usize = 10_000;
@@ -54,13 +54,7 @@ pub fn run_perf_benchmark(track: &LoadedTrack) -> PerfReport {
             tangent_yaw
         };
         let yaw = car_physics_engine::utils::Quat::from_array(rotation).yaw();
-        let mut diff = race_tangent_yaw - yaw;
-        while diff > std::f32::consts::PI {
-            diff -= 2.0 * std::f32::consts::PI;
-        }
-        while diff < -std::f32::consts::PI {
-            diff += 2.0 * std::f32::consts::PI;
-        }
+        let diff = angle_diff(race_tangent_yaw, yaw);
         let speed_ms = (linvel[0].powi(2) + linvel[2].powi(2)).sqrt();
         let obs = Observation {
             car_xz: [position[0], position[2]],
@@ -70,6 +64,7 @@ pub fn run_perf_benchmark(track: &LoadedTrack) -> PerfReport {
             heading_error_rad: diff,
             arc_cursor: near.nearest_index,
             arc_length_m: near.arc_length,
+            curvatures: [0.0; 5],
         };
         let input: CarInput = policy.act(&obs);
 
@@ -83,22 +78,7 @@ pub fn run_perf_benchmark(track: &LoadedTrack) -> PerfReport {
         position[0] += linvel[0] * DT;
         position[1] += linvel[1] * DT;
         position[2] += linvel[2] * DT;
-        let half = angvel[1] * DT * 0.5;
-        let s = half.sin();
-        let c = half.cos();
-        let (qx, qy, qz, qw) = (rotation[0], rotation[1], rotation[2], rotation[3]);
-        rotation = [
-            qx * c + qz * s,
-            qy * c + qw * s,
-            qz * c - qx * s,
-            qw * c - qy * s,
-        ];
-        let len = (rotation[0].powi(2) + rotation[1].powi(2) + rotation[2].powi(2) + rotation[3].powi(2)).sqrt();
-        if len > 1e-4 {
-            for r in &mut rotation {
-                *r /= len;
-            }
-        }
+        integrate_yaw(&mut rotation, angvel[1], DT);
 
         off_track_state = OffTrackState {
             is_off_track: false,
