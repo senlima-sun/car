@@ -17,11 +17,32 @@ const AMBIENT_TEMP_K: f32 = 298.0;
 const BASE_CONV_H: f32 = 25.0;
 const SPEED_CONV_FACTOR: f32 = 3.0;
 const BRAKE_TO_TIRE_K: f32 = 0.002;
+/// Tire-temp normalization span (°C). Mirrors `tires.rs`: normalized
+/// 0.0 → 1.0 maps to 20 °C → 150 °C, span = 130 °C. Used to convert
+/// `heat_to_tires` output from °C/s to normalized-units/s.
+const TIRE_TEMP_NORM_SPAN_C: f32 = 130.0;
+/// Carbon-carbon disc oxidation threshold (°C). Below this the disc
+/// material loses no measurable mass; above it, oxidation kinetics
+/// follow an Arrhenius-style exponential.
+const DISC_OXIDATION_TEMP_C: f32 = 700.0;
+/// Per-second wear rate at the oxidation threshold. Above the
+/// threshold, rate doubles every `WEAR_TEMP_SCALE_C` of additional
+/// temperature.
+const DISC_WEAR_BASE_RATE: f32 = 5.0e-5;
+const WEAR_TEMP_SCALE_C: f32 = 80.0;
+/// Disc temperature at which catastrophic-failure risk begins to
+/// accumulate. Carbon discs structurally fail above ~1200 °C.
+const DISC_FAILURE_TEMP_C: f32 = 1100.0;
+const DISC_FAILURE_RISK_RATE: f32 = 0.05;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct BrakeDiscTemperatures {
     pub temps: [f32; 4],
     pub wear: [f32; 4],
+    /// Per-disc accumulated catastrophic-failure risk on `[0, 1]`.
+    /// Compounds exponentially past `DISC_OXIDATION_TEMP_C` and saturates
+    /// at 1.0 (effectively failed disc — brake-by-wire warning territory).
+    pub failure_risk: [f32; 4],
 }
 
 impl BrakeDiscTemperatures {
@@ -29,6 +50,7 @@ impl BrakeDiscTemperatures {
         Self {
             temps: [AMBIENT_TEMP_K; 4],
             wear: [0.0; 4],
+            failure_risk: [0.0; 4],
         }
     }
 
@@ -39,13 +61,36 @@ impl BrakeDiscTemperatures {
             let h = BASE_CONV_H + SPEED_CONV_FACTOR * speed_ms;
             let q_conv = h * DISC_AREA * (self.temps[i] - ambient_k);
             let t4_diff = self.temps[i].powi(4) - ambient_k.powi(4);
-            let q_rad = DISC_EMISSIVITY * STEFAN_BOLTZMANN * DISC_AREA * t4_diff;
+            // Stefan-Boltzmann radiates from both disc faces; the prior
+            // formula used a single-sided DISC_AREA which under-counted
+            // by ~50%.
+            let q_rad = DISC_EMISSIVITY * STEFAN_BOLTZMANN * (2.0 * DISC_AREA) * t4_diff;
             let q_net = q_in - q_conv - q_rad;
             let dt_temp = q_net / (DISC_MASS_KG * DISC_CP);
             self.temps[i] = (self.temps[i] + dt_temp * dt).clamp(ambient_k, 1200.0);
 
-            if self.temps[i] > 1100.0 {
-                self.wear[i] = (self.wear[i] + 0.001 * dt).min(1.0);
+            // Carbon-carbon disc oxidation follows an Arrhenius-style
+            // exponential above ~700 °C. The legacy code only ticked
+            // wear past 1100 °C — leaving 700-1100 °C operation
+            // effectively wear-free, which contradicts measured F1 disc
+            // mass loss across a race. `WEAR_TEMP_SCALE_C` controls
+            // the doubling-rate per °C above the reference.
+            let disc_c = self.temps[i] - 273.15;
+            if disc_c > DISC_OXIDATION_TEMP_C {
+                let excess = disc_c - DISC_OXIDATION_TEMP_C;
+                let wear_rate = DISC_WEAR_BASE_RATE * (excess / WEAR_TEMP_SCALE_C).exp();
+                self.wear[i] = (self.wear[i] + wear_rate * dt).min(1.0);
+            }
+
+            // Catastrophic-failure risk: above ~1100 °C the disc is in
+            // the carbon-oxidation acceleration regime and structural
+            // failure becomes imminent. Risk monotonically accumulates;
+            // a single brief excursion to 1200 °C carries a permanent
+            // mark (no recovery below threshold, by design).
+            if disc_c > DISC_FAILURE_TEMP_C {
+                let over = (disc_c - DISC_FAILURE_TEMP_C) / 100.0;
+                self.failure_risk[i] =
+                    (self.failure_risk[i] + DISC_FAILURE_RISK_RATE * over * dt).min(1.0);
             }
         }
     }
@@ -63,12 +108,19 @@ impl BrakeDiscTemperatures {
         total / 4.0
     }
 
+    /// Per-wheel brake-disc → tire heat flux returned in **normalized
+    /// tire-temp units per second** (the same scale as `tires.rs`
+    /// internal state: 0.0 = 20 °C, 1.0 = 150 °C across a 130 °C span).
+    /// The caller adds these directly into the normalized field; without
+    /// the divide-by-span the delta would be interpreted as 130× the
+    /// intended °C/s value.
     pub fn heat_to_tires(&self, tire_temps_celsius: &[f32; 4]) -> [f32; 4] {
         let mut deltas = [0.0f32; 4];
         for i in 0..4 {
             let disc_c = self.temps[i] - 273.15;
             let diff = disc_c - tire_temps_celsius[i];
-            deltas[i] = diff * BRAKE_TO_TIRE_K;
+            let delta_celsius_per_s = diff * BRAKE_TO_TIRE_K;
+            deltas[i] = delta_celsius_per_s / TIRE_TEMP_NORM_SPAN_C;
         }
         deltas
     }

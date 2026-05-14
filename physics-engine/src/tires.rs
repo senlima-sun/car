@@ -502,7 +502,9 @@ impl TireTemperatureState {
                     let overheat_boost = (self.temps[wheel][edge] - 0.6).max(0.0) * 0.5;
                     self.temps[wheel][edge] +=
                         diff * (TIRE_COOLING_RATE_AMBIENT + overheat_boost) * dt * 2.0;
-                    self.temps[wheel][edge] = self.temps[wheel][edge].max(0.0);
+                    // Convective cooling can't drop a tire below the
+                    // ambient air around it; floor at the ambient target.
+                    self.temps[wheel][edge] = self.temps[wheel][edge].max(ambient_target);
                 }
             }
             return;
@@ -526,9 +528,10 @@ impl TireTemperatureState {
                 // (244C) it more than doubles cooling — preventing runaway.
                 let overheat_boost = (temp - 0.6).max(0.0) * 0.6;
                 let net = -(cooling + overheat_boost) * dt + ambient_pull * dt;
-                // Soft floor at 0.0 (can't go below ambient mapping); no upper clamp here —
-                // heating pass enforces TIRE_TEMP_SOFT_CEILING.
-                self.temps[wheel][edge] = (temp + net).max(0.0);
+                // Floor at ambient — convective cooling can't drop a
+                // tire below the surrounding air (only puddle-spray
+                // cooling can, handled separately).
+                self.temps[wheel][edge] = (temp + net).max(ambient_target);
             }
         }
     }
@@ -791,13 +794,22 @@ impl TireTemperatureState {
     }
 
     /// Apply per-wheel external heat deltas — used by per-wheel track-tire
-    /// exchange so left/right or on-line/off-line wheels heat differently.
+    /// and brake-tire exchanges so left/right or on-line/off-line wheels
+    /// heat differently. Brake-derived heat enters through the inner
+    /// rim, so the inner-edge takes 70% and outer-edge 30% of each
+    /// delta; the imbalance compounds the existing inner-bias in
+    /// `apply_brake_heat_*` and matches inner-tread degradation
+    /// observed on heavy-braking circuits.
     pub fn apply_external_heat_per_wheel(&mut self, deltas: [f32; 4]) {
+        const INNER_EDGE_SHARE: f32 = 0.7;
+        const OUTER_EDGE_SHARE: f32 = 0.3;
         for wheel in 0..4 {
-            for edge in 0..2 {
-                let new_temp = self.temps[wheel][edge] + deltas[wheel];
-                self.temps[wheel][edge] = new_temp.clamp(0.0, TIRE_TEMP_SOFT_CEILING);
-            }
+            // Edge 0 = inner, edge 1 = outer (convention from
+            // tire_temps_inner_outer_split tests).
+            let inner = self.temps[wheel][0] + deltas[wheel] * INNER_EDGE_SHARE * 2.0;
+            let outer = self.temps[wheel][1] + deltas[wheel] * OUTER_EDGE_SHARE * 2.0;
+            self.temps[wheel][0] = inner.clamp(0.0, TIRE_TEMP_SOFT_CEILING);
+            self.temps[wheel][1] = outer.clamp(0.0, TIRE_TEMP_SOFT_CEILING);
         }
     }
 

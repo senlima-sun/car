@@ -83,6 +83,11 @@ impl EngineTemperatureState {
         let overheat_boost = (self.current.temperature - OVERHEAT_THRESHOLD).max(0.0) * 0.8;
         let cooling_rate = cooling_rate + overheat_boost;
 
+        // Floor at ambient mapped to engine-temp normalized scale
+        // (0 = 20 °C, span = 140 °C). Convective cooling can't drop
+        // the coolant below the air around the radiator.
+        let ambient_normalized = ((ambient_celsius - 20.0) / 140.0).max(0.0);
+
         // Net temperature change with soft ceiling.
         let net_change = (heat_rate - cooling_rate) * dt;
         let new_temp = self.current.temperature + net_change;
@@ -93,7 +98,7 @@ impl EngineTemperatureState {
             let damped = overshoot / (1.0 + overshoot * 1.5);
             (1.0 + damped).min(ENGINE_TEMP_SOFT_CEILING)
         } else {
-            new_temp.max(0.0)
+            new_temp.max(ambient_normalized)
         };
 
         // Seize-risk accumulation: bearing damage compounds over time at

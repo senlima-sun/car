@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "captured_at": "wave-3: Pacejka & friction-ellipse fidelity",
-  "notes": "Rebaselined after Wave-3 Pacejka work. Three fidelity-improving changes drive the drift: (a) the grip_chain now folds inside the friction-ellipse cap instead of multiplying after, so combined forces no longer exceed the physical friction circle by ~2.5×; (b) ERS deploy uses an electric-motor torque-limited force-boost curve (F = min(F_max, P/v)) instead of a 40 m/s reference-speed floor, so launch boost is no longer ~4× too low; (c) per-axis ellipse uses `(fx/μx)² + (fy/μy)² ≤ 1` instead of an isotropic circle. Net effect: 0-100 km/h dropped 4.48 → 3.09s (close to real F1 ~2.6 s; legacy 3.68 s was already unrealistically slow under PEAK_TORQUE_NM 480 + clamp 40 m/s); stop distances slightly shorter (friction cap binding correctly).",
+  "captured_at": "wave-4: thermal correctness",
+  "notes": "Rebaselined after Wave-4 thermal fixes: (a) brakes::heat_to_tires now divides by 130 °C span to convert °C/s → normalized-tire-units/s (was 130× over-applying), (b) Stefan-Boltzmann radiation uses 2× disc area for both faces (was single-sided, under-counting by ~50%), (c) tire and engine cooling floor at ambient (not 0), (d) brake-to-tire heat now biased 70/30 inner/outer (was uniform). Stop distances dropped to physically realistic values: 50 m/s→0 in ~40 m ≈ 6.25g (real F1 5-6g); 100 km/h stop 18.5→16.1 m ≈ 6g; wet 50 m/s→0 in ~77 m ≈ 3.2g (real F1 wet 3-4g). The fixes correctly de-overheat brakes mid-event, restoring effective μ.",
   "scenarios": {
     "zero_to_100_kmh_seconds": 3.0917,
-    "fifty_ms_to_zero_stop_distance_m": 50.6250,
+    "fifty_ms_to_zero_stop_distance_m": 40.0404,
     "steady_state_80m_radius_peak_lat_g": 8.1638,
     "drs_active_200_to_300_kmh_seconds": 7.6667,
-    "hundred_kmh_to_zero_stop_distance_m": 18.5445,
-    "wet_fifty_ms_to_zero_stop_distance_m": 85.5336,
-    "wet_steady_state_80m_radius_peak_lat_g": 8.1588,
+    "hundred_kmh_to_zero_stop_distance_m": 16.0811,
+    "wet_fifty_ms_to_zero_stop_distance_m": 76.9807,
+    "wet_steady_state_80m_radius_peak_lat_g": 8.1146,
     "oil_steady_state_80m_radius_peak_lat_g": 7.7408
   }
 }
