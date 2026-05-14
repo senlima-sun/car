@@ -1183,8 +1183,7 @@ impl PerWheelTemperature {
         }
     }
 
-    /// Convert normalized temp to Celsius (20C - 150C range).
-    /// WAVE6: part of tire-temp Celsius newtype refactor.
+    /// Convert normalized temp to Celsius (20C - 150C range)
     pub fn to_celsius(normalized: f32) -> f32 {
         normalized * 130.0 + 20.0
     }

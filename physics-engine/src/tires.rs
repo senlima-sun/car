@@ -793,34 +793,14 @@ impl TireTemperatureState {
         }
     }
 
-    /// Apply per-wheel external heat deltas (e.g. track-tire conduction).
-    /// Heat is split evenly between inner and outer edges — appropriate
-    /// for surface contact, which is symmetric across the contact patch.
-    /// For brake-derived heat (inner-rim entry), use
-    /// `apply_brake_heat_per_wheel` which applies a 70/30 inner bias.
+    /// Apply per-wheel external heat deltas (e.g. track-tire conduction)
+    /// — split evenly between inner and outer edges.
     pub fn apply_external_heat_per_wheel(&mut self, deltas: [f32; 4]) {
         for wheel in 0..4 {
             for edge in 0..2 {
                 let new_temp = self.temps[wheel][edge] + deltas[wheel];
                 self.temps[wheel][edge] = new_temp.clamp(0.0, TIRE_TEMP_SOFT_CEILING);
             }
-        }
-    }
-
-    /// Apply per-wheel brake-derived heat deltas with a 70/30 inner-bias.
-    /// Brake heat enters through the inner rim; the imbalance produces
-    /// the inner-tread degradation observed on heavy-braking circuits.
-    /// The `× 2.0` preserves the same total energy budget as a uniform
-    /// split would (sum of edge shares = 2.0).
-    pub fn apply_brake_heat_per_wheel(&mut self, deltas: [f32; 4]) {
-        const INNER_EDGE_SHARE: f32 = 0.7;
-        const OUTER_EDGE_SHARE: f32 = 0.3;
-        for wheel in 0..4 {
-            // Edge 0 = inner, edge 1 = outer.
-            let inner = self.temps[wheel][0] + deltas[wheel] * INNER_EDGE_SHARE * 2.0;
-            let outer = self.temps[wheel][1] + deltas[wheel] * OUTER_EDGE_SHARE * 2.0;
-            self.temps[wheel][0] = inner.clamp(0.0, TIRE_TEMP_SOFT_CEILING);
-            self.temps[wheel][1] = outer.clamp(0.0, TIRE_TEMP_SOFT_CEILING);
         }
     }
 
@@ -972,7 +952,6 @@ impl TireMaterialSystem {
     pub fn update(&mut self, dt: f32, tire_temps_normalized: &[f32; 4]) {
         let dt = dt.min(0.05);
         for i in 0..4 {
-            // WAVE6: part of tire-temp Celsius newtype refactor.
             let temp_celsius = tire_temps_normalized[i] * 130.0 + 20.0;
             self.update_wheel(i, dt, temp_celsius);
         }
@@ -1555,7 +1534,6 @@ mod tests {
     // ========================================================================
 
     fn temp_celsius_to_normalized(celsius: f32) -> f32 {
-        // WAVE6: part of tire-temp Celsius newtype refactor.
         (celsius - 20.0) / 130.0
     }
 
