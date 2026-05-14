@@ -1,11 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import App from '@/App'
+import { useSessionStore } from '@/stores/useSessionStore'
+import { useSyncGameStatus } from './-useSyncGameStatus'
 
 function TestModeRoute() {
-  return (
-    <div className="flex h-screen items-center justify-center bg-zinc-900 font-mono text-zinc-300">
-      Test mode — coming soon
-    </div>
-  )
+  useSyncGameStatus('session')
+  useEffect(() => {
+    useSessionStore.getState().startQuickSession('practice', { testingMode: true })
+  }, [])
+  return <App />
 }
 
 export const Route = createFileRoute('/test-mode')({ component: TestModeRoute })
