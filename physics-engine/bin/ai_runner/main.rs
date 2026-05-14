@@ -1,3 +1,4 @@
+mod bc;
 mod evo;
 mod ghost_writer;
 mod obs;
