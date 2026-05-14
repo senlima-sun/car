@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useGhostCarStore } from '@/stores/useGhostCarStore'
-import { useLapTimeStore } from '@/stores/useLapTimeStore'
 import { useTrackStore } from '@/stores/useTrackStore'
 import { ghostBuffersToDemo } from '@/utils/aiDemoSchema'
 
@@ -15,27 +14,26 @@ function resolveTrackSlug(): string | null {
 
 export function ExportDemoButton() {
   const [state, setState] = useState<ExportState>('idle')
-  const frameCount = useGhostCarStore(s => s.ghostHead)
-  const lastLapTime = useLapTimeStore(s => s.lastLapTime)
+  const lastLap = useGhostCarStore(s => s.lastCompletedLap)
 
   const slug = resolveTrackSlug()
-  const disabled = frameCount === 0 || slug === null || lastLapTime === null
+  const completedFrames = lastLap?.buffers.frameCount ?? 0
+  const completedLapTime = lastLap?.lapTime ?? null
+  const disabled = lastLap === null || slug === null
 
   const tooltip = (() => {
-    if (frameCount === 0) return 'Drive a clean lap first — recording requires useLapTimeStore.isRecording=true'
+    if (lastLap === null) return 'Drive a full lap first; export uses the most recently completed lap'
     if (slug === null) return 'No active track selected'
-    if (lastLapTime === null) return 'Complete a lap before exporting'
-    return `Export ${frameCount} recorded frames as ${slug}.demo.json`
+    return `Export ${completedFrames} frames (lap ${(completedLapTime! / 1000).toFixed(2)}s) as ${slug}.demo.json`
   })()
 
   const handleExport = () => {
-    if (disabled || slug === null || lastLapTime === null) {
+    if (disabled || slug === null || lastLap === null) {
       setState('error')
       return
     }
     try {
-      const buffers = useGhostCarStore.getState().getGhostBuffers()
-      const demo = ghostBuffersToDemo(slug, lastLapTime, buffers)
+      const demo = ghostBuffersToDemo(slug, lastLap.lapTime, lastLap.buffers)
       const json = JSON.stringify(demo, null, 2)
       const blob = new Blob([json], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -56,10 +54,10 @@ export function ExportDemoButton() {
   }
 
   const label = (() => {
-    if (state === 'exported') return `Exported ${frameCount} frames`
+    if (state === 'exported') return `Exported ${completedFrames} frames`
     if (state === 'error') return 'Export failed'
-    if (frameCount === 0) return 'Export demo JSON (drive a lap)'
-    return `Export demo JSON (${frameCount} frames)`
+    if (lastLap === null) return 'Export demo JSON (drive a full lap)'
+    return `Export demo JSON (${completedFrames} frames, ${(completedLapTime! / 1000).toFixed(2)}s)`
   })()
 
   return (

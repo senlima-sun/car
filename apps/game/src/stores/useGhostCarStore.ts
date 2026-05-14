@@ -22,6 +22,12 @@ export interface GhostBuffers {
   brakes: Float32Array
 }
 
+export interface CompletedLapSnapshot {
+  trackId: string
+  lapTime: number
+  buffers: GhostBuffers
+}
+
 interface GhostCarState {
   replayData: GhostReplayData | null
   isLoaded: boolean
@@ -37,6 +43,11 @@ interface GhostCarState {
   ghostBrakes: Float32Array
   ghostHead: number
   ghostLastSampleTime: number
+
+  // Snapshot of the last completed lap's full input trace (includes throttle
+  // + brake). Kept alive across the next-lap reset so ExportDemoButton can
+  // dump a finished lap rather than a partial mid-recording one.
+  lastCompletedLap: CompletedLapSnapshot | null
 
   loadReplayForTrack: (trackId: string) => Promise<void>
   saveReplay: (
@@ -78,6 +89,7 @@ export const useGhostCarStore = create<GhostCarState>()((set, get) => ({
   ghostBrakes: new Float32Array(MAX_GHOST_SAMPLES),
   ghostHead: 0,
   ghostLastSampleTime: 0,
+  lastCompletedLap: null,
 
   loadReplayForTrack: async (trackId: string) => {
     set({ isLoaded: false, replayData: null })
@@ -172,8 +184,21 @@ useLapTimeStore.subscribe((state, prev) => {
   const isNewBest = state.bestLapTime !== prev.bestLapTime && state.lastLapTime !== null
 
   const ghostStore = useGhostCarStore.getState()
+  const trackId = useTrackStore.getState().trackLibrary.activeTrackId
+
+  // Snapshot the just-finished lap before the buffer reset clears throttle+
+  // brake. This is what ExportDemoButton dumps for BC training.
+  if (ghostStore.ghostHead > 0 && trackId && state.lastLapTime !== null) {
+    useGhostCarStore.setState({
+      lastCompletedLap: {
+        trackId,
+        lapTime: state.lastLapTime,
+        buffers: ghostStore.getGhostBuffers(),
+      },
+    })
+  }
+
   if (isNewBest && ghostStore.ghostHead > 0) {
-    const trackId = useTrackStore.getState().trackLibrary.activeTrackId
     if (trackId && state.lastLapTime !== null) {
       ghostStore.saveReplay(trackId, state.lastLapTime, ghostStore.getGhostBuffers())
     }
