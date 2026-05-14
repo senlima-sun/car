@@ -1,4 +1,3 @@
-import { spawn } from 'bun'
 import { mkdir, rm, cp } from 'fs/promises'
 import { existsSync } from 'fs'
 import { join, resolve } from 'path'
@@ -10,17 +9,14 @@ const PUBLIC_DIR = join(ROOT_DIR, 'public')
 const WASM_PKG_DIR = join(ROOT_DIR, 'src/wasm/pkg')
 const WASM_DIST_DIR = join(DIST_DIR, 'src/wasm/pkg')
 
-async function runWasmBuild(): Promise<void> {
-  console.log('[Build] Compiling WASM (release)...')
-  const proc = spawn({
-    cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../apps/game/src/wasm/pkg', '--release'],
-    cwd: join(ROOT_DIR, '../../physics-engine'),
-    stdout: 'inherit',
-    stderr: 'inherit',
-  })
-  const code = await proc.exited
-  if (code !== 0) {
-    throw new Error(`wasm-pack exited with code ${code}`)
+function assertWasmArtifacts(): void {
+  const required = ['car_physics_engine.js', 'car_physics_engine_bg.wasm']
+  for (const file of required) {
+    if (!existsSync(join(WASM_PKG_DIR, file))) {
+      throw new Error(
+        `[Build] WASM artifact missing: ${file}. Run 'pnpm turbo run build:wasm' first, or use 'pnpm run build' from repo root (which chains the WASM step via turbo).`,
+      )
+    }
   }
 }
 
@@ -69,8 +65,8 @@ async function copyWasmPackage(): Promise<void> {
 }
 
 const start = performance.now()
+assertWasmArtifacts()
 await cleanDist()
-await runWasmBuild()
 await bundleApp()
 await copyPublicAssets()
 await copyWasmPackage()
