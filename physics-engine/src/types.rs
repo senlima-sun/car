@@ -1172,20 +1172,6 @@ pub struct PerWheelTemperature {
 }
 
 impl PerWheelTemperature {
-    /// Get average temperature for a single wheel. Out-of-range `wheel`
-    /// returns `f32::NAN` so downstream sanitization catches the
-    /// programmer error; the prior `0.5` fallback returned a plausible-
-    /// looking median that masked indexing bugs.
-    pub fn wheel_avg(&self, wheel: usize) -> f32 {
-        match wheel {
-            0 => (self.front_left_inner + self.front_left_outer) / 2.0,
-            1 => (self.front_right_inner + self.front_right_outer) / 2.0,
-            2 => (self.rear_left_inner + self.rear_left_outer) / 2.0,
-            3 => (self.rear_right_inner + self.rear_right_outer) / 2.0,
-            _ => f32::NAN,
-        }
-    }
-
     /// Per-wheel averaged temperatures as a `[f32; 4]`. Centralizes the
     /// `(inner + outer) / 2` aggregation that was duplicated across
     /// pre-step and post-step paths in `engine.rs`.
@@ -1196,6 +1182,16 @@ impl PerWheelTemperature {
             (self.rear_left_inner + self.rear_left_outer) * 0.5,
             (self.rear_right_inner + self.rear_right_outer) * 0.5,
         ]
+    }
+
+    /// Get average temperature for a single wheel. Out-of-range `wheel`
+    /// returns `f32::NAN` so downstream sanitization catches the
+    /// programmer error.
+    pub fn wheel_avg(&self, wheel: usize) -> f32 {
+        self.per_wheel_avg()
+            .get(wheel)
+            .copied()
+            .unwrap_or(f32::NAN)
     }
 
     /// Convert normalized temp to Celsius (20C - 150C range)
