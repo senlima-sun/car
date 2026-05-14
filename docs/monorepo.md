@@ -31,9 +31,26 @@ export TURBO_REMOTE_CACHE_SIGNATURE_KEY=<hmac-key>
 
 Sanity-check before running CI: `pnpm run scripts/check-turbo-cache.ts` (added in Phase 1.4) confirms the four env vars resolve and remote caching is wired.
 
+## Running root-scoped scripts
+
+`pnpm` resolves to the nearest workspace package when invoked. When running root-only scripts (e.g. `test:scripts`, `perf:smoke`, `track:*`, `build:wasm:release`) from the repo root, add `-w` (alias for `--workspace-root`):
+
+```sh
+pnpm -w run test:scripts
+pnpm -w run perf:smoke
+pnpm -w run track:add suzuka
+```
+
+App-scoped scripts use `--filter`:
+
+```sh
+pnpm --filter @car/game dev
+pnpm --filter @car/game compress:glb
+```
+
 ## Test discovery
 
-`pnpm --filter @car/game test` runs `bun test` inside `apps/game/`. Tests outside the app (notably `scripts/lib/validate/validate-source.test.ts`) are covered by the separate `pnpm run test:scripts` invocation. This is intentionally NOT a turbo task so its cache key does not couple to app source.
+`pnpm --filter @car/game test` runs `bun test` inside `apps/game/`. Tests outside the app (notably `scripts/lib/validate/validate-source.test.ts`) are covered by the separate `pnpm -w run test:scripts` invocation. This is intentionally NOT a turbo task so its cache key does not couple to app source.
 
 ## Deprecated commands
 

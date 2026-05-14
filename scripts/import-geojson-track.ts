@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { buildEditorTrackSourceFromPolyline } from '../src/utils/editorTrackSourceFromPolyline'
+import { buildEditorTrackSourceFromPolyline } from '../apps/game/src/utils/editorTrackSourceFromPolyline'
 import { gpsToWorld, douglasPeucker, autoDetectSectorSplits } from './lib/osm-ingest'
 import type { Point2D } from './lib/osm-ingest'
 import type { CircuitConfigFile } from './circuits/_schema'
@@ -250,7 +250,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const outPath = `src/constants/tracks/sources/${config.name}.json`
+  const outPath = `apps/game/src/constants/tracks/sources/${config.name}.json`
   await Bun.write(outPath, JSON.stringify(source, null, 2))
   console.log(`  ✅ Written to ${outPath}`)
   console.log(`  📏 Track length: ${Math.round(totalLength)}m`)

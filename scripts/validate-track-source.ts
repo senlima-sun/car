@@ -2,7 +2,7 @@
 
 import { validateTrackSource } from './lib/validate/validate-source'
 import type { CircuitConfigFile } from './circuits/_schema'
-import type { ValidationResult } from '../src/utils/trackValidation'
+import type { ValidationResult } from '../apps/game/src/utils/trackValidation'
 
 const RED = '\x1b[31m'
 const YELLOW = '\x1b[33m'
@@ -47,9 +47,11 @@ async function run(): Promise<void> {
     process.exit(1)
   }
 
-  const sourceFile = Bun.file(`src/constants/tracks/sources/${circuitName}.json`)
+  const sourceFile = Bun.file(`apps/game/src/constants/tracks/sources/${circuitName}.json`)
   if (!(await sourceFile.exists())) {
-    console.error(`No source found at src/constants/tracks/sources/${circuitName}.json`)
+    console.error(
+      `No source found at apps/game/src/constants/tracks/sources/${circuitName}.json`,
+    )
     process.exit(1)
   }
   let source: unknown
@@ -57,7 +59,7 @@ async function run(): Promise<void> {
     source = await sourceFile.json()
   } catch (err) {
     console.error(
-      `Invalid JSON in src/constants/tracks/sources/${circuitName}.json: ${(err as Error).message}`,
+      `Invalid JSON in apps/game/src/constants/tracks/sources/${circuitName}.json: ${(err as Error).message}`,
     )
     process.exit(1)
   }

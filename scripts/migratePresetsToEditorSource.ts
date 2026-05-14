@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 import { mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname, resolve } from 'path'
-import { importTrackObjectsToEditorState } from '../src/components/ui/TrackEditor/import/trackObjectsToEditor'
-import type { EditorTrackSource } from '../src/utils/editorTrackSource'
+import { importTrackObjectsToEditorState } from '../apps/game/src/components/ui/TrackEditor/import/trackObjectsToEditor'
+import type { EditorTrackSource } from '../apps/game/src/utils/editorTrackSource'
 
 type RuntimePresetTrack = {
   id: string
@@ -73,8 +73,8 @@ function migrateTrack(inputPath: string, outputPath: string): void {
 }
 
 const root = resolve(import.meta.dir, '..')
-const runtimeDir = resolve(root, 'src/constants/tracks')
-const sourceDir = resolve(root, 'src/constants/tracks/sources')
+const runtimeDir = resolve(root, 'apps/game/src/constants/tracks')
+const sourceDir = resolve(root, 'apps/game/src/constants/tracks/sources')
 
 for (const name of ['silverstone', 'suzuka', 'monza', 'shanghai']) {
   migrateTrack(resolve(runtimeDir, `${name}.json`), resolve(sourceDir, `${name}.json`))

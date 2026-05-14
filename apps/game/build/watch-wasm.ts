@@ -6,7 +6,7 @@ import { watch } from 'fs'
 import { spawn } from 'bun'
 import { join } from 'path'
 
-const PHYSICS_ENGINE_DIR = join(import.meta.dir, '../physics-engine/src')
+const PHYSICS_ENGINE_DIR = join(import.meta.dir, '../../../physics-engine/src')
 const DEBOUNCE_MS = 500
 
 let buildTimeout: ReturnType<typeof setTimeout> | null = null
@@ -23,8 +23,8 @@ async function buildWasm() {
 
   try {
     const proc = spawn({
-      cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../src/wasm/pkg'],
-      cwd: join(import.meta.dir, '../physics-engine'),
+      cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../apps/game/src/wasm/pkg'],
+      cwd: join(import.meta.dir, '../../../physics-engine'),
       stdout: 'pipe',
       stderr: 'pipe',
     })

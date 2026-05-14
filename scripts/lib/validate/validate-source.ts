@@ -1,7 +1,7 @@
-import type { EditorTrackSource } from '../../../src/utils/editorTrackSource'
-import { buildRuntimePresetTrack } from '../../../src/utils/editorTrackSource'
+import type { EditorTrackSource } from '../../../apps/game/src/utils/editorTrackSource'
+import { buildRuntimePresetTrack } from '../../../apps/game/src/utils/editorTrackSource'
 import type { CircuitConfigFile } from '../../circuits/_schema'
-import type { TrackValidationReport, ValidationResult } from '../../../src/utils/trackValidation'
+import type { TrackValidationReport, ValidationResult } from '../../../apps/game/src/utils/trackValidation'
 import { computeCurvature } from '../osm-ingest/geometry'
 
 export interface TrackSourceValidationReport extends TrackValidationReport {

@@ -9,7 +9,7 @@
  * `window.__startPerfScenario` / `__stopPerfScenario`.
  */
 
-import { PerfScenarioRecorder, formatMetrics } from '../src/debug/perfScenarios'
+import { PerfScenarioRecorder, formatMetrics } from '../apps/game/src/debug/perfScenarios'
 
 interface Budget {
   averageFpsMin: number

@@ -1,0 +1,44 @@
+{
+  "name": "@car/game",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot build/dev.ts",
+    "dev:wasm": "bun run build/watch-wasm.ts",
+    "build": "bun run build/build.ts",
+    "preview": "bunx --bun serve -p 4173 dist",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "compress:glb": "bunx --bun @gltf-transform/cli webp public/models/f1_2026.glb /tmp/f1_webp.glb && bunx --bun @gltf-transform/cli draco /tmp/f1_webp.glb public/models/f1_2026.glb && rm /tmp/f1_webp.glb"
+  },
+  "dependencies": {
+    "@base-ui-components/react": "^1.0.0-rc.0",
+    "@dimforge/rapier3d-compat": "^0.12.0",
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/extensions": "^4.3.0",
+    "@napi-rs/canvas": "^0.1.91",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.2",
+    "@react-three/rapier": "^2.2.0",
+    "draco3dgltf": "^1.5.7",
+    "lucide-react": "^1.8.0",
+    "motion": "^12.38.0",
+    "posthog-js": "^1.306.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.18",
+    "three": "^0.182.0",
+    "three-stdlib": "^2.36.0",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.182.0",
+    "bun-plugin-tailwind": "^0.1.2",
+    "dotenv": "^17.3.1",
+    "typescript": "^5.9.3"
+  }
+}

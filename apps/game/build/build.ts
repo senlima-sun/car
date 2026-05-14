@@ -13,8 +13,8 @@ const WASM_DIST_DIR = join(DIST_DIR, 'src/wasm/pkg')
 async function runWasmBuild(): Promise<void> {
   console.log('[Build] Compiling WASM (release)...')
   const proc = spawn({
-    cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../src/wasm/pkg', '--release'],
-    cwd: join(ROOT_DIR, 'physics-engine'),
+    cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../apps/game/src/wasm/pkg', '--release'],
+    cwd: join(ROOT_DIR, '../../physics-engine'),
     stdout: 'inherit',
     stderr: 'inherit',
   })

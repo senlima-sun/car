@@ -11,7 +11,7 @@
 # you want the gate. The canonical gate for CI is `bun run track:add <name>`.
 #
 # What it does:
-#   Scans staged files for any path matching src/constants/tracks/sources/*.json.
+#   Scans staged files for any path matching apps/game/src/constants/tracks/sources/*.json.
 #   For each matched file it derives the circuit name (basename without .json)
 #   and runs `bun run track:validate-source <name>`. If validation reports any
 #   critical failure the commit is blocked and the report is printed to stderr.
@@ -21,7 +21,7 @@
 set -euo pipefail
 
 STAGED=$(git diff --cached --name-only --diff-filter=ACM)
-SOURCES=$(echo "$STAGED" | grep -E '^src/constants/tracks/sources/[^/]+\.json$' || true)
+SOURCES=$(echo "$STAGED" | grep -E '^apps/game/src/constants/tracks/sources/[^/]+\.json$' || true)
 
 if [ -z "$SOURCES" ]; then
   exit 0

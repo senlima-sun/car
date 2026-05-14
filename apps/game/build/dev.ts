@@ -70,8 +70,8 @@ function isSafeChild(parent: string, child: string): boolean {
 async function buildWasmInitial(): Promise<boolean> {
   console.log('[Dev] Building WASM...')
   const proc = spawn({
-    cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../src/wasm/pkg'],
-    cwd: join(ROOT_DIR, 'physics-engine'),
+    cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../apps/game/src/wasm/pkg'],
+    cwd: join(ROOT_DIR, '../../physics-engine'),
     stdout: 'inherit',
     stderr: 'inherit',
   })

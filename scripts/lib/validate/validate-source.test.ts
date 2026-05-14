@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'bun:test'
-import { buildEditorTrackSourceFromPolyline } from '../../../src/utils/editorTrackSourceFromPolyline'
-import { buildRuntimePresetTrack } from '../../../src/utils/editorTrackSource'
-import type { EditorTrackSource } from '../../../src/utils/editorTrackSource'
+import { buildEditorTrackSourceFromPolyline } from '../../../apps/game/src/utils/editorTrackSourceFromPolyline'
+import { buildRuntimePresetTrack } from '../../../apps/game/src/utils/editorTrackSource'
+import type { EditorTrackSource } from '../../../apps/game/src/utils/editorTrackSource'
 import { validateTrackSource } from './validate-source'
 import type { CircuitConfigFile } from '../../circuits/_schema'
 
