@@ -20,6 +20,9 @@ importers:
       '@base-ui-components/react':
         specifier: ^1.0.0-rc.0
         version: 1.0.0-rc.0(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@car/physics':
+        specifier: workspace:*
+        version: link:../../packages/physics
       '@dimforge/rapier3d-compat':
         specifier: ^0.12.0
         version: 0.12.0
@@ -96,6 +99,9 @@ importers:
 
   packages/physics:
     devDependencies:
+      '@types/bun':
+        specifier: latest
+        version: 1.3.14
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
