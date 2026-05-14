@@ -1,4 +1,5 @@
 mod evo;
+mod ghost_writer;
 mod obs;
 mod parallel_eval;
 mod perf;
