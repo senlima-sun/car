@@ -2,9 +2,9 @@ use crate::car_physics::differential::DifferentialConfig;
 use crate::car_physics::driveshaft::{decay_first_order, ShaftConfig};
 use crate::car_physics::powertrain::{ENGINE_INERTIA, TIRE_RADIUS};
 use crate::car_physics::tire_model::{
-    combined_slip, gx_combined, gy_combined, pacejka_lateral_per_wheel, pacejka_longitudinal,
-    peak_mu_lat_at_fz, peak_mu_lon_at_fz, CombinedSlipCoeffs, PacejkaCoeffs,
-    TIRE_DEFAULT_LOAD_SENSITIVITY,
+    combined_slip_ellipse, gx_combined, gy_combined, pacejka_lateral_per_wheel,
+    pacejka_longitudinal, peak_mu_lat_at_fz, peak_mu_lon_at_fz, CombinedSlipCoeffs,
+    PacejkaCoeffs, TIRE_DEFAULT_LOAD_SENSITIVITY,
 };
 use crate::constants::car::BASE_TIRE_GRIP_COEFFICIENT;
 use crate::tires::is_front_wheel;
@@ -359,22 +359,22 @@ impl WheelForceIntegrator {
                 slip_ratio,
                 &CombinedSlipCoeffs::LATERAL_DEFAULT_COMBINED,
             );
-            let fx_combined = fx_pure * g_x;
-            let fy_combined = fy_pure * g_y;
-            // Two-axis friction-ellipse cap. Radius uses the larger of
-            // lateral / longitudinal peak μ (matches Wave 1's
-            // `calculate_per_wheel_forces` ellipse).
-            let mu_fz_limit = peak_mu_lat_at_fz(fz).max(peak_mu_lon_at_fz(fz)) * fz;
-            let (fx_capped, fy_capped) = combined_slip(fx_combined, fy_combined, mu_fz_limit);
-            // Wave 3 Phase 6: unified grip stack. Both axes multiply by the
-            // same `BASE_TIRE_GRIP_COEFFICIENT × downforce_grip_bonus ×
-            // combined_grip_multiplier` chain. Replaces the Wave 2 split
-            // where the lateral path got the full chain and the longitudinal
-            // path only the environmental subset.
+            // Unified grip-chain scaling applied to both the pure-slip
+            // Pacejka outputs and the friction-ellipse cap. Wave 3:
+            // by scaling both sides equally, the cap binds at the
+            // physical friction circle (μ × Fz × grip_chain) instead
+            // of being applied after a sub-circle cap (the pre-Wave-3
+            // path multiplied by grip_chain *after* clipping at μ × Fz,
+            // which let combined forces exceed the real circle by the
+            // grip_chain factor).
             let grip_chain =
                 BASE_TIRE_GRIP_COEFFICIENT * i.downforce_grip_bonus * i.combined_grip_multiplier;
-            let fx = fx_capped * grip_chain;
-            let fy = fy_capped * grip_chain;
+            let fx_combined = fx_pure * g_x * grip_chain;
+            let fy_combined = fy_pure * g_y * grip_chain;
+            let mu_x_fz = peak_mu_lon_at_fz(fz) * fz * grip_chain;
+            let mu_y_fz = peak_mu_lat_at_fz(fz) * fz * grip_chain;
+            let (fx, fy) =
+                combined_slip_ellipse(fx_combined, fy_combined, mu_x_fz, mu_y_fz);
             wheel_fx_now[wheel] = fx;
             wheel_fy_now[wheel] = fy;
             wheel_long_force += fx;

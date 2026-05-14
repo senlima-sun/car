@@ -71,8 +71,11 @@ const SUPER_CLIP_EFFICIENCY: f32 = 0.90;
 
 // Speed thresholds (m/s)
 const MIN_HARVEST_SPEED: f32 = 5.0; // ~18 km/h minimum for any harvest
-const SUPER_CLIP_MIN_SPEED: f32 = 35.0; // ~126 km/h for super clipping (was 50/180)
-const SUPER_CLIP_OPTIMAL_SPEED: f32 = 55.0; // ~198 km/h for max super clipping (was 70/250)
+// Super clipping (harvest while accelerating) is meaningful only on
+// the upper end of straights where ICE output exceeds drag. Below
+// ~180 km/h the ICE has plenty of forward force and no surplus.
+const SUPER_CLIP_MIN_SPEED: f32 = 50.0; // ~180 km/h
+const SUPER_CLIP_OPTIMAL_SPEED: f32 = 70.0; // ~252 km/h
 const OPTIMAL_HARVEST_SPEED: f32 = 80.0; // ~288 km/h for max brake harvest
 
 // ============================================================================
@@ -485,12 +488,12 @@ impl ErsPhysicsState {
                     self.current.battery_charge -= battery_needed;
                     self.current.lap_deployed_mj += energy_deployed / 1000.0;
 
-                    // Calculate force boost (Power = Force × Velocity)
-                    // At reference speed (50 m/s), 350 kW = 7000 N
-                    let reference_speed = 40.0;
-                    let effective_speed = speed_ms.clamp(reference_speed, 90.0);
-
-                    force_boost = (deploy_power * 1000.0 / effective_speed) * DEPLOY_EFFICIENCY;
+                    // Electric-motor torque-limited force: F = min(F_max, P/v).
+                    // Below the corner speed (P_max / F_max), peak torque
+                    // binds; above it, constant power binds. Replaces the
+                    // 40 m/s floor that made launch boost ~4× too low.
+                    force_boost =
+                        electric_force_boost(deploy_power, speed_ms) * DEPLOY_EFFICIENCY;
 
                     power_flow_kw += deploy_power; // Net power (deploy - clip)
                     is_deploying = true;
@@ -628,6 +631,29 @@ pub(crate) fn compute_deployment_schedule(
 fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
     let t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
+}
+
+/// Electric-motor force at a given deploy power (kW) and car speed
+/// (m/s). Below the corner speed `P_max / F_max` the motor is in the
+/// constant-torque regime; above it, constant power. Approximation of
+/// the 350 kW MGU-K curve through gearbox + final drive at the wheels.
+fn electric_force_boost(deploy_power_kw: f32, speed_ms: f32) -> f32 {
+    /// Wheel-level torque-limited force ceiling. Derived from MGU-K
+    /// peak torque (~250 Nm at the crank) × total drivetrain ratio
+    /// (1st-gear 3.6 × final-drive 2.9) / tire radius (0.36 m) ≈
+    /// 7240 N. Set higher because the boost rides through 1st gear
+    /// for only the launch transient; an averaged ratio gives ~15 kN
+    /// in the steady-state launch regime where 350 kW = 35 kN at
+    /// 10 m/s is the constant-power-curve ceiling anyway.
+    const F_MAX_TORQUE_N: f32 = 15_000.0;
+    /// Below this speed, the motor is held at peak torque and the
+    /// hyperbolic P/v branch is undefined.
+    const MIN_BOOST_SPEED_MS: f32 = 1.0;
+    if speed_ms < MIN_BOOST_SPEED_MS {
+        return F_MAX_TORQUE_N;
+    }
+    let constant_power_force = deploy_power_kw * 1000.0 / speed_ms;
+    F_MAX_TORQUE_N.min(constant_power_force)
 }
 
 #[cfg(test)]

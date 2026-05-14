@@ -11,15 +11,16 @@ const DEFAULT_LOAD_SENSITIVITY: f32 = 0.015;
 // being sensitive to FP rounding right at the peak.
 const PEAK_LATERAL_SLIP_DEG: f32 = 9.0;
 
-/// Apply Pacejka load-sensitivity to a per-wheel Fz: heavier corners produce
-/// less μ per unit load. Mirrors the inline formula used in
-/// `pacejka_grip_efficiency`, `peak_mu_at_fz`, and `calculate_per_wheel_forces`
-/// so all three see the same effective Fz.
+/// Apply Pacejka load-sensitivity to a per-wheel Fz: heavier corners
+/// produce less μ per unit load. Continuous in Fz — no flat-floor
+/// cliff at `load_factor = 0.7` (which kicked in at 5× nominal Fz and
+/// hid further compression). Below nominal Fz the factor is 1.0 because
+/// load sensitivity only reduces μ above nominal in this model.
 #[inline]
 fn effective_fz_with_load_sensitivity(fz: f32, load_sensitivity: f32) -> f32 {
     let fz_nominal = CAR_MASS * 9.81 / 4.0;
-    let load_factor = 1.0 - load_sensitivity * (fz / fz_nominal - 1.0).max(0.0);
-    fz * load_factor.clamp(0.7, 1.0)
+    let load_factor = (1.0 - load_sensitivity * (fz / fz_nominal - 1.0).max(0.0)).max(0.5);
+    fz * load_factor
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -100,6 +101,30 @@ pub fn combined_slip(fx_pure: f32, fy_pure: f32, mu_fz_limit: f32) -> (f32, f32)
     (fx_pure * scale, fy_pure * scale)
 }
 
+/// Per-axis friction-ellipse cap: `(fx/μx·Fz)² + (fy/μy·Fz)² ≤ 1`.
+/// Replaces the isotropic circle when the longitudinal and lateral
+/// peak μ differ noticeably. Returns the scaled (fx, fy) pair lying on
+/// the ellipse boundary when the input is outside; passes through
+/// otherwise. Direction is preserved (the scale factor is uniform).
+pub fn combined_slip_ellipse(
+    fx_pure: f32,
+    fy_pure: f32,
+    mu_x_fz: f32,
+    mu_y_fz: f32,
+) -> (f32, f32) {
+    if mu_x_fz <= 1e-3 || mu_y_fz <= 1e-3 {
+        return (0.0, 0.0);
+    }
+    let nx = fx_pure / mu_x_fz;
+    let ny = fy_pure / mu_y_fz;
+    let r_sq = nx * nx + ny * ny;
+    if r_sq <= 1.0 {
+        return (fx_pure, fy_pure);
+    }
+    let scale = 1.0 / r_sq.sqrt();
+    (fx_pure * scale, fy_pure * scale)
+}
+
 /// Peak μ available at this Fz under the supplied Pacejka coefficient set,
 /// after the same load sensitivity factor used by `pacejka_grip_efficiency`.
 /// Use this to compute the friction-ellipse radius `peak_mu * effective_fz`
@@ -107,10 +132,13 @@ pub fn combined_slip(fx_pure: f32, fy_pure: f32, mu_fz_limit: f32) -> (f32, f32)
 /// `peak_mu_lat_at_fz` / `peak_mu_lon_at_fz` for the default coefficient
 /// sets so the friction-ellipse cap can use the larger of the two.
 pub fn peak_mu_at_fz(fz: f32, coeffs: &PacejkaCoeffs) -> f32 {
+    if fz < MIN_FZ_NEWTONS {
+        return 0.0;
+    }
     let effective_fz = effective_fz_with_load_sensitivity(fz, DEFAULT_LOAD_SENSITIVITY);
     let peak_slip = PEAK_LATERAL_SLIP_DEG.to_radians();
     let peak_force = pacejka_force(peak_slip, effective_fz, coeffs).abs();
-    peak_force / effective_fz.max(100.0)
+    peak_force / effective_fz
 }
 
 /// Peak lateral μ at this Fz under the default lateral coefficient set.
@@ -250,25 +278,28 @@ pub fn calculate_per_wheel_forces(
     }
 }
 
+/// Lateral μ as a fraction of peak, at the given slip angle and Fz.
+/// Evaluates the Pacejka curve directly — no small-slip short-circuit
+/// (the previous `< 0.5°` return of `peak_mu × 0.85` was ~10× too high;
+/// Pacejka at 0.5° is `B·C·α ≈ 0.087` not `0.85`). Floors at 0 when Fz
+/// is below `MIN_FZ_NEWTONS` so a wheel briefly off the ground returns
+/// "no grip" instead of a divide-by-tiny noise value.
 pub fn pacejka_grip_efficiency(slip_angle_deg: f32, fz: f32) -> f32 {
+    if fz < MIN_FZ_NEWTONS {
+        return 0.0;
+    }
     let lat_coeffs = PacejkaCoeffs::lateral_default();
     let effective_fz = effective_fz_with_load_sensitivity(fz, DEFAULT_LOAD_SENSITIVITY);
-
-    let peak_slip = PEAK_LATERAL_SLIP_DEG.to_radians();
-    let peak_force = pacejka_lateral(peak_slip, effective_fz, &lat_coeffs).abs();
-    let peak_mu = peak_force / effective_fz.max(100.0);
-
-    let abs_slip = slip_angle_deg.abs();
-    if abs_slip < 0.5 {
-        return peak_mu * 0.85;
-    }
-
-    let slip_rad = abs_slip.to_radians();
+    let slip_rad = slip_angle_deg.abs().to_radians();
     let current_force = pacejka_lateral(slip_rad, effective_fz, &lat_coeffs).abs();
-    let current_mu = current_force / effective_fz.max(100.0);
-
-    current_mu.max(peak_mu * 0.5)
+    current_force / effective_fz
 }
+
+/// Below this vertical load (≈ 20 kg of normal force) the tire is treated
+/// as not in contact: peak μ queries return 0 instead of a divide-by-tiny
+/// fallback. Real tires below this load produce sub-noise levels of
+/// lateral force anyway; the floor is a defensive guard, not a soft cap.
+pub const MIN_FZ_NEWTONS: f32 = 200.0;
 
 #[cfg(test)]
 mod tests {
