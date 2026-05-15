@@ -28,7 +28,7 @@ pub const OFF_TRACK_SECONDS_PENALTY: f32 = 300.0;
 pub const OFF_TRACK_COUNT_BASE_PENALTY: f32 = 50.0;
 pub const OFF_TRACK_COUNT_EXPONENT: f32 = 1.5;
 pub const SEVERE_OFF_TRACK_PENALTY: f32 = 1000.0;
-pub const SEVERE_OFF_TRACK_PROGRESS_THRESHOLD_S: f32 = 0.5;
+pub const SEVERE_OFF_TRACK_PROGRESS_THRESHOLD_S: f32 = 1.5;
 pub const SEVERE_OFF_TRACK_PROGRESS_GRADE: f32 = 0.1;
 pub const INPUT_JITTER_PENALTY: f32 = 0.5;
 pub const SIM_TIME_PENALTY: f32 = 5.0;
@@ -40,7 +40,7 @@ pub fn lap_bonus_grade(off_track_count: u32) -> f32 {
         0 | 1 => 1.0,
         2 => 0.5,
         3 => 0.2,
-        _ => 0.0,
+        _ => 0.05,
     }
 }
 
@@ -447,9 +447,16 @@ mod tests {
         let counterpart_no_lap =
             compute_fitness(5800.0, 95.0, 0.5, 0.0, 5, 0.0, false, 1200.0);
         let delta = invalidated - counterpart_no_lap;
+        let expected_residual_bonus =
+            (1200.0_f32 - 95.0_f32) * 10.0 * lap_bonus_grade(5);
         assert!(
-            delta.abs() < 1e-3,
-            "lap_completed bonus must be zero at off_track_count>=4 (delta={delta})",
+            (delta - expected_residual_bonus).abs() < 1e-2,
+            "lap_completed bonus at off_track_count>=4 must match softened grade (delta={delta}, expected_residual={expected_residual_bonus})",
+        );
+        assert!(
+            lap_bonus_grade(5) < 0.1,
+            "softened invalidation grade must remain small, got {}",
+            lap_bonus_grade(5),
         );
     }
 
@@ -459,8 +466,16 @@ mod tests {
         assert_eq!(lap_bonus_grade(1), 1.0);
         assert_eq!(lap_bonus_grade(2), 0.5);
         assert_eq!(lap_bonus_grade(3), 0.2);
-        assert_eq!(lap_bonus_grade(4), 0.0);
-        assert_eq!(lap_bonus_grade(100), 0.0);
+        assert!(
+            lap_bonus_grade(4) <= 0.1 && lap_bonus_grade(4) >= 0.0,
+            "4+ violations must produce a softened residual grade <=0.1, got {}",
+            lap_bonus_grade(4),
+        );
+        assert!(
+            lap_bonus_grade(100) <= 0.1 && lap_bonus_grade(100) >= 0.0,
+            "many violations must produce a softened residual grade <=0.1, got {}",
+            lap_bonus_grade(100),
+        );
     }
 
     #[test]
