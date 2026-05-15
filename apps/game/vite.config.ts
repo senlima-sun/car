@@ -37,6 +37,13 @@ export default defineConfig({
   },
   server: {
     port: 7234,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   preview: {
     port: 7235,
