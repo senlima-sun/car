@@ -47,7 +47,7 @@ export function AuthForm({ mode, onSwitchMode, onSuccess }: AuthFormProps) {
           <input
             type='text'
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={e => setName(e.target.value)}
             required
             autoComplete='name'
             className='rounded-sm border border-white/15 bg-black/40 px-3 py-2 font-mono text-sm text-white/90 outline-none focus:border-red-300/70'
@@ -59,7 +59,7 @@ export function AuthForm({ mode, onSwitchMode, onSuccess }: AuthFormProps) {
         <input
           type='email'
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={e => setEmail(e.target.value)}
           required
           autoComplete='email'
           className='rounded-sm border border-white/15 bg-black/40 px-3 py-2 font-mono text-sm text-white/90 outline-none focus:border-red-300/70'
@@ -70,7 +70,7 @@ export function AuthForm({ mode, onSwitchMode, onSuccess }: AuthFormProps) {
         <input
           type='password'
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={e => setPassword(e.target.value)}
           required
           minLength={8}
           autoComplete={isSignUp ? 'new-password' : 'current-password'}
@@ -78,9 +78,7 @@ export function AuthForm({ mode, onSwitchMode, onSuccess }: AuthFormProps) {
         />
       </label>
 
-      {errorMessage && (
-        <p className='font-mono text-xs text-red-300/90'>{errorMessage}</p>
-      )}
+      {errorMessage && <p className='font-mono text-xs text-red-300/90'>{errorMessage}</p>}
 
       <button
         type='submit'
@@ -95,7 +93,7 @@ export function AuthForm({ mode, onSwitchMode, onSuccess }: AuthFormProps) {
         onClick={() => onSwitchMode(isSignUp ? 'signin' : 'signup')}
         className='font-mono text-[10px] uppercase tracking-[0.3em] text-white/50 hover:text-white/80'
       >
-        {isSignUp ? 'Have an account? Sign in' : "New here? Create an account"}
+        {isSignUp ? 'Have an account? Sign in' : 'New here? Create an account'}
       </button>
     </form>
   )

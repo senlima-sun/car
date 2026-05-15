@@ -7,4 +7,11 @@ function MenuRoute() {
   return <App />
 }
 
-export const Route = createFileRoute('/')({ component: MenuRoute })
+export const Route = createFileRoute('/')({
+  component: MenuRoute,
+  validateSearch: (s: Record<string, unknown>) => {
+    const auth = s.auth
+    if (auth === 'signin' || auth === 'signup') return { auth }
+    return {}
+  },
+})

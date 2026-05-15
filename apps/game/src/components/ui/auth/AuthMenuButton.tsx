@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Dialog } from '@base-ui-components/react/dialog'
 import { useAuth } from '@/auth/AuthProvider'
 import { AuthForm } from './AuthForm'
 
@@ -10,25 +11,28 @@ function readAuthSearchParam(): ModalMode {
   return value === 'signin' || value === 'signup' ? value : null
 }
 
-interface AuthMenuButtonProps {
-  initialOpen?: ModalMode
-  onClose?: () => void
+function clearAuthSearchParam() {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('auth')) return
+  url.searchParams.delete('auth')
+  window.history.replaceState(null, '', url.toString())
 }
 
-export function AuthMenuButton({ initialOpen, onClose }: AuthMenuButtonProps) {
+interface AuthMenuButtonProps {
+  initialOpen?: ModalMode
+}
+
+export function AuthMenuButton({ initialOpen }: AuthMenuButtonProps) {
   const { session, client } = useAuth()
   const [modal, setModal] = useState<ModalMode>(() => initialOpen ?? readAuthSearchParam())
 
-  const closeModal = () => {
-    setModal(null)
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      if (url.searchParams.has('auth')) {
-        url.searchParams.delete('auth')
-        window.history.replaceState(null, '', url.toString())
-      }
+  const handleSignOut = async () => {
+    try {
+      await client.signOut()
+    } catch (err) {
+      console.error('signOut failed', err)
     }
-    onClose?.()
   }
 
   if (session) {
@@ -37,7 +41,7 @@ export function AuthMenuButton({ initialOpen, onClose }: AuthMenuButtonProps) {
         <span className='truncate text-white/70'>{session.user.email}</span>
         <button
           type='button'
-          onClick={() => client.signOut()}
+          onClick={handleSignOut}
           className='rounded-sm border border-white/15 px-2.5 py-1 hover:border-red-300/60 hover:text-red-100'
         >
           Sign out
@@ -48,40 +52,46 @@ export function AuthMenuButton({ initialOpen, onClose }: AuthMenuButtonProps) {
 
   return (
     <div className='border-t border-white/10 pt-3'>
-      <button
-        type='button'
-        onClick={() => setModal('signin')}
-        className='w-full rounded-sm border border-white/15 py-2 font-mono text-[10px] uppercase tracking-[0.3em] text-white/65 hover:border-red-300/60 hover:text-white/90'
+      <Dialog.Root
+        open={modal !== null}
+        onOpenChange={open => {
+          if (!open) {
+            setModal(null)
+            clearAuthSearchParam()
+          }
+        }}
       >
-        Sign in · Sign up
-      </button>
-
-      {modal !== null && (
-        <div
-          className='fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur'
-          role='dialog'
-          aria-modal='true'
-        >
-          <div className='relative w-full max-w-sm rounded-sm border border-white/10 bg-black/90 p-6'>
+        <Dialog.Trigger
+          render={props => (
             <button
+              {...props}
               type='button'
-              onClick={closeModal}
-              aria-label='Close'
-              className='absolute right-3 top-3 font-mono text-xs text-white/40 hover:text-white/80'
+              onClick={() => setModal('signin')}
+              className='w-full rounded-sm border border-white/15 py-2 font-mono text-[10px] uppercase tracking-[0.3em] text-white/65 hover:border-red-300/60 hover:text-white/90'
             >
-              ✕
+              Sign in · Sign up
             </button>
-            <h2 className='mb-4 font-mono text-xs uppercase tracking-[0.32em] text-white/70'>
+          )}
+        />
+        <Dialog.Portal>
+          <Dialog.Backdrop className='fixed inset-0 z-1000 bg-black/70 backdrop-blur' />
+          <Dialog.Popup className='fixed top-1/2 left-1/2 z-1001 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-sm border border-white/10 bg-black/90 p-6 pointer-events-auto'>
+            <Dialog.Title className='mb-4 font-mono text-xs uppercase tracking-[0.32em] text-white/70'>
               {modal === 'signup' ? 'Create account' : 'Sign in'}
-            </h2>
-            <AuthForm
-              mode={modal}
-              onSwitchMode={setModal}
-              onSuccess={closeModal}
-            />
-          </div>
-        </div>
-      )}
+            </Dialog.Title>
+            {modal !== null && (
+              <AuthForm
+                mode={modal}
+                onSwitchMode={setModal}
+                onSuccess={() => {
+                  setModal(null)
+                  clearAuthSearchParam()
+                }}
+              />
+            )}
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   )
 }

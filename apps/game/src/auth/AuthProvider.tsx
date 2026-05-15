@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { authClient, useSession } from './client'
 
 type Session = ReturnType<typeof useSession>
@@ -18,12 +18,15 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const session = useSession()
-  const value: AuthContextValue = {
-    client: authClient,
-    session: session.data,
-    isPending: session.isPending,
-    error: session.error,
-  }
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      client: authClient,
+      session: session.data,
+      isPending: session.isPending,
+      error: session.error,
+    }),
+    [session.data, session.isPending, session.error],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

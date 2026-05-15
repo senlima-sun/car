@@ -2,9 +2,40 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useAuth } from '@/auth/AuthProvider'
 
+interface SubscriptionPayload {
+  tier: string | null
+  status: string | null
+  currentPeriodEnd: string | null
+}
+
+interface MePayload {
+  user: { id: string; email: string; name: string }
+  subscription: SubscriptionPayload
+}
+
+async function fetchMe(): Promise<MePayload | null> {
+  const res = await fetch('/api/me', { credentials: 'include' })
+  if (!res.ok) return null
+  return (await res.json()) as MePayload
+}
+
+async function postBilling(path: '/api/billing/checkout' | '/api/billing/portal', body?: unknown) {
+  const res = await fetch(path, {
+    method: 'POST',
+    credentials: 'include',
+    headers: body ? { 'content-type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) throw new Error(`Request failed (${res.status})`)
+  const data = (await res.json()) as { url?: string }
+  if (!data.url) throw new Error('Missing url in response')
+  return data.url
+}
+
 function AccountRoute() {
   const { session, isPending, client } = useAuth()
   const navigate = useNavigate()
+  const me = Route.useLoaderData()
   const [billingError, setBillingError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -25,7 +56,7 @@ function AccountRoute() {
           </p>
           <button
             type='button'
-            onClick={() => navigate({ to: '/', search: { auth: 'signin' } as never })}
+            onClick={() => navigate({ to: '/', search: { auth: 'signin' } })}
             className='rounded-sm border border-red-300/40 bg-red-500/15 px-4 py-2 font-mono text-xs uppercase tracking-[0.3em] text-red-100 hover:border-red-300/80'
           >
             Open sign-in
@@ -35,49 +66,28 @@ function AccountRoute() {
     )
   }
 
-  type SessionWithSub = typeof session & {
-    subscription?: { tier: string | null; status: string | null; currentPeriodEnd: string | null }
-  }
-  const subscription = (session as SessionWithSub).subscription ?? null
-
-  const handleUpgrade = async () => {
+  const runBilling = async (op: () => Promise<string>) => {
     setBillingError(null)
     setSubmitting(true)
     try {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tier: 'pro' }),
-      })
-      if (!res.ok) throw new Error(`Checkout failed (${res.status})`)
-      const { url } = (await res.json()) as { url?: string }
-      if (!url) throw new Error('Checkout failed: missing url')
+      const url = await op()
       window.location.assign(url)
     } catch (err) {
-      setBillingError(err instanceof Error ? err.message : 'Unable to start checkout')
+      setBillingError(err instanceof Error ? err.message : 'Billing request failed')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handlePortal = async () => {
-    setBillingError(null)
-    setSubmitting(true)
+  const subscription = me?.subscription ?? null
+
+  const handleSignOut = async () => {
     try {
-      const res = await fetch('/api/billing/portal', {
-        method: 'POST',
-        credentials: 'include',
-      })
-      if (!res.ok) throw new Error(`Portal failed (${res.status})`)
-      const { url } = (await res.json()) as { url?: string }
-      if (!url) throw new Error('Portal failed: missing url')
-      window.location.assign(url)
+      await client.signOut()
     } catch (err) {
-      setBillingError(err instanceof Error ? err.message : 'Unable to open portal')
-    } finally {
-      setSubmitting(false)
+      console.error('signOut failed', err)
     }
+    navigate({ to: '/' })
   }
 
   return (
@@ -117,7 +127,9 @@ function AccountRoute() {
             {!subscription?.tier && (
               <button
                 type='button'
-                onClick={handleUpgrade}
+                onClick={() =>
+                  runBilling(() => postBilling('/api/billing/checkout', { tier: 'pro' }))
+                }
                 disabled={submitting}
                 className='rounded-sm border border-red-300/40 bg-red-500/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.3em] text-red-100 hover:border-red-300/80 disabled:opacity-50'
               >
@@ -127,23 +139,21 @@ function AccountRoute() {
             {subscription?.tier && (
               <button
                 type='button'
-                onClick={handlePortal}
+                onClick={() => runBilling(() => postBilling('/api/billing/portal'))}
                 disabled={submitting}
                 className='rounded-sm border border-white/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.3em] text-white/75 hover:border-red-300/60 disabled:opacity-50'
               >
                 {submitting ? 'Working…' : 'Manage billing'}
               </button>
             )}
-            {billingError && (
-              <p className='font-mono text-xs text-red-300/80'>{billingError}</p>
-            )}
+            {billingError && <p className='font-mono text-xs text-red-300/80'>{billingError}</p>}
           </div>
         </section>
 
         <section>
           <button
             type='button'
-            onClick={() => client.signOut().then(() => navigate({ to: '/' }))}
+            onClick={handleSignOut}
             className='font-mono text-[10px] uppercase tracking-[0.3em] text-white/50 hover:text-white/85'
           >
             Sign out
@@ -156,7 +166,5 @@ function AccountRoute() {
 
 export const Route = createFileRoute('/account')({
   component: AccountRoute,
-  validateSearch: (s: Record<string, unknown>) => ({
-    billing: typeof s.billing === 'string' ? s.billing : undefined,
-  }),
+  loader: () => fetchMe(),
 })
