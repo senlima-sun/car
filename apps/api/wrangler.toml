@@ -1,0 +1,22 @@
+name = "car-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[vars]
+# Non-secret config goes here.
+# Secrets: use `wrangler secret put <NAME>` for prod; `.dev.vars` for local dev.
+
+# Uncomment in Phase 2 step 2.0 after `wrangler d1 create car-auth`.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "car-auth"
+# database_id = "<fill-after-wrangler-d1-create>"
+
+# Uncomment in Phase 2 step 2.0 after `wrangler kv namespace create SESSIONS`.
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id = "<fill-after-wrangler-kv-namespace-create>"
