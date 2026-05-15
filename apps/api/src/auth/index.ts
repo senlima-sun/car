@@ -1,4 +1,4 @@
-import { betterAuth } from 'better-auth'
+import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import type { Bindings } from '../types.ts'
 import { parseOrigins } from './origins.ts'
 
@@ -6,7 +6,7 @@ function auditLog(event: string, fields: Record<string, unknown>) {
   console.log(JSON.stringify({ event, timestamp: new Date().toISOString(), ...fields }))
 }
 
-export function createAuth(env: Bindings) {
+export function createAuth(env: Bindings, overrides: Partial<BetterAuthOptions> = {}) {
   const secure = new URL(env.BETTER_AUTH_URL).protocol === 'https:'
 
   return betterAuth({
@@ -62,5 +62,6 @@ export function createAuth(env: Bindings) {
         },
       },
     },
+    ...overrides,
   })
 }
