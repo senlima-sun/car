@@ -1,10 +1,15 @@
 import { createAuthClient } from 'better-auth/react'
 import { polarClient } from '@polar-sh/better-auth'
 
-const baseURL = (import.meta.env.VITE_AUTH_BASE_URL ?? '/api/auth') as string
+function resolveBaseURL(): string {
+  const override = import.meta.env.VITE_AUTH_BASE_URL as string | undefined
+  if (override) return override
+  if (typeof window !== 'undefined') return `${window.location.origin}/api/auth`
+  return 'http://localhost:7234/api/auth'
+}
 
 export const authClient = createAuthClient({
-  baseURL,
+  baseURL: resolveBaseURL(),
   plugins: [polarClient()],
 })
 
