@@ -58,6 +58,32 @@ Better Auth issue [#4203](https://github.com/better-auth/better-auth/issues/4203
 
 Cloudflare D1 encrypts data at rest at the storage layer. No additional column-level encryption is applied.
 
+## Deferred — explicit follow-ups
+
+These were intentionally left out of the initial user-system rollout. Each has a one-line "how to start" so the next contributor doesn't have to re-discover.
+
+- **OAuth social providers** — extend `socialProviders` in `apps/api/src/auth/index.ts`; Better Auth docs list the per-provider keys.
+- **`organization` plugin** (teams, invites, RBAC) — `import { organization } from 'better-auth/plugins'` and add to `plugins` in the factory; will require new D1 tables.
+- **Magic-link sign-in** — Better Auth `magicLink` plugin; needs an email provider first.
+- **Two-factor authentication** — Better Auth `twoFactor` plugin; UI work in `apps/game/`.
+- **Polar Usage-based billing** — add `usage` sub-plugin alongside the existing `checkout`/`portal`/`webhooks`.
+- **Email verification + password-reset email** — currently disabled. When flipping `requireEmailVerification: true`, also flip `autoSignIn: false`. Pick an email provider (Resend / SES / Postmark) and wire `sendVerificationEmail`.
+- **WAF tuning** — Better Auth's built-in `rateLimit` is on. Next layer is Cloudflare WAF rules on the worker route.
+- **User-deletion endpoint (GDPR right-to-erasure)** — FK cascades are in place; build `DELETE /api/me` that calls `auth.api.deleteUser` + `polar.customers.deleteExternal`.
+- **Account-enumeration mitigation** — accepted B2C trade-off for now (Better Auth's signup tells "email already exists"). Revisit for enterprise.
+- **PostHog `identify(userId)`** — call from `AuthProvider` when session resolves; user lookup matches PostHog's identify-call expectations.
+- **Hono RPC type sharing** — would publish `hc<Api>` typed client from `apps/api/`. Defer until SPA needs strongly-typed cross-package endpoints beyond `/api/me`.
+- **Cloudflare Pages deployment for `apps/game/`** — separate plan; the dev story (Vite proxy → Wrangler) works end-to-end as-is.
+- **CI/CD via tag-on-main** — user's intent: SemVer tag on main → `db:migrate:prod` + `wrangler deploy`. See `~/.claude/.../memory/project_ci_deploy_strategy.md`.
+- **CSP + security headers** — add to worker (`Content-Security-Policy` with `script-src 'wasm-unsafe-eval'`, `Strict-Transport-Security`). Belongs in deployment config; ship alongside Pages.
+- **Cross-subdomain cookies** — only needed if SPA and worker end up on different registrable domains. Set `crossSubDomainCookies` in the factory.
+- **TOS + Privacy Policy URLs in Polar checkout config** — legal requirement before public launch.
+- **`compatibility_date` refresh cadence** — review `apps/api/wrangler.toml` quarterly.
+- **Migrate `wrangler.toml` → `wrangler.jsonc`** — toml stays supported; switch when toml support is dropped.
+- **Per-request subscription cache** — `/api/me` makes a Polar API round-trip per call. Cache via KV with short TTL or surface tier via Better Auth `user.additionalFields` updated by webhooks.
+- **Move `AuthProvider` out of `__root.tsx`** — currently wraps the Canvas subtree; not measurable today but the structural concern is real if the session refresh cadence increases.
+- **Split rate-limit KV from session KV** — under brute-force load, rate-limit writes share quota with session writes. Add a separate `RATE_LIMIT` binding and wire it via a custom `rateLimit.storage`.
+
 ## Running locally
 
 Two terminals:
