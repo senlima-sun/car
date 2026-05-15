@@ -1,8 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import app from '../src/index.ts'
-import { memoryEnv } from './helpers/memory-env.ts'
+import { createApp } from '../src/app.ts'
+import { memoryHarness } from './helpers/memory-env.ts'
 
-async function signUpAndGetCookie(env: ReturnType<typeof memoryEnv>) {
+async function signUpAndGetCookie(envOverride: Partial<ReturnType<typeof memoryHarness>['env']>) {
+  const { env, authOverrides } = memoryHarness()
+  Object.assign(env, envOverride)
+  const app = createApp({ authOverrides })
   const res = await app.request(
     '/api/auth/sign-up/email',
     {
@@ -22,17 +25,14 @@ async function signUpAndGetCookie(env: ReturnType<typeof memoryEnv>) {
 
 describe('cookie security flags', () => {
   test('http localhost omits Secure', async () => {
-    const env = memoryEnv()
-    const cookie = await signUpAndGetCookie(env)
+    const cookie = await signUpAndGetCookie({})
     expect(cookie).toContain('HttpOnly')
     expect(cookie).toContain('SameSite=Lax')
     expect(cookie).not.toContain('Secure')
   })
 
   test('https BETTER_AUTH_URL sets Secure', async () => {
-    const env = memoryEnv()
-    env.BETTER_AUTH_URL = 'https://api.example.test'
-    const cookie = await signUpAndGetCookie(env)
+    const cookie = await signUpAndGetCookie({ BETTER_AUTH_URL: 'https://api.example.test' })
     expect(cookie).toContain('HttpOnly')
     expect(cookie).toContain('SameSite=Lax')
     expect(cookie).toContain('Secure')

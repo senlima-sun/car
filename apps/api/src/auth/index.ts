@@ -6,15 +6,14 @@ function auditLog(event: string, fields: Record<string, unknown>) {
   console.log(JSON.stringify({ event, timestamp: new Date().toISOString(), ...fields }))
 }
 
-export function createAuth(env: Bindings, overrides: Partial<BetterAuthOptions> = {}) {
+function buildOptions(env: Bindings): BetterAuthOptions {
   const secure = new URL(env.BETTER_AUTH_URL).protocol === 'https:'
-
-  return betterAuth({
+  return {
     database: env.DB,
     secondaryStorage: {
       get: key => env.SESSIONS.get(key),
       set: (key, value, ttl) => {
-        const safeTtl = ttl && ttl >= 60 ? ttl : ttl ? 60 : undefined
+        const safeTtl = ttl == null ? undefined : Math.max(ttl, 60)
         return env.SESSIONS.put(key, value, safeTtl ? { expirationTtl: safeTtl } : undefined)
       },
       delete: key => env.SESSIONS.delete(key),
@@ -62,6 +61,23 @@ export function createAuth(env: Bindings, overrides: Partial<BetterAuthOptions> 
         },
       },
     },
-    ...overrides,
-  })
+  }
+}
+
+type Auth = ReturnType<typeof betterAuth>
+const cache = new WeakMap<Bindings, Auth>()
+
+export function createAuth(env: Bindings): Auth {
+  const cached = cache.get(env)
+  if (cached) return cached
+  const instance = betterAuth(buildOptions(env))
+  cache.set(env, instance)
+  return instance
+}
+
+export function createAuthWithOverrides(
+  env: Bindings,
+  overrides: Partial<BetterAuthOptions>,
+): Auth {
+  return betterAuth({ ...buildOptions(env), ...overrides })
 }

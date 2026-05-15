@@ -3,7 +3,12 @@ import type { BetterAuthOptions } from 'better-auth'
 import type { Bindings } from '../../src/types.ts'
 import { stubEnv } from './env.ts'
 
-export function memoryEnv(): Bindings {
+export interface MemoryHarness {
+  env: Bindings
+  authOverrides: Partial<BetterAuthOptions>
+}
+
+export function memoryHarness(extraOverrides: Partial<BetterAuthOptions> = {}): MemoryHarness {
   const sessions = new Map<string, string>()
   const kv = {
     get: async (key: string) => sessions.get(key) ?? null,
@@ -16,7 +21,7 @@ export function memoryEnv(): Bindings {
   } as unknown as KVNamespace
 
   const memoryDb = { user: [], session: [], account: [], verification: [] }
-  const overrides: Partial<BetterAuthOptions> = {
+  const authOverrides: Partial<BetterAuthOptions> = {
     database: memoryAdapter(memoryDb),
     secondaryStorage: {
       get: key => sessions.get(key) ?? null,
@@ -28,7 +33,8 @@ export function memoryEnv(): Bindings {
       },
     },
     rateLimit: { enabled: false },
+    ...extraOverrides,
   }
 
-  return stubEnv({ SESSIONS: kv, __authOverrides: overrides })
+  return { env: stubEnv({ SESSIONS: kv }), authOverrides }
 }

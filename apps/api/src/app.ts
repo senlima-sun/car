@@ -1,0 +1,40 @@
+import { Hono } from 'hono'
+import { createMiddleware } from 'hono/factory'
+import type { BetterAuthOptions } from 'better-auth'
+import { createAuth, createAuthWithOverrides } from './auth/index.ts'
+import { bindingsGuard } from './middleware/bindings-guard.ts'
+import { corsMiddleware } from './middleware/cors.ts'
+import { errorSanitizer } from './middleware/error-sanitizer.ts'
+import { meRoute } from './routes/me.ts'
+import type { HonoEnv } from './types.ts'
+
+declare module 'hono' {
+  interface ContextVariableMap {
+    auth: ReturnType<typeof createAuth>
+  }
+}
+
+export interface CreateAppOptions {
+  authOverrides?: Partial<BetterAuthOptions>
+}
+
+export function createApp({ authOverrides }: CreateAppOptions = {}) {
+  const authContext = createMiddleware<HonoEnv>(async (c, next) => {
+    const auth = authOverrides ? createAuthWithOverrides(c.env, authOverrides) : createAuth(c.env)
+    c.set('auth', auth)
+    await next()
+  })
+
+  const app = new Hono<HonoEnv>()
+
+  app.onError(errorSanitizer)
+  app.use('*', bindingsGuard)
+  app.use('*', corsMiddleware)
+  app.use('*', authContext)
+
+  app.get('/api/health', c => c.json({ ok: true }))
+  app.on(['GET', 'POST'], '/api/auth/*', c => c.var.auth.handler(c.req.raw))
+  app.route('/', meRoute)
+
+  return app
+}

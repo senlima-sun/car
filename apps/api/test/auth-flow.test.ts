@@ -1,8 +1,13 @@
 import { describe, expect, test } from 'bun:test'
-import app from '../src/index.ts'
-import { memoryEnv } from './helpers/memory-env.ts'
+import { createApp } from '../src/app.ts'
+import { memoryHarness } from './helpers/memory-env.ts'
 
-function signUp(env: ReturnType<typeof memoryEnv>) {
+function makeApp() {
+  const { env, authOverrides } = memoryHarness()
+  return { app: createApp({ authOverrides }), env }
+}
+
+function signUp(app: ReturnType<typeof createApp>, env: ReturnType<typeof memoryHarness>['env']) {
   return app.request(
     '/api/auth/sign-up/email',
     {
@@ -26,8 +31,8 @@ function extractCookie(res: Response): string {
 
 describe('auth flow', () => {
   test('sign-up → /api/me round-trip', async () => {
-    const env = memoryEnv()
-    const signUpRes = await signUp(env)
+    const { app, env } = makeApp()
+    const signUpRes = await signUp(app, env)
     expect(signUpRes.status).toBe(200)
     const cookie = extractCookie(signUpRes)
 
@@ -39,14 +44,14 @@ describe('auth flow', () => {
   })
 
   test('/api/me without cookie returns 401', async () => {
-    const env = memoryEnv()
+    const { app, env } = makeApp()
     const res = await app.request('/api/me', {}, env)
     expect(res.status).toBe(401)
   })
 
   test('sign-out clears the session', async () => {
-    const env = memoryEnv()
-    const signUpRes = await signUp(env)
+    const { app, env } = makeApp()
+    const signUpRes = await signUp(app, env)
     const cookie = extractCookie(signUpRes)
 
     const signOutRes = await app.request(
@@ -61,10 +66,10 @@ describe('auth flow', () => {
   })
 
   test('duplicate sign-up returns 4xx', async () => {
-    const env = memoryEnv()
-    const first = await signUp(env)
+    const { app, env } = makeApp()
+    const first = await signUp(app, env)
     expect(first.status).toBe(200)
-    const second = await signUp(env)
+    const second = await signUp(app, env)
     expect(second.status).toBeGreaterThanOrEqual(400)
     expect(second.status).toBeLessThan(500)
   })

@@ -1,15 +1,13 @@
 import { describe, expect, test } from 'bun:test'
-import app from '../src/index.ts'
-import { memoryEnv } from './helpers/memory-env.ts'
+import { createApp } from '../src/app.ts'
+import { memoryHarness } from './helpers/memory-env.ts'
 
 describe('rate limit', () => {
   test('11th sign-in attempt within the window returns 429', async () => {
-    const env = memoryEnv()
-    // Disable test-default rate-limit override so we hit the real limiter
-    env.__authOverrides = {
-      ...env.__authOverrides,
+    const { env, authOverrides } = memoryHarness({
       rateLimit: { enabled: true, window: 60, max: 10, storage: 'secondary-storage' },
-    }
+    })
+    const app = createApp({ authOverrides })
 
     const attempt = () =>
       app.request(

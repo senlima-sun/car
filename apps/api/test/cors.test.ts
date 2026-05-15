@@ -1,10 +1,15 @@
 import { describe, expect, test } from 'bun:test'
-import app from '../src/index.ts'
-import { memoryEnv } from './helpers/memory-env.ts'
+import { createApp } from '../src/app.ts'
+import { memoryHarness } from './helpers/memory-env.ts'
+
+function makeApp() {
+  const { env, authOverrides } = memoryHarness()
+  return { app: createApp({ authOverrides }), env }
+}
 
 describe('CORS', () => {
   test('echoes ACAO for allowed origin', async () => {
-    const env = memoryEnv()
+    const { app, env } = makeApp()
     const res = await app.request(
       '/api/health',
       { headers: { Origin: 'http://localhost:7234' } },
@@ -16,7 +21,7 @@ describe('CORS', () => {
   })
 
   test('rejects unknown origin', async () => {
-    const env = memoryEnv()
+    const { app, env } = makeApp()
     const res = await app.request(
       '/api/health',
       { headers: { Origin: 'http://evil.example' } },
@@ -26,7 +31,7 @@ describe('CORS', () => {
   })
 
   test('preflight returns 204 with max-age', async () => {
-    const env = memoryEnv()
+    const { app, env } = makeApp()
     const res = await app.request(
       '/api/auth/sign-in/email',
       {
