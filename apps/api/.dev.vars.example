@@ -1,0 +1,8 @@
+BETTER_AUTH_SECRET=replace-with-openssl-rand-base64-32
+BETTER_AUTH_URL=http://localhost:8787
+FRONTEND_ORIGINS=http://localhost:7234
+POLAR_ACCESS_TOKEN=replace-with-polar-org-access-token
+POLAR_WEBHOOK_SECRET=replace-with-polar-webhook-secret
+POLAR_PRODUCT_ID_PRO=replace-with-polar-product-id
+BILLING_SUCCESS_URL=http://localhost:7234/account?billing=success
+BILLING_CANCEL_URL=http://localhost:7234/account?billing=cancel
