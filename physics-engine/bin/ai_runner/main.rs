@@ -750,8 +750,10 @@ fn run_bc_phase(
     let meta = GhostMeta {
         schema_version: GHOST_SCHEMA_VERSION,
         track_id: track.id.clone(),
+        // ms — matches TS GhostReplayData convention (timestamps are also ms;
+        // useLapTimeStore.lastLapTime is performance.now()-diff ms).
         lap_time: if eval_result.lap_completed {
-            eval_result.lap_time_s
+            eval_result.lap_time_s * 1000.0
         } else {
             0.0
         },
@@ -816,7 +818,13 @@ fn write_dump(
     let meta = GhostMeta {
         schema_version: GHOST_SCHEMA_VERSION,
         track_id: track.id.clone(),
-        lap_time: if lap_time_s.is_finite() { lap_time_s } else { 0.0 },
+        // ms — matches TS GhostReplayData convention; timestamps in the .bin
+        // are also ms since lap start.
+        lap_time: if lap_time_s.is_finite() {
+            lap_time_s * 1000.0
+        } else {
+            0.0
+        },
         frame_count,
         recorder_type: recorder_type.into(),
         recorded_at,
