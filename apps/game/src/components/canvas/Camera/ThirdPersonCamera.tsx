@@ -4,6 +4,8 @@ import { useFrame } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useCarStore } from '../../../stores/useCarStore'
+import { useGhostPreferenceStore } from '../../../stores/useGhostPreferenceStore'
+import { useAiGhostStore } from '../../../stores/useAiGhostStore'
 import {
   CAMERA_NEAR,
   CAMERA_FAR,
@@ -32,12 +34,20 @@ export default function ThirdPersonCamera({ target }: CameraTargetProps) {
   const _shakeQuat = useRef(new Quaternion())
 
   useFrame((_state, delta) => {
-    if (!target.current || !cameraRef.current) return
+    if (!cameraRef.current) return
 
-    target.current.getWorldQuaternion(_quat.current)
-    target.current.getWorldPosition(_worldPos.current)
+    const spectatorMode = useGhostPreferenceStore.getState().spectatorMode
+    const ghostPos = useAiGhostStore.getState().ghostPosition
 
-    extractYawQuaternion(_quat.current, _yawQuat.current)
+    if (spectatorMode && ghostPos !== null) {
+      _worldPos.current.set(ghostPos[0], ghostPos[1], ghostPos[2])
+      _yawQuat.current.identity()
+    } else {
+      if (!target.current) return
+      target.current.getWorldQuaternion(_quat.current)
+      target.current.getWorldPosition(_worldPos.current)
+      extractYawQuaternion(_quat.current, _yawQuat.current)
+    }
 
     _pos.current.copy(CHASE_OFFSET)
     _pos.current.applyQuaternion(_yawQuat.current)
@@ -45,8 +55,8 @@ export default function ThirdPersonCamera({ target }: CameraTargetProps) {
 
     const surface = useSurfaceStore.getState().currentSurface
     const speed = useCarStore.getState().speed
-    const baseIntensity = SURFACE_SHAKE_INTENSITY[surface] ?? 0
-    const baseRotation = SURFACE_SHAKE_ROTATION[surface] ?? 0
+    const baseIntensity = spectatorMode ? 0 : (SURFACE_SHAKE_INTENSITY[surface] ?? 0)
+    const baseRotation = spectatorMode ? 0 : (SURFACE_SHAKE_ROTATION[surface] ?? 0)
     const freqMult = SURFACE_SHAKE_FREQ[surface] ?? 1.0
 
     if (baseIntensity > 0 && speed > 5) {

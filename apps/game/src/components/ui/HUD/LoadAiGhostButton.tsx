@@ -19,7 +19,9 @@ export function LoadAiGhostButton() {
   const [state, setState] = useState<LoadState>('idle')
   const aiReplay = useAiGhostStore(s => s.replayData)
   const preferAiGhost = useGhostPreferenceStore(s => s.preferAiGhost)
+  const spectatorMode = useGhostPreferenceStore(s => s.spectatorMode)
   const togglePrefer = useGhostPreferenceStore(s => s.toggle)
+  const setSpectatorMode = useGhostPreferenceStore(s => s.setSpectatorMode)
 
   const handleLoad = async () => {
     const slug = resolveTrackSlug()
@@ -69,9 +71,14 @@ export function LoadAiGhostButton() {
   }
 
   const handleClear = () => {
+    useGhostPreferenceStore.getState().setSpectatorMode(false)
     useAiGhostStore.getState().clearReplay()
     useGhostPreferenceStore.getState().setPreferAiGhost(false)
     setState('idle')
+  }
+
+  const handleToggleSpectator = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSpectatorMode(event.target.checked)
   }
 
   const label = (() => {
@@ -106,9 +113,19 @@ export function LoadAiGhostButton() {
               type="checkbox"
               checked={preferAiGhost}
               onChange={togglePrefer}
+              disabled={spectatorMode}
               className="h-3 w-3"
             />
             <span>Prefer AI ghost</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={spectatorMode}
+              onChange={handleToggleSpectator}
+              className="h-3 w-3"
+            />
+            <span>Watch (spectator)</span>
           </label>
           <button
             type="button"

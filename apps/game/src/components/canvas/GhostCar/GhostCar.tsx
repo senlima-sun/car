@@ -11,6 +11,8 @@ import { interpolateGhostState } from '@/utils/ghostInterpolation'
 import { createGhostTimeDeltaTracker } from '@/utils/ghostTimeDelta'
 import { GhostCarBody } from './GhostCarBody'
 
+const SPECTATOR_LOOP_PAD_MS = 500
+
 export default function GhostCar() {
   const groupRef = useRef<THREE.Group>(null)
   const steerRef = useRef(0)
@@ -22,6 +24,7 @@ export default function GhostCar() {
   const loadReplayForTrack = useGhostCarStore(s => s.loadReplayForTrack)
   const aiReplay = useAiGhostStore(s => s.replayData)
   const preferAiGhost = useGhostPreferenceStore(s => s.preferAiGhost)
+  const spectatorMode = useGhostPreferenceStore(s => s.spectatorMode)
 
   const isActive = useLapTimeStore(s => s.isActive)
   const isRecording = useLapTimeStore(s => s.isRecording)
@@ -30,8 +33,8 @@ export default function GhostCar() {
 
   const activeTrackId = useTrackStore(s => s.trackLibrary.activeTrackId)
 
-  const activeReplay = preferAiGhost && aiReplay !== null ? aiReplay : humanReplay
-  const isAiActive = preferAiGhost && aiReplay !== null
+  const useAiReplay = (preferAiGhost || spectatorMode) && aiReplay !== null
+  const activeReplay = useAiReplay ? aiReplay : humanReplay
 
   useEffect(() => {
     if (activeTrackId) {
@@ -45,8 +48,9 @@ export default function GhostCar() {
     trackerRef.current.reset()
   }, [lapCount])
 
-  const shouldShow =
-    isActive && isRecording && lapCount >= 1 && activeReplay !== null && currentLapStart !== null
+  const shouldShow = spectatorMode
+    ? activeReplay !== null
+    : isActive && isRecording && lapCount >= 1 && activeReplay !== null && currentLapStart !== null
 
   useFrame(() => {
     const { setGhostFrameState } = useGhostCarStore.getState()
@@ -59,17 +63,34 @@ export default function GhostCar() {
     prevShouldShowRef.current = shouldShow
 
     if (!groupRef.current || !shouldShow) return
-    const replay = isAiActive
+    const replay = useAiReplay
       ? useAiGhostStore.getState().replayData
       : useGhostCarStore.getState().replayData
     if (!replay) return
-    const lapStart = useLapTimeStore.getState().currentLapStart
-    if (lapStart === null) return
-    const lapTime = performance.now() - lapStart
+
+    let lapTime: number
+    if (spectatorMode) {
+      const prefs = useGhostPreferenceStore.getState()
+      let lapStart = prefs.spectatorLapStart
+      if (lapStart === null) {
+        lapStart = performance.now()
+        prefs.setSpectatorLapStart(lapStart)
+      }
+      lapTime = performance.now() - lapStart
+      if (lapTime > replay.lapTime + SPECTATOR_LOOP_PAD_MS) {
+        prefs.setSpectatorLapStart(performance.now())
+        return
+      }
+    } else {
+      const lapStart = useLapTimeStore.getState().currentLapStart
+      if (lapStart === null) return
+      lapTime = performance.now() - lapStart
+    }
+
     const state = interpolateGhostState(replay, lapTime)
     if (!state) {
       groupRef.current.visible = false
-      if (isAiActive) {
+      if (useAiReplay) {
         useAiGhostStore.getState().setGhostFrameState(null, null)
       } else {
         setGhostFrameState(null, null)
@@ -82,14 +103,24 @@ export default function GhostCar() {
     steerRef.current = state.steerAngle
     wheelsRef.current = state.wheelRotations
 
-    const playerPos = useCarStore.getState().position
-    const result = trackerRef.current.compute(replay, playerPos, lapTime)
     const ghostPos: [number, number, number] = [
       state.position.x,
       state.position.y,
       state.position.z,
     ]
-    if (isAiActive) {
+
+    if (spectatorMode) {
+      if (useAiReplay) {
+        useAiGhostStore.getState().setGhostFrameState(ghostPos, null)
+      } else {
+        setGhostFrameState(ghostPos, null)
+      }
+      return
+    }
+
+    const playerPos = useCarStore.getState().position
+    const result = trackerRef.current.compute(replay, playerPos, lapTime)
+    if (useAiReplay) {
       useAiGhostStore.getState().setGhostFrameState(ghostPos, result?.deltaMs ?? null)
     } else {
       setGhostFrameState(ghostPos, result?.deltaMs ?? null)
