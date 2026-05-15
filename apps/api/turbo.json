@@ -11,7 +11,7 @@
       "outputs": []
     },
     "typecheck": {
-      "inputs": ["src/**", "test/**", "tsconfig.json"],
+      "inputs": ["src/**", "test/**", "scripts/**", "tsconfig.json"],
       "outputs": []
     }
   }
