@@ -57,3 +57,17 @@ Better Auth issue [#4203](https://github.com/better-auth/better-auth/issues/4203
 ## D1 encryption
 
 Cloudflare D1 encrypts data at rest at the storage layer. No additional column-level encryption is applied.
+
+## Running locally
+
+Two terminals:
+
+```sh
+# Terminal 1: worker
+pnpm --filter @car/api dev
+
+# Terminal 2: SPA
+pnpm --filter @car/game dev
+```
+
+Then open `http://localhost:7234/`. Sign-up is in the main menu's bottom panel. The Vite dev proxy forwards `/api/*` to `http://localhost:8787` so the browser sees same-origin cookies.
