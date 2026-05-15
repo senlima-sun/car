@@ -18,6 +18,7 @@ A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM
 ## Monorepo Layout
 
 - `apps/game/` — SPA (React + Three.js + WASM). Vite-bundled. Routes under `apps/game/src/routes/`.
+- `apps/api/` — `@car/api` Cloudflare Worker (Hono + Better Auth + Drizzle + D1 + KV). User accounts, sessions, Polar subscription billing. See `docs/auth.md`.
 - `physics-engine/` — Rust crate, stays at repo root (it's a Cargo crate, not a pnpm package).
 - `packages/physics/` — `@car/physics` package: WASM bridge + wasm-pack output. The app imports physics via `@car/physics`.
 - `scripts/` — root-level data pipeline (track ingest, perf smoke, validation).
