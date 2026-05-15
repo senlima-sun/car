@@ -139,6 +139,35 @@ pub const BASELINE_PARAMS_MONZA: [f32; LOOKAHEAD_PARAM_COUNT] = [
 // but the schedule's narrow sigma was insufficient to find a sub-99.4s clean
 // lap. Phase 4.7 champion is retained as the active baseline pending a
 // wider-exploration follow-up.
+//
+// Phase 4.9 F1-realistic reward (lap invalidation + severity penalty):
+//   New gate: lap_time <= demo*1.10 (104.15s) AND off_track_count <= 3.
+//   Reward adds (i) escalating count penalty 50*n^1.5, (ii) severe-off-track
+//   penalty 1000/s for frames with max_lateral_distance > 12m, (iii) graded
+//   lap_complete bonus by off_track_count, (iv) progress-grade collapse to
+//   0.1 when severe_off_track_seconds exceeds threshold.
+//   --auto-iterate --seed 42 (strict thresholds) -> exhausted schedule, no
+//     lap completed (stuck at ~1834m, severe=0.00 throughout). ~969s wall.
+//   --auto-iterate --seed 7  (strict thresholds) -> killed at iter 5 with
+//     no lap, same pattern as seed 42.
+//   Softened thresholds (per plan's contingency): lap_bonus_grade[4+]=0.05,
+//   severe_threshold_s 0.5 -> 1.5, to restore evo gradient.
+//   --auto-iterate --seed 42 (softened) -> exhausted schedule, no lap,
+//     stuck at ~913m, severe=0.00. ~795s wall.
+//   --auto-iterate --seed 11 (softened) -> exhausted schedule,
+//     lap_time=117.04s off_track_count=1 severe=0.00. ~1763s wall.
+//     Iter trajectory: iter1 no-lap 873m, iter3 no-lap 5383m 5 off-track,
+//     iter4 lap=116.57s/1/0.00 (FIRST CLEAN LAP), iter5 115.86s/1/0.00,
+//     iter6 114.49s/1/0.00 (best), iter7 117.13s/1/0.00, iter8 117.04s/1/0.00.
+// Conclusion: F1-realistic reward eliminates the deliberate-cheating channel
+// (severe_off_track_seconds stays at 0.00 across all 32 iterations across all
+// seeds), but the strict 1.10x lap_time gate (104.15s) is not reachable from
+// the BC seed under the new reward. Best achievable is 114.49s with 1 sub-2s
+// off-track touch — a clean, F1-legal lap that is ~21% slower than the human
+// demo. Per Phase 4.9 outcome (b): reward refactor and softening shipped;
+// Phase 4.7 champion ghost retained pending a wider-exploration follow-up
+// (Population sizes mu/lambda, longer schedules, or seed sweeps) and / or a
+// relaxation of the lap_time gate to ~1.20x demo.
 pub const BASELINE_PARAMS_MONZA_CHAMPION: [f32; LOOKAHEAD_PARAM_COUNT] = [
     274.18375,
     152.5118,
