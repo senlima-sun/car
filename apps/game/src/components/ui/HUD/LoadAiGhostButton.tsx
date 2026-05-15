@@ -1,9 +1,17 @@
 import { useState } from 'react'
 import { useAiGhostStore } from '@/stores/useAiGhostStore'
 import { useGhostPreferenceStore } from '@/stores/useGhostPreferenceStore'
+import { useGameStore, type CameraMode } from '@/stores/useGameStore'
 import { useTrackStore } from '@/stores/useTrackStore'
 import { type AiGhostSidecar, decodeGhostBin } from '@/utils/aiGhostDecoder'
 import { CURRENT_GHOST_SCHEMA_VERSION } from '@/utils/ghostReplayDB'
+
+const CAMERA_MODE_LABEL: Record<CameraMode, string> = {
+  'third-person': 'Chase',
+  'first-person': 'Cockpit',
+  'top-down': 'Top-down',
+  free: 'Free',
+}
 
 type LoadState = 'idle' | 'loading' | 'loaded' | 'missing' | 'error'
 
@@ -22,6 +30,8 @@ export function LoadAiGhostButton() {
   const spectatorMode = useGhostPreferenceStore(s => s.spectatorMode)
   const togglePrefer = useGhostPreferenceStore(s => s.toggle)
   const setSpectatorMode = useGhostPreferenceStore(s => s.setSpectatorMode)
+  const cameraMode = useGameStore(s => s.cameraMode)
+  const toggleCameraMode = useGameStore(s => s.toggleCameraMode)
 
   const handleLoad = async () => {
     const slug = resolveTrackSlug()
@@ -136,6 +146,13 @@ export function LoadAiGhostButton() {
           </button>
         </>
       )}
+      <button
+        type="button"
+        onClick={toggleCameraMode}
+        className="rounded bg-neutral-800 px-3 py-1 text-left hover:bg-neutral-700"
+      >
+        Camera: {CAMERA_MODE_LABEL[cameraMode]}
+      </button>
     </div>
   )
 }

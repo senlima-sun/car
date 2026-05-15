@@ -68,4 +68,20 @@ describe('useGameStore main screen actions', () => {
     expect(isPreviewStatus('preview')).toBe(true)
     expect(isSessionShellStatus('menu')).toBe(false)
   })
+
+  it('cycles camera modes through third-person, first-person, top-down', () => {
+    useGameStore.setState({ cameraMode: 'third-person' })
+    useGameStore.getState().toggleCameraMode()
+    expect(useGameStore.getState().cameraMode).toBe('first-person')
+    useGameStore.getState().toggleCameraMode()
+    expect(useGameStore.getState().cameraMode).toBe('top-down')
+    useGameStore.getState().toggleCameraMode()
+    expect(useGameStore.getState().cameraMode).toBe('third-person')
+  })
+
+  it('toggle camera mode resets free camera into the cycle', () => {
+    useGameStore.setState({ cameraMode: 'free' })
+    useGameStore.getState().toggleCameraMode()
+    expect(useGameStore.getState().cameraMode).toBe('third-person')
+  })
 })

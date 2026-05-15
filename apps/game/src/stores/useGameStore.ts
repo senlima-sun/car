@@ -11,7 +11,7 @@ import {
 import { DEFAULT_MOUSE_STEERING_CONFIG, type MouseSteeringConfig } from '@/input/steeringMath'
 
 export type GameStatus = 'menu' | 'session' | 'customize' | 'preview'
-export type CameraMode = 'third-person' | 'first-person' | 'free'
+export type CameraMode = 'third-person' | 'first-person' | 'top-down' | 'free'
 export type NonPreviewStatus = Exclude<GameStatus, 'preview'>
 
 export const isMenuStatus = (status: GameStatus) => status === 'menu'
@@ -82,9 +82,12 @@ export const useGameStore = create<GameState>()(
         }),
       enterSessionShell: () => set({ status: 'session', isSettingsOpen: false }),
       toggleCameraMode: () =>
-        set(state => ({
-          cameraMode: state.cameraMode === 'third-person' ? 'first-person' : 'third-person',
-        })),
+        set(state => {
+          const cycle: CameraMode[] = ['third-person', 'first-person', 'top-down']
+          const idx = cycle.indexOf(state.cameraMode)
+          const next = idx === -1 ? 'third-person' : cycle[(idx + 1) % cycle.length]
+          return { cameraMode: next }
+        }),
       setCameraMode: mode => set({ cameraMode: mode }),
       toggleFreeCamera: () =>
         set(state => {
