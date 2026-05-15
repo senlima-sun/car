@@ -86,14 +86,10 @@ These were intentionally left out of the initial user-system rollout. Each has a
 
 ## Running locally
 
-Two terminals:
-
 ```sh
-# Terminal 1: worker
-pnpm --filter @car/api dev
-
-# Terminal 2: SPA
-pnpm --filter @car/game dev
+pnpm run dev
 ```
 
-Then open `http://localhost:7234/`. Sign-up is in the main menu's bottom panel. The Vite dev proxy forwards `/api/*` to `http://localhost:8787` so the browser sees same-origin cookies.
+Turbo runs both the worker (`@car/api` on `:8787`) and the SPA (`@car/game` on `:7234`) in parallel. Logs are prefixed with `@car/api:dev:` and `@car/game:dev:`. Open `http://localhost:7234/`; sign-up is in the main menu's bottom panel. The Vite dev proxy forwards `/api/*` to `http://localhost:8787` so the browser sees same-origin cookies.
+
+To start just one side: `pnpm --filter @car/api dev` or `pnpm --filter @car/game dev`.
