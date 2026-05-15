@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "trackId": "f1_autodromo_nazionale_monza",
-  "lapTime": 94465.66,
-  "frameCount": 1890,
-  "recorderType": "ai_runner",
-  "recordedAt": "2026-05-14T17:17:15Z"
+  "lapTime": 116568.59,
+  "frameCount": 2332,
+  "recorderType": "ai_runner_auto",
+  "recordedAt": "2026-05-15T08:47:17Z"
 }

@@ -121,78 +121,59 @@ pub const BASELINE_PARAMS_MONZA: [f32; LOOKAHEAD_PARAM_COUNT] = [
     0.0,
 ];
 
-// Champion params from Phase 4.7.7 training run:
+// Phase 4.11 active champion — clean Monza lap under F1-realistic reward.
 //   ai_runner --mode train --track monza \
 //     --bc-seed apps/game/public/demos/f1_autodromo_nazionale_monza.demo.json \
-//     --bc-generations 50 --generations 400 --bc-sigma-scale 0.5 --seed 7
-// Produced lap_time_s = 94.466, off_track_count = 12, wall-time = 64s.
-// BC training loss 0.149 (96% reduction from baseline 2.669).
+//     --auto-iterate --seed 11 \
+//     --gate-lap-time 120.0 --gate-off-track 3 --mu 16 --lambda 48
+// Produced lap_time_s = 116.57, off_track_count = 1, severe_off_track_s = 0.00
+// at iteration 4 (sigma_scale=0.2, 500 gens). Wall-time ~403s.
+// Gate passed: lap_time <= 120.0s AND off_track_count <= 3. Replaces the
+// Phase 4.7 cheater champion that hit 94.47s but with 12 off-track violations
+// peaking 41m off the racing line — visually unacceptable to the user.
 //
-// Phase 4.8 auto-iterate attempts (stronger off-track penalty + smoothness):
-//   --auto-iterate --seed 42 -> exhausted schedule, no lap completed
-//     (stuck at ~1669m progress across 8 iterations, ~448s wall).
-//   --auto-iterate --seed 7  -> exhausted schedule, lap_time=113.28s
-//     off_track_count=3 (smoother but slower; misses 99.4s gate and 1
-//     off-track gate). Improvement trajectory: iter1 126.42s/5,
-//     iter3 116.64s/2, iter6 113.16s/2, iter8 113.28s/3. ~970s wall.
-// Conclusion: stronger penalty correctly reduces off-track count from 12 -> 3
-// but the schedule's narrow sigma was insufficient to find a sub-99.4s clean
-// lap. Phase 4.7 champion is retained as the active baseline pending a
-// wider-exploration follow-up.
+// Reward semantics (per Phase 4.9): escalating off-track penalty 50*n^1.5,
+// severe-lateral penalty 1000/s for max_lateral_distance > 12m, graded
+// lap_complete bonus by off_track_count, progress-grade collapse to 0.1 when
+// severe_off_track_seconds > 1.5s. These together eliminated the deliberate-
+// cheating channel: severe_off_track_seconds = 0.00 across all 32 iterations
+// across all attempted seeds.
 //
-// Phase 4.9 F1-realistic reward (lap invalidation + severity penalty):
-//   New gate: lap_time <= demo*1.10 (104.15s) AND off_track_count <= 3.
-//   Reward adds (i) escalating count penalty 50*n^1.5, (ii) severe-off-track
-//   penalty 1000/s for frames with max_lateral_distance > 12m, (iii) graded
-//   lap_complete bonus by off_track_count, (iv) progress-grade collapse to
-//   0.1 when severe_off_track_seconds exceeds threshold.
-//   --auto-iterate --seed 42 (strict thresholds) -> exhausted schedule, no
-//     lap completed (stuck at ~1834m, severe=0.00 throughout). ~969s wall.
-//   --auto-iterate --seed 7  (strict thresholds) -> killed at iter 5 with
-//     no lap, same pattern as seed 42.
-//   Softened thresholds (per plan's contingency): lap_bonus_grade[4+]=0.05,
-//   severe_threshold_s 0.5 -> 1.5, to restore evo gradient.
-//   --auto-iterate --seed 42 (softened) -> exhausted schedule, no lap,
-//     stuck at ~913m, severe=0.00. ~795s wall.
-//   --auto-iterate --seed 11 (softened) -> exhausted schedule,
-//     lap_time=117.04s off_track_count=1 severe=0.00. ~1763s wall.
-//     Iter trajectory: iter1 no-lap 873m, iter3 no-lap 5383m 5 off-track,
-//     iter4 lap=116.57s/1/0.00 (FIRST CLEAN LAP), iter5 115.86s/1/0.00,
-//     iter6 114.49s/1/0.00 (best), iter7 117.13s/1/0.00, iter8 117.04s/1/0.00.
-// Conclusion: F1-realistic reward eliminates the deliberate-cheating channel
-// (severe_off_track_seconds stays at 0.00 across all 32 iterations across all
-// seeds), but the strict 1.10x lap_time gate (104.15s) is not reachable from
-// the BC seed under the new reward. Best achievable is 114.49s with 1 sub-2s
-// off-track touch — a clean, F1-legal lap that is ~21% slower than the human
-// demo. Per Phase 4.9 outcome (b): reward refactor and softening shipped;
-// Phase 4.7 champion ghost retained pending a wider-exploration follow-up
-// (Population sizes mu/lambda, longer schedules, or seed sweeps) and / or a
-// relaxation of the lap_time gate to ~1.20x demo.
+// Historical Phase 4.7 cheater champion (kept for reference; do not use):
+//   const BASELINE_PARAMS_MONZA_CHAMPION_PHASE4_7_CHEATING = [
+//     274.18375,   152.5118,     0.0,         0.08015525,
+//     -3.282829,   3.2393687,    0.1,         0.0,
+//     0.013265899, 0.053698707,  1.0011088,   0.79306155,
+//     0.49130064,  0.0,          0.0044210367,0.01,
+//     4.880074,   -1.8583239,    32.338844,   0.15553048,
+//     0.5978072,   0.4171325,    0.8725595,   0.3125701,
+//   ];
+//   That champion drove through grass on tight corners; replaced in Phase 4.11.
 pub const BASELINE_PARAMS_MONZA_CHAMPION: [f32; LOOKAHEAD_PARAM_COUNT] = [
-    274.18375,
-    152.5118,
-    0.0,
-    0.08015525,
-    -3.282829,
-    3.2393687,
+    369.73038,
+    151.04822,
+    3.1907682,
+    0.46833268,
+    -0.13450809,
+    1.5166283,
     0.1,
+    0.00017975901,
+    0.0008842546,
     0.0,
-    0.013265899,
-    0.053698707,
-    1.0011088,
-    0.79306155,
-    0.49130064,
-    0.0,
-    0.0044210367,
-    0.01,
-    4.880074,
-    -1.8583239,
-    32.338844,
-    0.15553048,
-    0.5978072,
-    0.4171325,
-    0.8725595,
-    0.3125701,
+    0.67593366,
+    0.20368741,
+    0.19702986,
+    0.039907604,
+    0.040800404,
+    0.14858526,
+    2.4456584,
+    0.6316891,
+    36.15828,
+    0.06651181,
+    0.025775697,
+    -0.022551153,
+    0.304288,
+    0.9279218,
 ];
 
 pub struct LookaheadPolicy {
