@@ -13,6 +13,7 @@ import { Route as TrackPreviewRouteImport } from './routes/track-preview'
 import { Route as TrackEditorRouteImport } from './routes/track-editor'
 import { Route as TestModeRouteImport } from './routes/test-mode'
 import { Route as ShowroomRouteImport } from './routes/showroom'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TrackPreviewIndexRouteImport } from './routes/track-preview.index'
 import { Route as TrackPreviewPresetIdRouteImport } from './routes/track-preview.$presetId'
@@ -37,6 +38,11 @@ const TestModeRoute = TestModeRouteImport.update({
 const ShowroomRoute = ShowroomRouteImport.update({
   id: '/showroom',
   path: '/showroom',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -67,6 +73,7 @@ const RaceTrackIdRoute = RaceTrackIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/showroom': typeof ShowroomRoute
   '/test-mode': typeof TestModeRoute
   '/track-editor': typeof TrackEditorRouteWithChildren
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/showroom': typeof ShowroomRoute
   '/test-mode': typeof TestModeRoute
   '/track-editor': typeof TrackEditorRouteWithChildren
@@ -89,6 +97,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/showroom': typeof ShowroomRoute
   '/test-mode': typeof TestModeRoute
   '/track-editor': typeof TrackEditorRouteWithChildren
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/showroom'
     | '/test-mode'
     | '/track-editor'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/showroom'
     | '/test-mode'
     | '/track-editor'
@@ -123,6 +134,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/showroom'
     | '/test-mode'
     | '/track-editor'
@@ -135,6 +147,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   ShowroomRoute: typeof ShowroomRoute
   TestModeRoute: typeof TestModeRoute
   TrackEditorRoute: typeof TrackEditorRouteWithChildren
@@ -170,6 +183,13 @@ declare module '@tanstack/react-router' {
       path: '/showroom'
       fullPath: '/showroom'
       preLoaderRoute: typeof ShowroomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -238,6 +258,7 @@ const TrackPreviewRouteWithChildren = TrackPreviewRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   ShowroomRoute: ShowroomRoute,
   TestModeRoute: TestModeRoute,
   TrackEditorRoute: TrackEditorRouteWithChildren,
