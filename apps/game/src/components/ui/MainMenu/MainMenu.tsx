@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import { useNavigate } from '@tanstack/react-router'
+import { AuthMenuButton } from '@/components/ui/auth/AuthMenuButton'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
 
@@ -192,6 +193,10 @@ export default function MainMenu() {
             </motion.button>
           ))}
         </motion.nav>
+
+        <motion.div variants={itemVariants}>
+          <AuthMenuButton />
+        </motion.div>
 
         <motion.div
           variants={itemVariants}

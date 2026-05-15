@@ -4,6 +4,12 @@ import { AuthForm } from './AuthForm'
 
 type ModalMode = 'signin' | 'signup' | null
 
+function readAuthSearchParam(): ModalMode {
+  if (typeof window === 'undefined') return null
+  const value = new URLSearchParams(window.location.search).get('auth')
+  return value === 'signin' || value === 'signup' ? value : null
+}
+
 interface AuthMenuButtonProps {
   initialOpen?: ModalMode
   onClose?: () => void
@@ -11,10 +17,17 @@ interface AuthMenuButtonProps {
 
 export function AuthMenuButton({ initialOpen, onClose }: AuthMenuButtonProps) {
   const { session, client } = useAuth()
-  const [modal, setModal] = useState<ModalMode>(initialOpen ?? null)
+  const [modal, setModal] = useState<ModalMode>(() => initialOpen ?? readAuthSearchParam())
 
   const closeModal = () => {
     setModal(null)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      if (url.searchParams.has('auth')) {
+        url.searchParams.delete('auth')
+        window.history.replaceState(null, '', url.toString())
+      }
+    }
     onClose?.()
   }
 
