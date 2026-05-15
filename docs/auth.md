@@ -32,16 +32,16 @@ cp apps/api/.dev.vars.example apps/api/.dev.vars
 
 ## Secrets
 
-| Var                    | Source                    | Notes                                                                                    |
-| ---------------------- | ------------------------- | ---------------------------------------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`   | `openssl rand -base64 32` | Rotating invalidates ALL sessions; rotate via `wrangler secret put BETTER_AUTH_SECRET`.  |
-| `BETTER_AUTH_URL`      | Hand-picked               | Local: `http://localhost:8787`. Prod: the worker's public URL with `https://`.           |
-| `FRONTEND_ORIGINS`     | Hand-picked               | Comma-separated CORS allowlist (e.g. `https://example.com,https://staging.example.com`). |
-| `POLAR_ACCESS_TOKEN`   | Polar org settings        | Organization Access Token.                                                               |
-| `POLAR_WEBHOOK_SECRET` | Polar webhook settings    | HMAC secret. Plugin verifies signatures with constant-time compare.                      |
-| `POLAR_PRODUCT_ID_PRO` | Polar product page        | Product id for the personal `pro` tier.                                                  |
-| `BILLING_SUCCESS_URL`  | Hand-picked               | Polar redirects here after checkout success.                                             |
-| `BILLING_CANCEL_URL`   | Hand-picked               | Polar redirects here after checkout cancel.                                              |
+| Var                    | Source                    | Notes                                                                                                                                                                          |
+| ---------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `BETTER_AUTH_SECRET`   | `openssl rand -base64 32` | Rotating invalidates ALL sessions; rotate via `wrangler secret put BETTER_AUTH_SECRET`.                                                                                        |
+| `BETTER_AUTH_URL`      | Hand-picked               | Local: `http://localhost:8787`. Prod: the worker's public URL with `https://`. Non-`https` in prod = non-Secure cookies = browser silently drops the session on every request. |
+| `FRONTEND_ORIGINS`     | Hand-picked               | Comma-separated CORS allowlist (e.g. `https://example.com,https://staging.example.com`).                                                                                       |
+| `POLAR_ACCESS_TOKEN`   | Polar org settings        | Organization Access Token.                                                                                                                                                     |
+| `POLAR_WEBHOOK_SECRET` | Polar webhook settings    | HMAC secret. Plugin verifies signatures with constant-time compare.                                                                                                            |
+| `POLAR_PRODUCT_ID_PRO` | Polar product page        | Product id for the personal `pro` tier.                                                                                                                                        |
+| `BILLING_SUCCESS_URL`  | Hand-picked               | Polar redirects here after checkout success.                                                                                                                                   |
+| `BILLING_CANCEL_URL`   | Hand-picked               | Polar redirects here after checkout cancel.                                                                                                                                    |
 
 Production: `pnpm --filter @car/api exec wrangler secret put <NAME>`.
 

@@ -1,22 +1,33 @@
-import { spawnSync } from 'node:child_process'
+#!/usr/bin/env bun
+import { spawnSync } from 'bun'
 
-const result = spawnSync('wrangler', ['d1', 'migrations', 'list', 'DB', '--remote'], {
-  encoding: 'utf8',
-})
-
-if (result.status !== 0) {
-  console.error('wrangler d1 migrations list failed')
-  console.error(result.stderr || result.stdout)
-  process.exit(1)
+function exitWith(message: string, code = 1): never {
+  console.error(message)
+  process.exit(code)
 }
 
-const output = result.stdout
-if (output.includes('No migrations to apply')) {
-  console.log('D1 migrations up to date.')
+const result = spawnSync({
+  cmd: ['wrangler', 'd1', 'migrations', 'list', 'DB', '--remote'],
+  stdout: 'pipe',
+  stderr: 'pipe',
+})
+
+const stdout = new TextDecoder().decode(result.stdout)
+const stderr = new TextDecoder().decode(result.stderr)
+const combined = `${stdout}\n${stderr}`
+
+if (result.exitCode !== 0) {
+  exitWith(
+    `[d1-migrations] wrangler exited with ${result.exitCode}; cannot verify migration state — aborting deploy.\n` +
+      combined,
+  )
+}
+
+if (combined.includes('No migrations to apply')) {
   process.exit(0)
 }
 
-console.error('Refusing to deploy: pending D1 migration(s):')
-console.error(output)
-console.error('Run `pnpm db:migrate:prod` first.')
-process.exit(1)
+exitWith(
+  `[d1-migrations] Pending migrations on remote D1. Run \`pnpm --filter @car/api db:migrate:prod\` first.\n` +
+    combined,
+)
