@@ -5,6 +5,7 @@ import { createAuth, createAuthWithOverrides } from './auth/index.ts'
 import { bindingsGuard } from './middleware/bindings-guard.ts'
 import { corsMiddleware } from './middleware/cors.ts'
 import { errorSanitizer } from './middleware/error-sanitizer.ts'
+import { billingRoute } from './routes/billing.ts'
 import { meRoute } from './routes/me.ts'
 import type { HonoEnv } from './types.ts'
 
@@ -35,6 +36,7 @@ export function createApp({ authOverrides }: CreateAppOptions = {}) {
   app.get('/api/health', c => c.json({ ok: true }))
   app.on(['GET', 'POST'], '/api/auth/*', c => c.var.auth.handler(c.req.raw))
   app.route('/', meRoute)
+  app.route('/', billingRoute)
 
   return app
 }
