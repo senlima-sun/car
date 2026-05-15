@@ -139,6 +139,17 @@ pub const BASELINE_PARAMS_MONZA: [f32; LOOKAHEAD_PARAM_COUNT] = [
 // cheating channel: severe_off_track_seconds = 0.00 across all 32 iterations
 // across all attempted seeds.
 //
+// Phase 4.12 status: param[20] (steer_smoothing_tau) intentionally left at
+// 0.0 — the controller is the Phase 4.11 champion unchanged. Phase 4.12 added
+// MAX_STEER_RATE_PER_SEC=4.0 (in the controller, not the params) which already
+// damps single-frame steer jumps. The Phase 4.12 BC-seeded retrain (seeds 11,
+// 42, 7) did not pass the 120s / off<=3 gate within the 1h wall budget under
+// the new rate cap; a hand-tuned tau probe of the existing champion found
+// tau=0.015 reduced mean steer zero-crossings 5.25 -> 2.23 / 0.5s but raised
+// off_track 1 -> 2 and severe 0.0 -> 0.52s, which fails the "not worse than
+// 4.11 on legality" guardrail. The published 4.11 ghost is preserved as the
+// active baseline. See .claude/plans/ai-self-driving-evolutionary.md §4.12.
+//
 // Historical Phase 4.7 cheater champion (kept for reference; do not use):
 //   const BASELINE_PARAMS_MONZA_CHAMPION_PHASE4_7_CHEATING = [
 //     274.18375,   152.5118,     0.0,         0.08015525,
@@ -198,7 +209,8 @@ pub struct LookaheadPolicy {
 // keeps lap_time within the 120s smoke gate (re-running the champion under
 // 4.0/s produces 117.44 s vs the legacy 116.57 s, well inside the gate, with
 // off_track_count=3 which is at the gate ceiling). The Phase 4.12 retrain
-// re-discovers the right tau under this fixed rate cap.
+// failed to pass the gate within the time budget; see the long comment above
+// BASELINE_PARAMS_MONZA_CHAMPION for the post-mortem.
 pub const MAX_STEER_RATE_PER_SEC: f32 = 4.0;
 
 impl LookaheadPolicy {
