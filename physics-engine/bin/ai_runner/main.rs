@@ -235,9 +235,12 @@ fn run_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
     let mut policy: Box<dyn Policy> = match args.policy.as_str() {
         "constant-throttle" => Box::new(ConstantThrottle::default()),
         "lookahead-baseline" => Box::new(LookaheadPolicy::baseline_monza()),
+        "lookahead-champion" => Box::new(LookaheadPolicy::from_array(
+            &policies::lookahead::BASELINE_PARAMS_MONZA_CHAMPION,
+        )),
         other => {
             eprintln!(
-                "ai_runner: unknown policy '{other}'; expected 'constant-throttle' or 'lookahead-baseline'",
+                "ai_runner: unknown policy '{other}'; expected 'constant-throttle', 'lookahead-baseline', or 'lookahead-champion'",
             );
             return ExitCode::FAILURE;
         }
