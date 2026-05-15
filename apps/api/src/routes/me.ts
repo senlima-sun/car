@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import type { CustomerStateSubscription } from '@polar-sh/sdk/models/components/customerstatesubscription.js'
 import { TIERS, type TierSlug, getProducts } from '../billing/products.ts'
 import type { HonoEnv } from '../types.ts'
 
@@ -14,6 +15,26 @@ const EMPTY_SUBSCRIPTION: SubscriptionShape = {
   currentPeriodEnd: null,
 }
 
+function logFailure(error: unknown) {
+  console.error(
+    JSON.stringify({
+      event: 'subscription_resolve_failed',
+      error: error instanceof Error ? error.name : 'unknown',
+    }),
+  )
+}
+
+function mapTierFromProduct(env: HonoEnv['Bindings'], productId: string): TierSlug | null {
+  const products = getProducts(env)
+  return TIERS.find(slug => products[slug].polarProductId === productId) ?? null
+}
+
+function mapStatus(raw: string): SubscriptionShape['status'] {
+  if (raw === 'active') return 'active'
+  if (raw === 'canceled') return 'canceled'
+  return null
+}
+
 async function resolveSubscription(c: {
   env: HonoEnv['Bindings']
   var: { auth: { handler: (req: Request) => Promise<Response> } }
@@ -26,26 +47,23 @@ async function resolveSubscription(c: {
   if (!res.ok) return EMPTY_SUBSCRIPTION
 
   const state = (await res.json().catch(() => null)) as null | {
-    activeSubscriptions?: Array<{
-      productId: string
-      status: string
-      currentPeriodEnd?: string | null
-    }>
+    activeSubscriptions?: CustomerStateSubscription[]
   }
   const active = state?.activeSubscriptions?.[0]
   if (!active) return EMPTY_SUBSCRIPTION
 
-  const products = getProducts(c.env)
-  const tier = TIERS.find(slug => products[slug].polarProductId === active.productId) ?? null
+  const tier = mapTierFromProduct(c.env, active.productId)
   if (!tier) return EMPTY_SUBSCRIPTION
 
-  const status =
-    active.status === 'active' ? 'active' : active.status === 'canceled' ? 'canceled' : null
+  const currentPeriodEnd =
+    active.currentPeriodEnd instanceof Date
+      ? active.currentPeriodEnd.toISOString()
+      : (active.currentPeriodEnd ?? null)
 
   return {
     tier,
-    status,
-    currentPeriodEnd: active.currentPeriodEnd ?? null,
+    status: mapStatus(active.status),
+    currentPeriodEnd,
   }
 }
 
@@ -53,7 +71,10 @@ export const meRoute = new Hono<HonoEnv>().get('/api/me', async c => {
   const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers })
   if (!session) return c.json({ error: 'unauthenticated' }, 401)
 
-  const subscription = await resolveSubscription(c).catch(() => EMPTY_SUBSCRIPTION)
+  const subscription = await resolveSubscription(c).catch(err => {
+    logFailure(err)
+    return EMPTY_SUBSCRIPTION
+  })
 
   return c.json({
     user: {

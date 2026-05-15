@@ -6,7 +6,6 @@ export interface Bindings extends Env {
   POLAR_WEBHOOK_SECRET: string
   POLAR_PRODUCT_ID_PRO: string
   BILLING_SUCCESS_URL: string
-  BILLING_CANCEL_URL: string
 }
 
 export type HonoEnv = { Bindings: Bindings }

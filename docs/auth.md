@@ -41,7 +41,6 @@ cp apps/api/.dev.vars.example apps/api/.dev.vars
 | `POLAR_WEBHOOK_SECRET` | Polar webhook settings    | HMAC secret. Plugin verifies signatures with constant-time compare.                                                                                                            |
 | `POLAR_PRODUCT_ID_PRO` | Polar product page        | Product id for the personal `pro` tier.                                                                                                                                        |
 | `BILLING_SUCCESS_URL`  | Hand-picked               | Polar redirects here after checkout success.                                                                                                                                   |
-| `BILLING_CANCEL_URL`   | Hand-picked               | Polar redirects here after checkout cancel.                                                                                                                                    |
 
 Production: `pnpm --filter @car/api exec wrangler secret put <NAME>`.
 

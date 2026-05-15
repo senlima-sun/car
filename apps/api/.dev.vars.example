@@ -5,4 +5,3 @@ POLAR_ACCESS_TOKEN=
 POLAR_WEBHOOK_SECRET=
 POLAR_PRODUCT_ID_PRO=
 BILLING_SUCCESS_URL=http://localhost:7234/account?billing=success
-BILLING_CANCEL_URL=http://localhost:7234/account?billing=cancel

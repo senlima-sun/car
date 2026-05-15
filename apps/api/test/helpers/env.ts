@@ -14,7 +14,6 @@ export function stubEnv(overrides: Partial<Bindings> = {}): Bindings {
     POLAR_WEBHOOK_SECRET: 'test-webhook-secret',
     POLAR_PRODUCT_ID_PRO: 'test-product-pro',
     BILLING_SUCCESS_URL: 'http://localhost:7234/account?billing=success',
-    BILLING_CANCEL_URL: 'http://localhost:7234/account?billing=cancel',
     ...overrides,
   } as Bindings
 }

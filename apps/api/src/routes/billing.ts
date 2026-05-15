@@ -10,6 +10,8 @@ function isTier(value: unknown): value is TierSlug {
   return typeof value === 'string' && (TIERS as readonly string[]).includes(value)
 }
 
+// Reject any body other than {tier}: clients must NOT smuggle
+// successUrl/customerId/etc. — those are server-controlled.
 function isCheckoutBody(value: unknown): value is CheckoutBody {
   if (!value || typeof value !== 'object') return false
   const keys = Object.keys(value)

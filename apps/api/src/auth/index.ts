@@ -15,7 +15,9 @@ function buildPolarPlugin(env: Bindings) {
   const polarClient = new Polar({ accessToken: env.POLAR_ACCESS_TOKEN })
   return polar({
     client: polarClient,
-    createCustomerOnSignUp: true,
+    // Lazy: Polar checkout creates the customer on demand via externalCustomerId.
+    // Eager creation here would couple sign-up to Polar API health.
+    createCustomerOnSignUp: false,
     use: [
       checkout({
         products: productList,
