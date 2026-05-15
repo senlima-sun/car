@@ -17,6 +17,7 @@ pub struct EvalResult {
     pub sim_time_s: f32,
     pub lap_time_s: f32,
     pub off_track_seconds: f32,
+    pub severe_off_track_seconds: f32,
     pub off_track_count: u32,
     pub lap_completed: bool,
     pub terminated_by: TerminationReason,
@@ -24,16 +25,31 @@ pub struct EvalResult {
 }
 
 pub const OFF_TRACK_SECONDS_PENALTY: f32 = 300.0;
-pub const OFF_TRACK_COUNT_PENALTY: f32 = 2.0;
+pub const OFF_TRACK_COUNT_BASE_PENALTY: f32 = 50.0;
+pub const OFF_TRACK_COUNT_EXPONENT: f32 = 1.5;
+pub const SEVERE_OFF_TRACK_PENALTY: f32 = 1000.0;
+pub const SEVERE_OFF_TRACK_PROGRESS_THRESHOLD_S: f32 = 0.5;
+pub const SEVERE_OFF_TRACK_PROGRESS_GRADE: f32 = 0.1;
 pub const INPUT_JITTER_PENALTY: f32 = 0.5;
 pub const SIM_TIME_PENALTY: f32 = 5.0;
 pub const INPUT_JITTER_WINDOW_FRAMES: usize = 120;
+
+#[inline]
+pub fn lap_bonus_grade(off_track_count: u32) -> f32 {
+    match off_track_count {
+        0 | 1 => 1.0,
+        2 => 0.5,
+        3 => 0.2,
+        _ => 0.0,
+    }
+}
 
 #[inline]
 pub fn compute_fitness(
     arc_length_progress_m: f32,
     sim_time_s: f32,
     off_track_seconds: f32,
+    severe_off_track_seconds: f32,
     off_track_count: u32,
     input_jitter: f32,
     lap_completed: bool,
@@ -41,15 +57,22 @@ pub fn compute_fitness(
 ) -> f32 {
     let avg_speed_kmh = (arc_length_progress_m / sim_time_s.max(1.0)) * 3.6;
     let speed_factor = (avg_speed_kmh / 100.0).clamp(0.5, 4.0);
+    let progress_grade = if severe_off_track_seconds > SEVERE_OFF_TRACK_PROGRESS_THRESHOLD_S {
+        SEVERE_OFF_TRACK_PROGRESS_GRADE
+    } else {
+        1.0
+    };
     let lap_bonus = if lap_completed {
-        (1200.0 - lap_time_s).max(0.0) * 10.0
+        (1200.0 - lap_time_s).max(0.0) * 10.0 * lap_bonus_grade(off_track_count)
     } else {
         0.0
     };
     let off_track_count_f = off_track_count as f32;
-    arc_length_progress_m * speed_factor
+    let count_penalty = OFF_TRACK_COUNT_BASE_PENALTY * off_track_count_f.powf(OFF_TRACK_COUNT_EXPONENT);
+    progress_grade * arc_length_progress_m * speed_factor
         - OFF_TRACK_SECONDS_PENALTY * off_track_seconds
-        - OFF_TRACK_COUNT_PENALTY * off_track_count_f
+        - count_penalty
+        - SEVERE_OFF_TRACK_PENALTY * severe_off_track_seconds
         - SIM_TIME_PENALTY * sim_time_s
         - INPUT_JITTER_PENALTY * input_jitter
         + lap_bonus
@@ -167,6 +190,7 @@ fn evaluate_inner(
         progress_for_fitness,
         sim_time_s,
         result.off_track_seconds,
+        result.severe_off_track_seconds,
         result.off_track_count,
         input_jitter,
         result.lap_completed,
@@ -185,6 +209,7 @@ fn evaluate_inner(
         sim_time_s,
         lap_time_s,
         off_track_seconds: result.off_track_seconds,
+        severe_off_track_seconds: result.severe_off_track_seconds,
         off_track_count: result.off_track_count,
         lap_completed: result.lap_completed,
         terminated_by: result.terminated_by,
@@ -317,8 +342,9 @@ mod tests {
 
     #[test]
     fn crawl_loses_to_fast_with_one_violation() {
-        let crawl = compute_fitness(5800.0, 700.0, 0.0, 0, 0.0, false, 1200.0);
-        let fast_with_violation = compute_fitness(5800.0, 100.0, 1.0, 1, 0.0, true, 100.0);
+        let crawl = compute_fitness(5800.0, 700.0, 0.0, 0.0, 0, 0.0, false, 1200.0);
+        let fast_with_violation =
+            compute_fitness(5800.0, 100.0, 1.0, 0.0, 1, 0.0, true, 100.0);
         assert!(
             fast_with_violation > crawl,
             "fast-with-1-violation ({fast_with_violation}) should beat crawl ({crawl})",
@@ -327,8 +353,9 @@ mod tests {
 
     #[test]
     fn lap_complete_bonus_dominates_partial_progress() {
-        let complete_at_100s = compute_fitness(5800.0, 100.0, 0.0, 0, 0.0, true, 100.0);
-        let partial_at_1200s = compute_fitness(2900.0, 1200.0, 0.0, 0, 0.0, false, 1200.0);
+        let complete_at_100s = compute_fitness(5800.0, 100.0, 0.0, 0.0, 0, 0.0, true, 100.0);
+        let partial_at_1200s =
+            compute_fitness(2900.0, 1200.0, 0.0, 0.0, 0, 0.0, false, 1200.0);
         assert!(
             complete_at_100s > partial_at_1200s,
             "complete-at-100s ({complete_at_100s}) should beat partial-at-1200s ({partial_at_1200s})",
@@ -337,8 +364,8 @@ mod tests {
 
     #[test]
     fn off_track_penalty_reduces_fitness() {
-        let clean = compute_fitness(5000.0, 200.0, 0.0, 0, 0.0, false, 1200.0);
-        let dirty = compute_fitness(5000.0, 200.0, 5.0, 0, 0.0, false, 1200.0);
+        let clean = compute_fitness(5000.0, 200.0, 0.0, 0.0, 0, 0.0, false, 1200.0);
+        let dirty = compute_fitness(5000.0, 200.0, 5.0, 0.0, 0, 0.0, false, 1200.0);
         assert!(
             dirty < clean,
             "off-track penalty must reduce fitness (clean={clean}, dirty={dirty})",
@@ -352,8 +379,8 @@ mod tests {
 
     #[test]
     fn off_track_heavy_loses_to_off_track_light() {
-        let heavy = compute_fitness(5800.0, 94.0, 2.0, 10, 0.0, true, 94.0);
-        let light = compute_fitness(5800.0, 94.0, 0.2, 1, 0.0, true, 94.0);
+        let heavy = compute_fitness(5800.0, 94.0, 2.0, 0.0, 10, 0.0, true, 94.0);
+        let light = compute_fitness(5800.0, 94.0, 0.2, 0.0, 1, 0.0, true, 94.0);
         assert!(
             light > heavy,
             "light off-track ({light}) must beat heavy off-track ({heavy})",
@@ -367,8 +394,8 @@ mod tests {
 
     #[test]
     fn smooth_input_beats_jittery_at_same_lap_time() {
-        let jittery = compute_fitness(5800.0, 95.0, 0.0, 0, 50.0, true, 95.0);
-        let smooth = compute_fitness(5800.0, 95.0, 0.0, 0, 5.0, true, 95.0);
+        let jittery = compute_fitness(5800.0, 95.0, 0.0, 0.0, 0, 50.0, true, 95.0);
+        let smooth = compute_fitness(5800.0, 95.0, 0.0, 0.0, 0, 5.0, true, 95.0);
         assert!(
             smooth > jittery,
             "smooth ({smooth}) must beat jittery ({jittery}) at identical lap time",
@@ -382,9 +409,80 @@ mod tests {
 
     #[test]
     fn input_jitter_zero_when_no_telemetry() {
-        let fitness = compute_fitness(5800.0, 95.0, 0.0, 0, 0.0, true, 95.0);
+        let fitness = compute_fitness(5800.0, 95.0, 0.0, 0.0, 0, 0.0, true, 95.0);
         assert!(fitness.is_finite());
         assert!(fitness > 0.0, "lap-complete fitness must be positive: {fitness}");
+    }
+
+    #[test]
+    fn champion_with_12_violations_loses_to_clean_lap_at_2x_time() {
+        let cheating_champion =
+            compute_fitness(5800.0, 95.0, 14.8, 8.0, 12, 0.0, true, 95.0);
+        let slow_clean = compute_fitness(5800.0, 190.0, 0.0, 0.0, 0, 0.0, true, 190.0);
+        assert!(
+            slow_clean > cheating_champion,
+            "F1-realistic reward: a clean lap at 2x time ({slow_clean}) must beat a cheating champion with 12 violations ({cheating_champion})",
+        );
+    }
+
+    #[test]
+    fn severe_off_track_collapses_progress_grade() {
+        let clean = compute_fitness(5800.0, 95.0, 0.0, 0.0, 0, 0.0, false, 1200.0);
+        let severe = compute_fitness(5800.0, 95.0, 0.0, 2.0, 0, 0.0, false, 1200.0);
+        assert!(
+            clean > severe,
+            "clean progress ({clean}) must dominate severe progress ({severe})",
+        );
+        assert!(
+            clean - severe > 5000.0,
+            "expected severe progress-grade collapse (>5000), got diff={}",
+            clean - severe,
+        );
+    }
+
+    #[test]
+    fn lap_invalid_at_4_plus_violations() {
+        let invalidated =
+            compute_fitness(5800.0, 95.0, 0.5, 0.0, 5, 0.0, true, 95.0);
+        let counterpart_no_lap =
+            compute_fitness(5800.0, 95.0, 0.5, 0.0, 5, 0.0, false, 1200.0);
+        let delta = invalidated - counterpart_no_lap;
+        assert!(
+            delta.abs() < 1e-3,
+            "lap_completed bonus must be zero at off_track_count>=4 (delta={delta})",
+        );
+    }
+
+    #[test]
+    fn lap_bonus_grade_matches_f1_contract() {
+        assert_eq!(lap_bonus_grade(0), 1.0);
+        assert_eq!(lap_bonus_grade(1), 1.0);
+        assert_eq!(lap_bonus_grade(2), 0.5);
+        assert_eq!(lap_bonus_grade(3), 0.2);
+        assert_eq!(lap_bonus_grade(4), 0.0);
+        assert_eq!(lap_bonus_grade(100), 0.0);
+    }
+
+    #[test]
+    fn count_penalty_escalates_superlinearly() {
+        let one = compute_fitness(0.0, 1.0, 0.0, 0.0, 1, 0.0, false, 1200.0);
+        let five = compute_fitness(0.0, 1.0, 0.0, 0.0, 5, 0.0, false, 1200.0);
+        let ten = compute_fitness(0.0, 1.0, 0.0, 0.0, 10, 0.0, false, 1200.0);
+        let one_penalty = -one - SIM_TIME_PENALTY;
+        let five_penalty = -five - SIM_TIME_PENALTY;
+        let ten_penalty = -ten - SIM_TIME_PENALTY;
+        assert!(
+            (one_penalty - 50.0).abs() < 1.0,
+            "1 violation penalty should be ~50, got {one_penalty}",
+        );
+        assert!(
+            (five_penalty - 559.0).abs() < 5.0,
+            "5 violation penalty should be ~559, got {five_penalty}",
+        );
+        assert!(
+            (ten_penalty - 1581.0).abs() < 10.0,
+            "10 violation penalty should be ~1581, got {ten_penalty}",
+        );
     }
 
     #[test]

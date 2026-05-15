@@ -438,14 +438,14 @@ fn train_mode(track: &track_loader::LoadedTrack, args: &Args) -> ExitCode {
 }
 
 const AUTO_ITERATE_SCHEDULE: &[(f32, u32)] = &[
-    (0.30, 200),
-    (0.20, 300),
-    (0.15, 400),
-    (0.10, 500),
-    (0.10, 600),
-    (0.05, 600),
-    (0.05, 800),
-    (0.03, 1000),
+    (0.50, 300),
+    (0.40, 300),
+    (0.30, 400),
+    (0.20, 500),
+    (0.15, 600),
+    (0.10, 800),
+    (0.07, 800),
+    (0.05, 1000),
 ];
 
 fn auto_iterate(
@@ -525,12 +525,14 @@ fn auto_iterate(
             "-".to_string()
         };
         println!(
-            "  iter {} best: fitness={:.2} lap_completed={} lap_time={} off_track_count={} progress={:.1}m",
+            "  iter {} best: fitness={:.2} lap_completed={} lap_time={} off_track_count={} off_track_s={:.2} severe_s={:.2} progress={:.1}m",
             iteration,
             iter_best_fitness,
             probe.lap_completed,
             lap_display,
             probe.off_track_count,
+            probe.off_track_seconds,
+            probe.severe_off_track_seconds,
             probe.arc_length_progress_m,
         );
 
@@ -887,13 +889,13 @@ mod tests {
     #[test]
     fn auto_iterate_schedule_total_generations_matches_plan() {
         let total = auto_iterate_total_generations();
-        assert_eq!(total, 4400, "schedule must total 4400 generations, got {total}");
+        assert_eq!(total, 4700, "schedule must total 4700 generations, got {total}");
     }
 
     #[test]
-    fn auto_iterate_schedule_first_iteration_sigma_is_03() {
+    fn auto_iterate_schedule_first_iteration_sigma_is_05() {
         let s = auto_iterate_sigma_for_iteration(0);
-        assert!((s - 0.30).abs() < 1e-6, "first sigma should be 0.30, got {s}");
+        assert!((s - 0.50).abs() < 1e-6, "first sigma should be 0.50, got {s}");
     }
 
     #[test]
@@ -906,7 +908,7 @@ mod tests {
         let stub_eval = |p: &[f32], _idx: usize| -> f32 { -p[0].abs() };
         let mut initial_sigma = INITIAL_SIGMA_MONZA;
         for s in initial_sigma.iter_mut() {
-            *s *= 0.30;
+            *s *= 0.50;
         }
         let mut pop = Population::init(LOOKAHEAD_PARAM_COUNT, 4, 8, 42, &params, &initial_sigma);
         let mut iter_best_fitness = f32::NEG_INFINITY;

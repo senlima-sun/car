@@ -13,6 +13,8 @@ pub const TRACK_HALF_WIDTH_M: f32 = 6.0;
 
 pub const LAP_COMPLETE_TOLERANCE_FRAC: f32 = 0.001;
 
+pub const SEVERE_OFF_TRACK_LATERAL_M: f32 = 12.0;
+
 pub const CURVATURE_LOOKAHEAD_M: [f32; 5] = [10.0, 30.0, 60.0, 100.0, 150.0];
 
 const WHEELBASE: f32 = car_physics_engine::constants::car::WHEELBASE;
@@ -97,6 +99,7 @@ pub struct SimResult {
     pub lap_completed: bool,
     pub off_track_count: u32,
     pub off_track_seconds: f32,
+    pub severe_off_track_seconds: f32,
     pub terminated_by: TerminationReason,
     pub final_xz: [f32; 2],
     pub distance_to_spawn_m: f32,
@@ -168,6 +171,7 @@ pub fn run_sim_with_engine(
     let mut off_track_continuous_s = 0.0_f32;
     let mut off_track_count: u32 = 0;
     let mut off_track_seconds_total: f32 = 0.0;
+    let mut severe_off_track_seconds_total: f32 = 0.0;
     let mut prev_was_off = false;
     let mut max_steps = ((max_t_s / DT).ceil() as usize) + 2;
     let mut lap_completed = false;
@@ -241,6 +245,9 @@ pub fn run_sim_with_engine(
         } else {
             off_track_continuous_s = 0.0;
         }
+        if off.max_lateral_distance_m > SEVERE_OFF_TRACK_LATERAL_M {
+            severe_off_track_seconds_total += DT;
+        }
         prev_was_off = off.is_off_track;
 
         let arc_delta = arc_signed_delta(prev_arc, near.arc_length, total_arc, backward);
@@ -292,6 +299,7 @@ pub fn run_sim_with_engine(
         lap_completed,
         off_track_count,
         off_track_seconds: off_track_seconds_total,
+        severe_off_track_seconds: severe_off_track_seconds_total,
         terminated_by,
         final_xz: [state.position[0], state.position[2]],
         distance_to_spawn_m: (dx * dx + dz * dz).sqrt(),
