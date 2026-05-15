@@ -1,9 +1,31 @@
 import { betterAuth, type BetterAuthOptions } from 'better-auth'
+import { checkout, polar, portal, webhooks } from '@polar-sh/better-auth'
+import { Polar } from '@polar-sh/sdk'
+import { getProducts, TIERS } from '../billing/products.ts'
 import type { Bindings } from '../types.ts'
 import { parseOrigins } from './origins.ts'
 
 function auditLog(event: string, fields: Record<string, unknown>) {
   console.log(JSON.stringify({ event, timestamp: new Date().toISOString(), ...fields }))
+}
+
+function buildPolarPlugin(env: Bindings) {
+  const products = getProducts(env)
+  const productList = TIERS.map((tier) => ({ productId: products[tier].polarProductId, slug: tier }))
+  const polarClient = new Polar({ accessToken: env.POLAR_ACCESS_TOKEN })
+  return polar({
+    client: polarClient,
+    createCustomerOnSignUp: true,
+    use: [
+      checkout({
+        products: productList,
+        successUrl: env.BILLING_SUCCESS_URL,
+        authenticatedUsersOnly: true,
+      }),
+      portal({ returnUrl: env.BILLING_SUCCESS_URL }),
+      webhooks({ secret: env.POLAR_WEBHOOK_SECRET }),
+    ],
+  })
 }
 
 function buildOptions(env: Bindings): BetterAuthOptions {
@@ -45,6 +67,7 @@ function buildOptions(env: Bindings): BetterAuthOptions {
       storage: 'secondary-storage',
     },
     socialProviders: {},
+    plugins: [buildPolarPlugin(env)],
     databaseHooks: {
       user: {
         create: {

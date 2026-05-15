@@ -33,6 +33,7 @@ export function memoryHarness(extraOverrides: Partial<BetterAuthOptions> = {}): 
       },
     },
     rateLimit: { enabled: false },
+    plugins: [],
     ...extraOverrides,
   }
 
