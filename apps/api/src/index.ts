@@ -12,9 +12,9 @@ app.onError(errorSanitizer)
 app.use('*', bindingsGuard)
 app.use('*', corsMiddleware)
 
-app.get('/api/health', (c) => c.json({ ok: true }))
+app.get('/api/health', c => c.json({ ok: true }))
 
-app.on(['GET', 'POST'], '/api/auth/*', (c) =>
+app.on(['GET', 'POST'], '/api/auth/*', c =>
   createAuth(c.env, c.env.__authOverrides).handler(c.req.raw),
 )
 

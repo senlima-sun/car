@@ -12,12 +12,12 @@ export function createAuth(env: Bindings, overrides: Partial<BetterAuthOptions> 
   return betterAuth({
     database: env.DB,
     secondaryStorage: {
-      get: (key) => env.SESSIONS.get(key),
+      get: key => env.SESSIONS.get(key),
       set: (key, value, ttl) => {
         const safeTtl = ttl && ttl >= 60 ? ttl : ttl ? 60 : undefined
         return env.SESSIONS.put(key, value, safeTtl ? { expirationTtl: safeTtl } : undefined)
       },
-      delete: (key) => env.SESSIONS.delete(key),
+      delete: key => env.SESSIONS.delete(key),
     },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
@@ -49,14 +49,14 @@ export function createAuth(env: Bindings, overrides: Partial<BetterAuthOptions> 
     databaseHooks: {
       user: {
         create: {
-          after: async (user) => {
+          after: async user => {
             auditLog('user.create', { userId: user.id })
           },
         },
       },
       session: {
         create: {
-          after: async (session) => {
+          after: async session => {
             auditLog('session.create', { userId: session.userId, sessionId: session.id })
           },
         },

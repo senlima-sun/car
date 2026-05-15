@@ -19,11 +19,11 @@ export function memoryEnv(): Bindings {
   const overrides: Partial<BetterAuthOptions> = {
     database: memoryAdapter(memoryDb),
     secondaryStorage: {
-      get: (key) => sessions.get(key) ?? null,
+      get: key => sessions.get(key) ?? null,
       set: (key, value) => {
         sessions.set(key, value)
       },
-      delete: (key) => {
+      delete: key => {
         sessions.delete(key)
       },
     },

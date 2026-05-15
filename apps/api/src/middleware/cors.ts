@@ -6,7 +6,7 @@ import type { HonoEnv } from '../types.ts'
 export const corsMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
   const allowed = parseOrigins(c.env)
   const handler = cors({
-    origin: (origin) => (allowed.includes(origin) ? origin : null),
+    origin: origin => (allowed.includes(origin) ? origin : null),
     credentials: true,
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['content-type'],
