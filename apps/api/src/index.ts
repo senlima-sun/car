@@ -1,9 +1,8 @@
-import { Hono } from "hono";
+import { Hono } from 'hono'
+import type { HonoEnv } from './types.ts'
 
-type Bindings = Record<string, never>;
+const app = new Hono<HonoEnv>()
 
-const app = new Hono<{ Bindings: Bindings }>();
+app.get('/api/health', c => c.json({ ok: true }))
 
-app.get("/api/health", (c) => c.json({ ok: true }));
-
-export default app;
+export default app

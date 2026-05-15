@@ -10,13 +10,13 @@ enabled = true
 # Non-secret config goes here.
 # Secrets: use `wrangler secret put <NAME>` for prod; `.dev.vars` for local dev.
 
-# Uncomment in Phase 2 step 2.0 after `wrangler d1 create car-auth`.
+# Uncomment after `wrangler d1 create car-auth` and paste the returned id.
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "car-auth"
-# database_id = "<fill-after-wrangler-d1-create>"
+# database_id = ""
 
-# Uncomment in Phase 2 step 2.0 after `wrangler kv namespace create SESSIONS`.
+# Uncomment after `wrangler kv namespace create SESSIONS` and paste the returned id.
 # [[kv_namespaces]]
 # binding = "SESSIONS"
-# id = "<fill-after-wrangler-kv-namespace-create>"
+# id = ""
