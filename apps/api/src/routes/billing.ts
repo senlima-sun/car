@@ -18,7 +18,7 @@ function isCheckoutBody(value: unknown): value is CheckoutBody {
 }
 
 export const billingRoute = new Hono<HonoEnv>()
-  .post('/api/billing/checkout', async (c) => {
+  .post('/api/billing/checkout', async c => {
     const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers })
     if (!session) return c.json({ error: 'unauthenticated' }, 401)
 
@@ -42,7 +42,7 @@ export const billingRoute = new Hono<HonoEnv>()
     if (!data.url) return c.json({ error: 'checkout_failed' }, 500)
     return c.json({ url: data.url })
   })
-  .post('/api/billing/portal', async (c) => {
+  .post('/api/billing/portal', async c => {
     const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers })
     if (!session) return c.json({ error: 'unauthenticated' }, 401)
 

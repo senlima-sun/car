@@ -11,7 +11,7 @@ function auditLog(event: string, fields: Record<string, unknown>) {
 
 function buildPolarPlugin(env: Bindings) {
   const products = getProducts(env)
-  const productList = TIERS.map((tier) => ({ productId: products[tier].polarProductId, slug: tier }))
+  const productList = TIERS.map(tier => ({ productId: products[tier].polarProductId, slug: tier }))
   const polarClient = new Polar({ accessToken: env.POLAR_ACCESS_TOKEN })
   return polar({
     client: polarClient,

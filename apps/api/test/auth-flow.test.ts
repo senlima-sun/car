@@ -38,9 +38,13 @@ describe('auth flow', () => {
 
     const meRes = await app.request('/api/me', { headers: { cookie } }, env)
     expect(meRes.status).toBe(200)
-    const body = (await meRes.json()) as { user: { email: string; name: string } }
+    const body = (await meRes.json()) as {
+      user: { email: string; name: string }
+      subscription: { tier: string | null; status: string | null; currentPeriodEnd: string | null }
+    }
     expect(body.user.email).toBe('alice@example.com')
     expect(body.user.name).toBe('Alice')
+    expect(body.subscription).toEqual({ tier: null, status: null, currentPeriodEnd: null })
   })
 
   test('/api/me without cookie returns 401', async () => {
