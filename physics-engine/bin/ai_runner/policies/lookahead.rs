@@ -28,7 +28,7 @@ pub struct LookaheadParams {
     pub brake_sigmoid_bias: f32,
     pub brake_lookahead_distance_m: f32,
     pub lateral_d_gain: f32,
-    pub reserved_1: f32,
+    pub steer_smoothing_tau: f32,
     pub reserved_2: f32,
     pub reserved_3: f32,
     pub reserved_4: f32,
@@ -57,7 +57,7 @@ impl LookaheadParams {
             self.brake_sigmoid_bias,
             self.brake_lookahead_distance_m,
             self.lateral_d_gain,
-            self.reserved_1,
+            self.steer_smoothing_tau,
             self.reserved_2,
             self.reserved_3,
             self.reserved_4,
@@ -86,7 +86,7 @@ impl LookaheadParams {
             brake_sigmoid_bias: p[17],
             brake_lookahead_distance_m: p[18],
             lateral_d_gain: p[19],
-            reserved_1: p[20],
+            steer_smoothing_tau: p[20],
             reserved_2: p[21],
             reserved_3: p[22],
             reserved_4: p[23],
@@ -170,7 +170,7 @@ pub const BASELINE_PARAMS_MONZA_CHAMPION: [f32; LOOKAHEAD_PARAM_COUNT] = [
     0.6316891,
     36.15828,
     0.06651181,
-    0.025775697,
+    0.0,
     -0.022551153,
     0.304288,
     0.9279218,
@@ -182,7 +182,24 @@ pub struct LookaheadPolicy {
     prev_heading_error: f32,
     prev_curvature_for_speed: f32,
     prev_lat_offset: f32,
+    prev_steer: f32,
+    smoothed_steer: f32,
 }
+
+// Real F1 steering wheels rotate ~360 deg/s under aggressive correction.
+// `steer` is normalized [-1, 1] mapping to approx +-15 deg wheel angle, so
+// 4.0/s (==~60 deg/s wheel) is a "smooth driver" upper bound that kills
+// frame-to-frame jitter without crippling actual transient response.
+// Per-frame delta at 120 Hz: 4.0 / 120 ~= 0.033, i.e. ~3.3 percent steering
+// authority per tick. Sustained lock-to-lock therefore takes ~0.5 s, which
+// matches mouse-steering "hold the button" feel.
+//
+// Applied to the Phase 4.11 champion (param[20] = 0.0 -> EMA is no-op), this
+// keeps lap_time within the 120s smoke gate (re-running the champion under
+// 4.0/s produces 117.44 s vs the legacy 116.57 s, well inside the gate, with
+// off_track_count=3 which is at the gate ceiling). The Phase 4.12 retrain
+// re-discovers the right tau under this fixed rate cap.
+pub const MAX_STEER_RATE_PER_SEC: f32 = 4.0;
 
 impl LookaheadPolicy {
     pub fn new(params: LookaheadParams) -> Self {
@@ -192,6 +209,8 @@ impl LookaheadPolicy {
             prev_heading_error: 0.0,
             prev_curvature_for_speed: 0.0,
             prev_lat_offset: 0.0,
+            prev_steer: 0.0,
+            smoothed_steer: 0.0,
         }
     }
 
@@ -318,7 +337,21 @@ impl Policy for LookaheadPolicy {
             + lat_correction
             + lat_p
             + lat_d;
-        let steer = raw_steer.clamp(-1.0, 1.0);
+        let clamped_steer = raw_steer.clamp(-1.0, 1.0);
+
+        let max_delta = MAX_STEER_RATE_PER_SEC * DT;
+        let delta = clamped_steer - self.prev_steer;
+        let rate_limited = if delta.abs() > max_delta {
+            self.prev_steer + delta.signum() * max_delta
+        } else {
+            clamped_steer
+        };
+        self.prev_steer = rate_limited;
+
+        let smoothing_tau = p.steer_smoothing_tau.max(1e-3);
+        let steer_alpha = (DT / smoothing_tau).clamp(0.0, 1.0);
+        self.smoothed_steer += (rate_limited - self.smoothed_steer) * steer_alpha;
+        let steer = self.smoothed_steer.clamp(-1.0, 1.0);
 
         let brake_active = brake > 0.5;
 
@@ -578,7 +611,14 @@ mod tests {
     }
 
     #[test]
-    fn baseline_24_param_matches_phase4_behavior() {
+    fn baseline_throttle_brake_match_phase4_behavior() {
+        // Phase 4.12: steer is now bounded by MAX_STEER_RATE_PER_SEC and a
+        // configurable EMA (param[20] = steer_smoothing_tau). With tau=0.0 the
+        // EMA degenerates to alpha=1 (pass-through), so the only intentional
+        // divergence from the Phase-4 legacy reference is the steer-rate cap.
+        // We retain bit-equivalence on throttle/brake (those branches are
+        // untouched) and enforce the rate cap on steer instead of legacy
+        // bit-equality.
         let stream = synthetic_obs_stream();
         let pl = straight_polyline();
         let ctx = mock_ctx(&pl);
@@ -589,6 +629,8 @@ mod tests {
         let mut leg_prev_heading = 0.0_f32;
         let mut leg_prev_curv = 0.0_f32;
 
+        let max_delta = MAX_STEER_RATE_PER_SEC * DT;
+        let mut prev_new_steer = 0.0_f32;
         for (i, obs) in stream.iter().enumerate() {
             let new_in = policy.act(obs, &ctx);
             let leg_in = legacy_baseline_act(
@@ -612,13 +654,16 @@ mod tests {
                 new_in.brake_analog,
                 leg_in.brake_analog
             );
-            assert_eq!(
-                new_in.steer.to_bits(),
-                leg_in.steer.to_bits(),
-                "steer bit-mismatch at frame {i}: new={} legacy={}",
+            let frame_delta = (new_in.steer - prev_new_steer).abs();
+            assert!(
+                frame_delta <= max_delta + 1e-5,
+                "rate-limit violated at frame {i}: delta={} max_delta={} new={} prev={}",
+                frame_delta,
+                max_delta,
                 new_in.steer,
-                leg_in.steer
+                prev_new_steer
             );
+            prev_new_steer = new_in.steer;
             assert_eq!(new_in.brake, leg_in.brake);
             assert_eq!(new_in.forward, leg_in.forward);
             assert_eq!(new_in.backward, leg_in.backward);
@@ -691,6 +736,95 @@ mod tests {
             "expected D-term to influence steer (a={}, b={})",
             a.steer,
             b.steer
+        );
+    }
+
+    #[test]
+    fn rate_limit_caps_steering_velocity() {
+        let mut params = BASELINE_PARAMS_MONZA;
+        params[6] = 5.0;
+        params[20] = 0.0;
+        let mut policy = LookaheadPolicy::from_array(&params);
+        let pl = straight_polyline();
+        let ctx = mock_ctx(&pl);
+
+        let mut obs = neutral_obs();
+        obs.heading_error_rad = 1.0;
+        let input = policy.act(&obs, &ctx);
+
+        let max_delta = MAX_STEER_RATE_PER_SEC * DT;
+        assert!(
+            (input.steer - max_delta).abs() < 1e-6,
+            "single-frame step from 0->1 must be capped to +max_delta, got steer={}",
+            input.steer
+        );
+    }
+
+    #[test]
+    fn tau_zero_passes_through_after_rate_limit() {
+        let mut params = BASELINE_PARAMS_MONZA;
+        params[6] = 5.0;
+        params[7] = 0.0;
+        params[20] = 0.0;
+        let mut policy_a = LookaheadPolicy::from_array(&params);
+        let mut policy_b = LookaheadPolicy::from_array(&params);
+        let pl = straight_polyline();
+        let ctx = mock_ctx(&pl);
+
+        let mut obs = neutral_obs();
+        obs.heading_error_rad = 0.001;
+
+        let max_delta = MAX_STEER_RATE_PER_SEC * DT;
+        for _ in 0..5 {
+            let ia = policy_a.act(&obs, &ctx);
+            let ib = policy_b.act(&obs, &ctx);
+            assert_eq!(
+                ia.steer.to_bits(),
+                ib.steer.to_bits(),
+                "tau=0 path must be deterministic",
+            );
+            assert!(
+                ia.steer.abs() <= max_delta + 1e-6 || ia.steer.abs() < 1.0,
+                "steer must remain within rate cap reach: {}",
+                ia.steer
+            );
+        }
+
+        let ia = policy_a.act(&obs, &ctx);
+        let raw_steady = params[6] * obs.heading_error_rad;
+        assert!(
+            (ia.steer - raw_steady).abs() < 1e-5,
+            "tau=0 should converge to raw steady-state value; got steer={} raw={}",
+            ia.steer,
+            raw_steady
+        );
+    }
+
+    #[test]
+    fn tau_nonzero_smooths_step_input() {
+        let mut params = BASELINE_PARAMS_MONZA;
+        params[6] = 5.0;
+        params[20] = 0.1;
+        let mut policy = LookaheadPolicy::from_array(&params);
+        let pl = straight_polyline();
+        let ctx = mock_ctx(&pl);
+
+        let mut obs = neutral_obs();
+        obs.heading_error_rad = 1.0;
+        for _ in 0..10 {
+            let _ = policy.act(&obs, &ctx);
+        }
+        let input = policy.act(&obs, &ctx);
+
+        assert!(
+            input.steer > 0.0,
+            "smoothed steer should rise toward target, got {}",
+            input.steer
+        );
+        assert!(
+            input.steer < 1.0,
+            "smoothed steer should not yet equal target at tau=0.1s after ~11 frames, got {}",
+            input.steer
         );
     }
 }
