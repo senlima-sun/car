@@ -6,6 +6,7 @@ import {
   setRibbonBoundary,
 } from './ribbonBoundaryCache'
 import { buildRibbonBoundary } from './ribbonBoundary'
+import { buildEdgeLineFromBoundary } from './ribbonGeometry'
 import type { TrackRibbonPoint } from '@/types/trackObjects'
 
 const STRAIGHT: TrackRibbonPoint[] = [
@@ -52,5 +53,17 @@ describe('ribbonBoundaryCache', () => {
     setRibbonBoundary('id', b1)
     setRibbonBoundary('id', b2)
     expect(getRibbonBoundary('id')).toBe(b2)
+  })
+})
+
+describe('EdgeLine / PaintedArea boundary fallback logic', () => {
+  test('buildEdgeLineFromBoundary returns null for non-positive lineWidth', () => {
+    const b = buildRibbonBoundary(STRAIGHT, false, 12)!
+    expect(buildEdgeLineFromBoundary(b, 'left', 0)).toBeNull()
+    expect(buildEdgeLineFromBoundary(b, 'right', -1)).toBeNull()
+  })
+
+  test('getRibbonBoundary missing id returns undefined (cache miss triggers fallback path)', () => {
+    expect(getRibbonBoundary('missing-ribbon-id')).toBeUndefined()
   })
 })

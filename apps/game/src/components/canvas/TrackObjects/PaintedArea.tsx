@@ -4,7 +4,12 @@ import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '../../../constants/trackLayers'
 import { resolveParentDerivedLayer } from '../../../utils/parentDerivedLayer'
-import { buildAsphaltGeometry, buildParentSideBandGeometry } from './geometry/ribbonGeometry'
+import {
+  buildAsphaltGeometry,
+  buildParentSideBandGeometry,
+  buildSideBandFromBoundary,
+} from './geometry/ribbonGeometry'
+import { getRibbonBoundary } from './geometry/ribbonBoundaryCache'
 import type { PlacedObject } from '../../../types/trackObjects'
 
 interface PaintedAreaProps {
@@ -33,29 +38,44 @@ export default function PaintedArea({ placed, parentRibbon, isGhost = false }: P
       }
       return []
     }
-    if (
-      parentRibbon?.ribbonPoints &&
-      parentRibbon.ribbonPoints.length >= 2 &&
-      placed.parentSide &&
-      isFullParentRange(placed.tRange)
-    ) {
-      const result = buildParentSideBandGeometry(
-        parentRibbon.ribbonPoints,
-        parentRibbon.ribbonClosed ?? false,
-        parentRibbon.width ?? 12,
-        placed.parentSide,
-        placed.innerOffset ?? 0,
-        placed.derivedWidth ?? placed.width ?? 3,
-      )
-      return result && result.indices.length > 0
-        ? [
-            {
-              geometry: result.geometry,
-              sensorVertices: result.positions,
-              sensorIndices: new Uint32Array(result.indices),
-            },
-          ]
-        : []
+    if (parentRibbon && placed.parentSide && isFullParentRange(placed.tRange)) {
+      const boundary = getRibbonBoundary(parentRibbon.id)
+      if (boundary) {
+        const result = buildSideBandFromBoundary(
+          boundary,
+          placed.parentSide,
+          placed.innerOffset ?? 0,
+          placed.derivedWidth ?? placed.width ?? 3,
+        )
+        return result && result.indices.length > 0
+          ? [
+              {
+                geometry: result.geometry,
+                sensorVertices: result.positions,
+                sensorIndices: new Uint32Array(result.indices),
+              },
+            ]
+          : []
+      }
+      if (parentRibbon.ribbonPoints && parentRibbon.ribbonPoints.length >= 2) {
+        const result = buildParentSideBandGeometry(
+          parentRibbon.ribbonPoints,
+          parentRibbon.ribbonClosed ?? false,
+          parentRibbon.width ?? 12,
+          placed.parentSide,
+          placed.innerOffset ?? 0,
+          placed.derivedWidth ?? placed.width ?? 3,
+        )
+        return result && result.indices.length > 0
+          ? [
+              {
+                geometry: result.geometry,
+                sensorVertices: result.positions,
+                sensorIndices: new Uint32Array(result.indices),
+              },
+            ]
+          : []
+      }
     }
 
     const segments = resolveParentDerivedLayer(placed, { parent: parentRibbon })
