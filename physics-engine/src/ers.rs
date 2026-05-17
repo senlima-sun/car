@@ -34,7 +34,11 @@ const LAP_DEPLOY_TARGET_MJ: f32 = 4.0;
 // shared MGU-K cap so deploy and harvest can't drift apart.
 const MAX_DEPLOY_POWER_KW: f32 = MGUK_PEAK_POWER_W / 1000.0;
 const MAX_HARVEST_POWER_KW: f32 = MGUK_PEAK_POWER_W / 1000.0;
-const MAX_COAST_POWER_KW: f32 = 200.0;
+// MGU-K coast drag: real-world ~80–100 kW from rotor + driveshaft
+// resistance when not motoring. FIA 2026 PU regs / Pat Symonds public
+// commentary place the figure near 100 kW; the prior 200 kW was a
+// placeholder roughly 2× reality.
+const MAX_COAST_POWER_KW: f32 = 100.0;
 const MAX_SUPER_CLIP_POWER_KW: f32 = 150.0; // 2026: Super clipping (was 50, now significant)
 const SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW: f32 = 25.0;
 
@@ -889,6 +893,23 @@ mod tests {
         let watts = state.get_harvest_power_watts();
         assert!(watts > 0.0);
         assert!((watts - state.current.power_flow.abs() * 1000.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn coast_power_capped_at_100kw() {
+        // FIA 2026 calibration: Balanced coast at OPTIMAL_HARVEST_SPEED
+        // (80 m/s) → BALANCED_COAST_MULT × MAX_COAST_POWER_KW = 0.85 ×
+        // 100 = 85 kW. Sign is negative on `power_flow` (harvesting).
+        let mut state = ErsPhysicsState::new();
+        state.set_mode(ErsMode::Balanced);
+        state.set_battery_charge(0.5);
+        state.update(1.0 / 120.0, false, false, 80.0, 0.0);
+        let pf = state.get_state().power_flow;
+        assert!(
+            pf < -80.0 && pf > -86.0,
+            "expected coast power ≈ -85 kW, got {}",
+            pf,
+        );
     }
 
     #[test]
