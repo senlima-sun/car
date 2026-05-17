@@ -39,8 +39,6 @@ const MAX_HARVEST_POWER_KW: f32 = MGUK_PEAK_POWER_W / 1000.0;
 // commentary place the figure near 100 kW; the prior 200 kW was a
 // placeholder roughly 2× reality.
 const MAX_COAST_POWER_KW: f32 = 100.0;
-const MAX_SUPER_CLIP_POWER_KW: f32 = 150.0; // 2026: Super clipping (was 50, now significant)
-const SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW: f32 = 25.0;
 
 // FIA 2026 PU regs: MGU-K deploy power tapers linearly from full at
 // 290 km/h (80.5 m/s) to zero at 345 km/h (95.8 m/s). The taper is a
@@ -50,44 +48,34 @@ const SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW: f32 = 25.0;
 const DEPLOY_DERATE_START_MS: f32 = 80.5;
 const DEPLOY_DERATE_END_MS: f32 = 95.8;
 
-// Mode multipliers (deploy / harvest / coast / super_clip)
+// Mode multipliers (deploy / harvest / coast)
 // Harvest mode: maximum recovery, no deploy
 const HARVEST_DEPLOY_MULT: f32 = 0.0;
 const HARVEST_HARVEST_MULT: f32 = 1.0;
 const HARVEST_COAST_MULT: f32 = 1.0;
-const HARVEST_CLIP_MULT: f32 = 1.0;
 
 // Balanced mode: moderate deploy with good recovery
 const BALANCED_DEPLOY_MULT: f32 = 0.60;
 const BALANCED_HARVEST_MULT: f32 = 0.95;
 const BALANCED_COAST_MULT: f32 = 0.85;
-const BALANCED_CLIP_MULT: f32 = 0.85;
 
 // Attack mode: high deploy, some recovery
 const ATTACK_DEPLOY_MULT: f32 = 0.85;
-const ATTACK_HARVEST_MULT: f32 = 0.5; // Increased from 0.4
-const ATTACK_COAST_MULT: f32 = 0.4; // Increased from 0.3
-const ATTACK_CLIP_MULT: f32 = 0.3; // Was 0.0, now some super clip even in attack
+const ATTACK_HARVEST_MULT: f32 = 0.5;
+const ATTACK_COAST_MULT: f32 = 0.4;
 
 // Overtake mode: maximum deploy burst, zero harvest
 const OVERTAKE_DEPLOY_MULT: f32 = 1.0;
 const OVERTAKE_HARVEST_MULT: f32 = 0.0;
 const OVERTAKE_COAST_MULT: f32 = 0.0;
-const OVERTAKE_CLIP_MULT: f32 = 0.0;
 
 // Efficiency
 const DEPLOY_EFFICIENCY: f32 = 0.95;
 const HARVEST_EFFICIENCY: f32 = 0.95;
 const COAST_EFFICIENCY: f32 = 0.93;
-const SUPER_CLIP_EFFICIENCY: f32 = 0.90;
 
 // Speed thresholds (m/s)
 const MIN_HARVEST_SPEED: f32 = 5.0; // ~18 km/h minimum for any harvest
-// Super clipping (harvest while accelerating) is meaningful only on
-// the upper end of straights where ICE output exceeds drag. Below
-// ~180 km/h the ICE has plenty of forward force and no surplus.
-const SUPER_CLIP_MIN_SPEED: f32 = 50.0; // ~180 km/h
-const SUPER_CLIP_OPTIMAL_SPEED: f32 = 70.0; // ~252 km/h
 const OPTIMAL_HARVEST_SPEED: f32 = 80.0; // ~288 km/h for max brake harvest
 
 // ============================================================================
@@ -208,9 +196,9 @@ impl ErsPhysicsState {
         (recommended, benefit)
     }
 
-    /// Calculate Semi-Auto multipliers based on battery state
-    /// Returns (deploy_mult, harvest_mult, coast_mult, clip_mult)
-    fn calculate_semi_auto_multipliers(&self, _speed_ms: f32) -> (f32, f32, f32, f32) {
+    /// Calculate Semi-Auto multipliers based on battery state.
+    /// Returns (deploy_mult, harvest_mult, coast_mult).
+    fn calculate_semi_auto_multipliers(&self, _speed_ms: f32) -> (f32, f32, f32) {
         let battery = self.current.battery_charge;
         let target_min = self.semi_auto_config.target_min;
         let target_max = self.semi_auto_config.target_max;
@@ -224,7 +212,7 @@ impl ErsPhysicsState {
 
         // Critical protection: minimal deploy, max harvest
         if battery < CRITICAL_BATTERY_THRESHOLD {
-            return (CRITICAL_DEPLOY_MULT * preset_deploy_scale, 1.0, 1.0, 1.0);
+            return (CRITICAL_DEPLOY_MULT * preset_deploy_scale, 1.0, 1.0);
         }
 
         // Below minimum target: prioritize charging
@@ -232,7 +220,7 @@ impl ErsPhysicsState {
             let urgency = 1.0 - (battery / target_min);
             let deploy = (0.25 + (1.0 - urgency) * 0.35) * preset_deploy_scale; // 25-60% * scale
             let harvest = 0.8 + urgency * 0.2; // 80-100% harvest
-            return (deploy.min(1.0), harvest, harvest, harvest);
+            return (deploy.min(1.0), harvest, harvest);
         }
 
         // In target range: balanced operation
@@ -240,14 +228,14 @@ impl ErsPhysicsState {
             let position = (battery - target_min) / (target_max - target_min);
             let deploy = (0.40 + position * 0.20) * preset_deploy_scale; // 40-60% * scale
             let harvest = 1.0 - position * 0.10; // 100-90% harvest (increased)
-            return (deploy.min(1.0), harvest, harvest, harvest * 0.95);
+            return (deploy.min(1.0), harvest, harvest);
         }
 
         // Above maximum target: push deploy harder, maintain good harvest
         let excess = (battery - target_max) / (1.0 - target_max);
         let deploy = (0.65 + excess * 0.25) * preset_deploy_scale; // 65-90% * scale
         let harvest = 0.85 - excess * 0.15; // 85-70% harvest (maintain recovery)
-        (deploy.min(1.0), harvest, harvest * 0.95, harvest * 0.9)
+        (deploy.min(1.0), harvest, harvest * 0.95)
     }
 
     // ========================================================================
@@ -295,12 +283,13 @@ impl ErsPhysicsState {
     }
 
     /// Update ERS state based on driving conditions (2026 F1 regulations)
-    /// Returns the force boost in Newtons
+    /// Returns the force boost in Newtons.
     ///
     /// 2026 recovery sources:
-    /// - Braking: up to 350kW when braking
-    /// - Coast: up to 100kW when off throttle
-    /// - Super clipping: up to 50kW at full throttle when speed > 180 km/h
+    /// - Braking: up to 350 kW when braking.
+    /// - Coast: up to 100 kW when off throttle.
+    ///
+    /// 2026 PU has no MGU-H, so there is no on-throttle harvest path.
     pub fn update(
         &mut self,
         delta: f32,
@@ -320,43 +309,38 @@ impl ErsPhysicsState {
             self.calculate_coast_recommendation(speed_ms, is_coasting);
         let is_critical = self.current.battery_charge < CRITICAL_BATTERY_THRESHOLD;
 
-        // Get mode multipliers (deploy, harvest, coast, super_clip)
-        let (deploy_mult, harvest_mult, coast_mult, clip_mult) = match self.current.mode {
+        // Get mode multipliers (deploy, harvest, coast)
+        let (deploy_mult, harvest_mult, coast_mult) = match self.current.mode {
             ErsMode::Harvest => (
                 HARVEST_DEPLOY_MULT,
                 HARVEST_HARVEST_MULT,
                 HARVEST_COAST_MULT,
-                HARVEST_CLIP_MULT,
             ),
             ErsMode::Balanced => (
                 BALANCED_DEPLOY_MULT,
                 BALANCED_HARVEST_MULT,
                 BALANCED_COAST_MULT,
-                BALANCED_CLIP_MULT,
             ),
             ErsMode::Attack => (
                 ATTACK_DEPLOY_MULT,
                 ATTACK_HARVEST_MULT,
                 ATTACK_COAST_MULT,
-                ATTACK_CLIP_MULT,
             ),
             ErsMode::Overtake => (
                 OVERTAKE_DEPLOY_MULT,
                 OVERTAKE_HARVEST_MULT,
                 OVERTAKE_COAST_MULT,
-                OVERTAKE_CLIP_MULT,
             ),
             ErsMode::SemiAuto => {
                 if self.overtake_override {
                     // Overtake override: full deploy, no harvest
-                    (1.0, 0.0, 0.0, 0.0)
+                    (1.0, 0.0, 0.0)
                 } else if self.semi_auto_config.expert_mode {
                     // Expert mode: use Balanced multipliers
                     (
                         BALANCED_DEPLOY_MULT,
                         BALANCED_HARVEST_MULT,
                         BALANCED_COAST_MULT,
-                        BALANCED_CLIP_MULT,
                     )
                 } else {
                     // Smart Semi-Auto multipliers based on battery state
@@ -378,7 +362,6 @@ impl ErsPhysicsState {
         let mut power_flow_kw = 0.0;
         let mut is_deploying = false;
         let mut is_harvesting = false;
-        let mut super_clip_active = false;
         let mut harvest_source = HarvestSource::None;
         let mut force_boost = 0.0;
         let deploy_schedule = if is_accelerating && !is_braking {
@@ -439,50 +422,12 @@ impl ErsPhysicsState {
             harvest_source = HarvestSource::Coast;
         }
 
-        // 3. Super clipping (2026: harvest at full throttle when engine has surplus)
-        // Activates when accelerating at high speed where drag limits acceleration
-        if is_accelerating
-            && !is_braking
-            && speed_ms > SUPER_CLIP_MIN_SPEED
-            && self.current.battery_charge < 1.0
-            && clip_mult > 0.0
-        {
-            // Calculate super clip intensity based on speed
-            // Scales from 0 at 180 km/h to 1.0 at 250 km/h
-            let clip_intensity = ((speed_ms - SUPER_CLIP_MIN_SPEED)
-                / (SUPER_CLIP_OPTIMAL_SPEED - SUPER_CLIP_MIN_SPEED))
-                .clamp(0.0, 1.0);
-
-            if clip_intensity > 0.05 && !self.current.lap_recovery_cap_reached {
-                let base_clip_power = MAX_SUPER_CLIP_POWER_KW * clip_mult * clip_intensity;
-                let clip_power = if self.current.mode == ErsMode::SemiAuto
-                    && !self.overtake_override
-                    && !self.semi_auto_config.expert_mode
-                {
-                    let clip_cap =
-                        (anticipated_deploy_power - SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW).max(0.0);
-                    base_clip_power.min(clip_cap)
-                } else {
-                    base_clip_power
-                };
-
-                if clip_power > 1.0 {
-                    let energy_harvested = clip_power * SUPER_CLIP_EFFICIENCY * dt;
-                    let battery_change = energy_harvested / BATTERY_CAPACITY_KJ;
-                    self.current.battery_charge =
-                        (self.current.battery_charge + battery_change).min(1.0);
-                    self.accumulate_recovered(energy_harvested);
-
-                    power_flow_kw += -clip_power;
-                    is_harvesting = true;
-                    super_clip_active = true;
-                    harvest_source = HarvestSource::SuperClip;
-                }
-            }
-        }
+        // 2026 PU has no MGU-H — there is no harvest path during
+        // on-throttle acceleration. Braking and coast are the only
+        // recovery sources.
 
         // ========================================================================
-        // DEPLOYMENT (can happen simultaneously with super clipping)
+        // DEPLOYMENT
         // ========================================================================
 
         // 2026 F1 per-lap deploy cap: deploy stops once 9.0 MJ reached, until lap rollover.
@@ -509,17 +454,19 @@ impl ErsPhysicsState {
                     force_boost =
                         electric_force_boost(deploy_power, speed_ms) * DEPLOY_EFFICIENCY;
 
-                    power_flow_kw += deploy_power; // Net power (deploy - clip)
+                    power_flow_kw += deploy_power;
                     is_deploying = true;
                 }
             }
         }
 
-        // Update state
+        // Update state. `super_clip_active` is hard-wired off: 2026
+        // PU has no MGU-H on-throttle harvest. Field retained for
+        // TS-string / save-file compatibility.
         self.current.power_flow = power_flow_kw;
         self.current.is_deploying = is_deploying;
         self.current.is_harvesting = is_harvesting;
-        self.current.super_clip_active = super_clip_active;
+        self.current.super_clip_active = false;
         self.current.harvest_source = harvest_source;
 
         // Update Semi-Auto state (for UI feedback)
@@ -761,50 +708,52 @@ mod tests {
     }
 
     #[test]
-    fn test_super_clipping() {
-        let mut state = ErsPhysicsState::new();
-        state.set_mode(ErsMode::Balanced); // Balanced has 50% super clip
-        state.set_battery_charge(0.5);
-
-        let initial_charge = state.current.battery_charge;
-
-        // Accelerate at high speed (above super clip threshold of 50 m/s)
-        // At 70 m/s (~250 km/h), should get max super clipping
-        for _ in 0..60 {
-            state.update(1.0 / 60.0, true, false, 70.0, 1.0);
-        }
-
-        // Battery should have net depletion (deploy > super clip)
-        // but super_clip_active should be true during update
-        assert!(state.current.is_deploying);
-    }
-
-    #[test]
-    fn test_super_clipping_not_at_low_speed() {
+    fn no_super_clip_harvest_during_acceleration_at_low_speed() {
         let mut state = ErsPhysicsState::new();
         state.set_mode(ErsMode::Balanced);
         state.set_battery_charge(0.5);
 
-        // Accelerate at low speed (below super clip threshold)
         state.update(1.0 / 60.0, true, false, 30.0, 1.0);
 
-        // Super clipping should NOT be active
         assert!(!state.current.super_clip_active);
+        assert_ne!(state.current.harvest_source, HarvestSource::SuperClip);
         assert!(state.current.is_deploying);
     }
 
     #[test]
-    fn test_super_clipping_activates_at_high_speed() {
+    fn no_super_clip_harvest_during_acceleration_at_high_speed() {
+        // 2026 PU has no MGU-H — high-speed on-throttle harvest must
+        // not occur regardless of mode. Re-enabling the branch makes
+        // this test fail.
         let mut state = ErsPhysicsState::new();
-        state.set_mode(ErsMode::Harvest); // Harvest has 100% super clip
+        state.set_mode(ErsMode::Balanced);
         state.set_battery_charge(0.5);
 
-        // Accelerate at very high speed
         state.update(1.0 / 60.0, true, false, 70.0, 1.0);
 
-        // Super clipping should be active (Harvest mode, high speed)
-        assert!(state.current.super_clip_active);
-        assert_eq!(state.current.harvest_source, HarvestSource::SuperClip);
+        assert!(!state.current.super_clip_active);
+        assert_ne!(state.current.harvest_source, HarvestSource::SuperClip);
+        assert!(state.current.power_flow > 0.0, "should be net deploy");
+    }
+
+    #[test]
+    fn harvest_source_never_super_clip_under_typical_states() {
+        let mut state = ErsPhysicsState::new();
+        state.set_battery_charge(0.5);
+        for (accel, brake, speed) in [
+            (true, false, 30.0_f32),
+            (true, false, 70.0_f32),
+            (true, false, 88.0_f32),
+            (false, true, 60.0_f32),
+            (false, false, 60.0_f32),
+        ] {
+            state.update(1.0 / 60.0, accel, brake, speed, if accel { 1.0 } else { 0.0 });
+            assert_ne!(
+                state.current.harvest_source,
+                HarvestSource::SuperClip,
+                "harvest_source must never be SuperClip in 2026 PU",
+            );
+        }
     }
 
     #[test]
@@ -1030,19 +979,6 @@ mod tests {
 
         assert!(state.current.battery_charge < initial_charge);
         assert!(state.current.power_flow > 0.0);
-    }
-
-    #[test]
-    fn test_semi_auto_super_clip_never_exceeds_deploy() {
-        let mut state = ErsPhysicsState::new();
-        state.set_mode(ErsMode::SemiAuto);
-        state.set_semi_auto_preset(SemiAutoPreset::Conservative);
-        state.set_battery_charge(0.4);
-
-        state.update(1.0 / 60.0, true, false, 70.0, 1.0);
-
-        assert!(state.current.is_deploying);
-        assert!(state.current.power_flow >= SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW);
     }
 
     /// 2026 F1 spec: once `lap_deployed_mj` reaches LAP_DEPLOY_CAP_MJ (8.5 MJ),

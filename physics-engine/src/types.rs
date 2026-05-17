@@ -267,7 +267,10 @@ pub enum HarvestSource {
     None,
     Braking,
     Coast,
-    SuperClip, // 2026: Harvesting at full throttle when engine has surplus
+    /// 2026 PU has no MGU-H, so there is no on-throttle harvest path
+    /// — this variant is never set. Retained for TS-string and
+    /// save-file compatibility (HUD/store still reference the symbol).
+    SuperClip,
 }
 
 /// Semi-Auto ERS preset profiles
