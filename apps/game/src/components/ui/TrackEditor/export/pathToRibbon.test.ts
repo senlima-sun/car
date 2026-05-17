@@ -16,7 +16,7 @@ describe('pathToRibbon', () => {
     expect(pathToRibbon(p)).toBeNull()
   })
 
-  test('straight line produces ribbon with points spanning both endpoints', () => {
+  test('straight line subdivides at RIBBON_MAX_STEP_M (100m straight has bounded sample spacing)', () => {
     const p = makePath(makeAnchor({ x: 0, y: 0 }))
     p.anchors.push(makeAnchor({ x: 100, y: 0 }))
 
@@ -24,9 +24,14 @@ describe('pathToRibbon', () => {
     expect(r).not.toBeNull()
     expect(r!.type).toBe('track_ribbon')
     expect(r!.width).toBe(TRACK_WIDTH)
-    expect(r!.ribbonPoints!.length).toBeGreaterThanOrEqual(2)
-    const first = r!.ribbonPoints![0]!
-    const last = r!.ribbonPoints![r!.ribbonPoints!.length - 1]!
+    const pts = r!.ribbonPoints!
+    expect(pts.length).toBeGreaterThanOrEqual(Math.ceil(100 / 4.0) + 1)
+    for (let i = 1; i < pts.length; i++) {
+      const step = Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.z - pts[i - 1]!.z)
+      expect(step).toBeLessThanOrEqual(4.0 + 1e-6)
+    }
+    const first = pts[0]!
+    const last = pts[pts.length - 1]!
     expect(first.x).toBeCloseTo(0, 1)
     expect(first.z).toBeCloseTo(0, 1)
     expect(last.x).toBeCloseTo(100, 1)

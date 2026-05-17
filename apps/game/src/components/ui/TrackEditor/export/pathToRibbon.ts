@@ -39,10 +39,15 @@ function sampleSegmentDense(
   })
 
   if (isStraight) {
-    if (includeStart) {
-      return [toPoint(p0), toPoint(p3)]
+    const chordLen = Math.hypot(p3.x - p0.x, p3.y - p0.y)
+    const steps = Math.max(1, Math.ceil(chordLen / RIBBON_MAX_STEP_M))
+    const out: TrackRibbonPoint[] = []
+    const startIdx = includeStart ? 0 : 1
+    for (let i = startIdx; i <= steps; i++) {
+      const t = i / steps
+      out.push(toPoint({ x: p0.x + (p3.x - p0.x) * t, y: p0.y + (p3.y - p0.y) * t }))
     }
-    return [toPoint(p3)]
+    return out
   }
 
   const ts = subdivideCubicAdaptive(p0, c1, c2, p3, {

@@ -129,6 +129,39 @@ describe('subdivideCubicAdaptive', () => {
     expect(ts).toHaveLength(2)
   })
 
+  test('self-touching cubic with p0 === p3 (true loop) preserves the loop', () => {
+    const p0: Vec2 = { x: 0, y: 0 }
+    const p3: Vec2 = { x: 0, y: 0 }
+    const c1: Vec2 = { x: 10, y: 10 }
+    const c2: Vec2 = { x: -10, y: 10 }
+    const ts = subdivideCubicAdaptive(p0, c1, c2, p3, { ...OPTS, maxStep: 50 })
+    expect(ts.length).toBeGreaterThanOrEqual(4)
+    const midT = ts[Math.floor(ts.length / 2)]!
+    const midPt = cubicPoint(p0, c1, c2, p3, midT)
+    expect(dist(midPt, p0)).toBeGreaterThan(1)
+  })
+
+  test('small-chord high-curvature cubic respects chord error (no early bail on minStep)', () => {
+    const p0: Vec2 = { x: 0, y: 0 }
+    const p3: Vec2 = { x: 0.1, y: 0 }
+    const c1: Vec2 = { x: 0, y: 5 }
+    const c2: Vec2 = { x: 0.1, y: 5 }
+    const ts = subdivideCubicAdaptive(p0, c1, c2, p3, OPTS)
+    expect(ts.length).toBeGreaterThan(2)
+    let maxDev = 0
+    for (let i = 1; i < ts.length; i++) {
+      const tMid = (ts[i - 1]! + ts[i]!) * 0.5
+      const aSeg = cubicPoint(p0, c1, c2, p3, ts[i - 1]!)
+      const bSeg = cubicPoint(p0, c1, c2, p3, ts[i]!)
+      const mSeg = cubicPoint(p0, c1, c2, p3, tMid)
+      const chordMx = (aSeg.x + bSeg.x) * 0.5
+      const chordMy = (aSeg.y + bSeg.y) * 0.5
+      const dev = Math.hypot(mSeg.x - chordMx, mSeg.y - chordMy)
+      if (dev > maxDev) maxDev = dev
+    }
+    expect(maxDev).toBeLessThan(OPTS.maxChordError * 2)
+  })
+
   test('maxDepth cap is respected on adversarial input', () => {
     const p0: Vec2 = { x: 0, y: 0 }
     const c1: Vec2 = { x: 0, y: 100 }

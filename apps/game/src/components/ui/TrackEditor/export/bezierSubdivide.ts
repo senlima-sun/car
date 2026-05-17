@@ -55,11 +55,6 @@ function collectTValues(
     return
   }
 
-  if (chordLen < opts.minStep) {
-    out.push(tMax)
-    return
-  }
-
   const polyLen = controlPolygonLength(p0, c1, c2, p3)
   const arcLengthRatioBreach = polyLen - chordLen > opts.arcLengthChordRatio * chordLen
 
@@ -68,9 +63,12 @@ function collectTValues(
   const chordMidY = (p0.y + p3.y) * 0.5
   const deviation = Math.hypot(mid.x - chordMidX, mid.y - chordMidY)
 
-  const stepApprox = chordLen
+  if (chordLen < opts.minStep && !arcLengthRatioBreach && deviation <= opts.maxChordError) {
+    out.push(tMax)
+    return
+  }
 
-  if (!arcLengthRatioBreach && deviation <= opts.maxChordError && stepApprox <= opts.maxStep) {
+  if (!arcLengthRatioBreach && deviation <= opts.maxChordError && chordLen <= opts.maxStep) {
     out.push(tMax)
     return
   }
@@ -85,7 +83,13 @@ function isStraightCubic(p0: Vec2, c1: Vec2, c2: Vec2, p3: Vec2): boolean {
   const dx = p3.x - p0.x
   const dy = p3.y - p0.y
   const len2 = dx * dx + dy * dy
-  if (len2 < 1e-18) return true
+  if (len2 < 1e-18) {
+    const h1dx = c1.x - p0.x
+    const h1dy = c1.y - p0.y
+    const h2dx = c2.x - p0.x
+    const h2dy = c2.y - p0.y
+    return h1dx * h1dx + h1dy * h1dy < 1e-18 && h2dx * h2dx + h2dy * h2dy < 1e-18
+  }
   const cross1 = Math.abs((c1.x - p0.x) * dy - (c1.y - p0.y) * dx)
   const cross2 = Math.abs((c2.x - p0.x) * dy - (c2.y - p0.y) * dx)
   if (cross1 > 1e-9 * Math.sqrt(len2) || cross2 > 1e-9 * Math.sqrt(len2)) return false
