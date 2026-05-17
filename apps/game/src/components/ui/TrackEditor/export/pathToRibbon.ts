@@ -1,17 +1,16 @@
-import type { Anchor, Path } from '../geometry/types'
+import type { Anchor, Path, Point } from '../geometry/types'
 import { resolveAnchor } from '../geometry/path'
 import { eq } from '../geometry/point'
 import type { PlacedObject, TrackRibbonPoint } from '@/types/trackObjects'
 import { TRACK_WIDTH } from '@/constants/dimensions'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 import { subdivideCubicAdaptive, cubicPoint } from './bezierSubdivide'
-import type { Vec2 } from './bezierSubdivide'
 
 export const RIBBON_MAX_CHORD_ERROR_M = 0.05
 export const RIBBON_MIN_STEP_M = 0.25
 export const RIBBON_MAX_STEP_M = 4.0
 
-function segmentEndpoints(from: Anchor, to: Anchor): { p0: Vec2; c1: Vec2; c2: Vec2; p3: Vec2 } {
+function segmentEndpoints(from: Anchor, to: Anchor): { p0: Point; c1: Point; c2: Point; p3: Point } {
   const hasOut = !eq(from.outHandle, from.point)
   const hasIn = !eq(to.inHandle, to.point)
   return {
@@ -22,34 +21,18 @@ function segmentEndpoints(from: Anchor, to: Anchor): { p0: Vec2; c1: Vec2; c2: V
   }
 }
 
-function sampleSegmentDense(
-  from: Anchor,
-  to: Anchor,
-  isPit: boolean,
-  includeStart: boolean,
-): TrackRibbonPoint[] {
-  const { p0, c1, c2, p3 } = segmentEndpoints(from, to)
-  const isStraight = eq(c1, p0) && eq(c2, p3)
-
-  const toPoint = (pt: Vec2): TrackRibbonPoint => ({
-    x: pt.x,
-    y: useTerrainStore.getState().getHeightAt(pt.x, pt.y),
-    z: pt.y,
-    isPitLane: isPit,
-  })
-
-  if (isStraight) {
-    const chordLen = Math.hypot(p3.x - p0.x, p3.y - p0.y)
-    const steps = Math.max(1, Math.ceil(chordLen / RIBBON_MAX_STEP_M))
-    const out: TrackRibbonPoint[] = []
-    const startIdx = includeStart ? 0 : 1
-    for (let i = startIdx; i <= steps; i++) {
-      const t = i / steps
-      out.push(toPoint({ x: p0.x + (p3.x - p0.x) * t, y: p0.y + (p3.y - p0.y) * t }))
-    }
-    return out
+function sampleStraight2D(p0: Point, p3: Point): Point[] {
+  const chordLen = Math.hypot(p3.x - p0.x, p3.y - p0.y)
+  const steps = Math.max(1, Math.ceil(chordLen / RIBBON_MAX_STEP_M))
+  const out: Point[] = []
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    out.push({ x: p0.x + (p3.x - p0.x) * t, y: p0.y + (p3.y - p0.y) * t })
   }
+  return out
+}
 
+function sampleCubic2D(p0: Point, c1: Point, c2: Point, p3: Point): Point[] {
   const ts = subdivideCubicAdaptive(p0, c1, c2, p3, {
     maxChordError: RIBBON_MAX_CHORD_ERROR_M,
     minStep: RIBBON_MIN_STEP_M,
@@ -57,11 +40,28 @@ function sampleSegmentDense(
     maxDepth: 16,
     arcLengthChordRatio: 0.05,
   })
+  const out: Point[] = []
+  for (let i = 0; i < ts.length; i++) {
+    out.push(cubicPoint(p0, c1, c2, p3, ts[i]!))
+  }
+  return out
+}
 
+function sampleSegmentDense(
+  from: Anchor,
+  to: Anchor,
+  isPit: boolean,
+  includeStart: boolean,
+): TrackRibbonPoint[] {
+  const { p0, c1, c2, p3 } = segmentEndpoints(from, to)
+  const handlesCollapsed = eq(c1, p0) && eq(c2, p3)
+  const samples = handlesCollapsed ? sampleStraight2D(p0, p3) : sampleCubic2D(p0, c1, c2, p3)
   const startIdx = includeStart ? 0 : 1
+  const getHeightAt = useTerrainStore.getState().getHeightAt
   const out: TrackRibbonPoint[] = []
-  for (let i = startIdx; i < ts.length; i++) {
-    out.push(toPoint(cubicPoint(p0, c1, c2, p3, ts[i]!)))
+  for (let i = startIdx; i < samples.length; i++) {
+    const pt = samples[i]!
+    out.push({ x: pt.x, y: getHeightAt(pt.x, pt.y), z: pt.y, isPitLane: isPit })
   }
   return out
 }
@@ -78,6 +78,22 @@ function hasFiniteAnchors(anchors: (Anchor | null)[]): boolean {
     if (!isFinite(a.outHandle.x) || !isFinite(a.outHandle.y)) return false
   }
   return true
+}
+
+function logRibbonTelemetry(pathId: string, points: TrackRibbonPoint[]): void {
+  if (!import.meta.env.DEV) return
+  if (!(globalThis as { __RIBBON_SAMPLER_TELEMETRY?: boolean }).__RIBBON_SAMPLER_TELEMETRY) return
+  let totalDist = 0
+  let maxStep = 0
+  let minStep = Infinity
+  for (let i = 1; i < points.length; i++) {
+    const d = Math.hypot(points[i]!.x - points[i - 1]!.x, points[i]!.z - points[i - 1]!.z)
+    totalDist += d
+    if (d > maxStep) maxStep = d
+    if (d < minStep) minStep = d
+  }
+  const meanStep = points.length > 1 ? totalDist / (points.length - 1) : 0
+  console.debug('[ribbon-sampler]', { path: pathId, samples: points.length, meanStep, maxStep, minStep })
 }
 
 export function pathToRibbon(path: Path, allPaths: Path[] = [path]): PlacedObject | null {
@@ -116,19 +132,7 @@ export function pathToRibbon(path: Path, allPaths: Path[] = [path]): PlacedObjec
     }
   }
 
-  if (import.meta.env.DEV && (globalThis as { __RIBBON_SAMPLER_TELEMETRY?: boolean }).__RIBBON_SAMPLER_TELEMETRY) {
-    let totalDist = 0
-    let maxStep = 0
-    let minStep = Infinity
-    for (let i = 1; i < points.length; i++) {
-      const d = Math.hypot(points[i]!.x - points[i - 1]!.x, points[i]!.z - points[i - 1]!.z)
-      totalDist += d
-      if (d > maxStep) maxStep = d
-      if (d < minStep) minStep = d
-    }
-    const meanStep = points.length > 1 ? totalDist / (points.length - 1) : 0
-    console.debug('[ribbon-sampler]', { path: path.id, samples: points.length, meanStep, maxStep, minStep })
-  }
+  logRibbonTelemetry(path.id, points)
 
   let sumX = 0
   let sumY = 0

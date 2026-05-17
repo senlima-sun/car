@@ -1,4 +1,14 @@
-export type Vec2 = { x: number; y: number }
+import type { Point } from '../geometry/types'
+import { lerp } from '../geometry/point'
+
+export type Vec2 = Point
+
+export interface CubicSegment {
+  p0: Point
+  c1: Point
+  c2: Point
+  p3: Point
+}
 
 export interface SubdivideOptions {
   maxChordError: number
@@ -8,7 +18,7 @@ export interface SubdivideOptions {
   arcLengthChordRatio?: number
 }
 
-export function cubicPoint(p0: Vec2, c1: Vec2, c2: Vec2, p3: Vec2, t: number): Vec2 {
+export function cubicPoint(p0: Point, c1: Point, c2: Point, p3: Point, t: number): Point {
   const u = 1 - t
   return {
     x: u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p3.x,
@@ -17,9 +27,8 @@ export function cubicPoint(p0: Vec2, c1: Vec2, c2: Vec2, p3: Vec2, t: number): V
 }
 
 export function cubicSplit(
-  p0: Vec2, c1: Vec2, c2: Vec2, p3: Vec2, t: number,
-): { left: { p0: Vec2; c1: Vec2; c2: Vec2; p3: Vec2 }; right: { p0: Vec2; c1: Vec2; c2: Vec2; p3: Vec2 } } {
-  const lerp = (a: Vec2, b: Vec2, u: number): Vec2 => ({ x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u })
+  p0: Point, c1: Point, c2: Point, p3: Point, t: number,
+): { left: CubicSegment; right: CubicSegment } {
   const p01 = lerp(p0, c1, t)
   const p12 = lerp(c1, c2, t)
   const p23 = lerp(c2, p3, t)
@@ -32,21 +41,22 @@ export function cubicSplit(
   }
 }
 
-function controlPolygonLength(p0: Vec2, c1: Vec2, c2: Vec2, p3: Vec2): number {
+function controlPolygonLength(seg: CubicSegment): number {
   return (
-    Math.hypot(c1.x - p0.x, c1.y - p0.y) +
-    Math.hypot(c2.x - c1.x, c2.y - c1.y) +
-    Math.hypot(p3.x - c2.x, p3.y - c2.y)
+    Math.hypot(seg.c1.x - seg.p0.x, seg.c1.y - seg.p0.y) +
+    Math.hypot(seg.c2.x - seg.c1.x, seg.c2.y - seg.c1.y) +
+    Math.hypot(seg.p3.x - seg.c2.x, seg.p3.y - seg.c2.y)
   )
 }
 
 function collectTValues(
-  p0: Vec2, c1: Vec2, c2: Vec2, p3: Vec2,
+  seg: CubicSegment,
   tMin: number, tMax: number,
   opts: Required<SubdivideOptions>,
   depth: number,
   out: number[],
 ): void {
+  const { p0, c1, c2, p3 } = seg
   const chordLen = Math.hypot(p3.x - p0.x, p3.y - p0.y)
   const tSpan = tMax - tMin
 
@@ -55,7 +65,7 @@ function collectTValues(
     return
   }
 
-  const polyLen = controlPolygonLength(p0, c1, c2, p3)
+  const polyLen = controlPolygonLength(seg)
   const arcLengthRatioBreach = polyLen - chordLen > opts.arcLengthChordRatio * chordLen
 
   const mid = cubicPoint(p0, c1, c2, p3, 0.5)
@@ -75,11 +85,11 @@ function collectTValues(
 
   const tMid = tMin + tSpan * 0.5
   const { left, right } = cubicSplit(p0, c1, c2, p3, 0.5)
-  collectTValues(left.p0, left.c1, left.c2, left.p3, tMin, tMid, opts, depth + 1, out)
-  collectTValues(right.p0, right.c1, right.c2, right.p3, tMid, tMax, opts, depth + 1, out)
+  collectTValues(left, tMin, tMid, opts, depth + 1, out)
+  collectTValues(right, tMid, tMax, opts, depth + 1, out)
 }
 
-function isStraightCubic(p0: Vec2, c1: Vec2, c2: Vec2, p3: Vec2): boolean {
+function isStraightCubic(p0: Point, c1: Point, c2: Point, p3: Point): boolean {
   const dx = p3.x - p0.x
   const dy = p3.y - p0.y
   const len2 = dx * dx + dy * dy
@@ -99,7 +109,7 @@ function isStraightCubic(p0: Vec2, c1: Vec2, c2: Vec2, p3: Vec2): boolean {
 }
 
 export function subdivideCubicAdaptive(
-  p0: Vec2, c1: Vec2, c2: Vec2, p3: Vec2,
+  p0: Point, c1: Point, c2: Point, p3: Point,
   opts: SubdivideOptions,
 ): number[] {
   if (isStraightCubic(p0, c1, c2, p3)) return [0, 1]
@@ -109,9 +119,7 @@ export function subdivideCubicAdaptive(
   const full: Required<SubdivideOptions> = { ...opts, maxDepth, arcLengthChordRatio }
 
   const out: number[] = [0]
-  collectTValues(p0, c1, c2, p3, 0, 1, full, 0, out)
-
-  out.sort((a, b) => a - b)
+  collectTValues({ p0, c1, c2, p3 }, 0, 1, full, 0, out)
 
   const deduped: number[] = [out[0]!]
   for (let i = 1; i < out.length; i++) {
