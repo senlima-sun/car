@@ -259,6 +259,61 @@ export function buildParentSideBandGeometry(
   return { geometry, positions, uvs, normals, indices, frames }
 }
 
+export function buildEdgeLineFromBoundary(
+  boundary: RibbonBoundary,
+  side: 'left' | 'right',
+  lineWidth: number,
+  yOffset = TRACK_LAYER_Y_OFFSETS.EDGE_LINE,
+): EdgeLineGeometryResult | null {
+  return buildSideBandFromBoundary(boundary, side, -lineWidth, lineWidth, yOffset)
+}
+
+export function buildSideBandFromBoundary(
+  boundary: RibbonBoundary,
+  side: 'left' | 'right',
+  innerOffset: number,
+  bandWidth: number,
+  yOffset = TRACK_LAYER_Y_OFFSETS.PAINTED_AREA,
+): SideBandGeometryResult | null {
+  if (bandWidth <= 0) return null
+
+  const n = boundary.centerline.length
+  const halfWidth = boundary.width / 2
+  const leftPositions: Vector3[] = []
+  const rightPositions: Vector3[] = []
+
+  for (let i = 0; i < n; i++) {
+    const p = boundary.centerline[i]!
+    const boundaryVec = side === 'left' ? boundary.left[i]! : boundary.right[i]!
+    const miterNx = boundaryVec.x - p.x
+    const miterNz = boundaryVec.z - p.z
+    const innerFactor = (halfWidth + innerOffset) / halfWidth
+    const outerFactor = (halfWidth + innerOffset + bandWidth) / halfWidth
+    const y = p.y + yOffset
+
+    if (side === 'left') {
+      leftPositions.push(new Vector3(p.x + miterNx * outerFactor, y, p.z + miterNz * outerFactor))
+      rightPositions.push(new Vector3(p.x + miterNx * innerFactor, y, p.z + miterNz * innerFactor))
+    } else {
+      leftPositions.push(new Vector3(p.x + miterNx * innerFactor, y, p.z + miterNz * innerFactor))
+      rightPositions.push(new Vector3(p.x + miterNx * outerFactor, y, p.z + miterNz * outerFactor))
+    }
+  }
+
+  const frames = { leftPositions, rightPositions }
+  const { positions, uvs, normals } = buildRibbonAttributes(frames)
+  const indices = segmentAllRibbonIndices(boundary.centerline, boundary.closed)
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3))
+  geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2))
+  geometry.setAttribute('normal', new Float32BufferAttribute(normals, 3))
+  geometry.setIndex(indices)
+  geometry.computeBoundingBox()
+  geometry.computeBoundingSphere()
+
+  return { geometry, positions, uvs, normals, indices, frames }
+}
+
 export function buildAsphaltGeometry(
   points: TrackRibbonPoint[],
   closed: boolean,

@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { buildRibbonBoundary } from './ribbonBoundary'
-import { computeRibbonFrames } from './ribbonGeometry'
+import {
+  buildEdgeLineFromBoundary,
+  buildParentSideBandGeometry,
+  buildSideBandFromBoundary,
+  computeRibbonFrames,
+} from './ribbonGeometry'
 import type { TrackRibbonPoint } from '@/types/trackObjects'
 
 const STRAIGHT: TrackRibbonPoint[] = [
@@ -161,5 +166,81 @@ describe('buildRibbonBoundary — arcLength', () => {
   test('open input totalArcLength equals last arcLength entry', () => {
     const b = buildRibbonBoundary(STRAIGHT, false, 12)!
     expect(b.totalArcLength).toBeCloseTo(b.arcLength[b.arcLength.length - 1]!, 9)
+  })
+})
+
+describe('buildEdgeLineFromBoundary', () => {
+  test('outer vertex equals boundary.left[i] for side=left', () => {
+    const WIDTH = 12
+    const b = buildRibbonBoundary(STRAIGHT, false, WIDTH)!
+    const result = buildEdgeLineFromBoundary(b, 'left', 0.2)!
+    for (let i = 0; i < STRAIGHT.length; i++) {
+      const outerBase = i * 2 * 3
+      expect(Math.abs(result.positions[outerBase]! - b.left[i]!.x)).toBeLessThan(1e-9)
+      expect(Math.abs(result.positions[outerBase + 2]! - b.left[i]!.z)).toBeLessThan(1e-9)
+    }
+  })
+
+  test('outer vertex equals boundary.right[i] for side=right (outermost index is odd)', () => {
+    const WIDTH = 12
+    const b = buildRibbonBoundary(STRAIGHT, false, WIDTH)!
+    const result = buildEdgeLineFromBoundary(b, 'right', 0.2)!
+    for (let i = 0; i < STRAIGHT.length; i++) {
+      const outerBase = (i * 2 + 1) * 3
+      expect(Math.abs(result.positions[outerBase]! - b.right[i]!.x)).toBeLessThan(1e-9)
+      expect(Math.abs(result.positions[outerBase + 2]! - b.right[i]!.z)).toBeLessThan(1e-9)
+    }
+  })
+
+  test('curve: outer edge meets legacy buildParentSideBandGeometry inner edge to 1e-9', () => {
+    const CURVE: TrackRibbonPoint[] = []
+    const R = 50
+    const steps = 24
+    for (let i = 0; i <= steps; i++) {
+      const a = (i / steps) * Math.PI * 0.5
+      CURVE.push({ x: Math.cos(a) * R, y: 0, z: Math.sin(a) * R, isPitLane: false })
+    }
+    const WIDTH = 12
+    const LINE_WIDTH = 0.2
+    const b = buildRibbonBoundary(CURVE, false, WIDTH)!
+    const boundaryResult = buildEdgeLineFromBoundary(b, 'right', LINE_WIDTH)!
+    const legacyPainted = buildParentSideBandGeometry(CURVE, false, WIDTH, 'right', 0, 3)!
+
+    for (let i = 0; i < CURVE.length; i++) {
+      const edgeOuterBase = (i * 2 + 1) * 3
+      const paintedInnerBase = i * 2 * 3
+      expect(Math.abs(boundaryResult.positions[edgeOuterBase]! - legacyPainted.positions[paintedInnerBase]!)).toBeLessThan(1e-9)
+      expect(Math.abs(boundaryResult.positions[edgeOuterBase + 2]! - legacyPainted.positions[paintedInnerBase + 2]!)).toBeLessThan(1e-9)
+    }
+  })
+})
+
+describe('buildSideBandFromBoundary', () => {
+  test('inner vertex equals boundary.right[i] when innerOffset=0 for side=right', () => {
+    const WIDTH = 12
+    const b = buildRibbonBoundary(STRAIGHT, false, WIDTH)!
+    const result = buildSideBandFromBoundary(b, 'right', 0, 3)!
+    for (let i = 0; i < STRAIGHT.length; i++) {
+      const innerBase = i * 2 * 3
+      expect(Math.abs(result.positions[innerBase]! - b.right[i]!.x)).toBeLessThan(1e-9)
+      expect(Math.abs(result.positions[innerBase + 2]! - b.right[i]!.z)).toBeLessThan(1e-9)
+    }
+  })
+
+  test('inner vertex equals boundary.left[i] when innerOffset=0 for side=left', () => {
+    const WIDTH = 12
+    const b = buildRibbonBoundary(STRAIGHT, false, WIDTH)!
+    const result = buildSideBandFromBoundary(b, 'left', 0, 3)!
+    for (let i = 0; i < STRAIGHT.length; i++) {
+      const innerBase = (i * 2 + 1) * 3
+      expect(Math.abs(result.positions[innerBase]! - b.left[i]!.x)).toBeLessThan(1e-9)
+      expect(Math.abs(result.positions[innerBase + 2]! - b.left[i]!.z)).toBeLessThan(1e-9)
+    }
+  })
+
+  test('returns null when bandWidth <= 0', () => {
+    const b = buildRibbonBoundary(STRAIGHT, false, 12)!
+    expect(buildSideBandFromBoundary(b, 'left', 0, 0)).toBeNull()
+    expect(buildSideBandFromBoundary(b, 'right', 0, -1)).toBeNull()
   })
 })
