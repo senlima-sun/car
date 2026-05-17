@@ -38,6 +38,14 @@ const MAX_COAST_POWER_KW: f32 = 200.0;
 const MAX_SUPER_CLIP_POWER_KW: f32 = 150.0; // 2026: Super clipping (was 50, now significant)
 const SEMI_AUTO_MIN_NET_DEPLOY_POWER_KW: f32 = 25.0;
 
+// FIA 2026 PU regs: MGU-K deploy power tapers linearly from full at
+// 290 km/h (80.5 m/s) to zero at 345 km/h (95.8 m/s). The taper is a
+// hardware envelope (rotor speed × gearing × inverter limits), not a
+// strategy choice, so it applies after the scheduler and is shared by
+// Overtake Mode.
+const DEPLOY_DERATE_START_MS: f32 = 80.5;
+const DEPLOY_DERATE_END_MS: f32 = 95.8;
+
 // Mode multipliers (deploy / harvest / coast / super_clip)
 // Harvest mode: maximum recovery, no deploy
 const HARVEST_DEPLOY_MULT: f32 = 0.0;
@@ -380,8 +388,10 @@ impl ErsPhysicsState {
         } else {
             0.0
         };
-        let anticipated_deploy_power =
-            MAX_DEPLOY_POWER_KW * effective_deploy_mult * deploy_schedule;
+        let anticipated_deploy_power = MAX_DEPLOY_POWER_KW
+            * effective_deploy_mult
+            * deploy_schedule
+            * deploy_speed_derate(speed_ms);
 
         // ========================================================================
         // HARVESTING (multiple sources can contribute)
@@ -633,6 +643,22 @@ fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+/// MGU-K deploy speed derate (FIA 2026). Returns 1.0 below
+/// `DEPLOY_DERATE_START_MS`, ramps linearly to 0.0 at
+/// `DEPLOY_DERATE_END_MS`, clamps at 0.0 above. Shared by the ERS
+/// deploy stream and Overtake Mode so the +0.5 MJ push-to-pass budget
+/// cannot bypass the hardware envelope.
+pub(crate) fn deploy_speed_derate(speed_ms: f32) -> f32 {
+    if speed_ms <= DEPLOY_DERATE_START_MS {
+        1.0
+    } else if speed_ms >= DEPLOY_DERATE_END_MS {
+        0.0
+    } else {
+        1.0 - (speed_ms - DEPLOY_DERATE_START_MS)
+            / (DEPLOY_DERATE_END_MS - DEPLOY_DERATE_START_MS)
+    }
+}
+
 /// Electric-motor force at a given deploy power (kW) and car speed
 /// (m/s). Below the corner speed `P_max / F_max` the motor is in the
 /// constant-torque regime; above it, constant power.
@@ -863,6 +889,60 @@ mod tests {
         let watts = state.get_harvest_power_watts();
         assert!(watts > 0.0);
         assert!((watts - state.current.power_flow.abs() * 1000.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn deploy_speed_derate_full_below_290kmh() {
+        assert!((deploy_speed_derate(0.0) - 1.0).abs() < 1e-6);
+        assert!((deploy_speed_derate(50.0) - 1.0).abs() < 1e-6);
+        assert!((deploy_speed_derate(80.0) - 1.0).abs() < 1e-6);
+        assert!((deploy_speed_derate(80.5) - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn deploy_speed_derate_half_at_88ms() {
+        // Midpoint of [80.5, 95.8] = 88.15 m/s. At 88.0 m/s the derate
+        // is 1 − (88 − 80.5) / (95.8 − 80.5) = 1 − 7.5/15.3 ≈ 0.5098.
+        let d = deploy_speed_derate(88.0);
+        assert!((d - 0.51).abs() < 0.02, "got {}", d);
+    }
+
+    #[test]
+    fn deploy_speed_derate_zero_at_95p8ms() {
+        assert!(deploy_speed_derate(95.8).abs() < 1e-6);
+    }
+
+    #[test]
+    fn deploy_speed_derate_zero_above_345kmh() {
+        assert_eq!(deploy_speed_derate(100.0), 0.0);
+        assert_eq!(deploy_speed_derate(120.0), 0.0);
+    }
+
+    #[test]
+    fn deploy_speed_derate_slows_drain_above_290kmh() {
+        // Two Attack-mode runs (no scheduler budget tapering) at full
+        // throttle from 1.0 charge. Run A below the derate band, Run B
+        // mid-band where derate ≈ 0.51 — Run B must retain more charge.
+        // Threshold is conservative because super-clip harvest at
+        // 88 m/s narrows the gap; Phase 3 removes super-clip and the
+        // gap widens. Direction is the load-bearing assertion.
+        fn run(speed_ms: f32) -> f32 {
+            let mut state = ErsPhysicsState::new();
+            state.set_mode(ErsMode::Attack);
+            state.set_battery_charge(1.0);
+            for _ in 0..240 {
+                state.update(1.0 / 120.0, true, false, speed_ms, 1.0);
+            }
+            state.get_state().battery_charge
+        }
+        let below = run(55.0);
+        let mid = run(88.0);
+        assert!(
+            mid > below + 0.05,
+            "high-speed run should retain more charge: below={:.3} mid={:.3}",
+            below,
+            mid,
+        );
     }
 
     #[test]

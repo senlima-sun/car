@@ -24,13 +24,15 @@ const POWER_PROFILE_INTERCEPT_KW: f32 = 7100.0;
 const POWER_PROFILE_SLOPE_KW_PER_KMH: f32 = 20.0;
 
 /// Overtake Mode additional power (W) at a given car speed. Saturates
-/// at the 350 kW MGU-K cap and clamps to zero above the profile's
-/// natural zero-crossing.
+/// at the 350 kW MGU-K cap, clamps to zero above the profile's natural
+/// zero-crossing, and shares the FIA 2026 high-speed MGU-K derate so
+/// the +0.5 MJ push-to-pass budget cannot bypass the hardware envelope.
 pub fn overtake_power_w(speed_ms: f32) -> f32 {
     let v_kmh = ms_to_kmh(speed_ms.max(0.0));
     let p_kw = POWER_PROFILE_INTERCEPT_KW - POWER_PROFILE_SLOPE_KW_PER_KMH * v_kmh;
     let p_w = p_kw.max(0.0) * 1000.0;
-    p_w.min(MGUK_PEAK_POWER_W)
+    let capped = p_w.min(MGUK_PEAK_POWER_W);
+    capped * crate::ers::deploy_speed_derate(speed_ms)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -155,14 +157,26 @@ mod tests {
 
     #[test]
     fn power_profile_saturates_at_mgu_k_cap_low_speed() {
+        // 0 m/s and 80 m/s are both at/below the derate-start (80.5),
+        // so the MGU-K cap is the binding constraint.
         assert!((overtake_power_w(0.0) - MGUK_PEAK_POWER_W).abs() < 1.0);
-        assert!((overtake_power_w(90.0) - MGUK_PEAK_POWER_W).abs() < 1.0);
+        assert!((overtake_power_w(80.0) - MGUK_PEAK_POWER_W).abs() < 1.0);
     }
 
     #[test]
     fn power_profile_tapers_above_337kmh() {
+        // 95 m/s = 342 km/h: profile P = 7100 − 20·342 = 260 kW (under
+        // the 350 kW cap), then derate ≈ 1 − 14.5/15.3 ≈ 0.052 →
+        // combined ≈ 13.6 kW. The hardware envelope dominates here.
         let p = overtake_power_w(95.0);
-        assert!(p > 200_000.0 && p < 280_000.0, "got {}", p);
+        assert!(p > 5_000.0 && p < 25_000.0, "got {}", p);
+    }
+
+    #[test]
+    fn power_profile_zero_at_345kmh() {
+        // FIA 2026 hardware endpoint — derate hits 0 at 95.8 m/s,
+        // independent of where the P(v) profile would natively zero out.
+        assert!(overtake_power_w(95.8).abs() < 100.0);
     }
 
     #[test]
