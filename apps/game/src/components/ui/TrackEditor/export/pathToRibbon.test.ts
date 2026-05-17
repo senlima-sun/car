@@ -160,4 +160,34 @@ describe('pathToRibbon', () => {
     const r = pathToRibbon(p)
     expect(r).toBeNull()
   })
+
+  test('closed path whose closing distance is RIBBON_MIN_STEP_M * 0.5 dedupes the closing sample', () => {
+    useTerrainStore.setState({ getHeightAt: () => 0 })
+    const p = makePath(makeAnchor({ x: 0, y: 0 }))
+    p.anchors.push(makeAnchor({ x: 100, y: 0 }))
+    p.anchors.push(makeAnchor({ x: 100, y: 100 }))
+    p.anchors.push(makeAnchor({ x: 0, y: 100 }))
+    p.closed = true
+
+    const r = pathToRibbon(p)!
+    const first = r.ribbonPoints![0]!
+    const last = r.ribbonPoints![r.ribbonPoints!.length - 1]!
+    const dist = Math.hypot(first.x - last.x, first.z - last.z)
+    expect(dist).toBeGreaterThanOrEqual(RIBBON_MIN_STEP_M)
+  })
+
+  test('closed path whose closing distance is RIBBON_MIN_STEP_M * 2 does NOT dedupe', () => {
+    useTerrainStore.setState({ getHeightAt: () => 0 })
+    const offset = RIBBON_MIN_STEP_M * 2
+    const pNoDedupe = makePath(makeAnchor({ x: offset, y: 0 }))
+    pNoDedupe.anchors.push(makeAnchor({ x: 100, y: 0 }))
+    pNoDedupe.anchors.push(makeAnchor({ x: 100, y: 100 }))
+    pNoDedupe.anchors.push(makeAnchor({ x: 0, y: 100 }))
+    pNoDedupe.closed = true
+
+    const rClosed = pathToRibbon(pNoDedupe)!
+    const openCopy = { ...pNoDedupe, closed: false }
+    const rOpen = pathToRibbon(openCopy)!
+    expect(rClosed.ribbonPoints!.length).toBeGreaterThanOrEqual(rOpen.ribbonPoints!.length)
+  })
 })
