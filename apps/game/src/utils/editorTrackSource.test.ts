@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import { makeAnchor, makePath } from '@/components/ui/TrackEditor/geometry/path'
 import { PAINTED_WIDTH, TRACK_WIDTH } from '@/constants/dimensions'
 import { CURB_WIDTH } from '@/constants/curb'
@@ -12,6 +12,10 @@ import suzukaSource from '@/constants/tracks/sources/suzuka.json'
 import monzaSource from '@/constants/tracks/sources/monza.json'
 import miamiSource from '@/constants/tracks/sources/miami.json'
 import { buildEdgeLineGeometry } from '@/components/canvas/TrackObjects/geometry/ribbonGeometry'
+import {
+  clearAllRibbonBoundaries,
+  getRibbonBoundary,
+} from '@/components/canvas/TrackObjects/geometry/ribbonBoundaryCache'
 
 describe('buildTrackObjectsFromEditorSource', () => {
   test('builds runtime objects from editor-native data', () => {
@@ -302,5 +306,52 @@ describe('buildRuntimePresetTrack', () => {
     expect(preset.trackLength).toBe(100)
     expect(preset.turns).toBe(1)
     expect(preset.objects.length).toBeGreaterThan(0)
+  })
+})
+
+describe('buildTrackObjectsFromEditorSource — ribbon boundary cache', () => {
+  beforeEach(() => {
+    clearAllRibbonBoundaries()
+  })
+
+  test('every track_ribbon id has a non-null cached boundary after build', () => {
+    const path = makePath(makeAnchor({ x: 0, y: 0 }))
+    path.anchors.push(makeAnchor({ x: 100, y: 0 }))
+    path.anchors.push(makeAnchor({ x: 100, y: 50 }))
+
+    const objects = buildTrackObjectsFromEditorSource({
+      paths: [path],
+      checkpoints: [],
+      raceDirection: 'forward',
+    })
+
+    const ribbons = objects.filter(o => o.type === 'track_ribbon')
+    expect(ribbons.length).toBeGreaterThan(0)
+
+    for (const ribbon of ribbons) {
+      const cached = getRibbonBoundary(ribbon.id)
+      expect(cached).toBeDefined()
+      expect(cached!.left.length).toBe(ribbon.ribbonPoints!.length)
+      expect(cached!.right.length).toBe(ribbon.ribbonPoints!.length)
+    }
+  })
+
+  test('multiple paths each populate a separate cache entry', () => {
+    const p1 = makePath(makeAnchor({ x: 0, y: 0 }))
+    p1.anchors.push(makeAnchor({ x: 50, y: 0 }))
+    const p2 = makePath(makeAnchor({ x: 100, y: 0 }))
+    p2.anchors.push(makeAnchor({ x: 150, y: 0 }))
+
+    const objects = buildTrackObjectsFromEditorSource({
+      paths: [p1, p2],
+      checkpoints: [],
+      raceDirection: 'forward',
+    })
+
+    const ribbons = objects.filter(o => o.type === 'track_ribbon')
+    expect(ribbons.length).toBe(2)
+    for (const ribbon of ribbons) {
+      expect(getRibbonBoundary(ribbon.id)).toBeDefined()
+    }
   })
 })

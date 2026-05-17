@@ -1,5 +1,9 @@
 import { create } from 'zustand'
 import type { PlacedObject } from '../types/trackObjects'
+import {
+  clearRibbonBoundary,
+  clearAllRibbonBoundaries,
+} from '../components/canvas/TrackObjects/geometry/ribbonBoundaryCache'
 
 export type {
   ObjectType,
@@ -96,6 +100,8 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
         idsToRemove = [...idsToRemove, ...attachedCurbIds]
       }
 
+      for (const removedId of idsToRemove) clearRibbonBoundary(removedId)
+
       return {
         placedObjects: state.placedObjects.filter(obj => !idsToRemove.includes(obj.id)),
       }
@@ -104,6 +110,7 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
   },
 
   clearAll: () => {
+    clearAllRibbonBoundaries()
     set({ placedObjects: [] })
     localStorage.removeItem(STORAGE_KEY)
   },
