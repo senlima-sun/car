@@ -2,45 +2,45 @@
 
 exports[`pathToRibbon baseline snapshot monaco: sample count and spacing metrics match baseline 1`] = `
 {
-  "count": 3456,
-  "maxSpacing": 1.049,
-  "meanSpacing": 0.9583,
-  "minSpacing": 0.7529,
+  "count": 1279,
+  "maxSpacing": 3.9841,
+  "meanSpacing": 2.5894,
+  "minSpacing": 0.4029,
 }
 `;
 
 exports[`pathToRibbon baseline snapshot baku: sample count and spacing metrics match baseline 1`] = `
 {
-  "count": 6228,
-  "maxSpacing": 1.194,
-  "meanSpacing": 0.9634,
-  "minSpacing": 0.7086,
+  "count": 2149,
+  "maxSpacing": 3.9526,
+  "meanSpacing": 2.7918,
+  "minSpacing": 0.3508,
 }
 `;
 
 exports[`pathToRibbon baseline snapshot singapore: sample count and spacing metrics match baseline 1`] = `
 {
-  "count": 5185,
-  "maxSpacing": 1.2159,
-  "meanSpacing": 0.9606,
-  "minSpacing": 0.5705,
+  "count": 1768,
+  "maxSpacing": 3.9648,
+  "meanSpacing": 2.8167,
+  "minSpacing": 0.3895,
 }
 `;
 
 exports[`pathToRibbon baseline snapshot cota: sample count and spacing metrics match baseline 1`] = `
 {
-  "count": 5728,
-  "maxSpacing": 1.0013,
-  "meanSpacing": 0.9594,
-  "minSpacing": 0.7507,
+  "count": 2038,
+  "maxSpacing": 3.9992,
+  "meanSpacing": 2.6957,
+  "minSpacing": 1.0171,
 }
 `;
 
 exports[`pathToRibbon baseline snapshot interlagos: sample count and spacing metrics match baseline 1`] = `
 {
-  "count": 4470,
-  "maxSpacing": 1.001,
-  "meanSpacing": 0.9594,
-  "minSpacing": 0.7824,
+  "count": 1531,
+  "maxSpacing": 3.9821,
+  "meanSpacing": 2.8011,
+  "minSpacing": 0.821,
 }
 `;

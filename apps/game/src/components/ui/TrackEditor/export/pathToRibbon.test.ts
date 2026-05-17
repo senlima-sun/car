@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { pathToRibbon, documentToRibbons } from './pathToRibbon'
+import { pathToRibbon, documentToRibbons, RIBBON_MIN_STEP_M } from './pathToRibbon'
 import { makeAnchor, makePath } from '../geometry/path'
 import { TRACK_WIDTH } from '@/constants/dimensions'
 import { useTerrainStore } from '@/stores/useTerrainStore'
@@ -24,7 +24,7 @@ describe('pathToRibbon', () => {
     expect(r).not.toBeNull()
     expect(r!.type).toBe('track_ribbon')
     expect(r!.width).toBe(TRACK_WIDTH)
-    expect(r!.ribbonPoints!.length).toBeGreaterThan(10)
+    expect(r!.ribbonPoints!.length).toBeGreaterThanOrEqual(2)
     const first = r!.ribbonPoints![0]!
     const last = r!.ribbonPoints![r!.ribbonPoints!.length - 1]!
     expect(first.x).toBeCloseTo(0, 1)
@@ -90,8 +90,7 @@ describe('pathToRibbon', () => {
     const first = r.ribbonPoints![0]!
     const last = r.ribbonPoints![r.ribbonPoints!.length - 1]!
     const dist = Math.hypot(first.x - last.x, first.z - last.z)
-    expect(dist).toBeGreaterThan(0.5)
-    expect(dist).toBeLessThan(2)
+    expect(dist).toBeGreaterThan(RIBBON_MIN_STEP_M)
   })
 
   test('curved segment produces points that stay near the curve', () => {
@@ -129,5 +128,36 @@ describe('pathToRibbon', () => {
     const r = pathToRibbon(p)!
     expect(r.position[0]).toBeCloseTo(50, 0)
     expect(r.position[2]).toBeCloseTo(0, 1)
+  })
+
+  test('single-anchor closed path returns null gracefully', () => {
+    const p = makePath(makeAnchor({ x: 0, y: 0 }))
+    p.closed = true
+    expect(pathToRibbon(p)).toBeNull()
+  })
+
+  test('deterministic across reruns: same input twice produces byte-identical output', () => {
+    useTerrainStore.setState({ getHeightAt: () => 0 })
+    const p = makePath(makeAnchor({ x: 0, y: 0 }))
+    const a1 = makeAnchor({ x: 50, y: 50 })
+    a1.outHandle = { x: 10, y: 30 }
+    a1.inHandle = { x: 30, y: 10 }
+    p.anchors.push(a1)
+    p.anchors.push(makeAnchor({ x: 100, y: 0 }))
+
+    const r1 = pathToRibbon(p)!
+    const r2 = pathToRibbon(p)!
+    expect(r1.ribbonPoints!.length).toBe(r2.ribbonPoints!.length)
+    for (let i = 0; i < r1.ribbonPoints!.length; i++) {
+      expect(r1.ribbonPoints![i]!.x).toBe(r2.ribbonPoints![i]!.x)
+      expect(r1.ribbonPoints![i]!.z).toBe(r2.ribbonPoints![i]!.z)
+    }
+  })
+
+  test('NaN anchor positions: returns null when any input anchor has non-finite coords', () => {
+    const p = makePath(makeAnchor({ x: NaN, y: 0 }))
+    p.anchors.push(makeAnchor({ x: 100, y: 0 }))
+    const r = pathToRibbon(p)
+    expect(r).toBeNull()
   })
 })
