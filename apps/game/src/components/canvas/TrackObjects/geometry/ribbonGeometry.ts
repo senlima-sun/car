@@ -323,6 +323,8 @@ export function buildPitLaneGeometry(
   return { geometry, indices: pitIndices }
 }
 
+const DEGENERATE_TRIANGLE_AREA_EPSILON = 1e-10
+
 function filterDegenerateTriangles(positions: Float32Array, indices: number[]): Uint32Array {
   const kept: number[] = []
   for (let i = 0; i < indices.length; i += 3) {
@@ -333,7 +335,7 @@ function filterDegenerateTriangles(positions: Float32Array, indices: number[]): 
     const az = positions[i1 + 2]! - positions[i0 + 2]!
     const bx = positions[i2]! - positions[i0]!
     const bz = positions[i2 + 2]! - positions[i0 + 2]!
-    if (Math.abs(ax * bz - az * bx) > 1e-10) {
+    if (Math.abs(ax * bz - az * bx) > DEGENERATE_TRIANGLE_AREA_EPSILON) {
       kept.push(indices[i]!, indices[i + 1]!, indices[i + 2]!)
     }
   }

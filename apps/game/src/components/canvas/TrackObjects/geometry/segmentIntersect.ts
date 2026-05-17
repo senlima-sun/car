@@ -1,20 +1,21 @@
-export interface Vec2 {
-  x: number
-  z: number
-}
+import type { Tangent2D } from './ribbonMath'
+
+export type XZ = Tangent2D
 
 export interface SegmentIntersection {
   t: number
   u: number
-  point: Vec2
+  point: XZ
 }
 
+const PARALLEL_EPSILON = 1e-9
+
 export function segmentIntersect2D(
-  a0: Vec2,
-  a1: Vec2,
-  b0: Vec2,
-  b1: Vec2,
-  eps = 1e-9,
+  a0: XZ,
+  a1: XZ,
+  b0: XZ,
+  b1: XZ,
+  eps = PARALLEL_EPSILON,
 ): SegmentIntersection | null {
   const dax = a1.x - a0.x
   const daz = a1.z - a0.z
