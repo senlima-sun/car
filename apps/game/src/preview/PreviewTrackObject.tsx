@@ -2,10 +2,13 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import {
   buildAsphaltGeometry,
+  buildEdgeLineFromBoundary,
   buildEdgeLineGeometry,
   buildParentSideBandGeometry,
   buildRibbonLayers,
+  buildSideBandFromBoundary,
 } from '../components/canvas/TrackObjects/geometry/ribbonGeometry'
+import { getRibbonBoundary } from '../components/canvas/TrackObjects/geometry/ribbonBoundaryCache'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '../constants/trackLayers'
 import { resolveParentDerivedLayer } from '../utils/parentDerivedLayer'
 import type { PlacedObject } from '../types/trackObjects'
@@ -36,20 +39,26 @@ function PreviewEdgeLine({
 }) {
   const geometries = useMemo(() => {
     const parentRibbon = allObjects.find(o => o.id === object.parentRibbonId)
-    if (
-      parentRibbon?.ribbonPoints &&
-      parentRibbon.ribbonPoints.length >= 2 &&
-      object.parentSide &&
-      !object.tRange
-    ) {
-      const built = buildEdgeLineGeometry(
-        parentRibbon.ribbonPoints,
-        parentRibbon.ribbonClosed ?? false,
-        parentRibbon.width ?? 12,
-        object.parentSide,
-        object.derivedWidth ?? object.width ?? 0.2,
-      )
-      return built ? [built.geometry] : []
+    if (parentRibbon && object.parentSide && !object.tRange) {
+      const boundary = getRibbonBoundary(parentRibbon.id)
+      if (boundary) {
+        const built = buildEdgeLineFromBoundary(
+          boundary,
+          object.parentSide,
+          object.derivedWidth ?? object.width ?? 0.2,
+        )
+        return built ? [built.geometry] : []
+      }
+      if (parentRibbon.ribbonPoints && parentRibbon.ribbonPoints.length >= 2) {
+        const built = buildEdgeLineGeometry(
+          parentRibbon.ribbonPoints,
+          parentRibbon.ribbonClosed ?? false,
+          parentRibbon.width ?? 12,
+          object.parentSide,
+          object.derivedWidth ?? object.width ?? 0.2,
+        )
+        return built ? [built.geometry] : []
+      }
     }
 
     const segments = resolveParentDerivedLayer(object, { allObjects })
@@ -144,21 +153,28 @@ function PreviewPainted({
 }) {
   const geometries = useMemo(() => {
     const parentRibbon = allObjects.find(o => o.id === object.parentRibbonId)
-    if (
-      parentRibbon?.ribbonPoints &&
-      parentRibbon.ribbonPoints.length >= 2 &&
-      object.parentSide &&
-      isFullParentRange(object.tRange)
-    ) {
-      const built = buildParentSideBandGeometry(
-        parentRibbon.ribbonPoints,
-        parentRibbon.ribbonClosed ?? false,
-        parentRibbon.width ?? 12,
-        object.parentSide,
-        object.innerOffset ?? 0,
-        object.derivedWidth ?? object.width ?? 3,
-      )
-      return built ? [built.geometry] : []
+    if (parentRibbon && object.parentSide && isFullParentRange(object.tRange)) {
+      const boundary = getRibbonBoundary(parentRibbon.id)
+      if (boundary) {
+        const built = buildSideBandFromBoundary(
+          boundary,
+          object.parentSide,
+          object.innerOffset ?? 0,
+          object.derivedWidth ?? object.width ?? 3,
+        )
+        return built ? [built.geometry] : []
+      }
+      if (parentRibbon.ribbonPoints && parentRibbon.ribbonPoints.length >= 2) {
+        const built = buildParentSideBandGeometry(
+          parentRibbon.ribbonPoints,
+          parentRibbon.ribbonClosed ?? false,
+          parentRibbon.width ?? 12,
+          object.parentSide,
+          object.innerOffset ?? 0,
+          object.derivedWidth ?? object.width ?? 3,
+        )
+        return built ? [built.geometry] : []
+      }
     }
 
     if (!object.parentRibbonId) return []
