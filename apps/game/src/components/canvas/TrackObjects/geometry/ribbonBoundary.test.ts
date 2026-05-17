@@ -345,4 +345,71 @@ describe('cleanInsideCornerSelfIntersections', () => {
     expect(countPolylineIntersections(left)).toBe(0)
     expect(countPolylineIntersections(right)).toBe(0)
   })
+
+  test('closed loop seam-straddling bowtie is collapsed (regression for codex finding)', () => {
+    const turnRadius = 2
+    const turnSamples = 16
+    const pts: TrackRibbonPoint[] = []
+    for (let i = 0; i <= turnSamples; i++) {
+      const a = -Math.PI / 2 + (i / turnSamples) * Math.PI
+      pts.push({
+        x: Math.cos(a) * turnRadius,
+        y: 0,
+        z: Math.sin(a) * turnRadius,
+        isPitLane: false,
+      })
+    }
+    pts.push({ x: 0, y: 0, z: 10, isPitLane: false })
+    pts.push({ x: -10, y: 0, z: 10, isPitLane: false })
+    pts.push({ x: -10, y: 0, z: 0, isPitLane: false })
+    const b = buildRibbonBoundary(pts, true, 12)!
+    for (const arr of [b.left, b.right]) {
+      const n = arr.length
+      for (let i = 0; i < n; i++) {
+        const iNext = (i + 1) % n
+        for (let step = 2; step < n - 1; step++) {
+          const j = (i + step) % n
+          const jNext = (i + step + 1) % n
+          if (j === i || jNext === i || jNext === iNext) continue
+          const hit = segmentIntersect2D(
+            { x: arr[i]!.x, z: arr[i]!.z },
+            { x: arr[iNext]!.x, z: arr[iNext]!.z },
+            { x: arr[j]!.x, z: arr[j]!.z },
+            { x: arr[jNext]!.x, z: arr[jNext]!.z },
+          )
+          expect(hit).toBeNull()
+        }
+      }
+    }
+  })
+
+  test('wide-offset U-turn (width=30): cleanup window scales with halfWidth (regression for codex finding)', () => {
+    const pts = buildUTurnPoints(20, 5, 64)
+    const b = buildRibbonBoundary(pts, false, 30)!
+    expect(countPolylineIntersections(b.left)).toBe(0)
+    expect(countPolylineIntersections(b.right)).toBe(0)
+  })
+
+  test('elevated U-turn: collapsed vertices interpolate y (no vertical stack at fan)', () => {
+    const pts = buildUTurnPoints(20, 2, 16)
+    for (let i = 0; i < pts.length; i++) {
+      pts[i]!.y = i * 0.5
+    }
+    const b = buildRibbonBoundary(pts, false, 12)!
+    const xzGroups = new Map<string, number[]>()
+    for (const arr of [b.left, b.right]) {
+      for (const v of arr) {
+        const key = `${v.x.toFixed(4)}|${v.z.toFixed(4)}`
+        const ys = xzGroups.get(key) ?? []
+        ys.push(v.y)
+        xzGroups.set(key, ys)
+      }
+    }
+    for (const ys of xzGroups.values()) {
+      if (ys.length < 2) continue
+      const minY = Math.min(...ys)
+      const maxY = Math.max(...ys)
+      expect(maxY - minY).toBeLessThan(1e-6)
+    }
+  })
 })

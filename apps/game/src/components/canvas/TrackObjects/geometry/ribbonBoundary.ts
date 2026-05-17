@@ -20,33 +20,44 @@ export interface RibbonBoundary {
   cleanupStats: CleanupStats
 }
 
-const LOOP_WINDOW_MAX = 128
+const RIBBON_MIN_STEP_M = 0.25
+const LOOP_WINDOW_FLOOR = 128
+
+function loopWindowFor(maxOffsetReach: number, sampleCount: number): number {
+  const derived = Math.ceil((Math.PI * maxOffsetReach) / RIBBON_MIN_STEP_M)
+  const margin = Math.ceil(derived * 1.25)
+  return Math.min(sampleCount, Math.max(LOOP_WINDOW_FLOOR, margin))
+}
 
 export function cleanInsideCornerSelfIntersections(
   left: Vector3[],
   right: Vector3[],
   closed: boolean,
+  maxOffsetReach?: number,
 ): { left: Vector3[]; right: Vector3[]; stats: CleanupStats } {
   const stats: CleanupStats = { collapsed: 0 }
+  const n = left.length
+  const window = loopWindowFor(maxOffsetReach ?? 12, n)
+  const iLimit = closed ? n : n - 1
 
   for (const arr of [left, right]) {
-    const n = arr.length
     let i = 0
-    while (i < n - 1) {
-      const segA0 = arr[i]!
+    let visited = 0
+    while (visited < iLimit) {
+      const segA0Idx = i
       const segA1Idx = closed ? (i + 1) % n : i + 1
+      if (!closed && segA1Idx >= n) break
+      const segA0 = arr[segA0Idx]!
       const segA1 = arr[segA1Idx]!
 
       let found = false
-      const jMax = Math.min(n, i + LOOP_WINDOW_MAX)
-      for (let j = i + 2; j < jMax; j++) {
-        const jWrap = closed ? j % n : j
-        const jNext = closed ? (j + 1) % n : j + 1
-
+      for (let step = 2; step < window; step++) {
+        const j = closed ? (i + step) % n : i + step
+        const jNext = closed ? (i + step + 1) % n : i + step + 1
         if (!closed && jNext >= n) break
-        if (closed && jWrap === i) break
+        if (closed && (j === i || jNext === i)) break
 
-        const segB0 = arr[jWrap]!
+        const segB0 = arr[j]!
         const segB1 = arr[jNext]!
 
         const hit = segmentIntersect2D(
@@ -57,24 +68,26 @@ export function cleanInsideCornerSelfIntersections(
         )
 
         if (hit) {
-          const collapseEnd = jWrap
-          let k = i + 1
-          while (true) {
-            const kWrap = closed ? k % n : k
+          const fanY = segA0.y + (segA1.y - segA0.y) * hit.t
+          for (let s = 1; s <= step; s++) {
+            const kWrap = closed ? (i + s) % n : i + s
+            if (kWrap === segA0Idx) break
             arr[kWrap]!.x = hit.point.x
+            arr[kWrap]!.y = fanY
             arr[kWrap]!.z = hit.point.z
             stats.collapsed++
-            if (kWrap === collapseEnd) break
-            k++
-            if (!closed && k >= n) break
           }
-          i = jWrap
+          i = closed ? (i + step) % n : i + step
+          visited += step
           found = true
           break
         }
       }
 
-      if (!found) i++
+      if (!found) {
+        i = closed ? (i + 1) % n : i + 1
+        visited++
+      }
     }
   }
 
@@ -114,7 +127,7 @@ export function buildRibbonBoundary(
     }
   }
 
-  const { stats } = cleanInsideCornerSelfIntersections(left, right, closed)
+  const { stats } = cleanInsideCornerSelfIntersections(left, right, closed, halfWidth)
 
   let totalArcLength = arcLength[n - 1]!
   if (closed) {
