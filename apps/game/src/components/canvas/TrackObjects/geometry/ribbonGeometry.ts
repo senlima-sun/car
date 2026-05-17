@@ -323,6 +323,23 @@ export function buildPitLaneGeometry(
   return { geometry, indices: pitIndices }
 }
 
+function filterDegenerateTriangles(positions: Float32Array, indices: number[]): Uint32Array {
+  const kept: number[] = []
+  for (let i = 0; i < indices.length; i += 3) {
+    const i0 = indices[i]! * 3
+    const i1 = indices[i + 1]! * 3
+    const i2 = indices[i + 2]! * 3
+    const ax = positions[i1]! - positions[i0]!
+    const az = positions[i1 + 2]! - positions[i0 + 2]!
+    const bx = positions[i2]! - positions[i0]!
+    const bz = positions[i2 + 2]! - positions[i0 + 2]!
+    if (Math.abs(ax * bz - az * bx) > 1e-10) {
+      kept.push(indices[i]!, indices[i + 1]!, indices[i + 2]!)
+    }
+  }
+  return new Uint32Array(kept)
+}
+
 export function buildRibbonLayers(
   points: TrackRibbonPoint[],
   closed: boolean,
@@ -338,9 +355,12 @@ export function buildRibbonLayers(
       ? buildPitLaneGeometry(points, closed, width, { positions, uvs, normals, pitIndices })?.geometry ?? null
       : null
 
-  const collisionIndices = new Uint32Array(mainIndices.length + pitIndices.length)
-  collisionIndices.set(mainIndices, 0)
-  collisionIndices.set(pitIndices, mainIndices.length)
+  const filteredMain = filterDegenerateTriangles(positions, mainIndices)
+  const filteredPit = pitIndices.length > 0 ? filterDegenerateTriangles(positions, pitIndices) : null
+
+  const collisionIndices = new Uint32Array(filteredMain.length + (filteredPit?.length ?? 0))
+  collisionIndices.set(filteredMain, 0)
+  if (filteredPit) collisionIndices.set(filteredPit, filteredMain.length)
 
   return {
     mainGeometry,
@@ -348,8 +368,8 @@ export function buildRibbonLayers(
     collisionVertices: positions,
     collisionIndices,
     mainSensorVertices: positions,
-    mainSensorIndices: new Uint32Array(mainIndices),
+    mainSensorIndices: filteredMain,
     pitSensorVertices: pitIndices.length > 0 ? positions : null,
-    pitSensorIndices: pitIndices.length > 0 ? new Uint32Array(pitIndices) : null,
+    pitSensorIndices: filteredPit,
   }
 }

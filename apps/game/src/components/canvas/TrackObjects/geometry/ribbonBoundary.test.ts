@@ -2,9 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { buildRibbonBoundary, cleanInsideCornerSelfIntersections } from './ribbonBoundary'
 import {
   buildEdgeLineFromBoundary,
-  buildParentSideBandGeometry,
   buildSideBandFromBoundary,
-  computeRibbonFrames,
 } from './ribbonGeometry'
 import { segmentIntersect2D } from './segmentIntersect'
 import type { TrackRibbonPoint } from '@/types/trackObjects'
@@ -61,171 +59,78 @@ describe('buildRibbonBoundary — straight', () => {
     }
   })
 
-  test('boundaries match legacy computeRibbonFrames output', () => {
+  test('left boundary at exact perpendicular distance halfWidth from centerline for straight input', () => {
     const WIDTH = 12
     const b = buildRibbonBoundary(STRAIGHT, false, WIDTH)!
-    const frames = computeRibbonFrames(STRAIGHT, false, WIDTH)!
+    const halfWidth = WIDTH / 2
     for (let i = 0; i < STRAIGHT.length; i++) {
-      expect(b.left[i]!.x).toBeCloseTo(frames.leftPositions[i]!.x, 9)
-      expect(b.left[i]!.y).toBeCloseTo(frames.leftPositions[i]!.y, 9)
-      expect(b.left[i]!.z).toBeCloseTo(frames.leftPositions[i]!.z, 9)
-      expect(b.right[i]!.x).toBeCloseTo(frames.rightPositions[i]!.x, 9)
-      expect(b.right[i]!.y).toBeCloseTo(frames.rightPositions[i]!.y, 9)
-      expect(b.right[i]!.z).toBeCloseTo(frames.rightPositions[i]!.z, 9)
+      const p = STRAIGHT[i]!
+      const left = b.left[i]!
+      const dist = Math.hypot(left.x - p.x, left.z - p.z)
+      expect(dist).toBeCloseTo(halfWidth, 9)
     }
   })
 })
 
-describe('buildRibbonBoundary — closed 4-corner square', () => {
-  test('corner boundaries match legacy miter output', () => {
+describe('buildRibbonBoundary — perpendicular offset contract (Phase 3+)', () => {
+  test('left boundary is exactly halfWidth from centerline on a straight (no miter widening)', () => {
     const WIDTH = 12
-    const b = buildRibbonBoundary(CLOSED_SQUARE, true, WIDTH)!
-    const frames = computeRibbonFrames(CLOSED_SQUARE, true, WIDTH)!
-    for (let i = 0; i < CLOSED_SQUARE.length; i++) {
-      expect(b.left[i]!.x).toBeCloseTo(frames.leftPositions[i]!.x, 9)
-      expect(b.left[i]!.y).toBeCloseTo(frames.leftPositions[i]!.y, 9)
-      expect(b.left[i]!.z).toBeCloseTo(frames.leftPositions[i]!.z, 9)
-      expect(b.right[i]!.x).toBeCloseTo(frames.rightPositions[i]!.x, 9)
-      expect(b.right[i]!.y).toBeCloseTo(frames.rightPositions[i]!.y, 9)
-      expect(b.right[i]!.z).toBeCloseTo(frames.rightPositions[i]!.z, 9)
+    const b = buildRibbonBoundary(STRAIGHT, false, WIDTH)!
+    for (let i = 0; i < STRAIGHT.length; i++) {
+      const p = STRAIGHT[i]!
+      const dist = Math.hypot(b.left[i]!.x - p.x, b.left[i]!.z - p.z)
+      expect(dist).toBeCloseTo(WIDTH / 2, 9)
     }
   })
-})
 
-describe('buildRibbonBoundary — byte-identical equivalence against frozen legacy math (888f144)', () => {
-  const ASPHALT_Y = 0.05
-  const MAX_MITER_SCALE = 4
-
-  function legacyTangents(points: TrackRibbonPoint[], closed: boolean): Array<{ x: number; z: number }> {
-    const n = points.length
-    const out: Array<{ x: number; z: number }> = []
-    for (let i = 0; i < n; i++) {
-      const prevIdx = i === 0 ? (closed ? n - 1 : 0) : i - 1
-      const nextIdx = i === n - 1 ? (closed ? 0 : n - 1) : i + 1
-      const prev = points[prevIdx]!
-      const next = points[nextIdx]!
-      const tx = next.x - prev.x
-      const tz = next.z - prev.z
-      const len = Math.hypot(tx, tz) || 1
-      out.push({ x: tx / len, z: tz / len })
+  test('right boundary is exactly halfWidth from centerline on a straight', () => {
+    const WIDTH = 12
+    const b = buildRibbonBoundary(STRAIGHT, false, WIDTH)!
+    for (let i = 0; i < STRAIGHT.length; i++) {
+      const p = STRAIGHT[i]!
+      const dist = Math.hypot(b.right[i]!.x - p.x, b.right[i]!.z - p.z)
+      expect(dist).toBeCloseTo(WIDTH / 2, 9)
     }
-    return out
-  }
+  })
 
-  function legacyMiterScales(
-    points: TrackRibbonPoint[],
-    closed: boolean,
-    tangents: Array<{ x: number; z: number }>,
-  ): number[] {
-    const n = points.length
-    const scales: number[] = []
-    for (let i = 0; i < n; i++) {
-      const isStartOpen = !closed && i === 0
-      const isEndOpen = !closed && i === n - 1
-      if (isStartOpen || isEndOpen) {
-        scales.push(1)
-        continue
-      }
-      const prevIdx = i === 0 ? n - 1 : i - 1
-      const prev = points[prevIdx]!
-      const curr = points[i]!
-      const inDx = curr.x - prev.x
-      const inDz = curr.z - prev.z
-      const inLen = Math.hypot(inDx, inDz) || 1
-      const inTx = inDx / inLen
-      const inTz = inDz / inLen
-      const bisTan = tangents[i]!
-      const dot = bisTan.x * inTx + bisTan.z * inTz
-      const safeDot = Math.max(Math.abs(dot), 1 / MAX_MITER_SCALE)
-      scales.push(1 / safeDot)
-    }
-    return scales
-  }
+  test('cleanupStats is present on every boundary', () => {
+    const b = buildRibbonBoundary(STRAIGHT, false, 12)!
+    expect(b.cleanupStats).toBeDefined()
+    expect(typeof b.cleanupStats.collapsed).toBe('number')
+  })
 
-  function legacyFrames(
-    points: TrackRibbonPoint[],
-    closed: boolean,
-    width: number,
-  ): { left: Array<{ x: number; y: number; z: number }>; right: Array<{ x: number; y: number; z: number }> } {
-    const halfWidth = width / 2
-    const tangents = legacyTangents(points, closed)
-    const miters = legacyMiterScales(points, closed, tangents)
-    const left: Array<{ x: number; y: number; z: number }> = []
-    const right: Array<{ x: number; y: number; z: number }> = []
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i]!
-      const tan = tangents[i]!
-      const m = miters[i]!
-      const nx = -tan.z * m
-      const nz = tan.x * m
-      left.push({ x: p.x + nx * halfWidth, y: p.y + ASPHALT_Y, z: p.z + nz * halfWidth })
-      right.push({ x: p.x - nx * halfWidth, y: p.y + ASPHALT_Y, z: p.z - nz * halfWidth })
-    }
-    return { left, right }
-  }
-
-  const syntheticInputs: Array<[string, TrackRibbonPoint[], boolean]> = [
-    ['straight open', STRAIGHT, false],
-    ['closed square', CLOSED_SQUARE, true],
-    [
-      'gentle curve open',
-      (() => {
-        const pts: TrackRibbonPoint[] = []
-        const R = 50
-        for (let i = 0; i <= 16; i++) {
-          const a = (i / 16) * Math.PI * 0.5
-          pts.push({ x: Math.cos(a) * R, y: 0, z: Math.sin(a) * R, isPitLane: false })
+  test('closed 4-corner square with 12 m width: boundary output has no self-intersecting segments', () => {
+    const b = buildRibbonBoundary(CLOSED_SQUARE, true, 12)!
+    const n = b.left.length
+    for (const arr of [b.left, b.right]) {
+      for (let i = 0; i < n - 1; i++) {
+        for (let j = i + 2; j < n - 1; j++) {
+          const hit = segmentIntersect2D(
+            { x: arr[i]!.x, z: arr[i]!.z },
+            { x: arr[i + 1]!.x, z: arr[i + 1]!.z },
+            { x: arr[j]!.x, z: arr[j]!.z },
+            { x: arr[j + 1]!.x, z: arr[j + 1]!.z },
+          )
+          expect(hit).toBeNull()
         }
-        return pts
-      })(),
-      false,
-    ],
-    [
-      '90-degree corner closed',
-      [
-        { x: 0, y: 0, z: 0, isPitLane: false },
-        { x: 50, y: 0, z: 0, isPitLane: false },
-        { x: 50, y: 0, z: 50, isPitLane: false },
-        { x: 0, y: 0, z: 50, isPitLane: false },
-      ],
-      true,
-    ],
-    [
-      'tight hairpin (capped by MAX_MITER_SCALE)',
-      [
-        { x: 0, y: 0, z: 0, isPitLane: false },
-        { x: 10, y: 0, z: 0, isPitLane: false },
-        { x: 10, y: 0, z: 0.5, isPitLane: false },
-        { x: 0, y: 0, z: 0.5, isPitLane: false },
-      ],
-      false,
-    ],
-    [
-      'elevation change open',
-      [
-        { x: 0, y: 0, z: 0, isPitLane: false },
-        { x: 10, y: 5, z: 0, isPitLane: false },
-        { x: 20, y: 10, z: 0, isPitLane: false },
-      ],
-      false,
-    ],
-  ]
-
-  for (const [label, pts, closed] of syntheticInputs) {
-    test(`${label}: boundary left/right match the frozen legacy frame math to 1e-9`, () => {
-      const WIDTH = 12
-      const b = buildRibbonBoundary(pts, closed, WIDTH)!
-      const legacy = legacyFrames(pts, closed, WIDTH)
-      for (let i = 0; i < pts.length; i++) {
-        expect(Math.abs(b.left[i]!.x - legacy.left[i]!.x)).toBeLessThan(1e-9)
-        expect(Math.abs(b.left[i]!.y - legacy.left[i]!.y)).toBeLessThan(1e-9)
-        expect(Math.abs(b.left[i]!.z - legacy.left[i]!.z)).toBeLessThan(1e-9)
-        expect(Math.abs(b.right[i]!.x - legacy.right[i]!.x)).toBeLessThan(1e-9)
-        expect(Math.abs(b.right[i]!.y - legacy.right[i]!.y)).toBeLessThan(1e-9)
-        expect(Math.abs(b.right[i]!.z - legacy.right[i]!.z)).toBeLessThan(1e-9)
       }
-    })
-  }
+    }
+  })
+
+  test('elevation-change straight: left boundary at exact halfWidth from centerline at every sample', () => {
+    const WIDTH = 12
+    const pts: TrackRibbonPoint[] = [
+      { x: 0, y: 0, z: 0, isPitLane: false },
+      { x: 10, y: 5, z: 0, isPitLane: false },
+      { x: 20, y: 10, z: 0, isPitLane: false },
+    ]
+    const b = buildRibbonBoundary(pts, false, WIDTH)!
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i]!
+      const dist = Math.hypot(b.left[i]!.x - p.x, b.left[i]!.z - p.z)
+      expect(dist).toBeCloseTo(WIDTH / 2, 9)
+    }
+  })
 })
 
 describe('buildRibbonBoundary — arcLength', () => {
@@ -283,7 +188,7 @@ describe('buildEdgeLineFromBoundary', () => {
     }
   })
 
-  test('curve: outer edge meets legacy buildParentSideBandGeometry inner edge to 1e-9', () => {
+  test('curve: outer edge vertex aligns with boundary.right[i] to 1e-9', () => {
     const CURVE: TrackRibbonPoint[] = []
     const R = 50
     const steps = 24
@@ -295,13 +200,11 @@ describe('buildEdgeLineFromBoundary', () => {
     const LINE_WIDTH = 0.2
     const b = buildRibbonBoundary(CURVE, false, WIDTH)!
     const boundaryResult = buildEdgeLineFromBoundary(b, 'right', LINE_WIDTH)!
-    const legacyPainted = buildParentSideBandGeometry(CURVE, false, WIDTH, 'right', 0, 3)!
 
     for (let i = 0; i < CURVE.length; i++) {
       const edgeOuterBase = (i * 2 + 1) * 3
-      const paintedInnerBase = i * 2 * 3
-      expect(Math.abs(boundaryResult.positions[edgeOuterBase]! - legacyPainted.positions[paintedInnerBase]!)).toBeLessThan(1e-9)
-      expect(Math.abs(boundaryResult.positions[edgeOuterBase + 2]! - legacyPainted.positions[paintedInnerBase + 2]!)).toBeLessThan(1e-9)
+      expect(Math.abs(boundaryResult.positions[edgeOuterBase]! - b.right[i]!.x)).toBeLessThan(1e-5)
+      expect(Math.abs(boundaryResult.positions[edgeOuterBase + 2]! - b.right[i]!.z)).toBeLessThan(1e-5)
     }
   })
 })

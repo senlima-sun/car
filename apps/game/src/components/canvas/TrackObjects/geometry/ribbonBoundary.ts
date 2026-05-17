@@ -1,7 +1,7 @@
 import { Vector3 } from 'three'
 import { TRACK_LAYER_Y_OFFSETS } from '@/constants/trackLayers'
 import type { TrackRibbonPoint } from '@/types/trackObjects'
-import { computeRibbonTangents, computeRibbonMiterScales, type Tangent2D } from './ribbonMath'
+import { computeRibbonTangents, type Tangent2D } from './ribbonMath'
 import { segmentIntersect2D } from './segmentIntersect'
 
 export interface CleanupStats {
@@ -92,7 +92,6 @@ export function buildRibbonBoundary(
   const n = points.length
   const halfWidth = width / 2
   const tangents = computeRibbonTangents(points, closed)
-  const miters = computeRibbonMiterScales(points, closed, tangents)
 
   const left: Vector3[] = []
   const right: Vector3[] = []
@@ -101,9 +100,8 @@ export function buildRibbonBoundary(
   for (let i = 0; i < n; i++) {
     const p = points[i]!
     const tan = tangents[i]!
-    const m = miters[i]!
-    const nx = -tan.z * m
-    const nz = tan.x * m
+    const nx = -tan.z
+    const nz = tan.x
 
     left.push(new Vector3(p.x + nx * halfWidth, p.y + yOffset, p.z + nz * halfWidth))
     right.push(new Vector3(p.x - nx * halfWidth, p.y + yOffset, p.z - nz * halfWidth))
@@ -115,6 +113,8 @@ export function buildRibbonBoundary(
       arcLength.push(arcLength[i - 1]! + Math.hypot(dx, dz))
     }
   }
+
+  const { stats } = cleanInsideCornerSelfIntersections(left, right, closed)
 
   let totalArcLength = arcLength[n - 1]!
   if (closed) {
@@ -132,6 +132,6 @@ export function buildRibbonBoundary(
     totalArcLength,
     closed,
     width,
-    cleanupStats: { collapsed: 0 },
+    cleanupStats: stats,
   }
 }
