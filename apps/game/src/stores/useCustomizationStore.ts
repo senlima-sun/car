@@ -3,6 +3,8 @@ import type { PlacedObject } from '../types/trackObjects'
 import {
   clearRibbonBoundary,
   clearAllRibbonBoundaries,
+  rebuildRibbonBoundaryFor,
+  syncRibbonBoundaries,
 } from '../components/canvas/TrackObjects/geometry/ribbonBoundaryCache'
 
 export type {
@@ -70,6 +72,7 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
           .reduce((m, o) => Math.max(m, o.cornerNumber ?? 0), 0)
         nextObj = { ...obj, cornerNumber: maxCorner + 1 }
       }
+      rebuildRibbonBoundaryFor(nextObj)
       return { placedObjects: [...state.placedObjects, nextObj] }
     })
     setTimeout(() => get().saveToStorage(), 0)
@@ -120,6 +123,7 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
       const data = localStorage.getItem(STORAGE_KEY)
       if (data) {
         const objects = JSON.parse(data) as PlacedObject[]
+        syncRibbonBoundaries(objects)
         set({ placedObjects: objects })
       }
     } catch (e) {
@@ -137,13 +141,17 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
   },
 
   setPlacedObjects: (objects: PlacedObject[]) => {
+    syncRibbonBoundaries(objects)
     set({ placedObjects: objects })
   },
 
   updateObject: (id, updates) => {
-    set(state => ({
-      placedObjects: state.placedObjects.map(obj => (obj.id === id ? { ...obj, ...updates } : obj)),
-    }))
+    set(state => {
+      const next = state.placedObjects.map(obj => (obj.id === id ? { ...obj, ...updates } : obj))
+      const updated = next.find(obj => obj.id === id)
+      if (updated && updated.type === 'track_ribbon') rebuildRibbonBoundaryFor(updated)
+      return { placedObjects: next }
+    })
     setTimeout(() => get().saveToStorage(), 0)
   },
 
@@ -209,15 +217,16 @@ export const useCustomizationStore = create<CustomizationState>((set, get) => ({
         }
       }
 
-      return {
-        placedObjects: [
-          ...state.placedObjects.filter(
-            obj => obj.id !== roadId && !attachedCurbs.some(c => c.id === obj.id),
-          ),
-          ...newRoads,
-          ...updatedCurbs,
-        ],
-      }
+      const nextObjects = [
+        ...state.placedObjects.filter(
+          obj => obj.id !== roadId && !attachedCurbs.some(c => c.id === obj.id),
+        ),
+        ...newRoads,
+        ...updatedCurbs,
+      ]
+      clearRibbonBoundary(roadId)
+      for (const r of newRoads) rebuildRibbonBoundaryFor(r)
+      return { placedObjects: nextObjects }
     })
     setTimeout(() => get().saveToStorage(), 0)
   },

@@ -91,7 +91,78 @@ describe('buildRibbonBoundary — closed 4-corner square', () => {
   })
 })
 
-describe('buildRibbonBoundary — byte-identical equivalence with legacy computeRibbonFrames', () => {
+describe('buildRibbonBoundary — byte-identical equivalence against frozen legacy math (888f144)', () => {
+  const ASPHALT_Y = 0.05
+  const MAX_MITER_SCALE = 4
+
+  function legacyTangents(points: TrackRibbonPoint[], closed: boolean): Array<{ x: number; z: number }> {
+    const n = points.length
+    const out: Array<{ x: number; z: number }> = []
+    for (let i = 0; i < n; i++) {
+      const prevIdx = i === 0 ? (closed ? n - 1 : 0) : i - 1
+      const nextIdx = i === n - 1 ? (closed ? 0 : n - 1) : i + 1
+      const prev = points[prevIdx]!
+      const next = points[nextIdx]!
+      const tx = next.x - prev.x
+      const tz = next.z - prev.z
+      const len = Math.hypot(tx, tz) || 1
+      out.push({ x: tx / len, z: tz / len })
+    }
+    return out
+  }
+
+  function legacyMiterScales(
+    points: TrackRibbonPoint[],
+    closed: boolean,
+    tangents: Array<{ x: number; z: number }>,
+  ): number[] {
+    const n = points.length
+    const scales: number[] = []
+    for (let i = 0; i < n; i++) {
+      const isStartOpen = !closed && i === 0
+      const isEndOpen = !closed && i === n - 1
+      if (isStartOpen || isEndOpen) {
+        scales.push(1)
+        continue
+      }
+      const prevIdx = i === 0 ? n - 1 : i - 1
+      const prev = points[prevIdx]!
+      const curr = points[i]!
+      const inDx = curr.x - prev.x
+      const inDz = curr.z - prev.z
+      const inLen = Math.hypot(inDx, inDz) || 1
+      const inTx = inDx / inLen
+      const inTz = inDz / inLen
+      const bisTan = tangents[i]!
+      const dot = bisTan.x * inTx + bisTan.z * inTz
+      const safeDot = Math.max(Math.abs(dot), 1 / MAX_MITER_SCALE)
+      scales.push(1 / safeDot)
+    }
+    return scales
+  }
+
+  function legacyFrames(
+    points: TrackRibbonPoint[],
+    closed: boolean,
+    width: number,
+  ): { left: Array<{ x: number; y: number; z: number }>; right: Array<{ x: number; y: number; z: number }> } {
+    const halfWidth = width / 2
+    const tangents = legacyTangents(points, closed)
+    const miters = legacyMiterScales(points, closed, tangents)
+    const left: Array<{ x: number; y: number; z: number }> = []
+    const right: Array<{ x: number; y: number; z: number }> = []
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i]!
+      const tan = tangents[i]!
+      const m = miters[i]!
+      const nx = -tan.z * m
+      const nz = tan.x * m
+      left.push({ x: p.x + nx * halfWidth, y: p.y + ASPHALT_Y, z: p.z + nz * halfWidth })
+      right.push({ x: p.x - nx * halfWidth, y: p.y + ASPHALT_Y, z: p.z - nz * halfWidth })
+    }
+    return { left, right }
+  }
+
   const syntheticInputs: Array<[string, TrackRibbonPoint[], boolean]> = [
     ['straight open', STRAIGHT, false],
     ['closed square', CLOSED_SQUARE, true],
@@ -118,20 +189,39 @@ describe('buildRibbonBoundary — byte-identical equivalence with legacy compute
       ],
       true,
     ],
+    [
+      'tight hairpin (capped by MAX_MITER_SCALE)',
+      [
+        { x: 0, y: 0, z: 0, isPitLane: false },
+        { x: 10, y: 0, z: 0, isPitLane: false },
+        { x: 10, y: 0, z: 0.5, isPitLane: false },
+        { x: 0, y: 0, z: 0.5, isPitLane: false },
+      ],
+      false,
+    ],
+    [
+      'elevation change open',
+      [
+        { x: 0, y: 0, z: 0, isPitLane: false },
+        { x: 10, y: 5, z: 0, isPitLane: false },
+        { x: 20, y: 10, z: 0, isPitLane: false },
+      ],
+      false,
+    ],
   ]
 
   for (const [label, pts, closed] of syntheticInputs) {
-    test(`${label}: left/right match computeRibbonFrames element-wise to 1e-9`, () => {
+    test(`${label}: boundary left/right match the frozen legacy frame math to 1e-9`, () => {
       const WIDTH = 12
       const b = buildRibbonBoundary(pts, closed, WIDTH)!
-      const frames = computeRibbonFrames(pts, closed, WIDTH)!
+      const legacy = legacyFrames(pts, closed, WIDTH)
       for (let i = 0; i < pts.length; i++) {
-        expect(Math.abs(b.left[i]!.x - frames.leftPositions[i]!.x)).toBeLessThan(1e-9)
-        expect(Math.abs(b.left[i]!.y - frames.leftPositions[i]!.y)).toBeLessThan(1e-9)
-        expect(Math.abs(b.left[i]!.z - frames.leftPositions[i]!.z)).toBeLessThan(1e-9)
-        expect(Math.abs(b.right[i]!.x - frames.rightPositions[i]!.x)).toBeLessThan(1e-9)
-        expect(Math.abs(b.right[i]!.y - frames.rightPositions[i]!.y)).toBeLessThan(1e-9)
-        expect(Math.abs(b.right[i]!.z - frames.rightPositions[i]!.z)).toBeLessThan(1e-9)
+        expect(Math.abs(b.left[i]!.x - legacy.left[i]!.x)).toBeLessThan(1e-9)
+        expect(Math.abs(b.left[i]!.y - legacy.left[i]!.y)).toBeLessThan(1e-9)
+        expect(Math.abs(b.left[i]!.z - legacy.left[i]!.z)).toBeLessThan(1e-9)
+        expect(Math.abs(b.right[i]!.x - legacy.right[i]!.x)).toBeLessThan(1e-9)
+        expect(Math.abs(b.right[i]!.y - legacy.right[i]!.y)).toBeLessThan(1e-9)
+        expect(Math.abs(b.right[i]!.z - legacy.right[i]!.z)).toBeLessThan(1e-9)
       }
     })
   }
