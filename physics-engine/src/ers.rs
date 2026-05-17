@@ -26,9 +26,12 @@ const DEPLOY_MIN_SPEED_MS: f32 = 1.0; // ~3.6 km/h — preserves launch boost
 const DEPLOY_FULL_SPEED_MS: f32 = 12.0; // ~43 km/h — fully engaged by the end of launch
 const DEPLOY_MIN_THROTTLE: f32 = 0.3; // gate partial throttle; full throttle always deploys
 const DEPLOY_FULL_THROTTLE: f32 = 0.7;
-// Target deployment budget per lap (MJ). ~4 MJ is a typical race-lap use —
-// above the 8.5 MJ regulation cap would be wasteful, below ~2 MJ underuses.
-const LAP_DEPLOY_TARGET_MJ: f32 = 4.0;
+// Target deployment budget per lap (MJ). The scheduler tapers deploy
+// toward zero as this target approaches, so under-sizing it makes
+// mid-lap "you ran out of battery and can't accelerate" symptoms. 5 MJ
+// keeps the bias toward 8.5 MJ regulation cap without leaving the car
+// stranded after a high-deploy opening sector.
+const LAP_DEPLOY_TARGET_MJ: f32 = 5.0;
 
 // 2026 Power levels (350kW MGU-K, up from 120kW). Derive from the
 // shared MGU-K cap so deploy and harvest can't drift apart.
@@ -77,7 +80,11 @@ const COAST_EFFICIENCY: f32 = 0.93;
 
 // Speed thresholds (m/s)
 const MIN_HARVEST_SPEED: f32 = 5.0; // ~18 km/h minimum for any harvest
-const OPTIMAL_HARVEST_SPEED: f32 = 80.0; // ~288 km/h for max brake harvest
+// MGU-K reaches full regen torque earlier than the previous 80 m/s
+// placeholder. 65 m/s (~234 km/h) keeps typical mid-speed braking
+// zones at full harvest while keeping low-speed regen drag from
+// overshooting realistic F1 stop-distance figures (~6g at 100 km/h).
+const OPTIMAL_HARVEST_SPEED: f32 = 65.0; // ~234 km/h for max brake harvest
 
 // ============================================================================
 // Semi-Auto Mode Constants
@@ -926,9 +933,10 @@ mod tests {
 
     #[test]
     fn test_deploy_schedule_tapers_near_lap_target() {
+        // Limit = LAP_DEPLOY_TARGET_MJ × 1.25 = 5.0 × 1.25 = 6.25 MJ.
         let early = compute_deployment_schedule(40.0, 1.0, ErsMode::Balanced, 0.0, false);
         let mid = compute_deployment_schedule(40.0, 1.0, ErsMode::Balanced, 3.0, false);
-        let late = compute_deployment_schedule(40.0, 1.0, ErsMode::Balanced, 5.0, false);
+        let late = compute_deployment_schedule(40.0, 1.0, ErsMode::Balanced, 6.2, false);
         assert!(early > mid);
         assert!(mid > late);
         assert!(late < 0.05);

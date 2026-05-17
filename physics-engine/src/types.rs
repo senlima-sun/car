@@ -327,8 +327,12 @@ impl SemiAutoConfig {
                 ..Default::default()
             },
             SemiAutoPreset::Conservative => Self {
-                target_min: 0.60,
-                target_max: 0.85,
+                // Conservative aims to conserve deploy, not chase a
+                // high state-of-charge. The previous 0.60/0.85 band
+                // pushed the controller into "urgent charge" too often,
+                // gutting deploy power while the driver was racing.
+                target_min: 0.45,
+                target_max: 0.75,
                 preset,
                 ..Default::default()
             },
@@ -1680,8 +1684,8 @@ mod tests {
     #[test]
     fn semi_auto_config_for_preset_conservative() {
         let config = SemiAutoConfig::for_preset(SemiAutoPreset::Conservative);
-        assert_approx(config.target_min, 0.60);
-        assert_approx(config.target_max, 0.85);
+        assert_approx(config.target_min, 0.45);
+        assert_approx(config.target_max, 0.75);
         assert_eq!(config.preset, SemiAutoPreset::Conservative);
         assert!(config.target_min < config.target_max);
     }

@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "captured_at": "wave-4 thermal + ers-2026 harvest tune",
-  "notes": "Rebaselined after Wave-4 thermal fixes: (a) brakes::heat_to_tires now divides by 130 °C span to convert °C/s → normalized-tire-units/s (was 130× over-applying), (b) Stefan-Boltzmann radiation uses 2× disc area for both faces (was single-sided, under-counting by ~50%), (c) tire and engine cooling floor at ambient (not 0), (d) brake-to-tire heat now biased 70/30 inner/outer (was uniform). Stop distances dropped to physically realistic values: 50 m/s→0 in ~40 m ≈ 6.25g (real F1 5-6g); 100 km/h stop 18.5→16.1 m ≈ 6g; wet 50 m/s→0 in ~77 m ≈ 3.2g (real F1 wet 3-4g). The fixes correctly de-overheat brakes mid-event, restoring effective μ. Subsequent ERS 2026 harvest tune (Balanced harvest_mult 0.95→1.00, coast 0.85→1.00; Attack harvest 0.5→0.7, coast 0.4→0.6) increased MGU-K regen drag under braking; the 100 km/h stop went 16.08→15.89 m (-1.2%, still ≈6g, physically correct). The other 7 scenarios stayed within ±0.5%.",
+  "captured_at": "wave-4 thermal + ers-2026 charge/discharge rebalance",
+  "notes": "Rebaselined after Wave-4 thermal fixes plus an ERS 2026 charge/discharge rebalance addressing 'battery empties mid-lap with no way to recover'. Tunes: (a) OPTIMAL_HARVEST_SPEED 80→65 m/s lets typical 200–250 km/h braking zones draw full MGU-K back-torque (previously needed 288 km/h to hit peak harvest); (b) LAP_DEPLOY_TARGET_MJ 4.0→5.0 delays the budget taper so a high-deploy opening sector doesn't leave the car stranded at mid-lap; (c) Conservative SemiAuto band 0.60/0.85 → 0.45/0.75 stops the controller from gutting deploy power to chase a too-high state of charge. Calibration drift: 100 km/h stop 15.89→15.05 m (≈6.4g, real F1 5-6g; closer to real than before); 50 m/s stop 40.04→40.26 m (~6.2g, unchanged in g-terms); 0-100 km/h 3.09→2.88 s (closer to 2026 F1 ≈2.6-2.8 s); DRS 200-300 7.67→7.58 s. All drifts are physically correct and move toward published F1 figures. Earlier Wave-4 history: brakes::heat_to_tires now divides by 130 °C span; Stefan-Boltzmann radiation uses 2× disc area; tire/engine cooling floor at ambient; brake-to-tire heat biased 70/30 inner/outer.",
   "scenarios": {
-    "zero_to_100_kmh_seconds": 3.0917,
-    "fifty_ms_to_zero_stop_distance_m": 40.0404,
+    "zero_to_100_kmh_seconds": 2.8750,
+    "fifty_ms_to_zero_stop_distance_m": 40.2576,
     "steady_state_80m_radius_peak_lat_g": 8.1638,
-    "drs_active_200_to_300_kmh_seconds": 7.6667,
-    "hundred_kmh_to_zero_stop_distance_m": 15.8892,
+    "drs_active_200_to_300_kmh_seconds": 7.5833,
+    "hundred_kmh_to_zero_stop_distance_m": 15.0469,
     "wet_fifty_ms_to_zero_stop_distance_m": 76.9807,
     "wet_steady_state_80m_radius_peak_lat_g": 8.1146,
     "oil_steady_state_80m_radius_peak_lat_g": 7.7408
