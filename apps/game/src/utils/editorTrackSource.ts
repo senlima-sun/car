@@ -16,8 +16,7 @@ import { useTerrainStore } from '@/stores/useTerrainStore'
 import { realignCheckpointToRibbons } from '@/utils/checkpointAlignment'
 import { bezierTToArcT } from '@/utils/bezierToArcT'
 import type { PlacedObject } from '@/types/trackObjects'
-import { buildRibbonBoundary } from '@/components/canvas/TrackObjects/geometry/ribbonBoundary'
-import { setRibbonBoundary } from '@/components/canvas/TrackObjects/geometry/ribbonBoundaryCache'
+import { rebuildRibbonBoundaryFor } from '@/components/canvas/TrackObjects/geometry/ribbonBoundaryCache'
 
 export type EditorTrackDocument = {
   paths: Path[]
@@ -243,16 +242,7 @@ export function buildTrackObjectsFromEditorSource(input: EditorTrackDocument): P
     ribbon.flowDirection = input.raceDirection
   }
 
-  for (const ribbon of ribbons) {
-    if (ribbon.ribbonPoints && ribbon.ribbonPoints.length >= 2) {
-      const boundary = buildRibbonBoundary(
-        ribbon.ribbonPoints,
-        ribbon.ribbonClosed ?? false,
-        ribbon.width ?? TRACK_WIDTH,
-      )
-      if (boundary) setRibbonBoundary(ribbon.id, boundary)
-    }
-  }
+  for (const ribbon of ribbons) rebuildRibbonBoundaryFor(ribbon)
 
   const edgeLineObjects: PlacedObject[] = []
   for (const ribbon of ribbons) {

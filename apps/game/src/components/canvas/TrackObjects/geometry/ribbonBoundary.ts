@@ -1,8 +1,7 @@
 import { Vector3 } from 'three'
 import { TRACK_LAYER_Y_OFFSETS } from '@/constants/trackLayers'
 import type { TrackRibbonPoint } from '@/types/trackObjects'
-import { computeRibbonTangents, computeRibbonMiterScales } from './ribbonGeometry'
-import type { Tangent2D } from './ribbonGeometry'
+import { computeRibbonTangents, computeRibbonMiterScales, type Tangent2D } from './ribbonMath'
 
 export interface RibbonBoundary {
   centerline: TrackRibbonPoint[]

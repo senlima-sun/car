@@ -3,13 +3,7 @@ import * as THREE from 'three'
 import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { TRACK_LAYER_POLYGON_OFFSETS } from '../../../constants/trackLayers'
-import { resolveParentDerivedLayer } from '../../../utils/parentDerivedLayer'
-import {
-  buildAsphaltGeometry,
-  buildParentSideBandGeometry,
-  buildSideBandFromBoundary,
-} from './geometry/ribbonGeometry'
-import { getRibbonBoundary } from './geometry/ribbonBoundaryCache'
+import { resolveSideBandGeometries } from './geometry/derivedLayerResolvers'
 import type { PlacedObject } from '../../../types/trackObjects'
 
 interface PaintedAreaProps {
@@ -26,10 +20,6 @@ interface PaintedAreaMesh {
   sensorIndices: Uint32Array
 }
 
-function isFullParentRange(range: [number, number] | undefined): boolean {
-  return range === undefined || (range[0] === 0 && range[1] === 1)
-}
-
 export default function PaintedArea({ placed, parentRibbon, isGhost = false }: PaintedAreaProps) {
   const meshes = useMemo<PaintedAreaMesh[]>(() => {
     if (!placed.parentRibbonId) {
@@ -38,59 +28,11 @@ export default function PaintedArea({ placed, parentRibbon, isGhost = false }: P
       }
       return []
     }
-    if (parentRibbon && placed.parentSide && isFullParentRange(placed.tRange)) {
-      const boundary = getRibbonBoundary(parentRibbon.id)
-      if (boundary) {
-        const result = buildSideBandFromBoundary(
-          boundary,
-          placed.parentSide,
-          placed.innerOffset ?? 0,
-          placed.derivedWidth ?? placed.width ?? 3,
-        )
-        return result && result.indices.length > 0
-          ? [
-              {
-                geometry: result.geometry,
-                sensorVertices: result.positions,
-                sensorIndices: new Uint32Array(result.indices),
-              },
-            ]
-          : []
-      }
-      if (parentRibbon.ribbonPoints && parentRibbon.ribbonPoints.length >= 2) {
-        const result = buildParentSideBandGeometry(
-          parentRibbon.ribbonPoints,
-          parentRibbon.ribbonClosed ?? false,
-          parentRibbon.width ?? 12,
-          placed.parentSide,
-          placed.innerOffset ?? 0,
-          placed.derivedWidth ?? placed.width ?? 3,
-        )
-        return result && result.indices.length > 0
-          ? [
-              {
-                geometry: result.geometry,
-                sensorVertices: result.positions,
-                sensorIndices: new Uint32Array(result.indices),
-              },
-            ]
-          : []
-      }
-    }
-
-    const segments = resolveParentDerivedLayer(placed, { parent: parentRibbon })
-    const out: PaintedAreaMesh[] = []
-    for (const seg of segments) {
-      if (seg.points.length < 2) continue
-      const result = buildAsphaltGeometry(seg.points, seg.closed, seg.width)
-      if (!result || result.mainIndices.length === 0) continue
-      out.push({
-        geometry: result.geometry,
-        sensorVertices: result.positions,
-        sensorIndices: new Uint32Array(result.mainIndices),
-      })
-    }
-    return out
+    return resolveSideBandGeometries(placed, parentRibbon, 3).map(r => ({
+      geometry: r.geometry,
+      sensorVertices: r.positions,
+      sensorIndices: new Uint32Array(r.indices),
+    }))
   }, [placed, parentRibbon])
 
   const enterSurface = useSurfaceStore(s => s.enterSurface)
