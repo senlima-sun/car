@@ -68,6 +68,38 @@ export function computeRibbonTangents(
   return tangents
 }
 
+const MAX_MITER_SCALE = 4
+
+export function computeRibbonMiterScales(
+  points: { x: number; z: number }[],
+  closed: boolean,
+  tangents: Tangent2D[],
+): number[] {
+  const n = points.length
+  const scales = new Array<number>(n)
+  for (let i = 0; i < n; i++) {
+    const isStartOpen = !closed && i === 0
+    const isEndOpen = !closed && i === n - 1
+    if (isStartOpen || isEndOpen) {
+      scales[i] = 1
+      continue
+    }
+    const prevIdx = i === 0 ? n - 1 : i - 1
+    const prev = points[prevIdx]!
+    const curr = points[i]!
+    const inDx = curr.x - prev.x
+    const inDz = curr.z - prev.z
+    const inLen = Math.hypot(inDx, inDz) || 1
+    const inTx = inDx / inLen
+    const inTz = inDz / inLen
+    const bisTan = tangents[i]!
+    const dot = bisTan.x * inTx + bisTan.z * inTz
+    const safeDot = Math.max(Math.abs(dot), 1 / MAX_MITER_SCALE)
+    scales[i] = 1 / safeDot
+  }
+  return scales
+}
+
 export function computeRibbonFrames(
   points: TrackRibbonPoint[],
   closed: boolean,
@@ -78,6 +110,7 @@ export function computeRibbonFrames(
   const halfWidth = width / 2
   const surfaceY = TRACK_LAYER_Y_OFFSETS.ASPHALT
   const tangents = computeRibbonTangents(points, closed)
+  const miters = computeRibbonMiterScales(points, closed, tangents)
 
   const leftPositions: Vector3[] = []
   const rightPositions: Vector3[] = []
@@ -85,8 +118,9 @@ export function computeRibbonFrames(
   for (let i = 0; i < n; i++) {
     const p = points[i]!
     const tan = tangents[i]!
-    const nx = -tan.z
-    const nz = tan.x
+    const m = miters[i]!
+    const nx = -tan.z * m
+    const nz = tan.x * m
 
     leftPositions.push(new Vector3(p.x + nx * halfWidth, p.y + surfaceY, p.z + nz * halfWidth))
     rightPositions.push(new Vector3(p.x - nx * halfWidth, p.y + surfaceY, p.z - nz * halfWidth))
@@ -203,14 +237,16 @@ export function buildParentSideBandGeometry(
   const innerDistance = halfParent + innerOffset
   const outerDistance = innerDistance + bandWidth
   const tangents = computeRibbonTangents(points, closed)
+  const miters = computeRibbonMiterScales(points, closed, tangents)
   const leftPositions: Vector3[] = []
   const rightPositions: Vector3[] = []
 
   for (let i = 0; i < n; i++) {
     const p = points[i]!
     const tan = tangents[i]!
-    const nx = -tan.z
-    const nz = tan.x
+    const m = miters[i]!
+    const nx = -tan.z * m
+    const nz = tan.x * m
     const y = p.y + yOffset
 
     if (side === 'left') {

@@ -175,4 +175,50 @@ describe('buildParentSideBandGeometry', () => {
     const result = buildParentSideBandGeometry(CLOSED_LOOP, true, 12, 'right', 0.8, 3)!
     expect(result.indices.length).toBe(CLOSED_LOOP.length * 6)
   })
+
+  test('edge line outer edge meets painted area inner edge exactly at every vertex on a curve', () => {
+    const CURVE: TrackRibbonPoint[] = []
+    const R = 50
+    const steps = 24
+    for (let i = 0; i <= steps; i++) {
+      const a = (i / steps) * Math.PI * 0.5
+      CURVE.push({ x: Math.cos(a) * R, y: 0, z: Math.sin(a) * R, isPitLane: false })
+    }
+    const PARENT_WIDTH = 12
+    const LINE_WIDTH = 0.2
+    const PAINTED_WIDTH = 3
+
+    const edge = buildEdgeLineGeometry(CURVE, false, PARENT_WIDTH, 'right', LINE_WIDTH)!
+    const painted = buildParentSideBandGeometry(CURVE, false, PARENT_WIDTH, 'right', 0, PAINTED_WIDTH)!
+
+    for (let i = 0; i < CURVE.length; i++) {
+      const edgeOuterBase = (i * 2 + 1) * 3
+      const paintedInnerBase = i * 2 * 3
+      expect(edge.positions[edgeOuterBase]).toBeCloseTo(painted.positions[paintedInnerBase]!, 5)
+      expect(edge.positions[edgeOuterBase + 2]).toBeCloseTo(painted.positions[paintedInnerBase + 2]!, 5)
+    }
+  })
+
+  test('all interior vertices on a closed curve sit at exactly half-parent distance from the source point', () => {
+    const CURVE: TrackRibbonPoint[] = []
+    const R = 80
+    const steps = 36
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * Math.PI * 2
+      CURVE.push({ x: Math.cos(a) * R, y: 0, z: Math.sin(a) * R, isPitLane: false })
+    }
+    const PARENT_WIDTH = 14
+    const halfParent = PARENT_WIDTH / 2
+
+    const edge = buildEdgeLineGeometry(CURVE, true, PARENT_WIDTH, 'right', 0.2)!
+
+    for (let i = 0; i < CURVE.length; i++) {
+      const src = CURVE[i]!
+      const outerBase = (i * 2 + 1) * 3
+      const dx = edge.positions[outerBase]! - src.x
+      const dz = edge.positions[outerBase + 2]! - src.z
+      const dist = Math.hypot(dx, dz)
+      expect(Math.abs(dist - halfParent)).toBeLessThan(0.05)
+    }
+  })
 })
