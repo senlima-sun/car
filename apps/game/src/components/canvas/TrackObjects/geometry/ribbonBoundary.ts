@@ -2,6 +2,11 @@ import { Vector3 } from 'three'
 import { TRACK_LAYER_Y_OFFSETS } from '@/constants/trackLayers'
 import type { TrackRibbonPoint } from '@/types/trackObjects'
 import { computeRibbonTangents, computeRibbonMiterScales, type Tangent2D } from './ribbonMath'
+import { segmentIntersect2D } from './segmentIntersect'
+
+export interface CleanupStats {
+  collapsed: number
+}
 
 export interface RibbonBoundary {
   centerline: TrackRibbonPoint[]
@@ -12,6 +17,68 @@ export interface RibbonBoundary {
   totalArcLength: number
   closed: boolean
   width: number
+  cleanupStats: CleanupStats
+}
+
+const LOOP_WINDOW_MAX = 128
+
+export function cleanInsideCornerSelfIntersections(
+  left: Vector3[],
+  right: Vector3[],
+  closed: boolean,
+): { left: Vector3[]; right: Vector3[]; stats: CleanupStats } {
+  const stats: CleanupStats = { collapsed: 0 }
+
+  for (const arr of [left, right]) {
+    const n = arr.length
+    let i = 0
+    while (i < n - 1) {
+      const segA0 = arr[i]!
+      const segA1Idx = closed ? (i + 1) % n : i + 1
+      const segA1 = arr[segA1Idx]!
+
+      let found = false
+      const jMax = Math.min(n, i + LOOP_WINDOW_MAX)
+      for (let j = i + 2; j < jMax; j++) {
+        const jWrap = closed ? j % n : j
+        const jNext = closed ? (j + 1) % n : j + 1
+
+        if (!closed && jNext >= n) break
+        if (closed && jWrap === i) break
+
+        const segB0 = arr[jWrap]!
+        const segB1 = arr[jNext]!
+
+        const hit = segmentIntersect2D(
+          { x: segA0.x, z: segA0.z },
+          { x: segA1.x, z: segA1.z },
+          { x: segB0.x, z: segB0.z },
+          { x: segB1.x, z: segB1.z },
+        )
+
+        if (hit) {
+          const collapseEnd = jWrap
+          let k = i + 1
+          while (true) {
+            const kWrap = closed ? k % n : k
+            arr[kWrap]!.x = hit.point.x
+            arr[kWrap]!.z = hit.point.z
+            stats.collapsed++
+            if (kWrap === collapseEnd) break
+            k++
+            if (!closed && k >= n) break
+          }
+          i = jWrap
+          found = true
+          break
+        }
+      }
+
+      if (!found) i++
+    }
+  }
+
+  return { left, right, stats }
 }
 
 export function buildRibbonBoundary(
@@ -65,5 +132,6 @@ export function buildRibbonBoundary(
     totalArcLength,
     closed,
     width,
+    cleanupStats: { collapsed: 0 },
   }
 }

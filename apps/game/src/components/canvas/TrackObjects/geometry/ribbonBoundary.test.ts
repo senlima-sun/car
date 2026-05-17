@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { buildRibbonBoundary } from './ribbonBoundary'
+import { buildRibbonBoundary, cleanInsideCornerSelfIntersections } from './ribbonBoundary'
 import {
   buildEdgeLineFromBoundary,
   buildParentSideBandGeometry,
   buildSideBandFromBoundary,
   computeRibbonFrames,
 } from './ribbonGeometry'
+import { segmentIntersect2D } from './segmentIntersect'
 import type { TrackRibbonPoint } from '@/types/trackObjects'
 
 const STRAIGHT: TrackRibbonPoint[] = [
@@ -332,5 +333,113 @@ describe('buildSideBandFromBoundary', () => {
     const b = buildRibbonBoundary(STRAIGHT, false, 12)!
     expect(buildSideBandFromBoundary(b, 'left', 0, 0)).toBeNull()
     expect(buildSideBandFromBoundary(b, 'right', 0, -1)).toBeNull()
+  })
+})
+
+import { Vector3 } from 'three'
+import { computeRibbonTangents } from './ribbonMath'
+
+function buildPerpendicularBoundary(
+  pts: TrackRibbonPoint[],
+  closed: boolean,
+  halfWidth: number,
+  side: 'left' | 'right',
+): Vector3[] {
+  const tangents = computeRibbonTangents(pts, closed)
+  return pts.map((p, i) => {
+    const tan = tangents[i]!
+    const nx = -tan.z
+    const nz = tan.x
+    const sign = side === 'left' ? 1 : -1
+    return new Vector3(p.x + sign * nx * halfWidth, p.y, p.z + sign * nz * halfWidth)
+  })
+}
+
+function buildUTurnPoints(straight: number, turnRadius: number, arcSamples: number): TrackRibbonPoint[] {
+  const pts: TrackRibbonPoint[] = []
+  pts.push({ x: 0, y: 0, z: 0, isPitLane: false })
+  pts.push({ x: straight, y: 0, z: 0, isPitLane: false })
+  for (let i = 0; i <= arcSamples; i++) {
+    const a = (i / arcSamples) * Math.PI
+    pts.push({
+      x: straight + Math.cos(a) * turnRadius,
+      y: 0,
+      z: Math.sin(a) * turnRadius,
+      isPitLane: false,
+    })
+  }
+  pts.push({ x: straight, y: 0, z: turnRadius * 2, isPitLane: false })
+  pts.push({ x: 0, y: 0, z: turnRadius * 2, isPitLane: false })
+  return pts
+}
+
+function countPolylineIntersections(arr: { x: number; z: number }[]): number {
+  let count = 0
+  const n = arr.length
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = i + 2; j < n - 1; j++) {
+      const hit = segmentIntersect2D(
+        { x: arr[i]!.x, z: arr[i]!.z },
+        { x: arr[i + 1]!.x, z: arr[i + 1]!.z },
+        { x: arr[j]!.x, z: arr[j]!.z },
+        { x: arr[j + 1]!.x, z: arr[j + 1]!.z },
+      )
+      if (hit) count++
+    }
+  }
+  return count
+}
+
+describe('cleanInsideCornerSelfIntersections', () => {
+  test('straight 2-point input: stats.collapsed === 0, arrays untouched', () => {
+    const b = buildRibbonBoundary(STRAIGHT, false, 12)!
+    const leftCopy = b.left.map(v => v.clone())
+    const rightCopy = b.right.map(v => v.clone())
+    const { stats } = cleanInsideCornerSelfIntersections(b.left, b.right, false)
+    expect(stats.collapsed).toBe(0)
+    for (let i = 0; i < STRAIGHT.length; i++) {
+      expect(b.left[i]!.x).toBeCloseTo(leftCopy[i]!.x, 9)
+      expect(b.left[i]!.z).toBeCloseTo(leftCopy[i]!.z, 9)
+      expect(b.right[i]!.x).toBeCloseTo(rightCopy[i]!.x, 9)
+      expect(b.right[i]!.z).toBeCloseTo(rightCopy[i]!.z, 9)
+    }
+  })
+
+  test('U-turn with 10 m radius and 12 m width: cleanup produces zero self-intersections after pass', () => {
+    const pts = buildUTurnPoints(20, 10, 16)
+    const inside = buildPerpendicularBoundary(pts, false, 6, 'right')
+    const outside = buildPerpendicularBoundary(pts, false, 6, 'left')
+    const { left, right } = cleanInsideCornerSelfIntersections(outside, inside, false)
+    expect(countPolylineIntersections(left)).toBe(0)
+    expect(countPolylineIntersections(right)).toBe(0)
+  })
+
+  test('U-turn with 2 m radius, 12 m width: cleanup collapses intersections and produces clean output', () => {
+    const pts = buildUTurnPoints(20, 2, 16)
+    const inside = buildPerpendicularBoundary(pts, false, 6, 'right')
+    const outside = buildPerpendicularBoundary(pts, false, 6, 'left')
+    const beforeCount = countPolylineIntersections(inside) + countPolylineIntersections(outside)
+    expect(beforeCount).toBeGreaterThan(0)
+    const { left, right, stats } = cleanInsideCornerSelfIntersections(outside, inside, false)
+    expect(stats.collapsed).toBeGreaterThan(0)
+    expect(countPolylineIntersections(left)).toBe(0)
+    expect(countPolylineIntersections(right)).toBe(0)
+  })
+
+  test('output arrays preserve original length', () => {
+    const pts = buildUTurnPoints(20, 2, 16)
+    const inside = buildPerpendicularBoundary(pts, false, 6, 'right')
+    const outside = buildPerpendicularBoundary(pts, false, 6, 'left')
+    const origLen = inside.length
+    const { left, right } = cleanInsideCornerSelfIntersections(outside, inside, false)
+    expect(left.length).toBe(origLen)
+    expect(right.length).toBe(origLen)
+  })
+
+  test('closed 4-corner square 12 m width: cleanup produces zero self-intersections', () => {
+    const b = buildRibbonBoundary(CLOSED_SQUARE, true, 12)!
+    const { left, right } = cleanInsideCornerSelfIntersections(b.left, b.right, true)
+    expect(countPolylineIntersections(left)).toBe(0)
+    expect(countPolylineIntersections(right)).toBe(0)
   })
 })
