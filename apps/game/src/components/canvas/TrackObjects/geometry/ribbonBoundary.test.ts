@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test'
-import { Vector3 } from 'three'
 import { buildRibbonBoundary } from './ribbonBoundary'
 import { computeRibbonFrames } from './ribbonGeometry'
 import type { TrackRibbonPoint } from '@/types/trackObjects'
@@ -85,6 +84,52 @@ describe('buildRibbonBoundary — closed 4-corner square', () => {
       expect(b.right[i]!.z).toBeCloseTo(frames.rightPositions[i]!.z, 9)
     }
   })
+})
+
+describe('buildRibbonBoundary — byte-identical equivalence with legacy computeRibbonFrames', () => {
+  const syntheticInputs: Array<[string, TrackRibbonPoint[], boolean]> = [
+    ['straight open', STRAIGHT, false],
+    ['closed square', CLOSED_SQUARE, true],
+    [
+      'gentle curve open',
+      (() => {
+        const pts: TrackRibbonPoint[] = []
+        const R = 50
+        for (let i = 0; i <= 16; i++) {
+          const a = (i / 16) * Math.PI * 0.5
+          pts.push({ x: Math.cos(a) * R, y: 0, z: Math.sin(a) * R, isPitLane: false })
+        }
+        return pts
+      })(),
+      false,
+    ],
+    [
+      '90-degree corner closed',
+      [
+        { x: 0, y: 0, z: 0, isPitLane: false },
+        { x: 50, y: 0, z: 0, isPitLane: false },
+        { x: 50, y: 0, z: 50, isPitLane: false },
+        { x: 0, y: 0, z: 50, isPitLane: false },
+      ],
+      true,
+    ],
+  ]
+
+  for (const [label, pts, closed] of syntheticInputs) {
+    test(`${label}: left/right match computeRibbonFrames element-wise to 1e-9`, () => {
+      const WIDTH = 12
+      const b = buildRibbonBoundary(pts, closed, WIDTH)!
+      const frames = computeRibbonFrames(pts, closed, WIDTH)!
+      for (let i = 0; i < pts.length; i++) {
+        expect(Math.abs(b.left[i]!.x - frames.leftPositions[i]!.x)).toBeLessThan(1e-9)
+        expect(Math.abs(b.left[i]!.y - frames.leftPositions[i]!.y)).toBeLessThan(1e-9)
+        expect(Math.abs(b.left[i]!.z - frames.leftPositions[i]!.z)).toBeLessThan(1e-9)
+        expect(Math.abs(b.right[i]!.x - frames.rightPositions[i]!.x)).toBeLessThan(1e-9)
+        expect(Math.abs(b.right[i]!.y - frames.rightPositions[i]!.y)).toBeLessThan(1e-9)
+        expect(Math.abs(b.right[i]!.z - frames.rightPositions[i]!.z)).toBeLessThan(1e-9)
+      }
+    })
+  }
 })
 
 describe('buildRibbonBoundary — arcLength', () => {

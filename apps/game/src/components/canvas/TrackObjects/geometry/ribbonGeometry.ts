@@ -1,6 +1,8 @@
 import { BufferGeometry, Float32BufferAttribute, Vector3 } from 'three'
 import { TRACK_LAYER_Y_OFFSETS } from '../../../../constants/trackLayers'
 import type { TrackRibbonPoint } from '../../../../types/trackObjects'
+import type { RibbonBoundary } from './ribbonBoundary'
+import { buildRibbonBoundary } from './ribbonBoundary'
 
 export interface RibbonFrames {
   leftPositions: Vector3[]
@@ -100,33 +102,18 @@ export function computeRibbonMiterScales(
   return scales
 }
 
+export function computeRibbonFramesFromBoundary(boundary: RibbonBoundary): RibbonFrames {
+  return { leftPositions: boundary.left, rightPositions: boundary.right }
+}
+
 export function computeRibbonFrames(
   points: TrackRibbonPoint[],
   closed: boolean,
   width: number,
 ): RibbonFrames | null {
-  const n = points.length
-  if (n < 2) return null
-  const halfWidth = width / 2
-  const surfaceY = TRACK_LAYER_Y_OFFSETS.ASPHALT
-  const tangents = computeRibbonTangents(points, closed)
-  const miters = computeRibbonMiterScales(points, closed, tangents)
-
-  const leftPositions: Vector3[] = []
-  const rightPositions: Vector3[] = []
-
-  for (let i = 0; i < n; i++) {
-    const p = points[i]!
-    const tan = tangents[i]!
-    const m = miters[i]!
-    const nx = -tan.z * m
-    const nz = tan.x * m
-
-    leftPositions.push(new Vector3(p.x + nx * halfWidth, p.y + surfaceY, p.z + nz * halfWidth))
-    rightPositions.push(new Vector3(p.x - nx * halfWidth, p.y + surfaceY, p.z - nz * halfWidth))
-  }
-
-  return { leftPositions, rightPositions }
+  const boundary = buildRibbonBoundary(points, closed, width)
+  if (!boundary) return null
+  return computeRibbonFramesFromBoundary(boundary)
 }
 
 function buildRibbonAttributes(frames: RibbonFrames) {
