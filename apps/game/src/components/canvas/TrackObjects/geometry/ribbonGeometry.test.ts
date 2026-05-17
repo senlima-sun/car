@@ -97,6 +97,24 @@ describe('buildPitLaneGeometry', () => {
   })
 })
 
+function buildUTurnPoints(straight: number, turnRadius: number, arcSamples: number): TrackRibbonPoint[] {
+  const pts: TrackRibbonPoint[] = []
+  pts.push({ x: 0, y: 0, z: 0, isPitLane: false })
+  pts.push({ x: straight, y: 0, z: 0, isPitLane: false })
+  for (let i = 0; i <= arcSamples; i++) {
+    const a = (i / arcSamples) * Math.PI
+    pts.push({
+      x: straight + Math.cos(a) * turnRadius,
+      y: 0,
+      z: Math.sin(a) * turnRadius,
+      isPitLane: false,
+    })
+  }
+  pts.push({ x: straight, y: 0, z: turnRadius * 2, isPitLane: false })
+  pts.push({ x: 0, y: 0, z: turnRadius * 2, isPitLane: false })
+  return pts
+}
+
 describe('buildRibbonLayers', () => {
   test('returns the expected runtime fields (no edge geometry; edge_line is its own PlacedObject)', () => {
     const layers = buildRibbonLayers(STRAIGHT, false, 12)!
@@ -126,6 +144,24 @@ describe('buildRibbonLayers', () => {
   test('collision vertices equal main positions', () => {
     const layers = buildRibbonLayers(STRAIGHT, false, 12)!
     arraysCloseEnough(layers.collisionVertices, layers.mainSensorVertices)
+  })
+
+  test('mainSensorIndices has no zero-area triangle on a tight U-turn track', () => {
+    const pts = buildUTurnPoints(20, 2, 16)
+    const layers = buildRibbonLayers(pts, false, 12)!
+    const positions = layers.mainSensorVertices
+    const indices = layers.mainSensorIndices
+    for (let i = 0; i < indices.length; i += 3) {
+      const i0 = indices[i]! * 3
+      const i1 = indices[i + 1]! * 3
+      const i2 = indices[i + 2]! * 3
+      const ax = positions[i1]! - positions[i0]!
+      const az = positions[i1 + 2]! - positions[i0 + 2]!
+      const bx = positions[i2]! - positions[i0]!
+      const bz = positions[i2 + 2]! - positions[i0 + 2]!
+      const crossMag = Math.abs(ax * bz - az * bx)
+      expect(crossMag).toBeGreaterThan(1e-6)
+    }
   })
 })
 
