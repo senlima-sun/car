@@ -56,13 +56,14 @@ const HARVEST_COAST_MULT: f32 = 1.0;
 
 // Balanced mode: moderate deploy with good recovery
 const BALANCED_DEPLOY_MULT: f32 = 0.60;
-const BALANCED_HARVEST_MULT: f32 = 0.95;
-const BALANCED_COAST_MULT: f32 = 0.85;
+const BALANCED_HARVEST_MULT: f32 = 1.00;
+const BALANCED_COAST_MULT: f32 = 1.00;
 
-// Attack mode: high deploy, some recovery
+// Attack mode: high deploy with meaningful recovery to compensate for
+// the absence of an on-throttle harvest path (no MGU-H in 2026 PU).
 const ATTACK_DEPLOY_MULT: f32 = 0.85;
-const ATTACK_HARVEST_MULT: f32 = 0.5;
-const ATTACK_COAST_MULT: f32 = 0.4;
+const ATTACK_HARVEST_MULT: f32 = 0.7;
+const ATTACK_COAST_MULT: f32 = 0.6;
 
 // Overtake mode: maximum deploy burst, zero harvest
 const OVERTAKE_DEPLOY_MULT: f32 = 1.0;
@@ -847,16 +848,16 @@ mod tests {
     #[test]
     fn coast_power_capped_at_100kw() {
         // FIA 2026 calibration: Balanced coast at OPTIMAL_HARVEST_SPEED
-        // (80 m/s) → BALANCED_COAST_MULT × MAX_COAST_POWER_KW = 0.85 ×
-        // 100 = 85 kW. Sign is negative on `power_flow` (harvesting).
+        // (80 m/s) → BALANCED_COAST_MULT × MAX_COAST_POWER_KW = 1.00 ×
+        // 100 = 100 kW. Sign is negative on `power_flow` (harvesting).
         let mut state = ErsPhysicsState::new();
         state.set_mode(ErsMode::Balanced);
         state.set_battery_charge(0.5);
         state.update(1.0 / 120.0, false, false, 80.0, 0.0);
         let pf = state.get_state().power_flow;
         assert!(
-            pf < -80.0 && pf > -86.0,
-            "expected coast power ≈ -85 kW, got {}",
+            pf < -95.0 && pf > -101.0,
+            "expected coast power ≈ -100 kW, got {}",
             pf,
         );
     }

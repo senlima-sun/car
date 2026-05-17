@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "captured_at": "wave-4: thermal correctness",
-  "notes": "Rebaselined after Wave-4 thermal fixes: (a) brakes::heat_to_tires now divides by 130 °C span to convert °C/s → normalized-tire-units/s (was 130× over-applying), (b) Stefan-Boltzmann radiation uses 2× disc area for both faces (was single-sided, under-counting by ~50%), (c) tire and engine cooling floor at ambient (not 0), (d) brake-to-tire heat now biased 70/30 inner/outer (was uniform). Stop distances dropped to physically realistic values: 50 m/s→0 in ~40 m ≈ 6.25g (real F1 5-6g); 100 km/h stop 18.5→16.1 m ≈ 6g; wet 50 m/s→0 in ~77 m ≈ 3.2g (real F1 wet 3-4g). The fixes correctly de-overheat brakes mid-event, restoring effective μ.",
+  "captured_at": "wave-4 thermal + ers-2026 harvest tune",
+  "notes": "Rebaselined after Wave-4 thermal fixes: (a) brakes::heat_to_tires now divides by 130 °C span to convert °C/s → normalized-tire-units/s (was 130× over-applying), (b) Stefan-Boltzmann radiation uses 2× disc area for both faces (was single-sided, under-counting by ~50%), (c) tire and engine cooling floor at ambient (not 0), (d) brake-to-tire heat now biased 70/30 inner/outer (was uniform). Stop distances dropped to physically realistic values: 50 m/s→0 in ~40 m ≈ 6.25g (real F1 5-6g); 100 km/h stop 18.5→16.1 m ≈ 6g; wet 50 m/s→0 in ~77 m ≈ 3.2g (real F1 wet 3-4g). The fixes correctly de-overheat brakes mid-event, restoring effective μ. Subsequent ERS 2026 harvest tune (Balanced harvest_mult 0.95→1.00, coast 0.85→1.00; Attack harvest 0.5→0.7, coast 0.4→0.6) increased MGU-K regen drag under braking; the 100 km/h stop went 16.08→15.89 m (-1.2%, still ≈6g, physically correct). The other 7 scenarios stayed within ±0.5%.",
   "scenarios": {
     "zero_to_100_kmh_seconds": 3.0917,
     "fifty_ms_to_zero_stop_distance_m": 40.0404,
     "steady_state_80m_radius_peak_lat_g": 8.1638,
     "drs_active_200_to_300_kmh_seconds": 7.6667,
-    "hundred_kmh_to_zero_stop_distance_m": 16.0811,
+    "hundred_kmh_to_zero_stop_distance_m": 15.8892,
     "wet_fifty_ms_to_zero_stop_distance_m": 76.9807,
     "wet_steady_state_80m_radius_peak_lat_g": 8.1146,
     "oil_steady_state_80m_radius_peak_lat_g": 7.7408
