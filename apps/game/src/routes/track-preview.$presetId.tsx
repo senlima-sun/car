@@ -5,10 +5,14 @@ import { OrbitControls, OrthographicCamera } from '@react-three/drei'
 import { getPresetTrack } from '@/constants/tracks'
 import TrackPreviewScene from '@/preview/TrackPreviewScene'
 import LayerTogglePanel from '@/preview/LayerTogglePanel'
+import { SYNTHETIC_FIXTURES } from '@/preview/syntheticFixtures'
 
 function TrackPreviewSingle() {
   const { presetId } = useParams({ from: '/track-preview/$presetId' })
-  const track = useMemo(() => getPresetTrack(presetId), [presetId])
+  const track = useMemo(
+    () => SYNTHETIC_FIXTURES[presetId] ?? getPresetTrack(presetId),
+    [presetId],
+  )
 
   if (!track) {
     return (
