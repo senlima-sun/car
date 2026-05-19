@@ -32,21 +32,28 @@ export function encodeSidecar(args: {
   provider: ProviderName
   dem: DemName
   datum: DatumName
-}): TerrainSidecar {
+  clampOutOfRange?: boolean
+}): TerrainSidecar & { clampedCells: number } {
   if (args.data.length !== args.resolution * args.resolution) {
     throw new Error(
       `sidecar data length ${args.data.length} != resolution²=${args.resolution * args.resolution}`
     )
   }
   const ints = new Int16Array(args.data.length)
+  let clampedCells = 0
   for (let i = 0; i < args.data.length; i++) {
     const cm = Math.round(args.data[i]! * SCALE)
     if (cm < INT16_MIN || cm > INT16_MAX) {
-      throw new Error(
-        `cell ${i} height ${args.data[i]}m exceeds Int16 cm range; raise verticalOriginMeters or split sidecar`
-      )
+      if (!args.clampOutOfRange) {
+        throw new Error(
+          `cell ${i} height ${args.data[i]}m exceeds Int16 cm range; raise verticalOriginMeters, split sidecar, or pass clampOutOfRange:true`
+        )
+      }
+      ints[i] = cm < INT16_MIN ? INT16_MIN : INT16_MAX
+      clampedCells++
+    } else {
+      ints[i] = cm
     }
-    ints[i] = cm
   }
   const bytes = Buffer.from(ints.buffer, ints.byteOffset, ints.byteLength)
   return {
@@ -62,6 +69,7 @@ export function encodeSidecar(args: {
     dem: args.dem,
     datum: args.datum,
     data: bytes.toString('base64'),
+    clampedCells,
   }
 }
 

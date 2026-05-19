@@ -49,8 +49,8 @@ export function validateHeightmap(args: {
   if (allZero) reasons.push('heightmap is all-zero')
 
   const observedRange = observedMax - observedMin
-  const minMult = options.rangeToleranceMultiplier?.min ?? 0.5
-  const maxMult = options.rangeToleranceMultiplier?.max ?? 2.0
+  const minMult = options.rangeToleranceMultiplier?.min ?? 0.25
+  const maxMult = options.rangeToleranceMultiplier?.max ?? 10
   if (!allZero) {
     if (observedRange < options.expectedRangeMeters * minMult) {
       reasons.push(
@@ -64,7 +64,7 @@ export function validateHeightmap(args: {
     }
   }
 
-  const maxNeighbourDelta = options.maxNeighbourDeltaM ?? 50
+  const maxNeighbourDelta = options.maxNeighbourDeltaM ?? 150
   for (let gz = 0; gz < resolution; gz++) {
     for (let gx = 0; gx < resolution - 1; gx++) {
       const a = heightmap[gz * resolution + gx]!

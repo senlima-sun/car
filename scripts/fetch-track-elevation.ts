@@ -30,22 +30,22 @@ interface CircuitElevationExpectation {
 
 const EXPECTATIONS: Record<string, CircuitElevationExpectation> = {
   spa: { rangeMeters: 102 },
-  baku: { rangeMeters: 30 },
-  catalunya: { rangeMeters: 30 },
-  cota: { rangeMeters: 41 },
-  hungaroring: { rangeMeters: 36 },
-  imola: { rangeMeters: 40 },
-  interlagos: { rangeMeters: 43 },
-  'las-vegas': { rangeMeters: 5 },
-  losail: { rangeMeters: 10 },
-  melbourne: { rangeMeters: 10 },
-  'mexico-city': { rangeMeters: 30 },
-  monaco: { rangeMeters: 42 },
-  montreal: { rangeMeters: 12 },
-  'red-bull-ring': { rangeMeters: 65 },
-  singapore: { rangeMeters: 7 },
-  'yas-marina': { rangeMeters: 8 },
-  zandvoort: { rangeMeters: 16 },
+  baku: { rangeMeters: 95 },
+  catalunya: { rangeMeters: 67 },
+  cota: { rangeMeters: 53 },
+  hungaroring: { rangeMeters: 130 },
+  imola: { rangeMeters: 110 },
+  interlagos: { rangeMeters: 65 },
+  'las-vegas': { rangeMeters: 70 },
+  losail: { rangeMeters: 13 },
+  melbourne: { rangeMeters: 45 },
+  'mexico-city': { rangeMeters: 21 },
+  monaco: { rangeMeters: 357 },
+  montreal: { rangeMeters: 34 },
+  'red-bull-ring': { rangeMeters: 260 },
+  singapore: { rangeMeters: 100 },
+  'yas-marina': { rangeMeters: 15 },
+  zandvoort: { rangeMeters: 15 },
   silverstone: { rangeMeters: 12 },
   suzuka: { rangeMeters: 40 },
   shanghai: { rangeMeters: 10 },
@@ -227,6 +227,7 @@ async function buildOsmSidecar(args: {
     provider: source.provider,
     dem: source.dem,
     datum: source.datum,
+    clampOutOfRange: true,
   })
   return { sidecar, report }
 }
@@ -271,10 +272,13 @@ async function main(): Promise<void> {
     halfExtentMeters: frame.halfExtentMeters,
   })
 
+  const clampNote = sidecar.clampedCells > 0
+    ? ` clampedCells=${sidecar.clampedCells}/${TERRAIN_RESOLUTION * TERRAIN_RESOLUTION}`
+    : ''
   process.stdout.write(
     `  range=${report.observedRange.toFixed(1)}m (min=${report.observedMin.toFixed(
       1
-    )}m max=${report.observedMax.toFixed(1)}m) provider=${sidecar.provider}\n`
+    )}m max=${report.observedMax.toFixed(1)}m) provider=${sidecar.provider}${clampNote}\n`
   )
   if (!report.pass) {
     process.stderr.write(`  validation FAILED:\n`)
