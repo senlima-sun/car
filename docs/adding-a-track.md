@@ -1,6 +1,6 @@
 # Adding a Track
 
-This guide covers how to ingest a new circuit from OpenStreetMap and validate the resulting source geometry.
+This guide covers how to ingest a new circuit from OpenStreetMap and validate the resulting source geometry. For real-world terrain elevation, see [adding-elevation.md](./adding-elevation.md).
 
 ---
 
