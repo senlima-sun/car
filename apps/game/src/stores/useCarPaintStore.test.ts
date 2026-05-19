@@ -3,6 +3,7 @@ import {
   CAR_PARTS,
   DEFAULT_PART_MATERIAL_SETTINGS,
   PAINT_PRESETS,
+  getPartIdForMesh,
   useCarPaintStore,
 } from './useCarPaintStore'
 
@@ -72,5 +73,16 @@ describe('useCarPaintStore material settings', () => {
     for (const part of CAR_PARTS) {
       expect(state.partMaterialSettings[part.id]).toEqual(DEFAULT_PART_MATERIAL_SETTINGS)
     }
+  })
+
+  test('maps normalized car model meshes to paintable parts', () => {
+    expect(getPartIdForMesh('Car_Livery_EngineCover_L')).toBe('body')
+    expect(getPartIdForMesh('Car_Livery_EngineCover_L_1')).toBe('body')
+    expect(getPartIdForMesh('Car_Livery_1001')).toBe('secondary')
+    expect(getPartIdForMesh('Car_Livery_1001_1')).toBe('secondary')
+    expect(getPartIdForMesh('Floor_Carbon_Shell')).toBe('secondary')
+    expect(getPartIdForMesh('FrontWing_MainAssembly')).toBe('frontWing')
+    expect(getPartIdForMesh('Car_Livery_BW-L')).toBe('rearWing')
+    expect(getPartIdForMesh('WheelHub_FL')).toBe('wheelCovers')
   })
 })

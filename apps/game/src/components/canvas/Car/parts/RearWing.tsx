@@ -8,7 +8,7 @@ const BW_LAST_MAX_ANGLE = THREE.MathUtils.degToRad(30)
 const BW_MIDDLE_MAX_ANGLE = THREE.MathUtils.degToRad(12)
 
 const _flapQ = new THREE.Quaternion()
-const _yAxis = new THREE.Vector3(0, 1, 0)
+const _flapAxis = new THREE.Vector3(1, 0, 0)
 
 interface RearWingAnimatorProps {
   flapRefs: RearWingFlapRefs
@@ -36,12 +36,12 @@ export function RearWingAnimator({ flapRefs }: RearWingAnimatorProps) {
     const base = baseQuaternions.current
 
     if (flapRefs.middle && base.middle) {
-      _flapQ.setFromAxisAngle(_yAxis, BW_MIDDLE_MAX_ANGLE * clampedRearWingAngle)
+      _flapQ.setFromAxisAngle(_flapAxis, BW_MIDDLE_MAX_ANGLE * clampedRearWingAngle)
       flapRefs.middle.quaternion.copy(base.middle).multiply(_flapQ)
     }
 
     if (flapRefs.last && base.last) {
-      _flapQ.setFromAxisAngle(_yAxis, BW_LAST_MAX_ANGLE * clampedRearWingAngle)
+      _flapQ.setFromAxisAngle(_flapAxis, BW_LAST_MAX_ANGLE * clampedRearWingAngle)
       flapRefs.last.quaternion.copy(base.last).multiply(_flapQ)
     }
   })

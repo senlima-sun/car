@@ -2,16 +2,73 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export const CAR_PARTS = [
-  { id: 'body', label: 'Body', meshNames: ['Car_Livery_1'] },
-  { id: 'secondary', label: 'Floor', meshNames: ['Car_Livery_1.001'] },
-  { id: 'nose', label: 'Nose', meshNames: ['Car_Livery_NOSE', 'Car_Livery_PRE_NOSE'] },
-  { id: 'halo', label: 'Halo', meshNames: ['Car_Livery_HALO'] },
+  {
+    id: 'body',
+    label: 'Body',
+    meshNames: [
+      'Car_Livery_1',
+      'Body_Airbox_Horn',
+      'Body_Generic_Shell',
+      'Car_Livery_CockpitSurround',
+      'Car_Livery_EngineCover_L',
+      'Car_Livery_EngineCover_R',
+      'Car_Livery_EngineCover_Top',
+      'Car_Livery_FrontSidepod_L',
+      'Car_Livery_FrontSidepod_R',
+      'Car_Livery_Sidepod_L',
+      'Car_Livery_Sidepod_R',
+    ],
+  },
+  {
+    id: 'secondary',
+    label: 'Floor',
+    meshNames: [
+      'Car_Livery_1.001',
+      'Diffuser_Carbon_Plane',
+      'Floor_Base_Panel',
+      'Floor_Base_Panel_Secondary',
+      'Floor_Carbon_CenterDetail',
+      'Floor_Carbon_Lower',
+      'Floor_Carbon_Plank',
+      'Floor_Carbon_Shell',
+      'Floor_Carbon_Upper',
+    ],
+  },
+  {
+    id: 'nose',
+    label: 'Nose',
+    meshNames: [
+      'Car_Livery_NOSE',
+      'Car_Livery_PRE_NOSE',
+      'Nose_Black_Detail',
+      'Nose_Livery_Detail',
+      'Nose_Livery_Detail_Secondary',
+    ],
+  },
+  {
+    id: 'halo',
+    label: 'Halo',
+    meshNames: ['Car_Livery_HALO', 'Car_Livery_HALO_Base', 'Halo_Front'],
+  },
   {
     id: 'frontWing',
     label: 'Front Wing',
-    meshNames: ['Car_Livery_FW', 'Car_Livery_FW-M', 'Car_Livery_FW-T'],
+    meshNames: [
+      'Car_Livery_FW',
+      'Car_Livery_FW-M',
+      'Car_Livery_FW-T',
+      'FrontWing_Adjuster',
+      'FrontWing_Endplate_L',
+      'FrontWing_Endplate_R',
+      'FrontWing_Flap_Lower',
+      'FrontWing_MainAssembly',
+    ],
   },
-  { id: 'rearWing', label: 'Rear Wing', meshNames: ['Car_Livery_BW-M', 'Car_Livery_BW-L'] },
+  {
+    id: 'rearWing',
+    label: 'Rear Wing',
+    meshNames: ['Car_Livery_BW-M', 'Car_Livery_BW-L', 'Exhaust_Tailpipe', 'RearWing_Chrome_Pin'],
+  },
   { id: 'mirrors', label: 'Mirrors', meshNames: ['Car_Livery_LREARVIEW', 'Car_Livery_RREARVIEW'] },
   {
     id: 'brackets',
@@ -21,12 +78,29 @@ export const CAR_PARTS = [
       'Car_Livery_Car_Livery_BR-Bracket',
       'Car_Livery_FL-Bracket',
       'Car_Livery_FR-Bracket',
+      'FrontSuspension_Carbon_CrossMember',
+      'Suspension_Front_LowerArm_L',
+      'Suspension_Front_UpperArm_L',
+      'Suspension_Front_UpperArm_R',
+      'Suspension_Front_Wishbone_L',
+      'Suspension_Rear_UpperArm_R',
+      'Suspension_Rear_Wishbone_L',
+      'Suspension_Rear_Wishbone_R',
     ],
   },
   {
     id: 'wheelCovers',
     label: 'Wheels',
-    meshNames: ['WheelCover_FL', 'WheelCover_FR', 'WheelCover_RL', 'WheelCover_RR'],
+    meshNames: [
+      'WheelCover_FL',
+      'WheelCover_FR',
+      'WheelCover_RL',
+      'WheelCover_RR',
+      'WheelHub_FL',
+      'WheelHub_FR',
+      'WheelHub_RL',
+      'WheelHub_RR',
+    ],
   },
 ] as const
 
@@ -37,9 +111,20 @@ export interface PartMaterialSettings {
   metalness: number
 }
 
+const PART_BY_MESH_NAME = new Map<string, CarPartId>(
+  CAR_PARTS.flatMap(part => part.meshNames.map(meshName => [meshName, part.id] as const)),
+)
+
+function getRuntimeMeshNameCandidates(meshName: string): string[] {
+  const withoutPrimitiveSuffix = meshName.replace(/_\d+$/, '')
+  const withRestoredDot = meshName.replace(/(\d)(\d{3})(?:_\d+)?$/, '$1.$2')
+  return [meshName, withoutPrimitiveSuffix, withRestoredDot]
+}
+
 export function getPartIdForMesh(meshName: string): CarPartId | null {
-  for (const part of CAR_PARTS) {
-    if ((part.meshNames as readonly string[]).includes(meshName)) return part.id
+  for (const candidate of getRuntimeMeshNameCandidates(meshName)) {
+    const partId = PART_BY_MESH_NAME.get(candidate)
+    if (partId) return partId
   }
   return null
 }

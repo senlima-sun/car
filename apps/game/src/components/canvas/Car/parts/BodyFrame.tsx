@@ -5,13 +5,12 @@ import { useFrame } from '@react-three/fiber'
 import { SuspensionLinkageGroup } from './SuspensionLinkage'
 import type { SuspensionOutput } from '../hooks/useRaycastSuspension'
 import { useCarPaintMaterial } from '../hooks/useCarPaintMaterial'
-import { WHEELBASE } from '@/constants/dimensions'
 import { useTireStore } from '@/stores/useTireStore'
 import { TIRE_COMPOUND } from '@/constants/colors'
 import { useCarPaintStore, getPartIdForMesh } from '@/stores/useCarPaintStore'
 import { isPreviewStatus, useGameStore } from '@/stores/useGameStore'
 
-const MODEL_PATH = '/models/f1_2026.glb'
+const MODEL_PATH = '/models/f1_2026_audi_normalized.glb'
 const LIVERY_BASE_COLOR_PATH = '/textures/Livery_baseColor.png'
 
 const WHEEL_NAMES = [
@@ -26,6 +25,7 @@ const WHEEL_COVER_NAMES = [
   'WheelCover_RL',
   'WheelCover_RR',
 ] as const
+const WHEEL_HUB_NAMES = ['WheelHub_FL', 'WheelHub_FR', 'WheelHub_RL', 'WheelHub_RR'] as const
 const WHEEL_TIRE_NAMES = ['Wheel_FL', 'Wheel_FR', 'Wheel_RL', 'Wheel_RR'] as const
 
 export interface GltfWheelRefs {
@@ -73,7 +73,11 @@ export function BodyFrame({
 
   const bodyScene = useMemo(() => {
     const cloned = scene.clone(true)
-    const wheelMeshSet = new Set<string>([...WHEEL_COVER_NAMES, ...WHEEL_TIRE_NAMES])
+    const wheelMeshSet = new Set<string>([
+      ...WHEEL_COVER_NAMES,
+      ...WHEEL_HUB_NAMES,
+      ...WHEEL_TIRE_NAMES,
+    ])
 
     liveryTexture.flipY = false
     liveryTexture.colorSpace = THREE.SRGBColorSpace
@@ -85,18 +89,22 @@ export function BodyFrame({
         child.castShadow = true
         child.receiveShadow = true
         const mat = child.material
+        const partId = getPartIdForMesh(child.name)
         if (wheelMeshSet.has(child.name) && mat instanceof THREE.MeshStandardMaterial) {
           child.material = mat.clone()
           applyCarPaint(child.material, child.name)
-        } else if (mat instanceof THREE.MeshStandardMaterial && mat.name.startsWith('Livery')) {
+          replaced++
+        } else if (partId && mat instanceof THREE.MeshStandardMaterial) {
           child.material = mat.clone()
-          child.material.map = liveryTexture
+          if (mat.name.startsWith('Livery')) {
+            child.material.map = liveryTexture
+          }
           applyCarPaint(child.material, child.name)
           replaced++
         }
       }
     })
-    console.log(`[BodyFrame] Applied car paint shader to ${replaced} livery meshes`)
+    console.log(`[BodyFrame] Applied car paint shader to ${replaced} meshes`)
     return cloned
   }, [scene, liveryTexture, applyCarPaint])
 
@@ -191,13 +199,13 @@ export function BodyFrame({
 
   useEffect(() => {
     if (!bodyRef.current) return
+    const isShowroomPath = typeof window !== 'undefined' && window.location.pathname === '/showroom'
     const isolating =
-      isPreviewStatus(status) && isolateSelected && selectedPart !== 'all'
+      (isPreviewStatus(status) || isShowroomPath) && isolateSelected && selectedPart !== 'all'
     bodyRef.current.traverse(child => {
       if (!(child instanceof THREE.Mesh)) return
       const partId = getPartIdForMesh(child.name)
-      if (!partId) return
-      child.visible = !isolating || partId === selectedPart
+      child.visible = !isolating || partId === null || partId === selectedPart
     })
     return () => {
       if (!bodyRef.current) return
@@ -215,7 +223,7 @@ export function BodyFrame({
 
   return (
     <group>
-      <group ref={bodyRef} position={[0, -0.37, WHEELBASE / 2]} rotation={[0, Math.PI / 2, 0]}>
+      <group ref={bodyRef} position={[0, -0.37, 0]}>
         <primitive object={bodyScene} />
       </group>
       <group visible={false}>

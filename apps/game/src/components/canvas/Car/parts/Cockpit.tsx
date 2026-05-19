@@ -23,7 +23,7 @@ function readWheelAngle(): number {
 export function Cockpit({ showDisplay }: CockpitProps) {
   return (
     <group>
-      <SteeringWheel getSteerAngle={readWheelAngle} showDisplay={showDisplay} />
+      {showDisplay && <SteeringWheel getSteerAngle={readWheelAngle} showDisplay={showDisplay} />}
       {showDisplay && (
         <>
           <pointLight

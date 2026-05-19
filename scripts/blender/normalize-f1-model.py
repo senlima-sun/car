@@ -50,6 +50,13 @@ REQUIRED_OUTPUT_NAMES = (
     "Car_Livery_HALO",
 )
 
+ANIMATED_FLAP_NAMES = (
+    "Car_Livery_FW-M",
+    "Car_Livery_FW-T",
+    "Car_Livery_BW-M",
+    "Car_Livery_BW-L",
+)
+
 WHEEL_CENTERS = {
     "FL": (0.815894, -1.520892, 0.35899),
     "FR": (-0.815894, -1.520892, 0.35899),
@@ -217,6 +224,42 @@ def parent_keep_world(obj, parent):
     obj.matrix_world = matrix
 
 
+def parent_mesh_at_parent_origin(obj, parent):
+    if obj.type != "MESH" or obj.data is None:
+        parent_keep_world(obj, parent)
+        return
+    world_vertices = [obj.matrix_world @ vertex.co for vertex in obj.data.vertices]
+    parent_world_origin = parent.location.copy()
+    obj.parent = parent
+    obj.location = (0, 0, 0)
+    obj.rotation_euler = (0, 0, 0)
+    obj.scale = (1, 1, 1)
+    for vertex, world_vertex in zip(obj.data.vertices, world_vertices):
+        vertex.co = world_vertex - parent_world_origin
+    obj.data.update()
+
+
+def world_bounds_center(obj):
+    corners = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+    center = Vector((0, 0, 0))
+    for corner in corners:
+        center += corner
+    return center / len(corners)
+
+
+def move_mesh_origin_to_world(obj, origin):
+    if obj.type != "MESH" or obj.data is None:
+        return
+    world_vertices = [obj.matrix_world @ vertex.co for vertex in obj.data.vertices]
+    matrix = obj.matrix_world.copy()
+    matrix.translation = origin
+    inverse = matrix.inverted()
+    for vertex, world_vertex in zip(obj.data.vertices, world_vertices):
+        vertex.co = inverse @ world_vertex
+    obj.matrix_world = matrix
+    obj.data.update()
+
+
 def parse_args():
     argv = args_after_separator()
     if len(argv) < 3:
@@ -300,7 +343,12 @@ def main():
         if obj.type == "MESH" and obj.data:
             obj.data.name = final_name
         parent = wheel_groups[group_key] if group_key.startswith("wheel_") else groups[group_key]
-        parent_keep_world(obj, parent)
+        if group_key.startswith("wheel_"):
+            parent_mesh_at_parent_origin(obj, parent)
+        else:
+            if final_name in ANIMATED_FLAP_NAMES:
+                move_mesh_origin_to_world(obj, world_bounds_center(obj))
+            parent_keep_world(obj, parent)
         records.append({"old": old_name, "new": final_name, "group": group_key, "status": "renamed"})
 
     missing_records = [record for record in records if record["status"] == "missing"]
@@ -348,7 +396,7 @@ def main():
             export_format="GLB",
             export_yup=True,
             export_apply=False,
-            export_draco_mesh_compression_enable=False,
+            export_draco_mesh_compression_enable=True,
         )
 
     print(f"saved normalized blend to {output_blend}")

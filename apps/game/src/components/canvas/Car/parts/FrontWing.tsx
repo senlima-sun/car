@@ -8,7 +8,7 @@ const FW_MIDDLE_MAX_ANGLE = THREE.MathUtils.degToRad(20)
 const FW_TOP_MAX_ANGLE = THREE.MathUtils.degToRad(15)
 
 const _flapQ = new THREE.Quaternion()
-const _yAxis = new THREE.Vector3(0, 1, 0)
+const _flapAxis = new THREE.Vector3(1, 0, 0)
 
 interface FrontWingAnimatorProps {
   flapRefs: FrontWingFlapRefs
@@ -34,12 +34,12 @@ export function FrontWingAnimator({ flapRefs }: FrontWingAnimatorProps) {
     const base = baseQuaternions.current
 
     if (flapRefs.middle && base.middle) {
-      _flapQ.setFromAxisAngle(_yAxis, FW_MIDDLE_MAX_ANGLE * frontWingAngle)
+      _flapQ.setFromAxisAngle(_flapAxis, FW_MIDDLE_MAX_ANGLE * frontWingAngle)
       flapRefs.middle.quaternion.copy(base.middle).multiply(_flapQ)
     }
 
     if (flapRefs.top && base.top) {
-      _flapQ.setFromAxisAngle(_yAxis, FW_TOP_MAX_ANGLE * frontWingAngle)
+      _flapQ.setFromAxisAngle(_flapAxis, FW_TOP_MAX_ANGLE * frontWingAngle)
       flapRefs.top.quaternion.copy(base.top).multiply(_flapQ)
     }
   })
