@@ -6,6 +6,7 @@ import {
 } from '@/stores/useCarPaintStore'
 import { Chip } from '../primitives/Chip'
 import { Section } from '../primitives/Section'
+import { SwatchButton } from '../primitives/ShowroomPanel'
 import { Slider } from '../primitives/Slider'
 
 export function CarPaintSection() {
@@ -33,13 +34,15 @@ export function CarPaintSection() {
         {PAINT_PRESETS.map(preset => {
           const swatch =
             selectedPart === 'all'
-              ? preset.colors.body
+              ? (preset.colors.body ?? '#0a1128')
               : (preset.colors[selectedPart] ?? preset.colors.body ?? '#0a1128')
           const isActive = preset.name === activePresetName && selectedPart === 'all'
           return (
-            <button
+            <SwatchButton
               key={preset.name}
-              title={preset.name}
+              label={preset.name}
+              color={swatch}
+              active={isActive}
               onClick={() => {
                 if (selectedPart === 'all') {
                   store().applyPreset(preset)
@@ -60,12 +63,6 @@ export function CarPaintSection() {
                   )
                 }
               }}
-              className={`aspect-square w-full cursor-pointer rounded-md border transition hover:scale-105 ${
-                isActive
-                  ? 'border-red-300/70 ring-2 ring-red-300/40 ring-offset-1 ring-offset-black/60'
-                  : 'border-white/10 hover:border-white/30'
-              }`}
-              style={{ backgroundColor: swatch }}
             />
           )
         })}

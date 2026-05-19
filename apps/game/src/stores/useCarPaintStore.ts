@@ -5,14 +5,22 @@ export const CAR_PARTS = [
   {
     id: 'body',
     label: 'Body',
+    meshNames: ['Car_Livery_1', 'Body_Generic_Shell'],
+  },
+  {
+    id: 'engineCover',
+    label: 'Engine Cover',
     meshNames: [
-      'Car_Livery_1',
       'Body_Airbox_Horn',
-      'Body_Generic_Shell',
-      'Car_Livery_CockpitSurround',
       'Car_Livery_EngineCover_L',
       'Car_Livery_EngineCover_R',
       'Car_Livery_EngineCover_Top',
+    ],
+  },
+  {
+    id: 'sidepods',
+    label: 'Sidepods',
+    meshNames: [
       'Car_Livery_FrontSidepod_L',
       'Car_Livery_FrontSidepod_R',
       'Car_Livery_Sidepod_L',
@@ -46,6 +54,28 @@ export const CAR_PARTS = [
     ],
   },
   {
+    id: 'cockpit',
+    label: 'Cockpit',
+    meshNames: [
+      'Car_Livery_CockpitSurround',
+      'Cockpit_Black_Insert',
+      'Cockpit_Detail_Rail',
+      'Cockpit_Fairing_Small',
+      'Cockpit_Generic_Insert',
+      'Cockpit_Livery_Pin',
+    ],
+  },
+  {
+    id: 'tcam',
+    label: 'T-Cam',
+    meshNames: ['TCam'],
+  },
+  {
+    id: 'cameras',
+    label: 'Cameras',
+    meshNames: ['Camera_360', 'Nose_Camera', 'Shoulder_Camera'],
+  },
+  {
     id: 'halo',
     label: 'Halo',
     meshNames: ['Car_Livery_HALO', 'Car_Livery_HALO_Base', 'Halo_Front'],
@@ -67,12 +97,17 @@ export const CAR_PARTS = [
   {
     id: 'rearWing',
     label: 'Rear Wing',
-    meshNames: ['Car_Livery_BW-M', 'Car_Livery_BW-L', 'Exhaust_Tailpipe', 'RearWing_Chrome_Pin'],
+    meshNames: ['Car_Livery_BW-M', 'Car_Livery_BW-L', 'RearWing_Chrome_Pin'],
+  },
+  {
+    id: 'exhaust',
+    label: 'Exhaust',
+    meshNames: ['Exhaust_Tailpipe'],
   },
   { id: 'mirrors', label: 'Mirrors', meshNames: ['Car_Livery_LREARVIEW', 'Car_Livery_RREARVIEW'] },
   {
     id: 'brackets',
-    label: 'Brackets',
+    label: 'Wishbones',
     meshNames: [
       'Car_Livery_BL-Bracket',
       'Car_Livery_Car_Livery_BR-Bracket',
@@ -87,6 +122,16 @@ export const CAR_PARTS = [
       'Suspension_Rear_Wishbone_L',
       'Suspension_Rear_Wishbone_R',
     ],
+  },
+  {
+    id: 'brakeHardware',
+    label: 'Brake Hardware',
+    meshNames: ['BrakeDisc_Front_Pair', 'WheelHubNuts_All'],
+  },
+  {
+    id: 'wheelPanels',
+    label: 'Wheel Panels',
+    meshNames: ['WheelPanel_FL', 'WheelPanel_FR', 'WheelSidewalls_All'],
   },
   {
     id: 'wheelCovers',
@@ -148,6 +193,23 @@ export const DEFAULT_PART_MATERIAL_SETTINGS: PartMaterialSettings = {
 }
 const ALL_PART_IDS = CAR_PARTS.map(p => p.id)
 
+function definePresetColors(
+  colors: Partial<Record<CarPartId, string>>,
+): Partial<Record<CarPartId, string>> {
+  return {
+    engineCover: colors.engineCover ?? colors.body ?? DEFAULT_COLOR,
+    sidepods: colors.sidepods ?? colors.body ?? DEFAULT_COLOR,
+    cockpit: colors.cockpit ?? colors.body ?? DEFAULT_COLOR,
+    tcam: colors.tcam ?? colors.halo ?? TITANIUM,
+    cameras: colors.cameras ?? CARBON,
+    exhaust: colors.exhaust ?? CARBON,
+    brackets: colors.brackets ?? CARBON,
+    brakeHardware: colors.brakeHardware ?? colors.brackets ?? CARBON,
+    wheelPanels: colors.wheelPanels ?? colors.wheelCovers ?? CARBON,
+    ...colors,
+  }
+}
+
 function clampMaterialValue(value: number) {
   return Math.min(1, Math.max(0, value))
 }
@@ -172,7 +234,7 @@ function normalizePartMaterialSettings(
 export const PAINT_PRESETS: CarPaintPreset[] = [
   {
     name: 'Midnight Blue',
-    colors: {
+    colors: definePresetColors({
       body: '#0a1128',
       secondary: '#0a1128',
       nose: '#0a1128',
@@ -182,7 +244,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: CARBON,
       brackets: CARBON,
       wheelCovers: CARBON,
-    },
+    }),
     flakeIntensity: 0.4,
     flakeScale: 800,
     clearcoatStrength: 0.8,
@@ -190,7 +252,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
   },
   {
     name: 'Racing Red',
-    colors: {
+    colors: definePresetColors({
       body: '#8b1a1a',
       secondary: CARBON,
       nose: '#8b1a1a',
@@ -200,7 +262,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: CARBON,
       brackets: CARBON,
       wheelCovers: CARBON,
-    },
+    }),
     flakeIntensity: 0.5,
     flakeScale: 900,
     clearcoatStrength: 0.85,
@@ -208,7 +270,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
   },
   {
     name: 'British Green',
-    colors: {
+    colors: definePresetColors({
       body: '#0d3b1e',
       secondary: '#0d3b1e',
       nose: '#0d3b1e',
@@ -218,7 +280,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: CARBON,
       brackets: CARBON,
       wheelCovers: CARBON,
-    },
+    }),
     flakeIntensity: 0.35,
     flakeScale: 750,
     clearcoatStrength: 0.75,
@@ -226,7 +288,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
   },
   {
     name: 'Papaya Orange',
-    colors: {
+    colors: definePresetColors({
       body: '#c45e1a',
       secondary: CARBON,
       nose: '#c45e1a',
@@ -236,7 +298,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: CARBON,
       brackets: CARBON,
       wheelCovers: CARBON,
-    },
+    }),
     flakeIntensity: 0.45,
     flakeScale: 850,
     clearcoatStrength: 0.8,
@@ -244,7 +306,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
   },
   {
     name: 'Silver Arrow',
-    colors: {
+    colors: definePresetColors({
       body: '#9a9a9a',
       secondary: '#5a5a5a',
       nose: '#9a9a9a',
@@ -254,7 +316,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: '#5a5a5a',
       brackets: '#5a5a5a',
       wheelCovers: '#5a5a5a',
-    },
+    }),
     materialSettings: normalizePartMaterialSettings({
       body: { roughness: 0.22, metalness: 0.72 },
       secondary: { roughness: 0.3, metalness: 0.58 },
@@ -273,7 +335,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
   },
   {
     name: 'Gulf Livery',
-    colors: {
+    colors: definePresetColors({
       body: '#6bb7d8',
       secondary: CARBON,
       nose: '#6bb7d8',
@@ -283,7 +345,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: '#c45e1a',
       brackets: CARBON,
       wheelCovers: CARBON,
-    },
+    }),
     flakeIntensity: 0.3,
     flakeScale: 700,
     clearcoatStrength: 0.7,
@@ -291,7 +353,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
   },
   {
     name: 'Matte Black',
-    colors: {
+    colors: definePresetColors({
       body: CARBON,
       secondary: CARBON,
       nose: CARBON,
@@ -301,7 +363,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: CARBON,
       brackets: CARBON,
       wheelCovers: CARBON,
-    },
+    }),
     materialSettings: normalizePartMaterialSettings({
       body: { roughness: 0.78, metalness: 0.08 },
       secondary: { roughness: 0.82, metalness: 0.06 },
@@ -320,7 +382,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
   },
   {
     name: 'Pearl White',
-    colors: {
+    colors: definePresetColors({
       body: '#e8e4df',
       secondary: '#e8e4df',
       nose: '#e8e4df',
@@ -330,7 +392,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: '#e8e4df',
       brackets: '#c0c0c0',
       wheelCovers: '#c0c0c0',
-    },
+    }),
     materialSettings: normalizePartMaterialSettings({
       body: { roughness: 0.26, metalness: 0.18 },
       secondary: { roughness: 0.26, metalness: 0.18 },
@@ -349,7 +411,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
   },
   {
     name: 'Candy Purple',
-    colors: {
+    colors: definePresetColors({
       body: '#4a1a6b',
       secondary: CARBON,
       nose: '#4a1a6b',
@@ -359,7 +421,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: CARBON,
       brackets: CARBON,
       wheelCovers: CARBON,
-    },
+    }),
     flakeIntensity: 0.5,
     flakeScale: 850,
     clearcoatStrength: 0.8,
@@ -367,7 +429,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
   },
   {
     name: 'Champagne Gold',
-    colors: {
+    colors: definePresetColors({
       body: '#b8965a',
       secondary: '#2a2018',
       nose: '#b8965a',
@@ -377,7 +439,7 @@ export const PAINT_PRESETS: CarPaintPreset[] = [
       mirrors: '#2a2018',
       brackets: '#2a2018',
       wheelCovers: '#2a2018',
-    },
+    }),
     materialSettings: normalizePartMaterialSettings({
       body: { roughness: 0.2, metalness: 0.82 },
       secondary: { roughness: 0.38, metalness: 0.35 },
@@ -428,13 +490,21 @@ interface CarPaintState {
 
 const defaultPartColors: Record<CarPartId, string> = {
   body: DEFAULT_COLOR,
+  engineCover: DEFAULT_COLOR,
+  sidepods: DEFAULT_COLOR,
   secondary: DEFAULT_COLOR,
   nose: DEFAULT_COLOR,
+  cockpit: DEFAULT_COLOR,
+  tcam: TITANIUM,
+  cameras: CARBON,
   halo: TITANIUM,
   frontWing: DEFAULT_COLOR,
   rearWing: DEFAULT_COLOR,
+  exhaust: CARBON,
   mirrors: CARBON,
   brackets: CARBON,
+  brakeHardware: CARBON,
+  wheelPanels: CARBON,
   wheelCovers: CARBON,
 }
 

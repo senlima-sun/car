@@ -57,6 +57,7 @@ describe('useCarPaintStore material settings', () => {
     const state = useCarPaintStore.getState()
     expect(state.partMaterialSettings.body).toEqual({ roughness: 0.22, metalness: 0.72 })
     expect(state.partMaterialSettings.halo).toEqual({ roughness: 0.18, metalness: 0.82 })
+    expect(state.partMaterialSettings.engineCover).toEqual(DEFAULT_PART_MATERIAL_SETTINGS)
   })
 
   test('resets material settings when a preset omits them', () => {
@@ -76,13 +77,36 @@ describe('useCarPaintStore material settings', () => {
   })
 
   test('maps normalized car model meshes to paintable parts', () => {
-    expect(getPartIdForMesh('Car_Livery_EngineCover_L')).toBe('body')
-    expect(getPartIdForMesh('Car_Livery_EngineCover_L_1')).toBe('body')
+    expect(getPartIdForMesh('Body_Generic_Shell')).toBe('body')
+    expect(getPartIdForMesh('Car_Livery_EngineCover_L')).toBe('engineCover')
+    expect(getPartIdForMesh('Car_Livery_EngineCover_L_1')).toBe('engineCover')
+    expect(getPartIdForMesh('Car_Livery_Sidepod_L')).toBe('sidepods')
     expect(getPartIdForMesh('Car_Livery_1001')).toBe('secondary')
     expect(getPartIdForMesh('Car_Livery_1001_1')).toBe('secondary')
     expect(getPartIdForMesh('Floor_Carbon_Shell')).toBe('secondary')
+    expect(getPartIdForMesh('Car_Livery_CockpitSurround')).toBe('cockpit')
+    expect(getPartIdForMesh('TCam')).toBe('tcam')
+    expect(getPartIdForMesh('Nose_Camera')).toBe('cameras')
     expect(getPartIdForMesh('FrontWing_MainAssembly')).toBe('frontWing')
     expect(getPartIdForMesh('Car_Livery_BW-L')).toBe('rearWing')
+    expect(getPartIdForMesh('Exhaust_Tailpipe')).toBe('exhaust')
+    expect(getPartIdForMesh('Suspension_Front_Wishbone_L')).toBe('brackets')
+    expect(getPartIdForMesh('BrakeDisc_Front_Pair')).toBe('brakeHardware')
+    expect(getPartIdForMesh('WheelPanel_FL')).toBe('wheelPanels')
     expect(getPartIdForMesh('WheelHub_FL')).toBe('wheelCovers')
+  })
+
+  test('derives fine-grained preset colors from broad legacy part colors', () => {
+    const racingRed = PAINT_PRESETS.find(preset => preset.name === 'Racing Red')
+    expect(racingRed).toBeDefined()
+
+    useCarPaintStore.getState().applyPreset(racingRed!)
+
+    const state = useCarPaintStore.getState()
+    expect(state.partColors.engineCover).toBe('#8b1a1a')
+    expect(state.partColors.sidepods).toBe('#8b1a1a')
+    expect(state.partColors.cockpit).toBe('#8b1a1a')
+    expect(state.partColors.tcam).toBe('#8a8a8a')
+    expect(state.partColors.brakeHardware).toBe('#1a1a1a')
   })
 })
