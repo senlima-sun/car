@@ -63,18 +63,34 @@ export function gridToHeightmap(args: {
   resolution: number
   worldSize: number
   verticalOriginMeters: number
+  headingDeg?: number
+  scaleMetersPerUnit?: number
 }): TerrainHeightmap {
-  const { source, centerLat, centerLon, resolution, worldSize, verticalOriginMeters } = args
+  const {
+    source,
+    centerLat,
+    centerLon,
+    resolution,
+    worldSize,
+    verticalOriginMeters,
+    headingDeg = 0,
+    scaleMetersPerUnit = 1,
+  } = args
   const halfSize = worldSize / 2
   const cellSize = worldSize / (resolution - 1)
   const lonScale = metersPerDegLon(centerLat)
+  const headingRad = (headingDeg * Math.PI) / 180
+  const cosH = Math.cos(headingRad)
+  const sinH = Math.sin(headingRad)
   const data = new Float32Array(resolution * resolution)
   for (let gz = 0; gz < resolution; gz++) {
-    const worldZ = -halfSize + gz * cellSize
-    const lat = centerLat - worldZ / METERS_PER_DEG_LAT
+    const localZ = (-halfSize + gz * cellSize) * scaleMetersPerUnit
     for (let gx = 0; gx < resolution; gx++) {
-      const worldX = -halfSize + gx * cellSize
-      const lon = centerLon + worldX / lonScale
+      const localX = (-halfSize + gx * cellSize) * scaleMetersPerUnit
+      const realX = localX * cosH - localZ * sinH
+      const realZ = localX * sinH + localZ * cosH
+      const lat = centerLat - realZ / METERS_PER_DEG_LAT
+      const lon = centerLon + realX / lonScale
       const sampled = bilinearSampleSource(source, lat, lon)
       data[gz * resolution + gx] = sampled === null ? 0 : sampled - verticalOriginMeters
     }

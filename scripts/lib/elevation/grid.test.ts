@@ -133,6 +133,42 @@ describe('gridToHeightmap', () => {
     }
   })
 
+  test('georef heading=90 swaps east-west and north-south sampling', () => {
+    const centerLat = 50
+    const centerLon = 0
+    const source = makeSyntheticSource({
+      centerLat,
+      centerLon,
+      halfExtentMeters: 2100,
+      cols: 64,
+      rows: 64,
+      heightAt: (lat, _lon) => (lat - centerLat) * METERS_PER_DEG_LAT * 0.01,
+    })
+    const heightmapStraight = gridToHeightmap({
+      source,
+      centerLat,
+      centerLon,
+      resolution: 64,
+      worldSize: 4000,
+      verticalOriginMeters: 0,
+    })
+    const heightmapRotated90 = gridToHeightmap({
+      source,
+      centerLat,
+      centerLon,
+      resolution: 64,
+      worldSize: 4000,
+      verticalOriginMeters: 0,
+      headingDeg: 90,
+    })
+    const resolution = 64
+    const midRow = Math.floor(resolution / 2)
+    const midCol = Math.floor(resolution / 2)
+    const straightNS = heightmapStraight.data[0 * resolution + midCol]!
+    const rotatedEW = heightmapRotated90.data[midRow * resolution + 0]!
+    expect(Math.abs(straightNS - rotatedEW)).toBeLessThan(1)
+  })
+
   test('smooth source produces no stepping (adjacent cell delta bounded)', () => {
     const centerLat = 50.4372
     const centerLon = 5.9714

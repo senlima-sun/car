@@ -4,5 +4,6 @@
   "provenance": "manual",
   "expectedTrackLengthMeters": 5827,
   "expectedTurns": 18,
-  "expectedStartHeadingDegrees": -37.6
+  "expectedStartHeadingDegrees": -37.6,
+  "terrainGeoref": { "mode": "flat" }
 }

@@ -203,6 +203,8 @@ async function buildOsmSidecar(args: {
   centerLat: number
   centerLon: number
   halfExtentMeters: number
+  headingDeg?: number
+  scaleMetersPerUnit?: number
 }): Promise<BuiltOsmSidecar> {
   await assertFrameAlignment(args.config, args.centerLat, args.centerLon, args.halfExtentMeters)
   const source = await fetchSourceGridForGeoref({
@@ -218,6 +220,8 @@ async function buildOsmSidecar(args: {
     resolution: TERRAIN_RESOLUTION,
     worldSize: TERRAIN_WORLD_SIZE,
     verticalOriginMeters,
+    headingDeg: args.headingDeg,
+    scaleMetersPerUnit: args.scaleMetersPerUnit,
   })
   const expectation = EXPECTATIONS[args.config.name] ?? { rangeMeters: DEFAULT_EXPECTED_RANGE_M }
   const report = validateHeightmap({
@@ -271,19 +275,21 @@ async function main(): Promise<void> {
     return
   }
 
-  if (frame.mode === 'georef') {
-    process.stderr.write(
-      `${config.name}: georef mode not yet implemented (deferred to Phase 4)\n`
-    )
-    process.exit(1)
-  }
-
   process.stdout.write(`${config.displayName}: fetching elevation...\n`)
+  const headingDeg = frame.mode === 'georef' ? frame.headingDeg : undefined
+  const scaleMetersPerUnit = frame.mode === 'georef' ? frame.scaleMetersPerUnit : undefined
+  if (frame.mode === 'georef') {
+    process.stdout.write(
+      `  georef: heading=${frame.headingDeg}° scale=${frame.scaleMetersPerUnit}m/unit\n`
+    )
+  }
   const { sidecar, clampedCells, report } = await buildOsmSidecar({
     config,
     centerLat: frame.centerLat,
     centerLon: frame.centerLon,
     halfExtentMeters: frame.halfExtentMeters,
+    headingDeg,
+    scaleMetersPerUnit,
   })
 
   const totalCells = TERRAIN_RESOLUTION * TERRAIN_RESOLUTION

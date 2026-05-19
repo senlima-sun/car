@@ -9,5 +9,6 @@
   "startFinishFraction": 0.0,
   "expectedTrackLengthMeters": 5412,
   "expectedTurns": 19,
-  "expectedStartHeadingDegrees": 58.2
+  "expectedStartHeadingDegrees": 58.2,
+  "terrainGeoref": { "mode": "flat" }
 }

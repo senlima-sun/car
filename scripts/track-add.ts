@@ -50,6 +50,19 @@ async function main(): Promise<void> {
     }
   }
 
+  const canFetchElevation =
+    (config.provenance === 'osm' && config.terrainBBox) ||
+    (config.provenance === 'manual' && config.terrainGeoref)
+  if (canFetchElevation) {
+    process.stdout.write(`Fetching elevation sidecar for ${circuitName}...\n`)
+    const ok = await runStep(['track:elevation:fetch', circuitName])
+    if (!ok) {
+      process.stderr.write(
+        `track:add: elevation fetch failed for ${circuitName} (non-fatal; track is still usable)\n`,
+      )
+    }
+  }
+
   process.stdout.write(`Track ${circuitName}: source OK\n`)
   process.exit(0)
 }
