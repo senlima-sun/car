@@ -36,18 +36,17 @@ export function bboxToWorldGrid(args: {
   }
 }
 
-function bilinearSampleSource(grid: ElevationGrid, lat: number, lon: number): number {
+function bilinearSampleSource(grid: ElevationGrid, lat: number, lon: number): number | null {
   const { south, north, west, east, cols, rows, data } = grid
   const tx = ((lon - west) / (east - west)) * (cols - 1)
   const tyFromNorth = ((north - lat) / (north - south)) * (rows - 1)
-  const cx = Math.max(0, Math.min(cols - 1, tx))
-  const cy = Math.max(0, Math.min(rows - 1, tyFromNorth))
-  const x0 = Math.floor(cx)
-  const y0 = Math.floor(cy)
+  if (tx < 0 || tx > cols - 1 || tyFromNorth < 0 || tyFromNorth > rows - 1) return null
+  const x0 = Math.floor(tx)
+  const y0 = Math.floor(tyFromNorth)
   const x1 = Math.min(cols - 1, x0 + 1)
   const y1 = Math.min(rows - 1, y0 + 1)
-  const fx = cx - x0
-  const fy = cy - y0
+  const fx = tx - x0
+  const fy = tyFromNorth - y0
   const h00 = data[y0 * cols + x0]!
   const h10 = data[y0 * cols + x1]!
   const h01 = data[y1 * cols + x0]!
@@ -76,7 +75,8 @@ export function gridToHeightmap(args: {
     for (let gx = 0; gx < resolution; gx++) {
       const worldX = -halfSize + gx * cellSize
       const lon = centerLon + worldX / lonScale
-      data[gz * resolution + gx] = bilinearSampleSource(source, lat, lon) - verticalOriginMeters
+      const sampled = bilinearSampleSource(source, lat, lon)
+      data[gz * resolution + gx] = sampled === null ? 0 : sampled - verticalOriginMeters
     }
   }
   return { resolution, worldSize, data }

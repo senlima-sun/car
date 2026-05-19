@@ -20,6 +20,8 @@ import { gpsToWorld } from './lib/osm-ingest/chaining'
 
 const TERRAIN_RESOLUTION = 256
 const TERRAIN_WORLD_SIZE = 4000
+const TERRAIN_HALF_SIZE = TERRAIN_WORLD_SIZE / 2
+const SOURCE_BBOX_OVERFETCH_METERS = 100
 const SOURCE_GRID_COLS = 128
 const SOURCE_GRID_ROWS = 128
 const DEFAULT_EXPECTED_RANGE_M = 30
@@ -30,23 +32,23 @@ interface CircuitElevationExpectation {
 }
 
 const EXPECTATIONS: Record<string, CircuitElevationExpectation> = {
-  spa: { rangeMeters: 102 },
+  spa: { rangeMeters: 199 },
   baku: { rangeMeters: 95 },
-  catalunya: { rangeMeters: 67 },
+  catalunya: { rangeMeters: 94 },
   cota: { rangeMeters: 53 },
-  hungaroring: { rangeMeters: 130 },
-  imola: { rangeMeters: 110 },
-  interlagos: { rangeMeters: 65 },
-  'las-vegas': { rangeMeters: 70 },
-  losail: { rangeMeters: 13 },
+  hungaroring: { rangeMeters: 154 },
+  imola: { rangeMeters: 152 },
+  interlagos: { rangeMeters: 75 },
+  'las-vegas': { rangeMeters: 73 },
+  losail: { rangeMeters: 17 },
   melbourne: { rangeMeters: 45 },
   'mexico-city': { rangeMeters: 21 },
-  monaco: { rangeMeters: 357 },
+  monaco: { rangeMeters: 603 },
   montreal: { rangeMeters: 34 },
-  'red-bull-ring': { rangeMeters: 260 },
+  'red-bull-ring': { rangeMeters: 440 },
   singapore: { rangeMeters: 100 },
-  'yas-marina': { rangeMeters: 15 },
-  zandvoort: { rangeMeters: 15 },
+  'yas-marina': { rangeMeters: 16 },
+  zandvoort: { rangeMeters: 21 },
   silverstone: { rangeMeters: 12 },
   suzuka: { rangeMeters: 40 },
   shanghai: { rangeMeters: 10 },
@@ -149,10 +151,14 @@ async function fetchSourceGridForGeoref(args: {
   centerLon: number
   halfExtentMeters: number
 }): Promise<ElevationGrid> {
+  const sourceHalfExtent = Math.max(
+    args.halfExtentMeters,
+    TERRAIN_HALF_SIZE + SOURCE_BBOX_OVERFETCH_METERS,
+  )
   const bbox = bboxToWorldGrid({
     centerLat: args.centerLat,
     centerLon: args.centerLon,
-    halfExtentMeters: args.halfExtentMeters,
+    halfExtentMeters: sourceHalfExtent,
   })
   const { primary, fallback, allowNetwork } = pickProviderFromEnv(process.env)
   return fetchWithCacheAndFallback({

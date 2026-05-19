@@ -64,7 +64,7 @@ describe('gridToHeightmap', () => {
     const source = makeSyntheticSource({
       centerLat,
       centerLon,
-      halfExtentMeters: halfExtentMeters + 100,
+      halfExtentMeters: 2100,
       cols: 64,
       rows: 64,
       heightAt: (_lat, lon) => (lon - centerLon) * metersPerDegLon * 0.01,
@@ -88,7 +88,7 @@ describe('gridToHeightmap', () => {
     const source = makeSyntheticSource({
       centerLat,
       centerLon,
-      halfExtentMeters: halfExtentMeters + 100,
+      halfExtentMeters: 2100,
       cols: 64,
       rows: 64,
       heightAt: (lat, _lon) => (lat - centerLat) * METERS_PER_DEG_LAT * 0.01,
@@ -115,7 +115,7 @@ describe('gridToHeightmap', () => {
     const source = makeSyntheticSource({
       centerLat,
       centerLon,
-      halfExtentMeters: halfExtentMeters + 100,
+      halfExtentMeters: 2100,
       cols: 32,
       rows: 32,
       heightAt: () => 2240,
@@ -141,7 +141,7 @@ describe('gridToHeightmap', () => {
     const source = makeSyntheticSource({
       centerLat,
       centerLon,
-      halfExtentMeters: halfExtentMeters + 100,
+      halfExtentMeters: 2100,
       cols: 64,
       rows: 64,
       heightAt: (_lat, lon) => (lon - centerLon) * metersPerDegLon * 0.02,
