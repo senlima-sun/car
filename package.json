@@ -21,9 +21,11 @@
     "check:turbo-cache": "bun run scripts/check-turbo-cache.ts",
     "track:ingest": "bun run scripts/convert-osm-track.ts",
     "track:validate-source": "bun run scripts/validate-track-source.ts",
-    "track:add": "bun run scripts/track-add.ts"
+    "track:add": "bun run scripts/track-add.ts",
+    "track:elevation:fetch": "bun run scripts/fetch-track-elevation.ts"
   },
   "devDependencies": {
+    "geotiff": "^3.0.5",
     "prettier": "^3.7.4",
     "turbo": "^2.9.12"
   }

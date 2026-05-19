@@ -13,6 +13,7 @@ export interface CircuitConfigFile {
   centerLon?: number
   startWayName?: string
   wayNameDenyList?: string[]
+  wayNameAllowPattern?: string
   maxChainGap?: number
   elevationZones?: {
     startFraction: number
@@ -27,4 +28,18 @@ export interface CircuitConfigFile {
   expectedTrackLengthMeters: number
   expectedTurns: number
   expectedStartHeadingDegrees: number
+
+  terrainBBox?: {
+    halfExtentMeters: number
+  }
+  terrainGeoref?:
+    | {
+        mode: 'georef'
+        centerLat: number
+        centerLon: number
+        headingDeg: number
+        scaleMetersPerUnit: number
+        halfExtentMeters: number
+      }
+    | { mode: 'flat' }
 }
