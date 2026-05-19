@@ -21,6 +21,11 @@ const INT16_MIN = -32768
 const INT16_MAX = 32767
 const SCALE = 100
 
+export interface EncodeSidecarResult {
+  sidecar: TerrainSidecar
+  clampedCells: number
+}
+
 export function encodeSidecar(args: {
   data: Float32Array
   resolution: number
@@ -33,7 +38,7 @@ export function encodeSidecar(args: {
   dem: DemName
   datum: DatumName
   clampOutOfRange?: boolean
-}): TerrainSidecar & { clampedCells: number } {
+}): EncodeSidecarResult {
   if (args.data.length !== args.resolution * args.resolution) {
     throw new Error(
       `sidecar data length ${args.data.length} != resolution²=${args.resolution * args.resolution}`
@@ -43,20 +48,20 @@ export function encodeSidecar(args: {
   let clampedCells = 0
   for (let i = 0; i < args.data.length; i++) {
     const cm = Math.round(args.data[i]! * SCALE)
-    if (cm < INT16_MIN || cm > INT16_MAX) {
-      if (!args.clampOutOfRange) {
-        throw new Error(
-          `cell ${i} height ${args.data[i]}m exceeds Int16 cm range; raise verticalOriginMeters, split sidecar, or pass clampOutOfRange:true`
-        )
-      }
-      ints[i] = cm < INT16_MIN ? INT16_MIN : INT16_MAX
-      clampedCells++
-    } else {
+    if (cm >= INT16_MIN && cm <= INT16_MAX) {
       ints[i] = cm
+      continue
     }
+    if (!args.clampOutOfRange) {
+      throw new Error(
+        `cell ${i} height ${args.data[i]}m exceeds Int16 cm range; raise verticalOriginMeters, split sidecar, or pass clampOutOfRange:true`
+      )
+    }
+    ints[i] = cm < INT16_MIN ? INT16_MIN : INT16_MAX
+    clampedCells++
   }
   const bytes = Buffer.from(ints.buffer, ints.byteOffset, ints.byteLength)
-  return {
+  const sidecar: TerrainSidecar = {
     version: 1,
     resolution: args.resolution,
     worldSize: args.worldSize,
@@ -69,8 +74,8 @@ export function encodeSidecar(args: {
     dem: args.dem,
     datum: args.datum,
     data: bytes.toString('base64'),
-    clampedCells,
   }
+  return { sidecar, clampedCells }
 }
 
 export function decodeSidecar(sidecar: TerrainSidecar): Float32Array {

@@ -1,3 +1,7 @@
+const DEFAULT_RANGE_TOLERANCE_MIN_MULT = 0.25
+const DEFAULT_RANGE_TOLERANCE_MAX_MULT = 10
+const DEFAULT_MAX_NEIGHBOUR_DELTA_M = 150
+
 export interface Landmark {
   worldX: number
   worldZ: number
@@ -49,8 +53,8 @@ export function validateHeightmap(args: {
   if (allZero) reasons.push('heightmap is all-zero')
 
   const observedRange = observedMax - observedMin
-  const minMult = options.rangeToleranceMultiplier?.min ?? 0.25
-  const maxMult = options.rangeToleranceMultiplier?.max ?? 10
+  const minMult = options.rangeToleranceMultiplier?.min ?? DEFAULT_RANGE_TOLERANCE_MIN_MULT
+  const maxMult = options.rangeToleranceMultiplier?.max ?? DEFAULT_RANGE_TOLERANCE_MAX_MULT
   if (!allZero) {
     if (observedRange < options.expectedRangeMeters * minMult) {
       reasons.push(
@@ -64,7 +68,7 @@ export function validateHeightmap(args: {
     }
   }
 
-  const maxNeighbourDelta = options.maxNeighbourDeltaM ?? 150
+  const maxNeighbourDelta = options.maxNeighbourDeltaM ?? DEFAULT_MAX_NEIGHBOUR_DELTA_M
   for (let gz = 0; gz < resolution; gz++) {
     for (let gx = 0; gx < resolution - 1; gx++) {
       const a = heightmap[gz * resolution + gx]!

@@ -7,7 +7,7 @@ describe('sidecar encode/decode', () => {
     const resolution = 256
     const data = new Float32Array(resolution * resolution)
     for (let i = 0; i < data.length; i++) data[i] = Math.sin(i * 0.01) * 50
-    const sidecar = encodeSidecar({
+    const { sidecar } = encodeSidecar({
       data,
       resolution,
       worldSize: 4000,
@@ -48,7 +48,7 @@ describe('sidecar encode/decode', () => {
 
   test('preserves provider metadata', () => {
     const data = new Float32Array(4)
-    const sidecar = encodeSidecar({
+    const { sidecar } = encodeSidecar({
       data,
       resolution: 2,
       worldSize: 4000,

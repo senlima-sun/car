@@ -22,6 +22,7 @@ const TERRAIN_RESOLUTION = 256
 const TERRAIN_WORLD_SIZE = 4000
 const SOURCE_GRID_COLS = 128
 const SOURCE_GRID_ROWS = 128
+const DEFAULT_EXPECTED_RANGE_M = 30
 
 interface CircuitElevationExpectation {
   rangeMeters: number
@@ -170,7 +171,7 @@ async function fetchSourceGridForGeoref(args: {
 
 function buildFlatSidecar(centerLat: number, centerLon: number): TerrainSidecar {
   const data = new Float32Array(TERRAIN_RESOLUTION * TERRAIN_RESOLUTION)
-  return encodeSidecar({
+  const { sidecar } = encodeSidecar({
     data,
     resolution: TERRAIN_RESOLUTION,
     worldSize: TERRAIN_WORLD_SIZE,
@@ -182,6 +183,13 @@ function buildFlatSidecar(centerLat: number, centerLon: number): TerrainSidecar 
     dem: 'flat',
     datum: 'flat',
   })
+  return sidecar
+}
+
+interface BuiltOsmSidecar {
+  sidecar: TerrainSidecar
+  clampedCells: number
+  report: ReturnType<typeof validateHeightmap>
 }
 
 async function buildOsmSidecar(args: {
@@ -189,7 +197,7 @@ async function buildOsmSidecar(args: {
   centerLat: number
   centerLon: number
   halfExtentMeters: number
-}): Promise<{ sidecar: TerrainSidecar; report: ReturnType<typeof validateHeightmap> }> {
+}): Promise<BuiltOsmSidecar> {
   await assertFrameAlignment(args.config, args.centerLat, args.centerLon, args.halfExtentMeters)
   const source = await fetchSourceGridForGeoref({
     centerLat: args.centerLat,
@@ -205,7 +213,7 @@ async function buildOsmSidecar(args: {
     worldSize: TERRAIN_WORLD_SIZE,
     verticalOriginMeters,
   })
-  const expectation = EXPECTATIONS[args.config.name] ?? { rangeMeters: 30 }
+  const expectation = EXPECTATIONS[args.config.name] ?? { rangeMeters: DEFAULT_EXPECTED_RANGE_M }
   const report = validateHeightmap({
     heightmap: heightmap.data,
     resolution: TERRAIN_RESOLUTION,
@@ -216,7 +224,7 @@ async function buildOsmSidecar(args: {
       landmarks: expectation.landmarks,
     },
   })
-  const sidecar = encodeSidecar({
+  const { sidecar, clampedCells } = encodeSidecar({
     data: heightmap.data,
     resolution: TERRAIN_RESOLUTION,
     worldSize: TERRAIN_WORLD_SIZE,
@@ -229,7 +237,7 @@ async function buildOsmSidecar(args: {
     datum: source.datum,
     clampOutOfRange: true,
   })
-  return { sidecar, report }
+  return { sidecar, clampedCells, report }
 }
 
 async function writeSidecar(name: string, sidecar: TerrainSidecar): Promise<string> {
@@ -265,21 +273,17 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write(`${config.displayName}: fetching elevation...\n`)
-  const { sidecar, report } = await buildOsmSidecar({
+  const { sidecar, clampedCells, report } = await buildOsmSidecar({
     config,
     centerLat: frame.centerLat,
     centerLon: frame.centerLon,
     halfExtentMeters: frame.halfExtentMeters,
   })
 
-  const clampNote = sidecar.clampedCells > 0
-    ? ` clampedCells=${sidecar.clampedCells}/${TERRAIN_RESOLUTION * TERRAIN_RESOLUTION}`
-    : ''
-  process.stdout.write(
-    `  range=${report.observedRange.toFixed(1)}m (min=${report.observedMin.toFixed(
-      1
-    )}m max=${report.observedMax.toFixed(1)}m) provider=${sidecar.provider}${clampNote}\n`
-  )
+  const totalCells = TERRAIN_RESOLUTION * TERRAIN_RESOLUTION
+  const clampNote = clampedCells > 0 ? ` clampedCells=${clampedCells}/${totalCells}` : ''
+  const rangeSummary = `range=${report.observedRange.toFixed(1)}m (min=${report.observedMin.toFixed(1)}m max=${report.observedMax.toFixed(1)}m)`
+  process.stdout.write(`  ${rangeSummary} provider=${sidecar.provider}${clampNote}\n`)
   if (!report.pass) {
     process.stderr.write(`  validation FAILED:\n`)
     for (const r of report.reasons) process.stderr.write(`    - ${r}\n`)

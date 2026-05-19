@@ -22,5 +22,5 @@ export { validateHeightmap } from './validate'
 export type { ElevationCacheKey } from './cache'
 export { computeCacheKey, readCache, writeCache } from './cache'
 
-export type { TerrainSidecar, SidecarEncoding } from './sidecar'
+export type { EncodeSidecarResult, TerrainSidecar, SidecarEncoding } from './sidecar'
 export { encodeSidecar, decodeSidecar } from './sidecar'
