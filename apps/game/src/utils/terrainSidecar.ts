@@ -37,43 +37,28 @@ export function __setSidecarLoadersForTest(
   sidecarLoaders = loaders
 }
 
-function presetIdToCircuitName(presetId: string): string {
-  return presetId.replace(/^f1_/, '')
-}
-
-function loaderKeyForCircuit(name: string): string {
-  return `../constants/tracks/sources/_terrain/${name}.heightmap.json`
-}
-
-function decodeInt16Cm(base64: string): Float32Array {
+function decodeInt16Cm(base64: string): number[] {
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
   const ints = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2)
-  const out = new Float32Array(ints.length)
+  const out = new Array<number>(ints.length)
   for (let i = 0; i < ints.length; i++) out[i] = ints[i]! / 100
   return out
 }
 
-export function presetHasTerrainSidecar(presetId: string): boolean {
-  const name = presetIdToCircuitName(presetId)
-  return Boolean(sidecarLoaders[loaderKeyForCircuit(name)])
-}
-
 export async function getTerrainHeightmapForPreset(
-  presetId: string
+  presetId: string,
 ): Promise<TerrainSidecarResult | null> {
-  const name = presetIdToCircuitName(presetId)
-  const loader = sidecarLoaders[loaderKeyForCircuit(name)]
+  const circuitName = presetId.replace(/^f1_/, '')
+  const loader = sidecarLoaders[`../constants/tracks/sources/_terrain/${circuitName}.heightmap.json`]
   if (!loader) return null
-  const mod = await loader()
-  const sidecar = mod.default
+  const { default: sidecar } = await loader()
   if (sidecar.encoding !== 'int16-cm') {
     throw new Error(`unsupported terrain sidecar encoding: ${sidecar.encoding}`)
   }
-  const decoded = decodeInt16Cm(sidecar.data)
   return {
-    heightmap: Array.from(decoded),
+    heightmap: decodeInt16Cm(sidecar.data),
     verticalOriginMeters: sidecar.verticalOriginMeters,
     provider: sidecar.provider,
     dem: sidecar.dem,

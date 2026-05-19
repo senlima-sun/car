@@ -49,12 +49,8 @@ describe('useTrackStore — preset terrain bootstrap', () => {
     await useTrackStore.getState().loadPresetTrack(NO_SIDECAR_PRESET_ID)
 
     const active = useTrackStore.getState().getActiveTrack()
-    if (!active) {
-      expect(active).toBeTruthy()
-      return
-    }
-    expect(active.heightmapSource).toBe('none')
-    expect(active.heightmap).toBeUndefined()
+    expect(active?.heightmapSource).toBe('none')
+    expect(active?.heightmap).toBeUndefined()
     expect(useTerrainStore.getState().heightmap.every(h => h === 0)).toBe(true)
   })
 

@@ -203,17 +203,15 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       useEditorStore.getState().setCameraTarget(center)
     }
 
-    let migratedSource: HeightmapSource | undefined = track.heightmapSource
-    if (track.heightmap && track.heightmap.length > 0) {
-      useTerrainStore.getState().loadHeightmap(track.heightmap)
-      if (!migratedSource) {
-        const hasNonZero = track.heightmap.some(h => h !== 0)
-        migratedSource = hasNonZero ? 'user' : 'none'
-      }
+    const heightmap = track.heightmap && track.heightmap.length > 0 ? track.heightmap : null
+    if (heightmap) {
+      useTerrainStore.getState().loadHeightmap(heightmap)
     } else {
       useTerrainStore.getState().resetHeightmap()
-      if (!migratedSource) migratedSource = 'none'
     }
+
+    const migratedSource: HeightmapSource =
+      track.heightmapSource ?? (heightmap?.some(h => h !== 0) ? 'user' : 'none')
 
     set(state => ({
       trackLibrary: {
@@ -248,7 +246,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       const existingHasOwnTerrain =
         existing.heightmapSource === 'user' ||
         existing.heightmapSource === 'sidecar' ||
-        ((existing.heightmap?.length ?? 0) > 0 && existing.heightmap!.some(h => h !== 0))
+        (existing.heightmap?.some(h => h !== 0) ?? false)
       if (existingHasOwnTerrain) {
         get().loadTrack(existing.id)
         return
@@ -313,31 +311,37 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     const objects = useCustomizationStore.getState().placedObjects
     const terrainState = useTerrainStore.getState()
     const activeTrack = state.trackLibrary.tracks.find(t => t.id === activeId)
+    const previousSource = activeTrack?.heightmapSource
     const hasTerrainData =
       terrainState.heightmap.length > 0 &&
-      activeTrack?.heightmapSource !== undefined &&
-      activeTrack.heightmapSource !== 'none'
+      previousSource !== undefined &&
+      previousSource !== 'none'
     const heightmap = hasTerrainData ? terrainState.getHeightsArray() : undefined
+
+    let nextSource: HeightmapSource
+    if (!hasTerrainData) {
+      nextSource = 'none'
+    } else if (state.isDirty && previousSource === 'sidecar') {
+      nextSource = 'user'
+    } else {
+      nextSource = previousSource ?? 'user'
+    }
 
     set(state => ({
       trackLibrary: {
         ...state.trackLibrary,
-        tracks: state.trackLibrary.tracks.map(t => {
-          if (t.id !== activeId) return t
-          const nextSource: HeightmapSource = hasTerrainData
-            ? state.isDirty && t.heightmapSource === 'sidecar'
-              ? 'user'
-              : (t.heightmapSource ?? 'user')
-            : 'none'
-          return {
-            ...t,
-            objects: [...objects],
-            objectCount: objects.length,
-            updatedAt: Date.now(),
-            heightmap,
-            heightmapSource: nextSource,
-          }
-        }),
+        tracks: state.trackLibrary.tracks.map(t =>
+          t.id === activeId
+            ? {
+                ...t,
+                objects: [...objects],
+                objectCount: objects.length,
+                updatedAt: Date.now(),
+                heightmap,
+                heightmapSource: nextSource,
+              }
+            : t,
+        ),
       },
       isDirty: false,
     }))
