@@ -1,9 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
+import { METERS_PER_DEG_LAT } from '../osm-ingest/chaining'
 import type { ElevationGrid } from './provider'
 import { bboxToWorldGrid, gridToHeightmap, sampleHeightmapLikeStore } from './grid'
-
-const METERS_PER_DEG_LAT = 110540
 
 function makeSyntheticSource(args: {
   centerLat: number

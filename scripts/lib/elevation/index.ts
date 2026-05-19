@@ -9,7 +9,12 @@ export type {
 export { ProviderError } from './provider'
 
 export type { TerrainHeightmap, BboxToWorldGridResult } from './grid'
-export { bboxToWorldGrid, gridToHeightmap } from './grid'
+export {
+  bboxToWorldGrid,
+  geometricCenterHeight,
+  gridToHeightmap,
+  sampleHeightmapLikeStore,
+} from './grid'
 
 export type { HeightmapValidationReport, HeightmapValidationOptions, Landmark } from './validate'
 export { validateHeightmap } from './validate'

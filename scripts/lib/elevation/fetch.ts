@@ -1,6 +1,8 @@
 import { computeCacheKey, readCache, writeCache } from './cache'
 import type { ElevationGrid, ElevationProvider, ProviderName } from './provider'
 import { ProviderError } from './provider'
+import { OpenElevationProvider } from './providers/open-elevation'
+import { OpenTopographyProvider } from './providers/opentopography'
 
 const MAX_RETRIES = 3
 const BACKOFF_BASE_MS = 500
@@ -99,22 +101,16 @@ export function pickProviderFromEnv(env: NodeJS.ProcessEnv): {
   fallback?: ElevationProvider
   allowNetwork: boolean
 } {
-  // Lazy imports to keep type-only entry surface clean.
   const allowNetwork = env.ELEVATION_ALLOW_NETWORK === '1'
   const apiKey = env.OPENTOPO_API_KEY ?? ''
-
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const OpenTopo = require('./providers/opentopography').OpenTopographyProvider as {
-    new (k: string): ElevationProvider
-  }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const OpenElev = require('./providers/open-elevation').OpenElevationProvider as {
-    new (): ElevationProvider
-  }
   if (apiKey) {
-    return { primary: new OpenTopo(apiKey), fallback: new OpenElev(), allowNetwork }
+    return {
+      primary: new OpenTopographyProvider(apiKey),
+      fallback: new OpenElevationProvider(),
+      allowNetwork,
+    }
   }
-  return { primary: new OpenElev(), allowNetwork }
+  return { primary: new OpenElevationProvider(), allowNetwork }
 }
 
 export type { ProviderName }

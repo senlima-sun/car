@@ -7,13 +7,12 @@ import type { CircuitConfigFile } from './circuits/_schema'
 import {
   bboxToWorldGrid,
   encodeSidecar,
+  geometricCenterHeight,
   gridToHeightmap,
+  sampleHeightmapLikeStore,
   validateHeightmap,
-  type DatumName,
-  type DemName,
   type ElevationGrid,
   type Landmark,
-  type ProviderName,
   type TerrainSidecar,
 } from './lib/elevation'
 import { fetchWithCacheAndFallback, pickProviderFromEnv } from './lib/elevation/fetch'
@@ -65,14 +64,19 @@ async function resolveConfig(name: string): Promise<CircuitConfigFile> {
   return (await file.json()) as CircuitConfigFile
 }
 
-function resolveFrame(config: CircuitConfigFile): {
-  mode: 'osm' | 'georef' | 'flat'
-  centerLat?: number
-  centerLon?: number
-  halfExtentMeters?: number
-  headingDeg?: number
-  scaleMetersPerUnit?: number
-} {
+type Frame =
+  | { mode: 'flat' }
+  | { mode: 'osm'; centerLat: number; centerLon: number; halfExtentMeters: number }
+  | {
+      mode: 'georef'
+      centerLat: number
+      centerLon: number
+      halfExtentMeters: number
+      headingDeg: number
+      scaleMetersPerUnit: number
+    }
+
+function resolveFrame(config: CircuitConfigFile): Frame {
   if (config.provenance === 'osm') {
     if (!config.centerLat || !config.centerLon) {
       throw new Error(`${config.name}: OSM config missing centerLat/centerLon`)
@@ -139,31 +143,6 @@ async function assertFrameAlignment(
   }
 }
 
-function sampleLikeStore(
-  data: Float32Array,
-  resolution: number,
-  worldSize: number
-): (worldX: number, worldZ: number) => number {
-  return (worldX, worldZ) => {
-    const halfSize = worldSize / 2
-    const cellSize = worldSize / (resolution - 1)
-    const fx = (worldX + halfSize) / cellSize
-    const fz = (worldZ + halfSize) / cellSize
-    if (fx < 0 || fx >= resolution - 1 || fz < 0 || fz >= resolution - 1) return 0
-    const gx = Math.floor(fx)
-    const gz = Math.floor(fz)
-    const tx = fx - gx
-    const tz = fz - gz
-    const h00 = data[gz * resolution + gx]!
-    const h10 = data[gz * resolution + gx + 1]!
-    const h01 = data[(gz + 1) * resolution + gx]!
-    const h11 = data[(gz + 1) * resolution + gx + 1]!
-    const h0 = h00 + (h10 - h00) * tx
-    const h1 = h01 + (h11 - h01) * tx
-    return h0 + (h1 - h0) * tz
-  }
-}
-
 async function fetchSourceGridForGeoref(args: {
   centerLat: number
   centerLon: number
@@ -187,12 +166,6 @@ async function fetchSourceGridForGeoref(args: {
     allowNetwork,
     log: (line) => process.stdout.write(`  ${line}\n`),
   })
-}
-
-function geometricCenterHeight(grid: ElevationGrid): number {
-  const cx = Math.floor(grid.cols / 2)
-  const cy = Math.floor(grid.rows / 2)
-  return grid.data[cy * grid.cols + cx]!
 }
 
 function buildFlatSidecar(centerLat: number, centerLon: number): TerrainSidecar {
@@ -237,7 +210,7 @@ async function buildOsmSidecar(args: {
     heightmap: heightmap.data,
     resolution: TERRAIN_RESOLUTION,
     worldSize: TERRAIN_WORLD_SIZE,
-    sampleAt: sampleLikeStore(heightmap.data, TERRAIN_RESOLUTION, TERRAIN_WORLD_SIZE),
+    sampleAt: (worldX, worldZ) => sampleHeightmapLikeStore(heightmap, worldX, worldZ),
     options: {
       expectedRangeMeters: expectation.rangeMeters,
       landmarks: expectation.landmarks,
@@ -251,9 +224,9 @@ async function buildOsmSidecar(args: {
     centerLat: args.centerLat,
     centerLon: args.centerLon,
     halfExtentMeters: args.halfExtentMeters,
-    provider: source.provider as ProviderName,
-    dem: source.dem as DemName,
-    datum: source.datum as DatumName,
+    provider: source.provider,
+    dem: source.dem,
+    datum: source.datum,
   })
   return { sidecar, report }
 }
@@ -283,12 +256,19 @@ async function main(): Promise<void> {
     return
   }
 
+  if (frame.mode === 'georef') {
+    process.stderr.write(
+      `${config.name}: georef mode not yet implemented (deferred to Phase 4)\n`
+    )
+    process.exit(1)
+  }
+
   process.stdout.write(`${config.displayName}: fetching elevation...\n`)
   const { sidecar, report } = await buildOsmSidecar({
     config,
-    centerLat: frame.centerLat!,
-    centerLon: frame.centerLon!,
-    halfExtentMeters: frame.halfExtentMeters!,
+    centerLat: frame.centerLat,
+    centerLon: frame.centerLon,
+    halfExtentMeters: frame.halfExtentMeters,
   })
 
   process.stdout.write(

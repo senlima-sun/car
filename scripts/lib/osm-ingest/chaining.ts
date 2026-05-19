@@ -1,16 +1,33 @@
 import type { OSMNode, OSMWay } from './overpass'
 
-const METERS_PER_DEG_LAT = 110540
+export const METERS_PER_DEG_LAT = 110540
+export const METERS_PER_DEG_LON_AT_EQUATOR = 111320
 
 export interface Point2D {
   x: number
   z: number
 }
 
+export function metersPerDegLon(centerLat: number): number {
+  return Math.cos((centerLat * Math.PI) / 180) * METERS_PER_DEG_LON_AT_EQUATOR
+}
+
 export function gpsToWorld(lat: number, lon: number, centerLat: number, centerLon: number): Point2D {
-  const x = (lon - centerLon) * Math.cos((centerLat * Math.PI) / 180) * 111320
+  const x = (lon - centerLon) * metersPerDegLon(centerLat)
   const z = -(lat - centerLat) * METERS_PER_DEG_LAT
   return { x, z }
+}
+
+export function worldToGps(
+  worldX: number,
+  worldZ: number,
+  centerLat: number,
+  centerLon: number
+): { lat: number; lon: number } {
+  return {
+    lat: centerLat - worldZ / METERS_PER_DEG_LAT,
+    lon: centerLon + worldX / metersPerDegLon(centerLat),
+  }
 }
 
 interface ChainStep {
@@ -128,47 +145,22 @@ export function orderWaysByRelationMembers(
 ): number[] | null {
   const wayById = new Map<number, OSMWay>()
   for (const w of ways) wayById.set(w.id, w)
-  const orderedWays: OSMWay[] = []
+  const memberWays: OSMWay[] = []
   for (const id of memberWayIds) {
     const w = wayById.get(id)
-    if (w) orderedWays.push(w)
+    if (w) memberWays.push(w)
   }
-  if (orderedWays.length < 2) return null
+  if (memberWays.length < 2) return null
 
-  let result: number[] | null = null
-  let bestUnmatched = Infinity
-
-  for (const startReverse of [false, true]) {
-    const trial: number[] = []
-    let lastEnd: number | null = null
-    let unmatched = 0
-    for (let i = 0; i < orderedWays.length; i++) {
-      const w = orderedWays[i]!
-      const nFirst = w.nodes[0]!
-      const nLast = w.nodes[w.nodes.length - 1]!
-      let reverse = i === 0 ? startReverse : false
-      if (i > 0 && lastEnd != null) {
-        if (nFirst === lastEnd) reverse = false
-        else if (nLast === lastEnd) reverse = true
-        else {
-          unmatched++
-          continue
-        }
-      }
-      const nodes = reverse ? [...w.nodes].reverse() : [...w.nodes]
-      if (trial.length === 0) trial.push(...nodes)
-      else trial.push(...(nodes[0] === lastEnd ? nodes.slice(1) : nodes))
-      lastEnd = reverse ? nFirst : nLast
-    }
-    if (unmatched < bestUnmatched) {
-      bestUnmatched = unmatched
-      result = trial
-    }
+  let bestSeq: ChainStep[] = []
+  for (let startIdx = 0; startIdx < memberWays.length; startIdx++) {
+    const seq = chainBySharedNodes(memberWays, startIdx)
+    if (seq.length > bestSeq.length) bestSeq = seq
+    if (seq.length === memberWays.length) break
   }
 
-  if (!result) return null
-  if (bestUnmatched > orderedWays.length * 0.2) return null
-  return result
+  if (bestSeq.length < memberWays.length * 0.8) return null
+  return sequenceToNodes(memberWays, bestSeq)
 }
 
 export function orderWaysIntoCircuit(
@@ -183,6 +175,22 @@ export function orderWaysIntoCircuit(
   if (startWayName) {
     const idx = ways.findIndex(w => (w.tags?.name || '') === startWayName)
     if (idx !== -1) startIdx = idx
+  } else {
+    let bestIdx = 0
+    let bestLen = ways[0]!.nodes.length
+    for (let i = 1; i < ways.length; i++) {
+      if (ways[i]!.nodes.length > bestLen) {
+        bestIdx = i
+        bestLen = ways[i]!.nodes.length
+      }
+    }
+    startIdx = bestIdx
+  }
+
+  const startWay = ways[startIdx]!
+  if (startWay.nodes.length >= 4 && startWay.nodes[0] === startWay.nodes[startWay.nodes.length - 1]) {
+    console.log(`  🔗 Start way ${startWay.id} is a closed loop — skipping chaining`)
+    return [...startWay.nodes]
   }
 
   const dfsSeq = chainBySharedNodes(ways, startIdx)

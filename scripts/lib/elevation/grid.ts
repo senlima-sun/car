@@ -1,7 +1,5 @@
-import { gpsToWorld } from '../osm-ingest/chaining'
+import { METERS_PER_DEG_LAT, metersPerDegLon } from '../osm-ingest/chaining'
 import type { ElevationGrid } from './provider'
-
-const METERS_PER_DEG_LAT = 110540
 
 export interface TerrainHeightmap {
   resolution: number
@@ -25,9 +23,8 @@ export function bboxToWorldGrid(args: {
   halfExtentMeters: number
 }): BboxToWorldGridResult {
   const { centerLat, centerLon, halfExtentMeters } = args
-  const metersPerDegLon = Math.cos((centerLat * Math.PI) / 180) * 111320
   const dLat = halfExtentMeters / METERS_PER_DEG_LAT
-  const dLon = halfExtentMeters / metersPerDegLon
+  const dLon = halfExtentMeters / metersPerDegLon(centerLat)
   return {
     centerLat,
     centerLon,
@@ -37,18 +34,6 @@ export function bboxToWorldGrid(args: {
     west: centerLon - dLon,
     east: centerLon + dLon,
   }
-}
-
-function worldToGps(
-  worldX: number,
-  worldZ: number,
-  centerLat: number,
-  centerLon: number
-): { lat: number; lon: number } {
-  const metersPerDegLon = Math.cos((centerLat * Math.PI) / 180) * 111320
-  const lat = centerLat - worldZ / METERS_PER_DEG_LAT
-  const lon = centerLon + worldX / metersPerDegLon
-  return { lat, lon }
 }
 
 function bilinearSampleSource(grid: ElevationGrid, lat: number, lon: number): number {
@@ -83,17 +68,24 @@ export function gridToHeightmap(args: {
   const { source, centerLat, centerLon, resolution, worldSize, verticalOriginMeters } = args
   const halfSize = worldSize / 2
   const cellSize = worldSize / (resolution - 1)
+  const lonScale = metersPerDegLon(centerLat)
   const data = new Float32Array(resolution * resolution)
   for (let gz = 0; gz < resolution; gz++) {
+    const worldZ = -halfSize + gz * cellSize
+    const lat = centerLat - worldZ / METERS_PER_DEG_LAT
     for (let gx = 0; gx < resolution; gx++) {
       const worldX = -halfSize + gx * cellSize
-      const worldZ = -halfSize + gz * cellSize
-      const { lat, lon } = worldToGps(worldX, worldZ, centerLat, centerLon)
-      const absH = bilinearSampleSource(source, lat, lon)
-      data[gz * resolution + gx] = absH - verticalOriginMeters
+      const lon = centerLon + worldX / lonScale
+      data[gz * resolution + gx] = bilinearSampleSource(source, lat, lon) - verticalOriginMeters
     }
   }
   return { resolution, worldSize, data }
+}
+
+export function geometricCenterHeight(grid: ElevationGrid): number {
+  const cx = Math.floor(grid.cols / 2)
+  const cy = Math.floor(grid.rows / 2)
+  return grid.data[cy * grid.cols + cx]!
 }
 
 export function sampleHeightmapLikeStore(
@@ -119,5 +111,3 @@ export function sampleHeightmapLikeStore(
   const h1 = h01 + (h11 - h01) * tx
   return h0 + (h1 - h0) * tz
 }
-
-export { gpsToWorld }
