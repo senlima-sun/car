@@ -175,16 +175,16 @@ async function fetchSourceGridForGeoref(args: {
   })
 }
 
-function buildFlatSidecar(centerLat: number, centerLon: number): TerrainSidecar {
+function buildFlatSidecar(): TerrainSidecar {
   const data = new Float32Array(TERRAIN_RESOLUTION * TERRAIN_RESOLUTION)
   const { sidecar } = encodeSidecar({
     data,
     resolution: TERRAIN_RESOLUTION,
     worldSize: TERRAIN_WORLD_SIZE,
     verticalOriginMeters: 0,
-    centerLat,
-    centerLon,
-    halfExtentMeters: TERRAIN_WORLD_SIZE / 2,
+    centerLat: 0,
+    centerLon: 0,
+    halfExtentMeters: TERRAIN_HALF_SIZE,
     provider: 'none',
     dem: 'flat',
     datum: 'flat',
@@ -269,15 +269,13 @@ async function main(): Promise<void> {
 
   if (frame.mode === 'flat') {
     process.stdout.write(`${config.displayName}: writing flat sidecar (terrainGeoref.mode=flat)\n`)
-    const sidecar = buildFlatSidecar(0, 0)
+    const sidecar = buildFlatSidecar()
     const out = await writeSidecar(config.name, sidecar)
     process.stdout.write(`  wrote ${out}\n`)
     return
   }
 
   process.stdout.write(`${config.displayName}: fetching elevation...\n`)
-  const headingDeg = frame.mode === 'georef' ? frame.headingDeg : undefined
-  const scaleMetersPerUnit = frame.mode === 'georef' ? frame.scaleMetersPerUnit : undefined
   if (frame.mode === 'georef') {
     process.stdout.write(
       `  georef: heading=${frame.headingDeg}° scale=${frame.scaleMetersPerUnit}m/unit\n`
@@ -288,8 +286,8 @@ async function main(): Promise<void> {
     centerLat: frame.centerLat,
     centerLon: frame.centerLon,
     halfExtentMeters: frame.halfExtentMeters,
-    headingDeg,
-    scaleMetersPerUnit,
+    headingDeg: frame.mode === 'georef' ? frame.headingDeg : undefined,
+    scaleMetersPerUnit: frame.mode === 'georef' ? frame.scaleMetersPerUnit : undefined,
   })
 
   const totalCells = TERRAIN_RESOLUTION * TERRAIN_RESOLUTION

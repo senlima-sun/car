@@ -50,10 +50,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const canFetchElevation =
-    (config.provenance === 'osm' && config.terrainBBox) ||
-    (config.provenance === 'manual' && config.terrainGeoref)
-  if (canFetchElevation) {
+  if (config.terrainBBox || config.terrainGeoref) {
     process.stdout.write(`Fetching elevation sidecar for ${circuitName}...\n`)
     const ok = await runStep(['track:elevation:fetch', circuitName])
     if (!ok) {
