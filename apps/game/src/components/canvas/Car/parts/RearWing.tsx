@@ -5,7 +5,6 @@ import { useActiveAeroStore } from '@/stores/useActiveAeroStore'
 import type { RearWingFlapRefs } from './BodyFrame'
 
 const BW_LAST_MAX_ANGLE = THREE.MathUtils.degToRad(30)
-const BW_MIDDLE_MAX_ANGLE = THREE.MathUtils.degToRad(12)
 
 const _flapQ = new THREE.Quaternion()
 const _flapAxis = new THREE.Vector3(1, 0, 0)
@@ -16,16 +15,13 @@ interface RearWingAnimatorProps {
 
 export function RearWingAnimator({ flapRefs }: RearWingAnimatorProps) {
   const baseQuaternions = useRef<{
-    middle: THREE.Quaternion | null
     last: THREE.Quaternion | null
   }>({
-    middle: null,
     last: null,
   })
 
   useEffect(() => {
     baseQuaternions.current = {
-      middle: flapRefs.middle ? flapRefs.middle.quaternion.clone() : null,
       last: flapRefs.last ? flapRefs.last.quaternion.clone() : null,
     }
   }, [flapRefs])
@@ -34,11 +30,6 @@ export function RearWingAnimator({ flapRefs }: RearWingAnimatorProps) {
     const { rearWingAngle } = useActiveAeroStore.getState()
     const clampedRearWingAngle = THREE.MathUtils.clamp(rearWingAngle, 0, 1)
     const base = baseQuaternions.current
-
-    if (flapRefs.middle && base.middle) {
-      _flapQ.setFromAxisAngle(_flapAxis, BW_MIDDLE_MAX_ANGLE * clampedRearWingAngle)
-      flapRefs.middle.quaternion.copy(base.middle).multiply(_flapQ)
-    }
 
     if (flapRefs.last && base.last) {
       _flapQ.setFromAxisAngle(_flapAxis, BW_LAST_MAX_ANGLE * clampedRearWingAngle)

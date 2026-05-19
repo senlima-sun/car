@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { CarPartId } from './useCarPaintStore'
 
 interface ShowroomState {
   floorColor: string
@@ -16,10 +17,12 @@ interface ShowroomState {
   hemiSkyColor: string
   hemiGroundColor: string
   hemiIntensity: number
-  setField: <K extends keyof Omit<ShowroomState, 'setField' | 'reset'>>(
+  hoveredPart: CarPartId | null
+  setField: <K extends keyof Omit<ShowroomState, 'setField' | 'setHoveredPart' | 'reset'>>(
     key: K,
     value: ShowroomState[K],
   ) => void
+  setHoveredPart: (part: CarPartId | null) => void
   reset: () => void
 }
 
@@ -39,10 +42,12 @@ const DEFAULTS = {
   hemiSkyColor: '#9cb8d8',
   hemiGroundColor: '#0a0a0a',
   hemiIntensity: 0.7,
+  hoveredPart: null as CarPartId | null,
 }
 
 export const useShowroomStore = create<ShowroomState>(set => ({
   ...DEFAULTS,
   setField: (key, value) => set(state => ({ ...state, [key]: value })),
+  setHoveredPart: hoveredPart => set({ hoveredPart }),
   reset: () => set(DEFAULTS),
 }))

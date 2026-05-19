@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import {
-  CAR_PARTS,
   DEFAULT_PART_MATERIAL_SETTINGS,
   PAINT_PRESETS,
   useCarPaintStore,
@@ -30,32 +29,7 @@ export function CarPaintSection() {
 
   return (
     <Section title='Paint'>
-      <div className='flex flex-wrap gap-1'>
-        <Chip
-          label='All'
-          active={selectedPart === 'all'}
-          onClick={() => store().setSelectedPart('all')}
-        />
-        {CAR_PARTS.map(part => (
-          <button
-            key={part.id}
-            onClick={() => store().setSelectedPart(part.id)}
-            className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[9px] uppercase tracking-[0.2em] transition ${
-              selectedPart === part.id
-                ? 'border-red-300/60 bg-red-400/15 text-red-100'
-                : 'border-white/10 bg-white/[0.03] text-white/60 hover:border-white/25 hover:text-white/90'
-            }`}
-          >
-            <span
-              className='inline-block h-2 w-2 rounded-full border border-white/20'
-              style={{ backgroundColor: partColors[part.id] }}
-            />
-            {part.label}
-          </button>
-        ))}
-      </div>
-
-      <div className='grid grid-cols-5 gap-1.5 pt-2'>
+      <div className='grid grid-cols-3 gap-1.5 sm:grid-cols-6'>
         {PAINT_PRESETS.map(preset => {
           const swatch =
             selectedPart === 'all'
@@ -121,7 +95,7 @@ export function CarPaintSection() {
       </div>
 
       {showAdvanced && (
-        <div className='pt-2'>
+        <div className='grid grid-cols-1 gap-x-3 pt-2 sm:grid-cols-2'>
           <Slider
             label='Roughness'
             value={activeMaterialSettings.roughness}
