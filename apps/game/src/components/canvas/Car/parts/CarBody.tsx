@@ -4,8 +4,14 @@ import { useGameStore } from '../../../../stores/useGameStore'
 import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 
 import { BodyFrame } from './BodyFrame'
-import type { GltfWheelRefs, FrontWingFlapRefs, RearWingFlapRefs } from './BodyFrame'
+import type {
+  GltfWheelRefs,
+  FrontWingFlapRefs,
+  RearWingFlapRefs,
+  SteeringWheelRefs,
+} from './BodyFrame'
 import { GltfWheelAnimator } from './GltfWheelAnimator'
+import { ModelSteeringWheelAnimator } from './ModelSteeringWheelAnimator'
 import { FrontWingAnimator } from './FrontWing'
 import { RearWingAnimator } from './RearWing'
 import { Cockpit } from './Cockpit'
@@ -38,6 +44,10 @@ export default function CarBody({ suspensionRef }: CarBodyProps) {
     last: null,
   })
 
+  const [steeringWheelRefs, setSteeringWheelRefs] = useState<SteeringWheelRefs>({
+    assembly: null,
+  })
+
   const handleWheelRefs = useCallback((refs: GltfWheelRefs) => {
     setWheelRefs(refs)
   }, [])
@@ -50,6 +60,10 @@ export default function CarBody({ suspensionRef }: CarBodyProps) {
     setRwRefs(refs)
   }, [])
 
+  const handleSteeringWheelRefs = useCallback((refs: SteeringWheelRefs) => {
+    setSteeringWheelRefs(refs)
+  }, [])
+
   return (
     <group scale={CAR_SCALE}>
       <BodyFrame
@@ -58,9 +72,11 @@ export default function CarBody({ suspensionRef }: CarBodyProps) {
         onWheelRefs={handleWheelRefs}
         onFrontWingRefs={handleFrontWingRefs}
         onRearWingRefs={handleRearWingRefs}
+        onSteeringWheelRefs={handleSteeringWheelRefs}
       />
       <Cockpit steerAngle={0} showDisplay={cameraMode === 'first-person'} />
       <GltfWheelAnimator wheelRefs={wheelRefs} />
+      <ModelSteeringWheelAnimator steeringWheelRefs={steeringWheelRefs} />
       <FrontWingAnimator flapRefs={fwRefs} />
       <RearWingAnimator flapRefs={rwRefs} />
       <DynamicParts loadFromStorage />

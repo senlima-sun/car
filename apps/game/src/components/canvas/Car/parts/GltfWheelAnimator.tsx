@@ -9,8 +9,8 @@ const STEER_LERP_SPEED = 8
 const _steerQ = new THREE.Quaternion()
 const _spinQ = new THREE.Quaternion()
 const _resultQ = new THREE.Quaternion()
-const _upAxis = new THREE.Vector3(0, 0, 1)
-const _spinAxis = new THREE.Vector3(0, 0, 1)
+const _steerAxis = new THREE.Vector3(0, 1, 0)
+const _spinAxis = new THREE.Vector3(1, 0, 0)
 
 interface GltfWheelAnimatorProps {
   wheelRefs: GltfWheelRefs
@@ -61,7 +61,7 @@ export function GltfWheelAnimator({ wheelRefs }: GltfWheelAnimatorProps) {
       _resultQ.copy(bq)
 
       if (steer !== null) {
-        _steerQ.setFromAxisAngle(_upAxis, steer)
+        _steerQ.setFromAxisAngle(_steerAxis, steer)
         _resultQ.premultiply(_steerQ)
       }
 

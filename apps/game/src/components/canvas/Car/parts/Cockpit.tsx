@@ -1,29 +1,17 @@
-import { useCarStore } from '../../../../stores/useCarStore'
-import { useGameStore } from '../../../../stores/useGameStore'
-import { getWheelAngleRad, isLockActive } from '../../../../input/mouseSteeringState'
 import { SteeringWheel } from './SteeringWheel'
+import { readSteeringWheelAngle } from './steeringWheelAngle'
 
 interface CockpitProps {
   steerAngle: number
   showDisplay: boolean
 }
 
-const KEYBOARD_TIRE_ANGLE_RAD = 0.3
-const TIRE_TO_WHEEL_RATIO = Math.PI / KEYBOARD_TIRE_ANGLE_RAD
-
-function readWheelAngle(): number {
-  const mouseEnabled = useGameStore.getState().mouseSteeringEnabled
-  if (mouseEnabled && isLockActive()) {
-    return getWheelAngleRad()
-  }
-  const tireAngle = useCarStore.getState().steerAngle
-  return -tireAngle * TIRE_TO_WHEEL_RATIO
-}
-
 export function Cockpit({ showDisplay }: CockpitProps) {
   return (
     <group>
-      {showDisplay && <SteeringWheel getSteerAngle={readWheelAngle} showDisplay={showDisplay} />}
+      {showDisplay && (
+        <SteeringWheel getSteerAngle={readSteeringWheelAngle} showDisplay={showDisplay} />
+      )}
       {showDisplay && (
         <>
           <pointLight

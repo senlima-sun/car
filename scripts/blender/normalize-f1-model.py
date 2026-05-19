@@ -48,6 +48,7 @@ REQUIRED_OUTPUT_NAMES = (
     "Car_Livery_NOSE",
     "Car_Livery_PRE_NOSE",
     "Car_Livery_HALO",
+    "SteeringWheelAssembly",
 )
 
 ANIMATED_FLAP_NAMES = (
@@ -56,6 +57,21 @@ ANIMATED_FLAP_NAMES = (
     "Car_Livery_BW-M",
     "Car_Livery_BW-L",
 )
+
+STEERING_WHEEL_PART_NAMES = (
+    "SteeringWheel_Audi",
+    "SteeringWheel_Carbon_Back",
+    "SteeringWheel_Carbon_LedStrip",
+    "SteeringWheel_ClearLed",
+    "SteeringWheel_ClearLed_Dot",
+    "SteeringWheel_ClearLed_Pre",
+    "SteeringWheel_Decal",
+    "SteeringWheel_Frame",
+    "SteeringWheel_Kers_White",
+    "SteeringWheel_LCD",
+    "SteeringWheel_Revs_Display",
+)
+STEERING_WHEEL_PIVOT_NAME = "SteeringWheel_Frame"
 
 WHEEL_CENTERS = {
     "FL": (0.815894, -1.520892, 0.35899),
@@ -260,6 +276,27 @@ def move_mesh_origin_to_world(obj, origin):
     obj.data.update()
 
 
+def world_bounds_center_for_objects(objects):
+    corners = []
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        corners.extend(obj.matrix_world @ Vector(corner) for corner in obj.bound_box)
+    if not corners:
+        return Vector((0, 0, 0))
+    center = Vector((0, 0, 0))
+    for corner in corners:
+        center += corner
+    return center / len(corners)
+
+
+def steering_wheel_pivot(steering_parts):
+    pivot_source = bpy.data.objects.get(STEERING_WHEEL_PIVOT_NAME)
+    if pivot_source and pivot_source.type == "MESH":
+        return world_bounds_center(pivot_source)
+    return world_bounds_center_for_objects(steering_parts)
+
+
 def parse_args():
     argv = args_after_separator()
     if len(argv) < 3:
@@ -350,6 +387,16 @@ def main():
                 move_mesh_origin_to_world(obj, world_bounds_center(obj))
             parent_keep_world(obj, parent)
         records.append({"old": old_name, "new": final_name, "group": group_key, "status": "renamed"})
+
+    steering_parts = [bpy.data.objects[name] for name in STEERING_WHEEL_PART_NAMES if bpy.data.objects.get(name)]
+    if steering_parts:
+        steering_group = create_empty(
+            "SteeringWheelAssembly",
+            groups["interior"],
+            steering_wheel_pivot(steering_parts),
+        )
+        for obj in steering_parts:
+            parent_mesh_at_parent_origin(obj, steering_group)
 
     missing_records = [record for record in records if record["status"] == "missing"]
     missing_required = [name for name in REQUIRED_OUTPUT_NAMES if bpy.data.objects.get(name) is None]
