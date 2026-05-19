@@ -22,25 +22,20 @@ export interface FetchOptions {
 
 export async function fetchWithCacheAndFallback(opts: FetchOptions): Promise<ElevationGrid> {
   const log = opts.log ?? (() => {})
-  const providers: Array<{ tag: string; provider: ElevationProvider }> = [
-    { tag: 'primary', provider: opts.primary },
-  ]
-  if (opts.fallback) providers.push({ tag: 'fallback', provider: opts.fallback })
+  const cacheKeyFor = (provider: ElevationProvider) => ({
+    provider: provider.name,
+    south: opts.south,
+    north: opts.north,
+    west: opts.west,
+    east: opts.east,
+    targetCols: opts.targetCols,
+    targetRows: opts.targetRows,
+  })
 
-  for (const { tag, provider } of providers) {
-    const cached = await readCache({
-      provider: provider.name,
-      south: opts.south,
-      north: opts.north,
-      west: opts.west,
-      east: opts.east,
-      targetCols: opts.targetCols,
-      targetRows: opts.targetRows,
-    })
-    if (cached) {
-      log(`cache hit: ${provider.name} (${tag})`)
-      return cached
-    }
+  const primaryCached = await readCache(cacheKeyFor(opts.primary))
+  if (primaryCached) {
+    log(`cache hit: ${opts.primary.name} (primary)`)
+    return primaryCached
   }
 
   if (!opts.allowNetwork) {
@@ -51,28 +46,33 @@ export async function fetchWithCacheAndFallback(opts: FetchOptions): Promise<Ele
   }
 
   let lastError: Error | null = null
-  for (const { tag, provider } of providers) {
+  try {
+    const grid = await fetchWithRetry(opts.primary, opts, log, 'primary')
+    await writeCache(cacheKeyFor(opts.primary), grid)
+    log(`fetched fresh: ${opts.primary.name} (primary)`)
+    return grid
+  } catch (err) {
+    lastError = err as Error
+    log(`primary provider ${opts.primary.name} failed: ${(err as Error).message}`)
+  }
+
+  if (opts.fallback) {
+    const fallbackCached = await readCache(cacheKeyFor(opts.fallback))
+    if (fallbackCached) {
+      log(`cache hit: ${opts.fallback.name} (fallback after primary failure)`)
+      return fallbackCached
+    }
     try {
-      const grid = await fetchWithRetry(provider, opts, log, tag)
-      await writeCache(
-        {
-          provider: provider.name,
-          south: opts.south,
-          north: opts.north,
-          west: opts.west,
-          east: opts.east,
-          targetCols: opts.targetCols,
-          targetRows: opts.targetRows,
-        },
-        grid
-      )
-      log(`fetched fresh: ${provider.name} (${tag})`)
+      const grid = await fetchWithRetry(opts.fallback, opts, log, 'fallback')
+      await writeCache(cacheKeyFor(opts.fallback), grid)
+      log(`fetched fresh: ${opts.fallback.name} (fallback)`)
       return grid
     } catch (err) {
       lastError = err as Error
-      log(`${tag} provider ${provider.name} failed: ${(err as Error).message}`)
+      log(`fallback provider ${opts.fallback.name} failed: ${(err as Error).message}`)
     }
   }
+
   throw lastError ?? new Error('all providers failed without an error')
 }
 
