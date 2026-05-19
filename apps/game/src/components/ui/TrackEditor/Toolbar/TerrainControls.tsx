@@ -1,8 +1,27 @@
 import { useTerrainBrushStore } from '@/stores/useTerrainBrushStore'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 import { useTrackStore } from '@/stores/useTrackStore'
+import { getTerrainHeightmapForPreset } from '@/utils/terrainSidecar'
 import { BRUSH_TYPES } from './constants/brushTypes'
 import { SliderRow } from './primitives/SliderRow'
+
+async function importSidecarForActiveTrack(): Promise<void> {
+  const active = useTrackStore.getState().getActiveTrack()
+  if (!active?.presetId) {
+    alert('Import elevation requires an active preset track (e.g. F1 circuits).')
+    return
+  }
+  const sidecar = await getTerrainHeightmapForPreset(active.presetId).catch(() => null)
+  if (!sidecar) {
+    alert(
+      `No elevation sidecar for "${active.presetId}". Run "bun run track:elevation:fetch <name>" to generate one.`,
+    )
+    return
+  }
+  useTerrainStore.getState().loadHeightmap(sidecar.heightmap)
+  useTerrainStore.getState().commitPhysics()
+  useTrackStore.getState().markDirty()
+}
 
 export function TerrainControls() {
   const brushType = useTerrainBrushStore(s => s.terrainBrushType)
@@ -65,6 +84,16 @@ export function TerrainControls() {
           onChange={setFlattenTarget}
         />
       )}
+      <button
+        onClick={() => {
+          if (confirm('Import real-world elevation for this circuit?')) {
+            void importSidecarForActiveTrack()
+          }
+        }}
+        className='mt-2 w-full rounded-md border border-white/10 bg-transparent px-2 py-1.5 text-[10px] font-medium text-white/52 transition hover:border-sky-500/50 hover:text-sky-300'
+      >
+        Import Real Elevation
+      </button>
       <button
         onClick={() => {
           if (confirm('Reset terrain to flat?')) {

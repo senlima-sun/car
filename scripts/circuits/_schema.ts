@@ -15,6 +15,9 @@ export interface CircuitConfigFile {
   wayNameDenyList?: string[]
   wayNameAllowPattern?: string
   maxChainGap?: number
+  // TODO(elevation-zones-deprecation): superseded by per-circuit terrain sidecars
+  // (apps/game/src/constants/tracks/sources/_terrain/*.heightmap.json). Retained
+  // for the legacy generateRoadSegments output path; remove with that function.
   elevationZones?: {
     startFraction: number
     endFraction: number
