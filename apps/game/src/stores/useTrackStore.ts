@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import type { TrackLibrary, SavedTrack } from '../types/track'
+import type { HeightmapSource, TrackLibrary, SavedTrack } from '../types/track'
 import { useCustomizationStore, type PlacedObject } from './useCustomizationStore'
 import { useEditorStore } from './useEditorStore'
 import { useTerrainStore } from './useTerrainStore'
 import { PRESET_TRACKS } from '../constants/tracks'
 import { exportTrack } from '../utils/trackExport'
 import { readLibrary, writeLibrary } from '../utils/trackLibraryDB'
+import { getTerrainHeightmapForPreset } from '../utils/terrainSidecar'
 
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let saveInFlight: Promise<void> | null = null
@@ -78,7 +79,7 @@ interface TrackState {
   duplicateTrack: (id: string, newName: string) => string
 
   loadTrack: (id: string) => void
-  loadPresetTrack: (presetId: string) => void
+  loadPresetTrack: (presetId: string) => Promise<void>
   saveCurrentTrack: () => void
   exportCurrentTrack: () => void
   setActiveTrack: (id: string | null) => void
@@ -201,16 +202,25 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       useEditorStore.getState().setCameraTarget(center)
     }
 
+    let migratedSource: HeightmapSource | undefined = track.heightmapSource
     if (track.heightmap && track.heightmap.length > 0) {
       useTerrainStore.getState().loadHeightmap(track.heightmap)
+      if (!migratedSource) migratedSource = 'user'
     } else {
       useTerrainStore.getState().resetHeightmap()
+      if (!migratedSource) migratedSource = 'none'
     }
 
     set(state => ({
       trackLibrary: {
         ...state.trackLibrary,
         activeTrackId: id,
+        tracks:
+          migratedSource === track.heightmapSource
+            ? state.trackLibrary.tracks
+            : state.trackLibrary.tracks.map(t =>
+                t.id === id ? { ...t, heightmapSource: migratedSource } : t,
+              ),
       },
       isDirty: false,
     }))
@@ -218,7 +228,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     debouncedSaveLibrary(() => get().saveLibrary())
   },
 
-  loadPresetTrack: (presetId: string) => {
+  loadPresetTrack: async (presetId: string) => {
     const preset = PRESET_TRACKS.find(p => p.id === presetId)
     if (!preset) return
 
@@ -241,6 +251,8 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       }))
     }
 
+    const sidecar = await getTerrainHeightmapForPreset(presetId).catch(() => null)
+
     const newTrack: SavedTrack = {
       id: generateId(),
       name: preset.name,
@@ -249,6 +261,8 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       objectCount: preset.objects.length,
       objects: cloneObjects(preset.objects),
       presetId,
+      heightmap: sidecar ? sidecar.heightmap : undefined,
+      heightmapSource: sidecar ? 'sidecar' : 'none',
     }
 
     set(state => ({
@@ -261,6 +275,11 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     }))
 
     useCustomizationStore.getState().setPlacedObjects(newTrack.objects)
+    if (sidecar) {
+      useTerrainStore.getState().loadHeightmap(sidecar.heightmap)
+    } else {
+      useTerrainStore.getState().resetHeightmap()
+    }
     const center = getTrackCenter(newTrack.objects)
     if (center) {
       useEditorStore.getState().setCameraTarget(center)
@@ -286,17 +305,22 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     set(state => ({
       trackLibrary: {
         ...state.trackLibrary,
-        tracks: state.trackLibrary.tracks.map(t =>
-          t.id === activeId
-            ? {
-                ...t,
-                objects: [...objects],
-                objectCount: objects.length,
-                updatedAt: Date.now(),
-                heightmap,
-              }
-            : t,
-        ),
+        tracks: state.trackLibrary.tracks.map(t => {
+          if (t.id !== activeId) return t
+          const nextSource: HeightmapSource = hasTerrainData
+            ? state.isDirty && t.heightmapSource === 'sidecar'
+              ? 'user'
+              : (t.heightmapSource ?? 'user')
+            : 'none'
+          return {
+            ...t,
+            objects: [...objects],
+            objectCount: objects.length,
+            updatedAt: Date.now(),
+            heightmap,
+            heightmapSource: nextSource,
+          }
+        }),
       },
       isDirty: false,
     }))

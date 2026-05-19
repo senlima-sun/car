@@ -8,10 +8,13 @@ export interface TrackMetadata {
   objectCount: number
 }
 
+export type HeightmapSource = 'none' | 'sidecar' | 'user'
+
 export interface SavedTrack extends TrackMetadata {
   objects: PlacedObject[]
   pitLaneData?: unknown
   heightmap?: number[]
+  heightmapSource?: HeightmapSource
   presetId?: string
 }
 
