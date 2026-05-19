@@ -26,7 +26,7 @@ function isTireMesh(mesh: THREE.Mesh): boolean {
 }
 
 const CAR_OFFSET: [number, number, number] = [-3, 0.2, -0.45]
-const ORBIT_TARGET: [number, number, number] = [0, 2.55, 0]
+const ORBIT_TARGET: [number, number, number] = [-3, 1.6, -0.45]
 const CAMERA_POSITION: [number, number, number] = [7, 1, 4.5]
 const CAMERA_FOV = 45
 
@@ -99,7 +99,6 @@ export default function PreviewScene() {
 
   const handlePartPointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
-      event.stopPropagation()
       const partId = findPaintPart(event.object, carGroupRef.current)
       setHoveredPart(partId)
     },
@@ -108,7 +107,6 @@ export default function PreviewScene() {
 
   const handlePartPointerOver = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
-      event.stopPropagation()
       const partId = findPaintPart(event.object, carGroupRef.current)
       setHoveredPart(partId)
     },
@@ -168,7 +166,7 @@ export default function PreviewScene() {
         minDistance={4}
         maxDistance={20}
         maxPolarAngle={Math.PI / 2 + 0.05}
-        enableRotate={false}
+        enableRotate
         enablePan={false}
       />
 

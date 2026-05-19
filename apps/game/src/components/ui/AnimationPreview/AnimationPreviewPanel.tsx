@@ -37,9 +37,9 @@ export default function AnimationPreviewPanel() {
         initial={{ opacity: 0, x: 24 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className='pointer-events-auto absolute left-4 right-4 top-4 bottom-4 z-[100] flex w-auto flex-col overflow-hidden rounded-xl border border-white/10 bg-black/72 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:left-auto sm:w-[520px]'
+        className='pointer-events-auto absolute left-4 right-4 top-4 bottom-4 z-[100] flex w-auto flex-col overflow-hidden rounded-xl border border-white/10 bg-black/72 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:left-auto sm:w-[420px]'
       >
-        <div className='relative border-b border-white/8 px-4 pt-3.5 pb-3'>
+        <div className='relative border-b border-white/8 px-3.5 pt-3 pb-2.5'>
           <div className='flex items-center gap-2.5'>
             <motion.span
               className='inline-block h-px bg-red-400/70'
@@ -76,15 +76,12 @@ export default function AnimationPreviewPanel() {
           variants={sectionVariants}
           initial='hidden'
           animate='visible'
-          className='grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(120px,180px)_minmax(0,1fr)] gap-3 overflow-hidden p-3 sm:grid-cols-[170px_minmax(0,1fr)] sm:grid-rows-none'
+          className='grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(120px,170px)_minmax(0,1fr)] gap-2 overflow-hidden p-2.5 sm:grid-cols-[118px_minmax(0,1fr)] sm:grid-rows-none'
         >
           <div className='min-h-0 overflow-y-auto rounded-lg border border-white/8 bg-white/[0.025] p-2'>
             <div className='mb-2 flex items-center justify-between px-1'>
               <span className='font-mono text-[9px] uppercase tracking-[0.28em] text-red-200/70'>
                 Parts
-              </span>
-              <span className='font-mono text-[9px] uppercase tracking-[0.18em] text-white/35'>
-                Hover / Click
               </span>
             </div>
             <div className='space-y-1'>
@@ -96,13 +93,13 @@ export default function AnimationPreviewPanel() {
                     : 'border-white/10 bg-white/[0.03] text-white/65 hover:border-white/25 hover:text-white'
                 }`}
               >
-                <span className='font-mono text-[10px] uppercase tracking-[0.18em]'>All Parts</span>
+                <span className='font-mono text-[9px] uppercase tracking-[0.16em]'>All Parts</span>
               </button>
               {CAR_PARTS.map(part => (
                 <button
                   key={part.id}
                   onClick={() => useCarPaintStore.getState().setSelectedPart(part.id)}
-                  className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition ${
+                  className={`flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-left transition ${
                     selectedPart === part.id
                       ? 'border-red-300/60 bg-red-400/15 text-red-100'
                       : hoveredPart === part.id
@@ -111,10 +108,10 @@ export default function AnimationPreviewPanel() {
                   }`}
                 >
                   <span
-                    className='h-2.5 w-2.5 shrink-0 rounded-full border border-white/25'
+                    className='h-2 w-2 shrink-0 rounded-full border border-white/25'
                     style={{ backgroundColor: partColors[part.id] }}
                   />
-                  <span className='min-w-0 truncate font-mono text-[10px] uppercase tracking-[0.18em]'>
+                  <span className='min-w-0 truncate font-mono text-[9px] uppercase tracking-[0.16em]'>
                     {part.label}
                   </span>
                 </button>
@@ -124,7 +121,7 @@ export default function AnimationPreviewPanel() {
 
           <div className='showroom-scroll min-h-0 overflow-y-auto pr-1'>
             <CarPaintSection />
-            <div className='grid grid-cols-1 gap-3 border-t border-white/5 pt-3 sm:grid-cols-2'>
+            <div className='grid grid-cols-1 gap-2 border-t border-white/5 pt-2'>
               <AeroSection />
               <SteeringSection />
               <WheelsSection />
