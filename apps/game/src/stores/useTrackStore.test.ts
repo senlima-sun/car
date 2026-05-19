@@ -58,6 +58,25 @@ describe('useTrackStore — preset terrain bootstrap', () => {
     expect(useTerrainStore.getState().heightmap.every(h => h === 0)).toBe(true)
   })
 
+  it('saveCurrentTrack flips heightmapSource sidecar → user when the track is dirty', async () => {
+    const fakeHeights = new Float32Array(256 * 256)
+    fakeHeights[42] = 17
+    __setSidecarLoadersForTest({
+      '../constants/tracks/sources/_terrain/spa.heightmap.json': async () => ({
+        default: encodeMockSidecar({ data: fakeHeights, verticalOriginMeters: 0 }),
+      }),
+    })
+
+    await useTrackStore.getState().loadPresetTrack(SPA_PRESET_ID)
+    expect(useTrackStore.getState().getActiveTrack()?.heightmapSource).toBe('sidecar')
+
+    useTrackStore.getState().markDirty()
+    useTrackStore.getState().saveCurrentTrack()
+
+    const updated = useTrackStore.getState().getActiveTrack()
+    expect(updated?.heightmapSource).toBe('user')
+  })
+
   it('migrates pre-existing saved track (no heightmapSource) to "user" without applying sidecar', () => {
     const fakeHeights = new Float32Array(256 * 256)
     fakeHeights[100] = 12

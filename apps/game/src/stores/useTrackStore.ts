@@ -12,6 +12,7 @@ let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let saveInFlight: Promise<void> | null = null
 let savePending = false
 let lastWrittenLibrary: TrackLibrary | null = null
+let presetLoadSeq = 0
 
 const debouncedSaveLibrary = (saveFn: () => void): void => {
   if (saveDebounceTimer !== null) clearTimeout(saveDebounceTimer)
@@ -205,7 +206,10 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     let migratedSource: HeightmapSource | undefined = track.heightmapSource
     if (track.heightmap && track.heightmap.length > 0) {
       useTerrainStore.getState().loadHeightmap(track.heightmap)
-      if (!migratedSource) migratedSource = 'user'
+      if (!migratedSource) {
+        const hasNonZero = track.heightmap.some(h => h !== 0)
+        migratedSource = hasNonZero ? 'user' : 'none'
+      }
     } else {
       useTerrainStore.getState().resetHeightmap()
       if (!migratedSource) migratedSource = 'none'
@@ -232,6 +236,8 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     const preset = PRESET_TRACKS.find(p => p.id === presetId)
     if (!preset) return
 
+    const seq = ++presetLoadSeq
+
     const state = get()
     if (state.isDirty && state.trackLibrary.activeTrackId) {
       get().saveCurrentTrack()
@@ -239,8 +245,14 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
     const existing = state.trackLibrary.tracks.find(t => t.presetId === presetId)
     if (existing && presetObjectsEqual(existing.objects, preset.objects)) {
-      get().loadTrack(existing.id)
-      return
+      const existingHasOwnTerrain =
+        existing.heightmapSource === 'user' ||
+        existing.heightmapSource === 'sidecar' ||
+        ((existing.heightmap?.length ?? 0) > 0 && existing.heightmap!.some(h => h !== 0))
+      if (existingHasOwnTerrain) {
+        get().loadTrack(existing.id)
+        return
+      }
     }
     if (existing) {
       set(s => ({
@@ -252,6 +264,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     }
 
     const sidecar = await getTerrainHeightmapForPreset(presetId).catch(() => null)
+    if (seq !== presetLoadSeq) return
 
     const newTrack: SavedTrack = {
       id: generateId(),
@@ -299,7 +312,11 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
     const objects = useCustomizationStore.getState().placedObjects
     const terrainState = useTerrainStore.getState()
-    const hasTerrainData = terrainState.heightmap.some(h => h !== 0)
+    const activeTrack = state.trackLibrary.tracks.find(t => t.id === activeId)
+    const hasTerrainData =
+      terrainState.heightmap.length > 0 &&
+      activeTrack?.heightmapSource !== undefined &&
+      activeTrack.heightmapSource !== 'none'
     const heightmap = hasTerrainData ? terrainState.getHeightsArray() : undefined
 
     set(state => ({

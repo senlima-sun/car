@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { useEditorStore } from '@/stores/useEditorStore'
 import { useTerrainBrushStore } from '@/stores/useTerrainBrushStore'
 import { useTerrainStore } from '@/stores/useTerrainStore'
+import { useTrackStore } from '@/stores/useTrackStore'
 import { computeBrushStroke, type BrushParams } from '@/utils/terrainBrush'
 import { editorCommandStack } from '@/utils/commandStack'
 import type { EditorCommand } from '@/types/editor'
@@ -128,6 +129,7 @@ export default function TerrainBrushInteraction() {
 
       editorCommandStack.push(command)
       useTerrainStore.getState().commitPhysics()
+      useTrackStore.getState().markDirty()
 
       strokeDiff.current = new Map()
     }

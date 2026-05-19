@@ -1,5 +1,6 @@
 import { useTerrainBrushStore } from '@/stores/useTerrainBrushStore'
 import { useTerrainStore } from '@/stores/useTerrainStore'
+import { useTrackStore } from '@/stores/useTrackStore'
 import { BRUSH_TYPES } from './constants/brushTypes'
 import { SliderRow } from './primitives/SliderRow'
 
@@ -69,6 +70,7 @@ export function TerrainControls() {
           if (confirm('Reset terrain to flat?')) {
             resetHeightmap()
             commitPhysics()
+            useTrackStore.getState().markDirty()
           }
         }}
         className='mt-2 w-full rounded-md border border-white/10 bg-transparent px-2 py-1.5 text-[10px] font-medium text-white/52 transition hover:border-rose-500/50 hover:text-rose-300'

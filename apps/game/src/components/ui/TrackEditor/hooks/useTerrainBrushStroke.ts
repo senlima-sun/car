@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTerrainBrushStore } from '@/stores/useTerrainBrushStore'
 import { useTerrainStore } from '@/stores/useTerrainStore'
+import { useTrackStore } from '@/stores/useTrackStore'
 import { editorCommandStack } from '@/utils/commandStack'
 import { computeBrushStroke, type BrushParams } from '@/utils/terrainBrush'
 import type { EditorCommand } from '@/types/editor'
@@ -131,6 +132,7 @@ export function useTerrainBrushStroke(): TerrainBrushStrokeApi {
       }
       editorCommandStack.push(command)
       useTerrainStore.getState().commitPhysics()
+      useTrackStore.getState().markDirty()
     }
     strokeRef.current.diff = new Map()
   }, [flushVisuals])
