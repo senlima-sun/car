@@ -14,6 +14,23 @@ const _pointer = new THREE.Vector2()
 const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 const _intersection = new THREE.Vector3()
 
+function projectToHeightfield(
+  raycaster: THREE.Raycaster,
+  out: THREE.Vector3,
+): [number, number] | null {
+  _plane.constant = 0
+  let hit = raycaster.ray.intersectPlane(_plane, out)
+  if (!hit) return null
+  for (let i = 0; i < 3; i++) {
+    const y = useTerrainStore.getState().getHeightAt(out.x, out.z)
+    if (Math.abs(y - _plane.constant) < 0.05) break
+    _plane.constant = -y
+    hit = raycaster.ray.intersectPlane(_plane, out)
+    if (!hit) return null
+  }
+  return [out.x, out.z]
+}
+
 export default function TerrainBrushInteraction() {
   const { camera, gl } = useThree()
   const isPainting = useRef(false)
@@ -26,9 +43,7 @@ export default function TerrainBrushInteraction() {
       _pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       _pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
       _raycaster.setFromCamera(_pointer, camera)
-      const hit = _raycaster.ray.intersectPlane(_plane, _intersection)
-      if (!hit) return null
-      return [_intersection.x, _intersection.z]
+      return projectToHeightfield(_raycaster, _intersection)
     },
     [camera, gl],
   )
