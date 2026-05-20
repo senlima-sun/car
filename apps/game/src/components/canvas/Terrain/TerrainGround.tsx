@@ -278,7 +278,14 @@ function TerrainPhysics({
   version: number
 }) {
   const heights = useMemo(() => {
-    return useTerrainStore.getState().getHeightsArray()
+    const flat = useTerrainStore.getState().getComposedHeightsSnapshot()
+    const transposed = new Array<number>(flat.length)
+    for (let gz = 0; gz < resolution; gz++) {
+      for (let gx = 0; gx < resolution; gx++) {
+        transposed[gx * resolution + gz] = flat[gz * resolution + gx]!
+      }
+    }
+    return transposed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolution, version])
 

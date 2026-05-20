@@ -246,12 +246,33 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
     const existing = state.trackLibrary.tracks.find(t => t.presetId === presetId)
     if (existing && presetObjectsEqual(existing.objects, preset.objects)) {
-      const existingHasOwnTerrain =
+      const wasSidecarSource =
+        existing.heightmapSource === 'sidecar' || existing.sidecarApplied === true
+      const hasOwnUserData =
         existing.heightmapSource === 'user' ||
-        existing.heightmapSource === 'sidecar' ||
+        existing.deltaPresent === true ||
+        existing.customBaselineUsed === true ||
         (existing.heightmap?.some(h => h !== 0) ?? false)
-      if (existingHasOwnTerrain) {
+      if (hasOwnUserData) {
         get().loadTrack(existing.id)
+        return
+      }
+      if (wasSidecarSource) {
+        const sidecarRefresh = await getTerrainHeightmapForPreset(presetId).catch(() => null)
+        if (seq !== presetLoadSeq) return
+        useCustomizationStore.getState().setPlacedObjects(existing.objects)
+        if (sidecarRefresh) {
+          useTerrainStore.getState().loadHeightmap(sidecarRefresh.heightmap)
+        } else {
+          useTerrainStore.getState().resetHeightmap()
+        }
+        const center = getTrackCenter(existing.objects)
+        if (center) useEditorStore.getState().setCameraTarget(center)
+        set(s => ({
+          trackLibrary: { ...s.trackLibrary, activeTrackId: existing.id },
+          isDirty: false,
+        }))
+        debouncedSaveLibrary(() => get().saveLibrary())
         return
       }
     }
