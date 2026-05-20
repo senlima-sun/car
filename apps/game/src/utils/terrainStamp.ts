@@ -65,7 +65,16 @@ interface FlatRibbon {
   closed: boolean
   /** Half ribbon width. */
   halfWidth: number
-  /** Half-width plus transition zone. */
+  /**
+   * Footprint half-width INCLUDING the bilinear-correctness expansion.
+   * Equal to `halfWidth + cellSize * Math.SQRT2`. Cells within this
+   * distance are stamped to `targetY` (full stamp). This guarantees
+   * every bilinear `getHeightAt` query inside the original ribbon
+   * footprint has all four corners stamped — see Phase 1.5a decision
+   * row in `.claude/plans/terrain-conforms-to-ribbon.md`.
+   */
+  fullStampHalfWidth: number
+  /** `fullStampHalfWidth + transitionMeters`. */
   halfWidthPlusTransition: number
 }
 
@@ -256,13 +265,22 @@ function flattenRibbon(
   }
   if (segments.length === 0) return null
 
+  // Phase 1.5a — expand the full-stamp footprint by `cellSize * SQRT2`
+  // so every bilinear corner around any in-footprint query is stamped.
+  // The worst-case bilinear sample sits at the centre of a cell quadrant
+  // and its farthest corner is `sqrt(2) * cellSize` away — stamping
+  // within `halfWidth + cellSize * SQRT2` of the ribbon guarantees all
+  // four corners are stamped.
   const halfWidth = width / 2
+  const cellSize = worldSize / (resolution - 1)
+  const fullStampHalfWidth = halfWidth + cellSize * Math.SQRT2
   return {
     segments,
     targetY,
     closed,
     halfWidth,
-    halfWidthPlusTransition: halfWidth + config.transitionMeters,
+    fullStampHalfWidth,
+    halfWidthPlusTransition: fullStampHalfWidth + config.transitionMeters,
   }
 }
 
@@ -303,8 +321,8 @@ function closestSegmentInfluence(
  * Stamp every supplied ribbon into a copy of the raw baseline.
  *
  * For every cell:
- *   - If outside every ribbon's (halfWidth + transition) — keep raw.
- *   - If inside [0, halfWidth] of the closest ribbon — set to that
+ *   - If outside every ribbon's (fullStampHalfWidth + transition) — keep raw.
+ *   - If inside [0, fullStampHalfWidth] of the closest ribbon — set to that
  *     ribbon's target y (full stamp).
  *   - In the transition zone — smoothstep blend from target → raw.
  *
@@ -357,14 +375,15 @@ export function stampRibbonsIntoBaseline(
       }
       if (!bestRibbon) continue
 
-      if (bestDist <= bestRibbon.halfWidth) {
-        // Full stamp.
+      if (bestDist <= bestRibbon.fullStampHalfWidth) {
+        // Full stamp — within the SQRT2-expanded footprint that
+        // guarantees bilinear correctness.
         out[gz * resolution + gx] = bestTargetY
       } else {
         // Transition: smoothstep blend.
         const inTransition =
-          (bestDist - bestRibbon.halfWidth) /
-          (bestRibbon.halfWidthPlusTransition - bestRibbon.halfWidth)
+          (bestDist - bestRibbon.fullStampHalfWidth) /
+          (bestRibbon.halfWidthPlusTransition - bestRibbon.fullStampHalfWidth)
         const blend = smoothstep(1 - inTransition)
         const rawCell = raw[gz * resolution + gx]!
         out[gz * resolution + gx] = rawCell + (bestTargetY - rawCell) * blend
