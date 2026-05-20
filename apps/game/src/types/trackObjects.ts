@@ -60,8 +60,15 @@ export interface PlacedObject {
   parentClosedOverride?: boolean
 }
 
+export interface TrackRibbonPoint2D {
+  x: number
+  z: number
+  isPitLane: boolean
+}
+
 export interface TrackRibbonPoint {
   x: number
+  /** @deprecated y is no longer authoritative; resolve via useTerrainStore.getHeightAt at render time. Field removed in Phase 6.1 of ribbon-terrain-rewrite. */
   y: number
   z: number
   isPitLane: boolean
