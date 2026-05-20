@@ -55,32 +55,30 @@ export const PRESET_TRACK_SOURCES: EditorTrackSource[] = [
   imolaSource as EditorTrackSource,
 ]
 
-export interface PresetTrackMeta {
-  id: string
-  name: string
-  trackLength: number
-  turns: number
-}
+export type PresetTrackMeta = Pick<EditorTrackSource, 'id' | 'name' | 'trackLength' | 'turns'>
 
-export function listPresetTracks(): PresetTrackMeta[] {
-  return PRESET_TRACK_SOURCES.map(s => ({
-    id: s.id,
-    name: s.name,
-    trackLength: s.trackLength,
-    turns: s.turns,
-  }))
+export const PRESET_TRACK_METAS: ReadonlyArray<PresetTrackMeta> = PRESET_TRACK_SOURCES.map(s => ({
+  id: s.id,
+  name: s.name,
+  trackLength: s.trackLength,
+  turns: s.turns,
+}))
+
+export function listPresetTracks(): ReadonlyArray<PresetTrackMeta> {
+  return PRESET_TRACK_METAS
 }
 
 const presetCache = new Map<string, PresetTrack>()
 
 export function getPresetTrack(id: string): PresetTrack | undefined {
-  const cached = presetCache.get(id)
-  if (cached) return cached
-  const source = PRESET_TRACK_SOURCES.find(s => s.id === id)
-  if (!source) return undefined
-  const built = buildRuntimePresetTrack(source)
-  presetCache.set(id, built)
-  return built
+  let cached = presetCache.get(id)
+  if (!cached) {
+    const source = PRESET_TRACK_SOURCES.find(s => s.id === id)
+    if (!source) return undefined
+    cached = buildRuntimePresetTrack(source)
+    presetCache.set(id, cached)
+  }
+  return structuredClone(cached)
 }
 
 export function getPresetTrackSource(id: string): EditorTrackSource | undefined {

@@ -110,6 +110,31 @@ describe('migrateSavedTrackV1ToV2', () => {
     expect(again).toBe(v2)
   })
 
+  test('future schemaVersion is passed through untouched', () => {
+    const future = { ...v1Base(), schemaVersion: 99 } as unknown as SavedTrack
+    const out = migrateSavedTrackV1ToV2(future)
+    expect(out).toBe(future)
+  })
+
+  test('preset with empty heightmap [] and no source: stays bare v2', () => {
+    const v1: SavedTrack = { ...v1Base(), presetId: 'f1_spa', heightmap: [] }
+    const v2 = migrateSavedTrackV1ToV2(v1)
+    expect(v2.baseline).toBeUndefined()
+    expect(v2.delta).toBeUndefined()
+    expect(v2.sidecarApplied).toBe(false)
+    expect(v2.deltaPresent).toBe(false)
+    expect(v2.heightmapSidecarRef).toBe('f1_spa')
+  })
+
+  test('object with no ribbon or curb is passed through unmodified by stripRibbonY', () => {
+    const v1: SavedTrack = {
+      ...v1Base(),
+      objects: [{ id: 'c1', type: 'cone', position: [1, 2, 3], rotation: 0 }],
+    }
+    const v2 = migrateSavedTrackV1ToV2(v1)
+    expect(v2.objects[0]).toEqual(v1.objects[0]!)
+  })
+
   test('sets schemaVersion = 2', () => {
     const v2 = migrateSavedTrackV1ToV2(v1Base())
     expect(v2.schemaVersion).toBe(2)

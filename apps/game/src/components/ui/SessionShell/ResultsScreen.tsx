@@ -1,4 +1,4 @@
-import { listPresetTracks } from '@/constants/tracks'
+import { PRESET_TRACK_METAS } from '@/constants/tracks'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
 
@@ -19,7 +19,7 @@ export default function ResultsScreen() {
   if (!results || !config) return null
 
   const trackName =
-    listPresetTracks().find(track => track.id === results.trackId)?.name ?? 'Current Track'
+    PRESET_TRACK_METAS.find(track => track.id === results.trackId)?.name ?? 'Current Track'
 
   return (
     <div className='absolute inset-0 z-40 flex items-center justify-center bg-black/60 px-6 py-8 pointer-events-auto'>

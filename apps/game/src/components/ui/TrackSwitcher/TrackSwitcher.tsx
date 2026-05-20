@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTrackStore } from '@/stores/useTrackStore'
-import { listPresetTracks } from '@/constants/tracks'
+import { PRESET_TRACK_METAS } from '@/constants/tracks'
 import DraggablePanel from '../DevTools/DraggablePanel'
 
 const DRAFT_ID = 'editor_draft'
@@ -49,13 +49,11 @@ export default function TrackSwitcher() {
     return activeTrackId
   })()
 
-  const presets = useMemo(() => listPresetTracks(), [])
-
   const currentLabel = (() => {
     if (currentValue === DRAFT_ID) return 'Editor Draft'
     if (currentValue.startsWith('preset:')) {
       const presetId = currentValue.slice(7)
-      return presets.find(p => p.id === presetId)?.name ?? 'Select track'
+      return PRESET_TRACK_METAS.find(p => p.id === presetId)?.name ?? 'Select track'
     }
     return 'Select track'
   })()
@@ -87,7 +85,7 @@ export default function TrackSwitcher() {
                   Editor Draft
                 </button>
               )}
-              {presets.map(p => {
+              {PRESET_TRACK_METAS.map(p => {
                 const value = `preset:${p.id}`
                 const isActive = currentValue === value
                 return (

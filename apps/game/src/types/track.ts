@@ -8,7 +8,11 @@ export interface TrackMetadata {
   objectCount: number
 }
 
-/** @deprecated v1 discriminator. Migrated to three booleans in v2. Kept here so old library payloads still type-check during the migration window. */
+/**
+ * v1 fields kept readable so legacy IndexedDB payloads type-check until the
+ * v1→v2 migration runs. All three (HeightmapSource, heightmap, heightmapSource)
+ * are removed in Phase 6.1.
+ */
 export type HeightmapSource = 'none' | 'sidecar' | 'user'
 
 export interface SavedTrack extends TrackMetadata {
@@ -22,9 +26,7 @@ export interface SavedTrack extends TrackMetadata {
   customBaselineUsed?: boolean
   deltaPresent?: boolean
   heightmapSidecarRef?: string
-  /** @deprecated v1 field; v1→v2 migration moves these into baseline/delta. Removed in Phase 6. */
   heightmap?: number[]
-  /** @deprecated v1 field; replaced by sidecarApplied/customBaselineUsed/deltaPresent. Removed in Phase 6. */
   heightmapSource?: HeightmapSource
 }
 
@@ -41,7 +43,7 @@ export function isV1SavedTrack(track: SavedTrack): boolean {
 }
 
 export function migrateSavedTrackV1ToV2(track: SavedTrack): SavedTrack {
-  if (track.schemaVersion === 2) return track
+  if (track.schemaVersion !== undefined) return track
 
   const oldSource = track.heightmapSource
   const oldHeightmap = track.heightmap
@@ -95,24 +97,13 @@ export function migrateSavedTrackV1ToV2(track: SavedTrack): SavedTrack {
   return migrated
 }
 
+const zeroY = (pts: NonNullable<PlacedObject['ribbonPoints']>) =>
+  pts.map(p => ({ x: p.x, y: 0, z: p.z, isPitLane: p.isPitLane }))
+
 function stripRibbonY(object: PlacedObject): PlacedObject {
   if (!object.ribbonPoints && !object.curbCenterline) return object
   const cleaned: PlacedObject = { ...object }
-  if (object.ribbonPoints) {
-    cleaned.ribbonPoints = object.ribbonPoints.map(p => ({
-      x: p.x,
-      y: 0,
-      z: p.z,
-      isPitLane: p.isPitLane,
-    }))
-  }
-  if (object.curbCenterline) {
-    cleaned.curbCenterline = object.curbCenterline.map(p => ({
-      x: p.x,
-      y: 0,
-      z: p.z,
-      isPitLane: p.isPitLane,
-    }))
-  }
+  if (object.ribbonPoints) cleaned.ribbonPoints = zeroY(object.ribbonPoints)
+  if (object.curbCenterline) cleaned.curbCenterline = zeroY(object.curbCenterline)
   return cleaned
 }

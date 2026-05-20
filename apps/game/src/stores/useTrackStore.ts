@@ -304,6 +304,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
   saveCurrentTrack: () => {
     const state = get()
+    if (state.isReadOnlyMigrationShim) return
     const activeId = state.trackLibrary.activeTrackId
 
     if (!activeId) {
@@ -508,6 +509,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   },
 
   saveLibrary: () => {
+    if (get().isReadOnlyMigrationShim) return Promise.resolve()
     if (saveInFlight) {
       savePending = true
       return saveInFlight

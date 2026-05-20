@@ -1,5 +1,4 @@
-import { useMemo } from 'react'
-import { listPresetTracks } from '@/constants/tracks'
+import { PRESET_TRACK_METAS } from '@/constants/tracks'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
 import { useTrackStore } from '@/stores/useTrackStore'
@@ -18,8 +17,6 @@ export default function SessionSetup() {
   const startCountdown = useSessionStore(s => s.startCountdown)
   const enterMenu = useGameStore(s => s.enterMenu)
   const loadPresetTrack = useTrackStore(s => s.loadPresetTrack)
-
-  const presets = useMemo(() => listPresetTracks(), [])
 
   if (!config) return null
 
@@ -87,7 +84,7 @@ export default function SessionSetup() {
               }
               className='w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-red-300/40'
             >
-              {presets.map(track => (
+              {PRESET_TRACK_METAS.map(track => (
                 <option key={track.id} value={track.id} className='bg-[#0b0d12]'>
                   {track.name}
                 </option>

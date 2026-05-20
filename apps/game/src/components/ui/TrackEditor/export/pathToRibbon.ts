@@ -65,17 +65,6 @@ function sampleSegment2D(
   return out
 }
 
-function sampleSegmentDense(
-  from: Anchor,
-  to: Anchor,
-  isPit: boolean,
-  includeStart: boolean,
-): TrackRibbonPoint[] {
-  const samples2D = sampleSegment2D(from, to, isPit, includeStart)
-  const getHeightAt = useTerrainStore.getState().getHeightAt
-  return samples2D.map(p => ({ x: p.x, y: getHeightAt(p.x, p.z), z: p.z, isPitLane: p.isPitLane }))
-}
-
 function genId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
@@ -106,64 +95,27 @@ function logRibbonTelemetry(pathId: string, points: TrackRibbonPoint[]): void {
   console.debug('[ribbon-sampler]', { path: pathId, samples: points.length, meanStep, maxStep, minStep })
 }
 
+/** @deprecated Phase 3+ ribbons resolve y at render time; use pathToRibbon2D. Removed in Phase 6.1. */
 export function pathToRibbon(path: Path, allPaths: Path[] = [path]): PlacedObject | null {
-  const { anchors, closed } = path
-  if (anchors.length < 2) return null
-  const resolved: (Anchor | null)[] = anchors.map(a => resolveAnchor(allPaths, a))
-  if (!hasFiniteAnchors(resolved)) return null
-  const pitSet = new Set(path.pitLaneSegments ?? [])
+  const flat = pathToRibbon2D(path, allPaths)
+  if (!flat) return null
 
-  const points: TrackRibbonPoint[] = []
-  for (let i = 1; i < anchors.length; i++) {
-    const from = resolved[i - 1]
-    const to = resolved[i]
-    if (!from || !to) continue
-    const isPit = pitSet.has(i - 1)
-    const includeStart = i === 1
-    points.push(...sampleSegmentDense(from, to, isPit, includeStart))
-  }
-  if (closed && anchors.length > 1) {
-    const closingIndex = anchors.length - 1
-    const from = resolved[closingIndex]
-    const to = resolved[0]
-    if (from && to) {
-      const isPit = pitSet.has(closingIndex)
-      points.push(...sampleSegmentDense(from, to, isPit, false))
-    }
-  }
-
-  if (points.length < 2) return null
-
-  if (closed && points.length > 1) {
-    const first = points[0]!
-    const last = points[points.length - 1]!
-    if (Math.hypot(first.x - last.x, first.z - last.z) < RIBBON_MIN_STEP_M) {
-      points.pop()
-    }
-  }
+  const flatPoints = flat.ribbonPoints!
+  const getHeightAt = useTerrainStore.getState().getHeightAt
+  let sumY = 0
+  const points: TrackRibbonPoint[] = flatPoints.map(p => {
+    const y = getHeightAt(p.x, p.z)
+    sumY += y
+    return { x: p.x, y, z: p.z, isPitLane: p.isPitLane }
+  })
+  const centerY = sumY / points.length
 
   logRibbonTelemetry(path.id, points)
 
-  let sumX = 0
-  let sumY = 0
-  let sumZ = 0
-  for (const p of points) {
-    sumX += p.x
-    sumY += p.y
-    sumZ += p.z
-  }
-  const centerX = sumX / points.length
-  const centerY = sumY / points.length
-  const centerZ = sumZ / points.length
-
   return {
-    id: genId('ribbon'),
-    type: 'track_ribbon',
-    position: [centerX, centerY, centerZ],
-    rotation: 0,
-    width: TRACK_WIDTH,
+    ...flat,
+    position: [flat.position[0], centerY, flat.position[2]],
     ribbonPoints: points,
-    ribbonClosed: closed,
   }
 }
 
