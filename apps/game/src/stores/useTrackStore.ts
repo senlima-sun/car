@@ -3,7 +3,7 @@ import type { HeightmapSource, TrackLibrary, SavedTrack } from '../types/track'
 import { useCustomizationStore, type PlacedObject } from './useCustomizationStore'
 import { useEditorStore } from './useEditorStore'
 import { useTerrainStore } from './useTerrainStore'
-import { PRESET_TRACKS } from '../constants/tracks'
+import { getPresetTrack } from '../constants/tracks'
 import { exportTrack } from '../utils/trackExport'
 import { readLibrary, writeLibrary } from '../utils/trackLibraryDB'
 import { getTerrainHeightmapForPreset } from '../utils/terrainSidecar'
@@ -231,7 +231,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   },
 
   loadPresetTrack: async (presetId: string) => {
-    const preset = PRESET_TRACKS.find(p => p.id === presetId)
+    const preset = getPresetTrack(presetId)
     if (!preset) return
 
     const seq = ++presetLoadSeq
@@ -392,7 +392,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       let mutated = false
       const tracks = lib.tracks.map(t => {
         if (!t.presetId) return t
-        const preset = PRESET_TRACKS.find(p => p.id === t.presetId)
+        const preset = getPresetTrack(t.presetId)
         if (!preset) return t
         if (presetObjectsEqual(t.objects, preset.objects)) return t
         mutated = true

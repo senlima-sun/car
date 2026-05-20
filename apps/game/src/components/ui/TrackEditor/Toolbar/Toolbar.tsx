@@ -10,7 +10,7 @@ import {
   Undo2,
   Upload,
 } from 'lucide-react'
-import { PRESET_TRACKS } from '@/constants/tracks'
+import { getPresetTrack } from '@/constants/tracks'
 import { useGameStore } from '@/stores/useGameStore'
 import { useTrackStore } from '@/stores/useTrackStore'
 import { exportToTrackStore } from '../export/exportToTrackStore'
@@ -223,7 +223,7 @@ export default function Toolbar() {
               importObjectsIntoEditor(activeTrack.objects)
             }}
             onLoadPreset={id => {
-              const preset = PRESET_TRACKS.find(track => track.id === id)
+              const preset = getPresetTrack(id)
               if (!preset) return
               if (!importObjectsIntoEditor(preset.objects)) return
               loadPresetTrack(preset.id)

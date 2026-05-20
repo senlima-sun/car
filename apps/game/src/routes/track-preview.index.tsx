@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { PRESET_TRACKS } from '@/constants/tracks'
+import { listPresetTracks } from '@/constants/tracks'
 
 function TrackPreviewList() {
+  const presets = listPresetTracks()
   return (
     <div
       style={{
@@ -29,10 +30,10 @@ function TrackPreviewList() {
           width: 'min(720px, 90vw)',
         }}
       >
-        {PRESET_TRACKS.map(p => (
+        {presets.map(p => (
           <li key={p.id} style={{ margin: '4px 0' }}>
             <Link
-              to="/track-preview/$presetId"
+              to='/track-preview/$presetId'
               params={{ presetId: p.id }}
               style={{ color: '#9cf', textDecoration: 'none' }}
             >

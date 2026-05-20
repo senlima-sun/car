@@ -29,7 +29,7 @@ import {
 
 export type PresetTrack = RuntimePresetTrack
 
-export const PRESET_TRACKS: PresetTrack[] = [
+export const PRESET_TRACK_SOURCES: EditorTrackSource[] = [
   melbourneSource as EditorTrackSource,
   shanghaiSource as EditorTrackSource,
   suzukaSource as EditorTrackSource,
@@ -53,8 +53,36 @@ export const PRESET_TRACKS: PresetTrack[] = [
   losailSource as EditorTrackSource,
   yasMarinaSource as EditorTrackSource,
   imolaSource as EditorTrackSource,
-].map(buildRuntimePresetTrack)
+]
+
+export interface PresetTrackMeta {
+  id: string
+  name: string
+  trackLength: number
+  turns: number
+}
+
+export function listPresetTracks(): PresetTrackMeta[] {
+  return PRESET_TRACK_SOURCES.map(s => ({
+    id: s.id,
+    name: s.name,
+    trackLength: s.trackLength,
+    turns: s.turns,
+  }))
+}
+
+const presetCache = new Map<string, PresetTrack>()
 
 export function getPresetTrack(id: string): PresetTrack | undefined {
-  return PRESET_TRACKS.find(t => t.id === id)
+  const cached = presetCache.get(id)
+  if (cached) return cached
+  const source = PRESET_TRACK_SOURCES.find(s => s.id === id)
+  if (!source) return undefined
+  const built = buildRuntimePresetTrack(source)
+  presetCache.set(id, built)
+  return built
+}
+
+export function getPresetTrackSource(id: string): EditorTrackSource | undefined {
+  return PRESET_TRACK_SOURCES.find(s => s.id === id)
 }

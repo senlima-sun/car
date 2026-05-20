@@ -161,9 +161,13 @@ describe('buildExportPayload', () => {
     expect(boxes[1]!.position).toEqual([70, 0, 20])
   })
 
-  test('samples terrain height for checkpoints and pit boxes', () => {
+  test('does NOT sample terrain for checkpoints and pit boxes (y resolved at render time)', () => {
+    let getHeightAtCalls = 0
     useTerrainStore.setState({
-      getHeightAt: (worldX, worldZ) => Number((worldX * 0.02 + worldZ * 0.01).toFixed(4)),
+      getHeightAt: () => {
+        getHeightAtCalls++
+        return 999
+      },
     })
 
     const p = makePath(makeAnchor({ x: 0, y: 0 }))
@@ -179,10 +183,11 @@ describe('buildExportPayload', () => {
     const sf = payload.find(o => o.type === 'checkpoint')!
     const pitBox = payload.find(o => o.type === 'pitbox')!
 
-    expect(sf.position[1]).toBeCloseTo(1, 4)
-    expect(sf.startPoint![1]).toBeCloseTo(1.06, 4)
-    expect(sf.endPoint![1]).toBeCloseTo(0.94, 4)
-    expect(pitBox.position[1]).toBeCloseTo(1.2, 4)
+    expect(getHeightAtCalls).toBe(0)
+    expect(sf.position[1]).toBe(0)
+    expect(sf.startPoint![1]).toBe(0)
+    expect(sf.endPoint![1]).toBe(0)
+    expect(pitBox.position[1]).toBe(0)
   })
 
   test('checkpoint referencing unknown path is skipped', () => {

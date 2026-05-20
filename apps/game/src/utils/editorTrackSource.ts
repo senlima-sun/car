@@ -12,7 +12,6 @@ import type {
 import { documentToRibbons } from '@/components/ui/TrackEditor/export/pathToRibbon'
 import { PAINTED_WIDTH, TRACK_EDGE_LINE_WIDTH, TRACK_WIDTH } from '@/constants/dimensions'
 import { CURB_WIDTH } from '@/constants/curb'
-import { useTerrainStore } from '@/stores/useTerrainStore'
 import { realignCheckpointToRibbons } from '@/utils/checkpointAlignment'
 import { bezierTToArcT } from '@/utils/bezierToArcT'
 import type { PlacedObject } from '@/types/trackObjects'
@@ -64,10 +63,6 @@ function genId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-function terrainHeightAt(worldX: number, worldZ: number): number {
-  return useTerrainStore.getState().getHeightAt(worldX, worldZ)
-}
-
 function checkpointToPlacedObject(
   checkpoint: CheckpointMarker,
   order: number,
@@ -83,31 +78,22 @@ function checkpointToPlacedObject(
 
   const { point, tangent } = onPath
   const halfWidth = TRACK_WIDTH / 2
-  const centerY = terrainHeightAt(point.x, point.y)
   const startX = point.x - tangent.y * halfWidth
   const startZ = point.y + tangent.x * halfWidth
   const endX = point.x + tangent.y * halfWidth
   const endZ = point.y - tangent.x * halfWidth
 
-  let startPoint: [number, number, number] = [startX, terrainHeightAt(startX, startZ), startZ]
-  let endPoint: [number, number, number] = [endX, terrainHeightAt(endX, endZ), endZ]
+  let startPoint: [number, number, number] = [startX, 0, startZ]
+  let endPoint: [number, number, number] = [endX, 0, endZ]
   let rotation = Math.atan2(tangent.x, tangent.y)
-  let position: [number, number, number] = [point.x, centerY, point.y]
+  let position: [number, number, number] = [point.x, 0, point.y]
 
   const desiredDirection: [number, number, number] = [tangent.x, 0, tangent.y]
   const realigned = realignCheckpointToRibbons(position, desiredDirection, TRACK_WIDTH, ribbons)
   if (realigned) {
-    const sx = realigned.startPoint[0]
-    const sz = realigned.startPoint[2]
-    const ex = realigned.endPoint[0]
-    const ez = realigned.endPoint[2]
-    startPoint = [sx, terrainHeightAt(sx, sz), sz]
-    endPoint = [ex, terrainHeightAt(ex, ez), ez]
-    position = [
-      realigned.midpoint[0],
-      terrainHeightAt(realigned.midpoint[0], realigned.midpoint[2]),
-      realigned.midpoint[2],
-    ]
+    startPoint = [realigned.startPoint[0], 0, realigned.startPoint[2]]
+    endPoint = [realigned.endPoint[0], 0, realigned.endPoint[2]]
+    position = [realigned.midpoint[0], 0, realigned.midpoint[2]]
     rotation = realigned.rotation
   }
 
@@ -129,7 +115,7 @@ function pitBoxAreaToPlacedObject(area: PitBoxArea): PlacedObject {
   return {
     id: genId('pitbox'),
     type: 'pitbox',
-    position: [area.position.x, terrainHeightAt(area.position.x, area.position.y), area.position.y],
+    position: [area.position.x, 0, area.position.y],
     rotation: area.rotation,
   }
 }

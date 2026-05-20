@@ -14,7 +14,7 @@ describe('pathToRibbon2D', () => {
   test('does not read from useTerrainStore.getHeightAt during sampling', () => {
     let callCount = 0
     useTerrainStore.setState({
-      getHeightAt: (worldX: number, worldZ: number) => {
+      getHeightAt: () => {
         callCount++
         return 999
       },

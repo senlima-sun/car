@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight, MoreHorizontal } from 'lucide-react'
-import { PRESET_TRACKS } from '@/constants/tracks'
+import { listPresetTracks } from '@/constants/tracks'
 import { IconButton } from './primitives/IconButton'
 import { MenuRow } from './primitives/MenuRow'
 import { MenuButton } from './primitives/MenuButton'
@@ -24,6 +24,7 @@ export function OverflowMenu({
 }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const presets = useMemo(() => listPresetTracks(), [])
 
   useEffect(() => {
     if (!open) return
@@ -80,7 +81,7 @@ export function OverflowMenu({
               Load Preset
             </div>
             <div className='flex flex-col gap-0.5'>
-              {PRESET_TRACKS.map(track => (
+              {presets.map(track => (
                 <button
                   key={track.id}
                   className='rounded-lg px-2 py-1.5 text-left text-sm text-white/78 transition hover:bg-white/[0.08] hover:text-white'

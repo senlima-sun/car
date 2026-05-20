@@ -4,11 +4,15 @@ import {
   buildParentSideBandGeometry,
 } from '@/components/canvas/TrackObjects/geometry/ribbonGeometry'
 import { TRACK_EDGE_LINE_WIDTH, TRACK_WIDTH } from '@/constants/dimensions'
-import { PRESET_TRACKS } from './index'
+import { getPresetTrack, listPresetTracks } from './index'
 
-describe('PRESET_TRACKS edge lines', () => {
+const ALL_PRESETS = listPresetTracks()
+  .map(m => getPresetTrack(m.id)!)
+  .filter(Boolean)
+
+describe('preset edge lines', () => {
   test('every preset edge line builds from its parent asphalt boundary', () => {
-    for (const track of PRESET_TRACKS) {
+    for (const track of ALL_PRESETS) {
       const ribbons = track.objects.filter(o => o.type === 'track_ribbon')
       const edgeLines = track.objects.filter(o => o.type === 'edge_line')
 
@@ -39,9 +43,9 @@ describe('PRESET_TRACKS edge lines', () => {
   })
 })
 
-describe('PRESET_TRACKS full-range painted areas', () => {
+describe('preset full-range painted areas', () => {
   test('every full-range painted area builds from its parent asphalt boundary', () => {
-    for (const track of PRESET_TRACKS) {
+    for (const track of ALL_PRESETS) {
       const ribbons = track.objects.filter(o => o.type === 'track_ribbon')
       const paintedAreas = track.objects.filter(
         o =>
@@ -73,6 +77,21 @@ describe('PRESET_TRACKS full-range painted areas', () => {
           segmentCount * 6,
         )
       }
+    }
+  })
+})
+
+describe('preset list ↔ full preset parity', () => {
+  test('every listPresetTracks() meta resolves to a non-null preset with matching fields', () => {
+    const metas = listPresetTracks()
+    expect(metas.length).toBeGreaterThan(0)
+    for (const meta of metas) {
+      const full = getPresetTrack(meta.id)
+      expect(full, `${meta.id} resolves`).toBeDefined()
+      expect(full!.id).toBe(meta.id)
+      expect(full!.name).toBe(meta.name)
+      expect(full!.trackLength).toBe(meta.trackLength)
+      expect(full!.turns).toBe(meta.turns)
     }
   })
 })

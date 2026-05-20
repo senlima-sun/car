@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { PRESET_TRACKS } from '@/constants/tracks'
+import { useMemo, useState } from 'react'
+import { listPresetTracks } from '@/constants/tracks'
 import { MenuItem } from '../MenuItem'
 import { styles } from '../styles'
 
@@ -29,13 +29,14 @@ export function ListMode({
   onDelete: () => void
 }) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+  const presets = useMemo(() => listPresetTracks(), [])
 
   return (
     <>
-      {PRESET_TRACKS.length > 0 && (
+      {presets.length > 0 && (
         <div style={styles.menuSection}>
           <div style={styles.menuSectionTitle}>🏎️ F1 Tracks</div>
-          {PRESET_TRACKS.map(preset => (
+          {presets.map(preset => (
             <MenuItem
               key={preset.id}
               icon='🏁'

@@ -170,7 +170,7 @@ export function pathToRibbon(path: Path, allPaths: Path[] = [path]): PlacedObjec
 export function documentToRibbons(paths: Path[]): PlacedObject[] {
   const out: PlacedObject[] = []
   for (const p of paths) {
-    const ribbon = pathToRibbon(p, paths)
+    const ribbon = pathToRibbon2D(p, paths)
     if (ribbon) out.push(ribbon)
   }
   return out
