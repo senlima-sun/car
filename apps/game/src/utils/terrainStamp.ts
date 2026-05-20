@@ -126,6 +126,50 @@ function buildArcTable(
  * The smoothing window is in arc-length space, so dense-sampled or
  * sparse-sampled ribbons both behave consistently.
  */
+/**
+ * Sample density inside the smoothing window (1 sample per metre). Dense
+ * enough to catch sub-window DEM noise even when the ribbon's own input
+ * points are sparse (which is common — preset ribbons can have 100m+
+ * gaps between consecutive centerline points).
+ */
+const SMOOTH_SAMPLE_STEP_METERS = 1
+
+function pointAtArc(
+  s: number,
+  points: TrackRibbonPoint[],
+  arc: number[],
+  total: number,
+  closed: boolean,
+): { x: number; z: number } {
+  const n = points.length
+  let target = s
+  if (closed) {
+    target = ((target % total) + total) % total
+  } else {
+    if (target < 0) target = 0
+    if (target > arc[n - 1]!) target = arc[n - 1]!
+  }
+  // Linear scan for the segment containing `target`.
+  let segIdx = 0
+  for (let i = 0; i < n - 1; i++) {
+    if (arc[i + 1]! >= target) {
+      segIdx = i
+      break
+    }
+    segIdx = i
+  }
+  // Closed loop's final segment wraps from arc[n-1] to total.
+  if (closed && target > arc[n - 1]!) segIdx = n - 1
+  const segStart = arc[segIdx]!
+  const isWrapSeg = closed && segIdx === n - 1
+  const segEnd = isWrapSeg ? total : arc[segIdx + 1]!
+  const segLen = segEnd - segStart
+  const u = segLen > 1e-9 ? (target - segStart) / segLen : 0
+  const a = points[segIdx]!
+  const b = points[isWrapSeg ? 0 : segIdx + 1]!
+  return { x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u }
+}
+
 function computeTargetYAlongRibbon(
   raw: Float32Array,
   resolution: number,
@@ -135,41 +179,36 @@ function computeTargetYAlongRibbon(
   smoothHalfWindowMeters: number,
 ): number[] {
   const n = points.length
-  const sampled = new Array<number>(n)
-  for (let i = 0; i < n; i++) {
-    sampled[i] = bilinearSample(raw, resolution, worldSize, points[i]!.x, points[i]!.z)
+  if (smoothHalfWindowMeters <= 0) {
+    const out = new Array<number>(n)
+    for (let i = 0; i < n; i++) {
+      out[i] = bilinearSample(raw, resolution, worldSize, points[i]!.x, points[i]!.z)
+    }
+    return out
   }
-  if (smoothHalfWindowMeters <= 0) return sampled
 
   const { arc, total } = buildArcTable(points, closed)
   const target = new Array<number>(n)
   const w = smoothHalfWindowMeters
 
   for (let i = 0; i < n; i++) {
-    let sum = sampled[i]!
-    let count = 1
-    // Walk backwards & forwards in arc-length space.
-    for (let j = i - 1; j >= -n; j--) {
-      const idx = closed ? ((j % n) + n) % n : j
-      if (!closed && idx < 0) break
-      const arcDelta = closed
-        ? Math.min(Math.abs(arc[i]! - arc[idx]!), total - Math.abs(arc[i]! - arc[idx]!))
-        : arc[i]! - arc[idx]!
-      if (arcDelta > w) break
-      sum += sampled[idx]!
+    const center = arc[i]!
+    let sum = 0
+    let count = 0
+    // Walk symmetric arc-space samples in fixed metre steps. Dense enough
+    // (1m steps over a 30m window = 61 samples) to smooth out sub-window
+    // DEM noise even when ribbon input points are >>1m apart.
+    for (let ds = -w; ds <= w; ds += SMOOTH_SAMPLE_STEP_METERS) {
+      const s = center + ds
+      if (!closed && (s < 0 || s > arc[n - 1]!)) continue
+      const p = pointAtArc(s, points, arc, total, closed)
+      sum += bilinearSample(raw, resolution, worldSize, p.x, p.z)
       count++
     }
-    for (let j = i + 1; j < n + (closed ? n : 0); j++) {
-      const idx = closed ? j % n : j
-      if (!closed && idx >= n) break
-      const arcDelta = closed
-        ? Math.min(Math.abs(arc[idx]! - arc[i]!), total - Math.abs(arc[idx]! - arc[i]!))
-        : arc[idx]! - arc[i]!
-      if (arcDelta > w) break
-      sum += sampled[idx]!
-      count++
-    }
-    target[i] = sum / count
+    target[i] =
+      count > 0
+        ? sum / count
+        : bilinearSample(raw, resolution, worldSize, points[i]!.x, points[i]!.z)
   }
   return target
 }
