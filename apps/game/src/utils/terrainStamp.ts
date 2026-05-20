@@ -1,0 +1,362 @@
+import type { TrackRibbonPoint } from '../types/trackObjects'
+
+/**
+ * Track-stamp pass: imprint the ribbon's locally-smoothed elevation
+ * profile into the terrain baseline. After stamping, every cell within
+ * the ribbon footprint sits at the ribbon's target y; cells in the
+ * transition zone smoothstep back to the original DEM; cells outside
+ * keep the DEM verbatim.
+ *
+ * Why: F1 circuits are flat asphalt strips cut into landscape, not a
+ * sheet that drapes over every terrain wrinkle. Without stamping, a
+ * 100m-period bump in the DEM lifts the asphalt by metres and the
+ * mesh disagrees with what the racing line "should" look like, OR
+ * (worse) terrain mesh wins the depth fight and the ribbon disappears
+ * beneath the hillside.
+ *
+ * After this, the ribbon mesh — which samples `getHeightAt(x, z)` at
+ * its edges — naturally inherits the stamped y, so visual + physics
+ * agree without any plumbing through ribbon geometry code.
+ */
+
+export interface RibbonStampInput {
+  /** Ordered centerline points (x, z). */
+  points: TrackRibbonPoint[]
+  /** Full ribbon width in metres. */
+  width: number
+  closed: boolean
+}
+
+export interface StampConfig {
+  /** Half-window of along-track smoothing in metres. ~30m caters for
+   *  Eau Rouge-class real elevation while flattening sub-25m bumps. */
+  smoothHalfWindowMeters: number
+  /** Width of the ease-out zone beyond the ribbon edge, in metres.
+   *  Inside [width/2, width/2 + transitionMeters] the baseline
+   *  smoothstep-blends from ribbon-y back to raw-y. */
+  transitionMeters: number
+}
+
+export const DEFAULT_STAMP_CONFIG: StampConfig = {
+  smoothHalfWindowMeters: 30,
+  transitionMeters: 8,
+}
+
+interface RibbonSegment {
+  ax: number
+  az: number
+  bx: number
+  bz: number
+  /** Length of the segment in metres. */
+  length: number
+  /** Arc length at the start vertex. */
+  arcAtStart: number
+  /** Smoothed target y at the start vertex. */
+  targetAtStart: number
+  /** Smoothed target y at the end vertex. */
+  targetAtEnd: number
+}
+
+interface FlatRibbon {
+  segments: RibbonSegment[]
+  /** Smoothed target y at each input centerline point. */
+  targetY: number[]
+  /** Closed ribbon? */
+  closed: boolean
+  /** Half ribbon width. */
+  halfWidth: number
+  /** Half-width plus transition zone. */
+  halfWidthPlusTransition: number
+}
+
+function bilinearSample(
+  data: Float32Array,
+  resolution: number,
+  worldSize: number,
+  x: number,
+  z: number,
+): number {
+  const half = worldSize / 2
+  const cell = worldSize / (resolution - 1)
+  const fx = (x + half) / cell
+  const fz = (z + half) / cell
+  if (fx < 0 || fz < 0 || fx >= resolution - 1 || fz >= resolution - 1) return 0
+  const gx = Math.floor(fx)
+  const gz = Math.floor(fz)
+  const tx = fx - gx
+  const tz = fz - gz
+  const i00 = gz * resolution + gx
+  const h00 = data[i00]!
+  const h10 = data[i00 + 1]!
+  const h01 = data[i00 + resolution]!
+  const h11 = data[i00 + resolution + 1]!
+  const h0 = h00 + (h10 - h00) * tx
+  const h1 = h01 + (h11 - h01) * tx
+  return h0 + (h1 - h0) * tz
+}
+
+function smoothstep(x: number): number {
+  const t = Math.min(1, Math.max(0, x))
+  return t * t * (3 - 2 * t)
+}
+
+function buildArcTable(
+  points: TrackRibbonPoint[],
+  closed: boolean,
+): { arc: number[]; total: number } {
+  const arc = new Array<number>(points.length)
+  arc[0] = 0
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i]!.x - points[i - 1]!.x
+    const dz = points[i]!.z - points[i - 1]!.z
+    arc[i] = arc[i - 1]! + Math.hypot(dx, dz)
+  }
+  const last = arc[arc.length - 1]!
+  const closeDx = points[0]!.x - points[points.length - 1]!.x
+  const closeDz = points[0]!.z - points[points.length - 1]!.z
+  const total = closed ? last + Math.hypot(closeDx, closeDz) : last
+  return { arc, total }
+}
+
+/**
+ * Sample the raw DEM along ribbon centerline, then smooth with a
+ * moving average over `±smoothHalfWindowMeters`. Returns one target y
+ * per input ribbon point.
+ *
+ * The smoothing window is in arc-length space, so dense-sampled or
+ * sparse-sampled ribbons both behave consistently.
+ */
+function computeTargetYAlongRibbon(
+  raw: Float32Array,
+  resolution: number,
+  worldSize: number,
+  points: TrackRibbonPoint[],
+  closed: boolean,
+  smoothHalfWindowMeters: number,
+): number[] {
+  const n = points.length
+  const sampled = new Array<number>(n)
+  for (let i = 0; i < n; i++) {
+    sampled[i] = bilinearSample(raw, resolution, worldSize, points[i]!.x, points[i]!.z)
+  }
+  if (smoothHalfWindowMeters <= 0) return sampled
+
+  const { arc, total } = buildArcTable(points, closed)
+  const target = new Array<number>(n)
+  const w = smoothHalfWindowMeters
+
+  for (let i = 0; i < n; i++) {
+    let sum = sampled[i]!
+    let count = 1
+    // Walk backwards & forwards in arc-length space.
+    for (let j = i - 1; j >= -n; j--) {
+      const idx = closed ? ((j % n) + n) % n : j
+      if (!closed && idx < 0) break
+      const arcDelta = closed
+        ? Math.min(Math.abs(arc[i]! - arc[idx]!), total - Math.abs(arc[i]! - arc[idx]!))
+        : arc[i]! - arc[idx]!
+      if (arcDelta > w) break
+      sum += sampled[idx]!
+      count++
+    }
+    for (let j = i + 1; j < n + (closed ? n : 0); j++) {
+      const idx = closed ? j % n : j
+      if (!closed && idx >= n) break
+      const arcDelta = closed
+        ? Math.min(Math.abs(arc[idx]! - arc[i]!), total - Math.abs(arc[idx]! - arc[i]!))
+        : arc[idx]! - arc[i]!
+      if (arcDelta > w) break
+      sum += sampled[idx]!
+      count++
+    }
+    target[i] = sum / count
+  }
+  return target
+}
+
+function flattenRibbon(
+  raw: Float32Array,
+  resolution: number,
+  worldSize: number,
+  input: RibbonStampInput,
+  config: StampConfig,
+): FlatRibbon | null {
+  const { points, closed, width } = input
+  if (points.length < 2 || width <= 0) return null
+
+  const targetY = computeTargetYAlongRibbon(
+    raw,
+    resolution,
+    worldSize,
+    points,
+    closed,
+    config.smoothHalfWindowMeters,
+  )
+
+  const segments: RibbonSegment[] = []
+  let arc = 0
+  const segCount = closed ? points.length : points.length - 1
+  for (let i = 0; i < segCount; i++) {
+    const a = points[i]!
+    const b = points[(i + 1) % points.length]!
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const length = Math.hypot(dx, dz)
+    if (length < 1e-6) continue
+    segments.push({
+      ax: a.x,
+      az: a.z,
+      bx: b.x,
+      bz: b.z,
+      length,
+      arcAtStart: arc,
+      targetAtStart: targetY[i]!,
+      targetAtEnd: targetY[(i + 1) % points.length]!,
+    })
+    arc += length
+  }
+  if (segments.length === 0) return null
+
+  const halfWidth = width / 2
+  return {
+    segments,
+    targetY,
+    closed,
+    halfWidth,
+    halfWidthPlusTransition: halfWidth + config.transitionMeters,
+  }
+}
+
+/**
+ * Returns the closest-point info for (cx, cz) against the segment:
+ *  - dist: perpendicular distance to the segment
+ *  - targetY: interpolated ribbon target y at that closest point
+ *  Returns null if (cx, cz) is beyond `halfWidthPlusTransition` of
+ *  this segment's bounding range (cheap early-out).
+ */
+function closestSegmentInfluence(
+  seg: RibbonSegment,
+  cx: number,
+  cz: number,
+  halfWidthPlusTransition: number,
+): { dist: number; targetY: number } | null {
+  // AABB reject — segment can only influence cells within this margin.
+  const minX = Math.min(seg.ax, seg.bx) - halfWidthPlusTransition
+  const maxX = Math.max(seg.ax, seg.bx) + halfWidthPlusTransition
+  const minZ = Math.min(seg.az, seg.bz) - halfWidthPlusTransition
+  const maxZ = Math.max(seg.az, seg.bz) + halfWidthPlusTransition
+  if (cx < minX || cx > maxX || cz < minZ || cz > maxZ) return null
+
+  const dx = seg.bx - seg.ax
+  const dz = seg.bz - seg.az
+  const lenSq = dx * dx + dz * dz
+  const tRaw = ((cx - seg.ax) * dx + (cz - seg.az) * dz) / lenSq
+  const t = Math.max(0, Math.min(1, tRaw))
+  const px = seg.ax + dx * t
+  const pz = seg.az + dz * t
+  const dist = Math.hypot(cx - px, cz - pz)
+  if (dist > halfWidthPlusTransition) return null
+  const targetY = seg.targetAtStart + (seg.targetAtEnd - seg.targetAtStart) * t
+  return { dist, targetY }
+}
+
+/**
+ * Stamp every supplied ribbon into a copy of the raw baseline.
+ *
+ * For every cell:
+ *   - If outside every ribbon's (halfWidth + transition) — keep raw.
+ *   - If inside [0, halfWidth] of the closest ribbon — set to that
+ *     ribbon's target y (full stamp).
+ *   - In the transition zone — smoothstep blend from target → raw.
+ *
+ * Time complexity: O(R² × S) worst-case where R is grid resolution
+ * and S is total ribbon segments. AABB early-out reduces this to
+ * roughly O(R² × S × footprint_fraction) which for a 4km square
+ * world and a ~6km circuit is < 5% — well under 30ms on a dev
+ * machine.
+ */
+export function stampRibbonsIntoBaseline(
+  raw: Float32Array,
+  resolution: number,
+  worldSize: number,
+  ribbons: ReadonlyArray<RibbonStampInput>,
+  config: StampConfig = DEFAULT_STAMP_CONFIG,
+): Float32Array {
+  const out = new Float32Array(raw.length)
+  out.set(raw)
+  if (ribbons.length === 0) return out
+
+  const flats: FlatRibbon[] = []
+  for (const r of ribbons) {
+    const flat = flattenRibbon(raw, resolution, worldSize, r, config)
+    if (flat) flats.push(flat)
+  }
+  if (flats.length === 0) return out
+
+  const half = worldSize / 2
+  const cell = worldSize / (resolution - 1)
+
+  for (let gz = 0; gz < resolution; gz++) {
+    const cz = -half + gz * cell
+    for (let gx = 0; gx < resolution; gx++) {
+      const cx = -half + gx * cell
+
+      // Find the ribbon (any segment) with the smallest perpendicular
+      // distance to (cx, cz) — that ribbon's target y wins.
+      let bestDist = Infinity
+      let bestTargetY = 0
+      let bestRibbon: FlatRibbon | null = null
+      for (const flat of flats) {
+        for (const seg of flat.segments) {
+          const inf = closestSegmentInfluence(seg, cx, cz, flat.halfWidthPlusTransition)
+          if (inf && inf.dist < bestDist) {
+            bestDist = inf.dist
+            bestTargetY = inf.targetY
+            bestRibbon = flat
+          }
+        }
+      }
+      if (!bestRibbon) continue
+
+      if (bestDist <= bestRibbon.halfWidth) {
+        // Full stamp.
+        out[gz * resolution + gx] = bestTargetY
+      } else {
+        // Transition: smoothstep blend.
+        const inTransition =
+          (bestDist - bestRibbon.halfWidth) /
+          (bestRibbon.halfWidthPlusTransition - bestRibbon.halfWidth)
+        const blend = smoothstep(1 - inTransition)
+        const rawCell = raw[gz * resolution + gx]!
+        out[gz * resolution + gx] = rawCell + (bestTargetY - rawCell) * blend
+      }
+    }
+  }
+
+  return out
+}
+
+/**
+ * Pull every track_ribbon PlacedObject out and produce stamp inputs.
+ * Kept in this module so the call site is one line in useTrackStore.
+ */
+export function ribbonStampInputsFromObjects(
+  objects: ReadonlyArray<{
+    type: string
+    ribbonPoints?: TrackRibbonPoint[]
+    ribbonClosed?: boolean
+    width?: number
+  }>,
+  defaultWidth: number,
+): RibbonStampInput[] {
+  const out: RibbonStampInput[] = []
+  for (const o of objects) {
+    if (o.type !== 'track_ribbon' || !o.ribbonPoints || o.ribbonPoints.length < 2) continue
+    out.push({
+      points: o.ribbonPoints,
+      width: o.width ?? defaultWidth,
+      closed: o.ribbonClosed ?? false,
+    })
+  }
+  return out
+}
