@@ -10,9 +10,10 @@
  * 0.16m and the prior 2.5m baseline; suspension test uses 0.30m with
  * safety margin.
  */
-import { afterEach, describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { useTerrainStore } from '../stores/useTerrainStore'
 import { getPresetTrack } from '../constants/tracks'
+import { __resetSidecarLoadersForTest } from './terrainSidecar'
 import { applyStampedSidecar } from './terrainStampedSidecar'
 import type { TrackRibbonPoint } from '../types/trackObjects'
 
@@ -43,6 +44,11 @@ function computeTangent(
 }
 
 describe('terrainStamp real-Spa correctness probe (Phase 1.5b)', () => {
+  beforeEach(() => {
+    // Other tests in the suite stub sidecar loaders; we need real defaults.
+    __resetSidecarLoadersForTest()
+  })
+
   afterEach(() => {
     // Reset terrain store so subsequent tests don't see our stamped Spa data.
     const initial = useTerrainStore.getInitialState()

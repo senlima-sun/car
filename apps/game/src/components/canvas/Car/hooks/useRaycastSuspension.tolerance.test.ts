@@ -7,10 +7,8 @@ import bakuSidecar from '@/constants/tracks/sources/_terrain/baku.heightmap.json
 import spaSidecar from '@/constants/tracks/sources/_terrain/spa.heightmap.json'
 import imolaSidecar from '@/constants/tracks/sources/_terrain/imola.heightmap.json'
 import lasVegasSidecar from '@/constants/tracks/sources/_terrain/las-vegas.heightmap.json'
-import {
-  __setSidecarLoadersForTest,
-  getTerrainHeightmapForPreset,
-} from '@/utils/terrainSidecar'
+import { __setSidecarLoadersForTest } from '@/utils/terrainSidecar'
+import { applyStampedSidecar } from '@/utils/terrainStampedSidecar'
 import {
   buildRibbonBoundary,
   type RibbonBoundary,
@@ -113,12 +111,16 @@ describe('physics-vs-visual ribbon y tolerance', () => {
       expect(ribbon).not.toBeNull()
       if (!ribbon) return
 
-      const sidecar = await getTerrainHeightmapForPreset(preset.id)
+      // Phase 2.6: stamp the ribbon into the sidecar before sampling.
+      // Without this, the tolerance assertion would test un-stamped y
+      // values — meaningless for the architectural guarantee under test.
+      const preset_track = getPresetTrack(preset.id)
+      const objects = preset_track?.objects ?? []
+      const { applied } = await applyStampedSidecar(preset.id, objects, {
+        deltaPolicy: 'reset',
+      })
       if (preset.expectedNonZero) {
-        expect(sidecar).not.toBeNull()
-      }
-      if (sidecar) {
-        useTerrainStore.getState().replaceBaseline(sidecar.heightmap, { source: 'sidecar' })
+        expect(applied).toBe(true)
       }
 
       const sampler = useTerrainStore.getState().getHeightAt

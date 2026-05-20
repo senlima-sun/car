@@ -181,13 +181,16 @@ export function buildParentSideBandGeometry(
   const leftPositions: Vector3[] = []
   const rightPositions: Vector3[] = []
 
+  // Phase 2.7a: y from stamped terrain, not p.y (which is 0 for
+  // preset ribbons). Same rationale as buildSideBandFromBoundary.
+  const sampler = useTerrainStore.getState().getHeightAt
   for (let i = 0; i < n; i++) {
     const p = points[i]!
     const tan = tangents[i]!
     const m = miters[i]!
     const nx = -tan.z * m
     const nz = tan.x * m
-    const y = p.y + yOffset
+    const y = sampler(p.x, p.z) + yOffset
 
     if (side === 'left') {
       leftPositions.push(new Vector3(p.x + nx * outerDistance, y, p.z + nz * outerDistance))
@@ -235,6 +238,11 @@ export function buildSideBandFromBoundary(
   const leftPositions: Vector3[] = []
   const rightPositions: Vector3[] = []
 
+  // Phase 2.7a: side-band y comes from the stamped baseline via the
+  // terrain sampler, NOT from `p.y` (which is 0 for preset ribbons
+  // emitted via pathToRibbon2D). Without this, side bands (edge lines,
+  // painted areas) would render at world y=0 — buried under terrain.
+  const sampler = useTerrainStore.getState().getHeightAt
   for (let i = 0; i < n; i++) {
     const p = boundary.centerline[i]!
     const boundaryVec = side === 'left' ? boundary.left[i]! : boundary.right[i]!
@@ -242,7 +250,7 @@ export function buildSideBandFromBoundary(
     const miterNz = boundaryVec.z - p.z
     const innerFactor = (halfWidth + innerOffset) / halfWidth
     const outerFactor = (halfWidth + innerOffset + bandWidth) / halfWidth
-    const y = p.y + yOffset
+    const y = sampler(p.x, p.z) + yOffset
 
     if (side === 'left') {
       leftPositions.push(new Vector3(p.x + miterNx * outerFactor, y, p.z + miterNz * outerFactor))

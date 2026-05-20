@@ -7,6 +7,7 @@ import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { useCustomizationStore } from '@/stores/useCustomizationStore'
 import { useCarStore } from '../../../stores/useCarStore'
 import { useTrackGraphStore } from '../../../stores/useTrackGraphStore'
+import { useTerrainStore } from '../../../stores/useTerrainStore'
 import type { CheckpointType } from '../../../types/trackObjects'
 import StartLightsGantry from './StartLightsGantry'
 
@@ -79,7 +80,12 @@ export default function Checkpoint({
   }, [startPoint, endPoint, rotation, position])
 
   const finalRotation = startPoint && endPoint ? calculatedRotation : rotation
-  const finalPosition = midpoint
+  // Phase 2.7b: sample the stamped terrain so the visual + sensor sit
+  // ON the ribbon, not at world y=0. Preset checkpoints arrive with y=0
+  // from editorTrackSource; without this, sensor extends [y-1, y+1.75]
+  // around 0 while the car drives at stamped y∈[20, 80] → no triggers.
+  const terrainY = useTerrainStore(s => s.getHeightAt(midpoint[0], midpoint[2]))
+  const finalPosition: [number, number, number] = [midpoint[0], midpoint[1] + terrainY, midpoint[2]]
 
   const travelDirection = useMemo(() => {
     if (startPoint && endPoint && flowDirection) {

@@ -72,17 +72,23 @@ const staticSidecars: Record<string, TerrainSidecar> = {
   zandvoort: zandvoortSidecar as TerrainSidecar,
 }
 
-let sidecarLoaders: Record<string, SidecarLoader> = Object.fromEntries(
+const defaultSidecarLoaders: Record<string, SidecarLoader> = Object.fromEntries(
   Object.entries(staticSidecars).map(([name, sidecar]) => [
     `../constants/tracks/sources/_terrain/${name}.heightmap.json`,
     () => Promise.resolve({ default: sidecar }),
   ]),
 )
 
+let sidecarLoaders: Record<string, SidecarLoader> = defaultSidecarLoaders
+
 export function __setSidecarLoadersForTest(
   loaders: Record<string, SidecarLoader>,
 ): void {
   sidecarLoaders = loaders
+}
+
+export function __resetSidecarLoadersForTest(): void {
+  sidecarLoaders = defaultSidecarLoaders
 }
 
 const SAFE_MAX_M = 80

@@ -6,7 +6,7 @@ import { useTerrainStore } from './useTerrainStore'
 import { getPresetTrack } from '../constants/tracks'
 import { exportTrack } from '../utils/trackExport'
 import { readLibrary, writeLibrary } from '../utils/trackLibraryDB'
-import { getTerrainHeightmapForPreset } from '../utils/terrainSidecar'
+import { applyStampedSidecar } from '../utils/terrainStampedSidecar'
 
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let saveInFlight: Promise<void> | null = null
@@ -258,14 +258,15 @@ export const useTrackStore = create<TrackState>((set, get) => ({
         return
       }
       if (wasSidecarSource) {
-        const sidecarRefresh = await getTerrainHeightmapForPreset(presetId).catch(() => null)
+        // Phase 2.2: matched-preset refresh — re-stamp from latest
+        // sidecar. deltaPolicy: 'preserve' keeps any user sculpt
+        // across the re-stamp.
+        const refresh = await applyStampedSidecar(presetId, existing.objects, {
+          deltaPolicy: 'preserve',
+        })
         if (seq !== presetLoadSeq) return
         useCustomizationStore.getState().setPlacedObjects(existing.objects)
-        if (sidecarRefresh) {
-          useTerrainStore.getState().loadHeightmap(sidecarRefresh.heightmap)
-        } else {
-          useTerrainStore.getState().resetHeightmap()
-        }
+        if (!refresh.applied) useTerrainStore.getState().resetHeightmap()
         const center = getTrackCenter(existing.objects)
         if (center) useEditorStore.getState().setCameraTarget(center)
         set(s => ({
@@ -285,7 +286,12 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       }))
     }
 
-    const sidecar = await getTerrainHeightmapForPreset(presetId).catch(() => null)
+    // Phase 2.1: first-time preset load — stamp the ribbon into the
+    // sidecar before installing as baseline. deltaPolicy: 'reset' for
+    // a brand-new track row (no carryover sculpt from previous track).
+    const stampResult = await applyStampedSidecar(presetId, preset.objects, {
+      deltaPolicy: 'reset',
+    })
     if (seq !== presetLoadSeq) return
 
     const newTrack: SavedTrack = {
@@ -296,8 +302,11 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       objectCount: preset.objects.length,
       objects: cloneObjects(preset.objects),
       presetId,
-      heightmap: sidecar ? sidecar.heightmap : undefined,
-      heightmapSource: sidecar ? 'sidecar' : 'none',
+      // Persist the RAW sidecar bytes so next load can re-stamp from the
+      // same source-of-truth (Phase 5.2 saveCurrentTrack will replace
+      // this with composed if the user sculpts).
+      heightmap: stampResult.applied ? stampResult.rawHeightmap! : undefined,
+      heightmapSource: stampResult.applied ? 'sidecar' : 'none',
     }
 
     set(state => ({
@@ -310,9 +319,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     }))
 
     useCustomizationStore.getState().setPlacedObjects(newTrack.objects)
-    if (sidecar) {
-      useTerrainStore.getState().loadHeightmap(sidecar.heightmap)
-    } else {
+    if (!stampResult.applied) {
       useTerrainStore.getState().resetHeightmap()
     }
     const center = getTrackCenter(newTrack.objects)
@@ -444,12 +451,15 @@ export const useTrackStore = create<TrackState>((set, get) => ({
             (!activeTrack.heightmap || activeTrack.heightmap.length === 0) &&
             !!presetId
           if (needsSidecarRefetch && presetId) {
-            void getTerrainHeightmapForPreset(presetId)
-              .catch(() => null)
-              .then(sidecar => {
-                if (sidecar) useTerrainStore.getState().loadHeightmap(sidecar.heightmap)
-                else useTerrainStore.getState().resetHeightmap()
-              })
+            // Phase 2.3: library finalize — re-stamp on boot if the
+            // saved record had a sidecar-sourced heightmap that
+            // wasn't persisted (a thin save). deltaPolicy: 'preserve'
+            // because the saved delta loaded earlier in this branch.
+            void applyStampedSidecar(presetId, activeTrack.objects, {
+              deltaPolicy: 'preserve',
+            }).then(({ applied }) => {
+              if (!applied) useTerrainStore.getState().resetHeightmap()
+            })
           } else if (activeTrack.heightmap && activeTrack.heightmap.length > 0) {
             useTerrainStore.getState().loadHeightmap(activeTrack.heightmap)
           } else {

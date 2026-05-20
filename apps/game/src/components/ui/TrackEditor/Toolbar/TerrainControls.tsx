@@ -1,7 +1,7 @@
 import { useTerrainBrushStore } from '@/stores/useTerrainBrushStore'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 import { useTrackStore } from '@/stores/useTrackStore'
-import { getTerrainHeightmapForPreset } from '@/utils/terrainSidecar'
+import { applyStampedSidecar } from '@/utils/terrainStampedSidecar'
 import { BRUSH_TYPES } from './constants/brushTypes'
 import { SliderRow } from './primitives/SliderRow'
 
@@ -11,15 +11,17 @@ async function importSidecarForActiveTrack(): Promise<void> {
     alert('Import elevation requires an active preset track (e.g. F1 circuits).')
     return
   }
-  const sidecar = await getTerrainHeightmapForPreset(active.presetId).catch(() => null)
-  if (!sidecar) {
+  // Phase 2.5: "Import Real Elevation" is the destructive action — user
+  // explicitly asked for a fresh DEM, so reset delta along with it.
+  const { applied } = await applyStampedSidecar(active.presetId, active.objects, {
+    deltaPolicy: 'reset',
+  })
+  if (!applied) {
     alert(
       `No elevation sidecar for "${active.presetId}". Run "bun run track:elevation:fetch <name>" to generate one.`,
     )
     return
   }
-  useTerrainStore.getState().loadHeightmap(sidecar.heightmap)
-  useTerrainStore.getState().commitPhysics()
   useTrackStore.getState().markDirty()
 }
 
