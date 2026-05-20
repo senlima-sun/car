@@ -99,17 +99,15 @@ export function resolveTerrainSupportHitY(
 
   const terrainDistance = (terrainHeight - rayY) / downY
   const terrainWithinRay = terrainDistance >= 0 && terrainDistance <= seekRayLength
+  const terrainWithinEnvelope = terrainWithinRay && terrainDistance <= suspensionEnvelope
 
+  if (terrainWithinEnvelope) return terrainHeight
   if (rapierHitY !== null) {
     const rapierDistance = (rapierHitY - rayY) / downY
-    if (rapierDistance >= 0 && rapierDistance <= suspensionEnvelope) {
-      return rapierHitY
-    }
+    if (rapierDistance >= 0 && rapierDistance <= suspensionEnvelope) return rapierHitY
   }
-
-  if (!terrainWithinRay) return rapierHitY
-  if (rapierHitY === null) return terrainHeight
-  return terrainDistance <= suspensionEnvelope ? terrainHeight : rapierHitY
+  if (terrainWithinRay) return terrainHeight
+  return rapierHitY
 }
 
 export function resolveAirborneVerticalCorrection({

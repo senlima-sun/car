@@ -1,4 +1,5 @@
 import { computeRibbonTangents } from '@/components/canvas/TrackObjects/geometry/ribbonGeometry'
+import { useTerrainStore } from '@/stores/useTerrainStore'
 import type { PlacedObject, TrackRibbonPoint } from '@/types/trackObjects'
 
 export interface ParentDerivedSegment {
@@ -193,7 +194,8 @@ export function resolveParentDerivedLayer(
     const nz = tan.x * sign
     const wx = src.x + nx * centerOffset
     const wz = src.z + nz * centerOffset
-    const wy = opts.terrainHeightAt ? opts.terrainHeightAt(wx, wz) : src.y
+    const sampler = opts.terrainHeightAt ?? useTerrainStore.getState().getHeightAt
+    const wy = sampler(wx, wz)
     rawPoints.push({ x: wx, y: wy, z: wz, isPitLane: src.isPitLane, srcIdx: i })
   }
 

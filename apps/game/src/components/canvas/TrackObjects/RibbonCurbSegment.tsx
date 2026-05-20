@@ -11,6 +11,7 @@ import {
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
+import { useTerrainStore } from '../../../stores/useTerrainStore'
 import type { CurbType, PlacedObject, TrackRibbonPoint } from '../../../types/trackObjects'
 import { computeRibbonTangents } from './geometry/ribbonGeometry'
 import { resolveParentDerivedLayer } from '../../../utils/parentDerivedLayer'
@@ -72,6 +73,7 @@ function resolveCurbCenter(
 function buildRibbonCurb(curb: PlacedObject, parentRibbon?: PlacedObject): BuildResult | null {
   const center = resolveCurbCenter(curb, parentRibbon)
   if (!center || center.length < 2) return null
+  const terrainHeightAt = useTerrainStore.getState().getHeightAt
   const curbType: CurbType = curb.curbType ?? 'apex'
   const sign = curb.edgeSide === 'right' ? -1 : 1
   const isExit = curbType === 'exit'
@@ -108,7 +110,7 @@ function buildRibbonCurb(curb: PlacedObject, parentRibbon?: PlacedObject): Build
       const widthOffset = (normalizedWidth - 0.5) * CURB_WIDTH
       const x = c.x + perpX * widthOffset
       const z = c.z + perpZ * widthOffset
-      positions.push(x, c.y + height, z)
+      positions.push(x, terrainHeightAt(x, z) + height, z)
       uvs.push(normalizedWidth, arcPos)
     }
   }
@@ -139,7 +141,7 @@ function buildRibbonCurb(curb: PlacedObject, parentRibbon?: PlacedObject): Build
     collisionVertices: new Float32Array(positions),
     collisionIndices: new Uint32Array(indices),
     sensor: {
-      center: [midC.x, midC.y + peakHeight / 2, midC.z],
+      center: [midC.x, terrainHeightAt(midC.x, midC.z) + peakHeight / 2, midC.z],
       halfDepth: arcLength / 2,
     },
   }
@@ -157,7 +159,12 @@ export default function RibbonCurbSegment({
 
   const curbType: CurbType = curb.curbType ?? 'apex'
   const peakHeight = CURB_PEAK_HEIGHTS[curbType]
-  const result = useMemo(() => buildRibbonCurb(curb, parentRibbon), [curb, parentRibbon])
+  const terrainGeneration = useTerrainStore(s => s.terrainGeneration)
+  const result = useMemo(
+    () => buildRibbonCurb(curb, parentRibbon),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [curb, parentRibbon, terrainGeneration],
+  )
 
   const handleEnter = useCallback(() => {
     if (isGhost || !curb.edgeSide) return

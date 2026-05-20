@@ -1,9 +1,14 @@
 import { BufferGeometry, Float32BufferAttribute, Vector3 } from 'three'
 import { TRACK_LAYER_Y_OFFSETS } from '../../../../constants/trackLayers'
+import { useTerrainStore } from '../../../../stores/useTerrainStore'
 import type { TrackRibbonPoint } from '../../../../types/trackObjects'
-import type { RibbonBoundary } from './ribbonBoundary'
+import type { RibbonBoundary, TerrainSampler } from './ribbonBoundary'
 import { buildRibbonBoundary } from './ribbonBoundary'
 import { computeRibbonTangents, computeRibbonMiterScales } from './ribbonMath'
+
+function defaultTerrainSampler(): TerrainSampler {
+  return useTerrainStore.getState().getHeightAt
+}
 
 export { computeRibbonTangents, computeRibbonMiterScales, type Tangent2D } from './ribbonMath'
 
@@ -57,8 +62,9 @@ export function computeRibbonFrames(
   points: TrackRibbonPoint[],
   closed: boolean,
   width: number,
+  terrainSampler: TerrainSampler = defaultTerrainSampler(),
 ): RibbonFrames | null {
-  const boundary = buildRibbonBoundary(points, closed, width)
+  const boundary = buildRibbonBoundary(points, closed, width, undefined, terrainSampler)
   if (!boundary) return null
   return computeRibbonFramesFromBoundary(boundary)
 }

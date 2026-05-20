@@ -140,17 +140,23 @@ export function cleanInsideCornerSelfIntersections(
   return { left, right, stats }
 }
 
+export type TerrainSampler = (worldX: number, worldZ: number) => number
+
 export function buildRibbonBoundary(
   points: TrackRibbonPoint[],
   closed: boolean,
   width: number,
   yOffset = TRACK_LAYER_Y_OFFSETS.ASPHALT,
+  terrainSampler?: TerrainSampler,
 ): RibbonBoundary | null {
   if (points.length < 2 || width <= 0 || !isFinite(width) || isNaN(width)) return null
 
   const n = points.length
   const halfWidth = width / 2
   const tangents = computeRibbonTangents(points, closed)
+  const sample =
+    terrainSampler ?? ((_x: number, _z: number) => 0)
+  const useTerrain = !!terrainSampler
 
   const left: Vector3[] = []
   const right: Vector3[] = []
@@ -162,8 +168,15 @@ export function buildRibbonBoundary(
     const nx = -tan.z
     const nz = tan.x
 
-    left.push(new Vector3(p.x + nx * halfWidth, p.y + yOffset, p.z + nz * halfWidth))
-    right.push(new Vector3(p.x - nx * halfWidth, p.y + yOffset, p.z - nz * halfWidth))
+    const leftX = p.x + nx * halfWidth
+    const leftZ = p.z + nz * halfWidth
+    const rightX = p.x - nx * halfWidth
+    const rightZ = p.z - nz * halfWidth
+    const leftY = useTerrain ? sample(leftX, leftZ) + yOffset : p.y + yOffset
+    const rightY = useTerrain ? sample(rightX, rightZ) + yOffset : p.y + yOffset
+
+    left.push(new Vector3(leftX, leftY, leftZ))
+    right.push(new Vector3(rightX, rightY, rightZ))
 
     if (i > 0) {
       const prev = points[i - 1]!

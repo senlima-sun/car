@@ -17,28 +17,32 @@ describe('getTerrainLookaheadDistance', () => {
 })
 
 describe('resolveTerrainSupportHitY', () => {
-  it('keeps a rapier hit that is already inside the suspension envelope', () => {
-    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 1.2, 1.4)).toBe(1.4)
+  it('terrain wins when within the suspension envelope (even if rapier is also inside)', () => {
+    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 1.2, 1.4)).toBe(1.2)
   })
 
-  it('uses terrain when rapier misses but the height is under the ray and inside the envelope', () => {
+  it('terrain wins when rapier misses and terrain is inside the envelope', () => {
     expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 1.4, null)).toBe(1.4)
   })
 
-  it('uses terrain when the rapier hit is outside the envelope but terrain is close enough', () => {
+  it('terrain wins when rapier hit is outside the envelope but terrain is inside', () => {
     expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 1.4, 0.6)).toBe(1.4)
   })
 
-  it('keeps the rapier hit when terrain is lower', () => {
-    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 0.2, 0.8)).toBe(0.8)
+  it('terrain wins when within ray length even if not within envelope and rapier is also outside', () => {
+    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 0.2, 0.8)).toBe(0.2)
   })
 
-  it('ignores terrain outside the ray length', () => {
+  it('rapier wins when inside envelope and terrain is outside the envelope', () => {
+    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 0.9, 1.4)).toBe(1.4)
+  })
+
+  it('ignores terrain outside the ray length and returns null when rapier also misses', () => {
     expect(resolveTerrainSupportHitY(2, -1, 0.5, 0.8, 1, null)).toBeNull()
   })
 
-  it('keeps a far rapier hit when terrain is also outside the suspension envelope', () => {
-    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 0.9, 0.6)).toBe(0.6)
+  it('handles a stale ribbon mesh at y=0 by preferring the high terrain inside envelope', () => {
+    expect(resolveTerrainSupportHitY(50.8, -1, 60, 1.0, 50, 0)).toBe(50)
   })
 })
 

@@ -228,13 +228,12 @@ const nearestOnPolyline = (
     const tRaw = ((x - a.x) * dx + (z - a.z) * dz) / segLenSq
     const tClamped = Math.max(0, Math.min(1, tRaw))
     const px = a.x + dx * tClamped
-    const py = a.y + (b.y - a.y) * tClamped
     const pz = a.z + dz * tClamped
     const d = Math.hypot(x - px, z - pz)
 
     if (d < bestDist) {
       bestDist = d
-      bestPoint = [px, py, pz]
+      bestPoint = [px, 0, pz]
       const segLen = Math.sqrt(segLenSq)
       bestTangent = [dx / segLen, 0, dz / segLen]
     }

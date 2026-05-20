@@ -161,13 +161,9 @@ describe('buildExportPayload', () => {
     expect(boxes[1]!.position).toEqual([70, 0, 20])
   })
 
-  test('does NOT sample terrain for checkpoints and pit boxes (y resolved at render time)', () => {
-    let getHeightAtCalls = 0
+  test('checkpoints and pit boxes are emitted with y=0 (y resolved at render time)', () => {
     useTerrainStore.setState({
-      getHeightAt: () => {
-        getHeightAtCalls++
-        return 999
-      },
+      getHeightAt: () => 999,
     })
 
     const p = makePath(makeAnchor({ x: 0, y: 0 }))
@@ -183,7 +179,6 @@ describe('buildExportPayload', () => {
     const sf = payload.find(o => o.type === 'checkpoint')!
     const pitBox = payload.find(o => o.type === 'pitbox')!
 
-    expect(getHeightAtCalls).toBe(0)
     expect(sf.position[1]).toBe(0)
     expect(sf.startPoint![1]).toBe(0)
     expect(sf.endPoint![1]).toBe(0)
