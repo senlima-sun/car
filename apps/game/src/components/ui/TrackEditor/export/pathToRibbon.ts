@@ -1,7 +1,7 @@
 import type { Anchor, Path, Point } from '../geometry/types'
 import { resolveAnchor } from '../geometry/path'
 import { eq } from '../geometry/point'
-import type { PlacedObject, TrackRibbonPoint } from '@/types/trackObjects'
+import type { PlacedObject, TrackRibbonPoint, TrackRibbonPoint2D } from '@/types/trackObjects'
 import { TRACK_WIDTH } from '@/constants/dimensions'
 import { useTerrainStore } from '@/stores/useTerrainStore'
 import { subdivideCubicAdaptive, cubicPoint } from './bezierSubdivide'
@@ -47,23 +47,33 @@ function sampleCubic2D(p0: Point, c1: Point, c2: Point, p3: Point): Point[] {
   return out
 }
 
+function sampleSegment2D(
+  from: Anchor,
+  to: Anchor,
+  isPit: boolean,
+  includeStart: boolean,
+): TrackRibbonPoint2D[] {
+  const { p0, c1, c2, p3 } = segmentEndpoints(from, to)
+  const handlesCollapsed = eq(c1, p0) && eq(c2, p3)
+  const samples = handlesCollapsed ? sampleStraight2D(p0, p3) : sampleCubic2D(p0, c1, c2, p3)
+  const startIdx = includeStart ? 0 : 1
+  const out: TrackRibbonPoint2D[] = []
+  for (let i = startIdx; i < samples.length; i++) {
+    const pt = samples[i]!
+    out.push({ x: pt.x, z: pt.y, isPitLane: isPit })
+  }
+  return out
+}
+
 function sampleSegmentDense(
   from: Anchor,
   to: Anchor,
   isPit: boolean,
   includeStart: boolean,
 ): TrackRibbonPoint[] {
-  const { p0, c1, c2, p3 } = segmentEndpoints(from, to)
-  const handlesCollapsed = eq(c1, p0) && eq(c2, p3)
-  const samples = handlesCollapsed ? sampleStraight2D(p0, p3) : sampleCubic2D(p0, c1, c2, p3)
-  const startIdx = includeStart ? 0 : 1
+  const samples2D = sampleSegment2D(from, to, isPit, includeStart)
   const getHeightAt = useTerrainStore.getState().getHeightAt
-  const out: TrackRibbonPoint[] = []
-  for (let i = startIdx; i < samples.length; i++) {
-    const pt = samples[i]!
-    out.push({ x: pt.x, y: getHeightAt(pt.x, pt.y), z: pt.y, isPitLane: isPit })
-  }
-  return out
+  return samples2D.map(p => ({ x: p.x, y: getHeightAt(p.x, p.z), z: p.z, isPitLane: p.isPitLane }))
 }
 
 function genId(prefix: string): string {
@@ -164,4 +174,67 @@ export function documentToRibbons(paths: Path[]): PlacedObject[] {
     if (ribbon) out.push(ribbon)
   }
   return out
+}
+
+export function pathToRibbon2D(path: Path, allPaths: Path[] = [path]): PlacedObject | null {
+  const { anchors, closed } = path
+  if (anchors.length < 2) return null
+  const resolved: (Anchor | null)[] = anchors.map(a => resolveAnchor(allPaths, a))
+  if (!hasFiniteAnchors(resolved)) return null
+  const pitSet = new Set(path.pitLaneSegments ?? [])
+
+  const points: TrackRibbonPoint2D[] = []
+  for (let i = 1; i < anchors.length; i++) {
+    const from = resolved[i - 1]
+    const to = resolved[i]
+    if (!from || !to) continue
+    const isPit = pitSet.has(i - 1)
+    const includeStart = i === 1
+    points.push(...sampleSegment2D(from, to, isPit, includeStart))
+  }
+  if (closed && anchors.length > 1) {
+    const closingIndex = anchors.length - 1
+    const from = resolved[closingIndex]
+    const to = resolved[0]
+    if (from && to) {
+      const isPit = pitSet.has(closingIndex)
+      points.push(...sampleSegment2D(from, to, isPit, false))
+    }
+  }
+
+  if (points.length < 2) return null
+
+  if (closed && points.length > 1) {
+    const first = points[0]!
+    const last = points[points.length - 1]!
+    if (Math.hypot(first.x - last.x, first.z - last.z) < RIBBON_MIN_STEP_M) {
+      points.pop()
+    }
+  }
+
+  let sumX = 0
+  let sumZ = 0
+  for (const p of points) {
+    sumX += p.x
+    sumZ += p.z
+  }
+  const centerX = sumX / points.length
+  const centerZ = sumZ / points.length
+
+  const ribbonPoints: TrackRibbonPoint[] = points.map(p => ({
+    x: p.x,
+    y: 0,
+    z: p.z,
+    isPitLane: p.isPitLane,
+  }))
+
+  return {
+    id: genId('ribbon'),
+    type: 'track_ribbon',
+    position: [centerX, 0, centerZ],
+    rotation: 0,
+    width: TRACK_WIDTH,
+    ribbonPoints,
+    ribbonClosed: closed,
+  }
 }
