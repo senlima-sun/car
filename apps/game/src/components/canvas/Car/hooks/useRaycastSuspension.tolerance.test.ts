@@ -14,13 +14,14 @@ import {
   type RibbonBoundary,
 } from '@/components/canvas/TrackObjects/geometry/ribbonBoundary'
 
-// Tolerance bounded by 2-sample (left/right edge only) ribbon: cross-slope
-// interior wheel positions are linearly interpolated from edge y, so on Spa's
-// steep transverse gradients (Eau Rouge, Raidillon) the gap can reach ~1.6m.
-// Phase 3.8 (optional transverse crossSamples) would tighten this to <0.1m.
-// Keeping it at 2m here catches "ribbon at y=0 / terrain at y=50" regressions
-// while accepting the current 2-sample approximation cost.
-const TOLERANCE_M = 2.5
+// After terrain-stamping, the ribbon footprint cells in the heightfield
+// ARE the smoothed ribbon centerline. The Phase 1.5b real-Spa probe
+// measured the worst-case `getHeightAt`-vs-targetY error at 0.1592m on
+// Eau Rouge / Raidillon (arc/grid linearity divergence on curved
+// sections at 256² grid resolution). TOLERANCE_M = 0.30m gives ~88%
+// safety margin over the measured floor. Tightening further requires
+// either higher heightfield resolution or multi-sample stamp.
+const TOLERANCE_M = 0.3
 const WAYPOINTS = 32
 const SEEK_RAY_LENGTH = 50
 const SUSPENSION_ENVELOPE = 1.5
