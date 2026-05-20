@@ -5,6 +5,7 @@ import { CAR_PARTS, PAINT_PRESETS, useCarPaintStore } from '@/stores/useCarPaint
 import { useGameStore } from '@/stores/useGameStore'
 import { useShowroomStore } from '@/stores/useShowroomStore'
 import {
+  CreditsButton,
   GlobalSettingsGrid,
   HoverBadge,
   PartMenu,
@@ -83,6 +84,7 @@ export default function AnimationPreviewPanel() {
             active={popupMode === 'settings'}
             onClick={() => setPopupMode(mode => (mode === 'settings' ? null : 'settings'))}
           />
+          <CreditsButton />
         </ShowroomToolbar>
       </motion.div>
 

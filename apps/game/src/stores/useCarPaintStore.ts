@@ -11,11 +11,15 @@ export const CAR_PARTS = [
     id: 'engineCover',
     label: 'Engine Cover',
     meshNames: [
-      'Body_Airbox_Horn',
       'Car_Livery_EngineCover_L',
       'Car_Livery_EngineCover_R',
       'Car_Livery_EngineCover_Top',
     ],
+  },
+  {
+    id: 'airHorn',
+    label: 'Air Horn',
+    meshNames: ['Body_Airbox_Horn'],
   },
   {
     id: 'sidepods',
@@ -66,6 +70,40 @@ export const CAR_PARTS = [
     ],
   },
   {
+    id: 'cockpitGlass',
+    label: 'Cockpit Glass',
+    meshNames: ['Cockpit_Glass'],
+  },
+  {
+    id: 'cockpitInterior',
+    label: 'Cockpit Interior',
+    meshNames: [
+      'Cockpit_Chrome_AO_Detail',
+      'Cockpit_Chrome_Fasteners',
+      'Cockpit_Metal_Detail',
+      'Cockpit_Plastic_Interior',
+      'Pedals',
+      'Seat_Belt',
+    ],
+  },
+  {
+    id: 'steeringWheel',
+    label: 'Steering Wheel',
+    meshNames: [
+      'SteeringWheel_Audi',
+      'SteeringWheel_Carbon_Back',
+      'SteeringWheel_Carbon_LedStrip',
+      'SteeringWheel_ClearLed',
+      'SteeringWheel_ClearLed_Dot',
+      'SteeringWheel_ClearLed_Pre',
+      'SteeringWheel_Decal',
+      'SteeringWheel_Frame',
+      'SteeringWheel_Kers_White',
+      'SteeringWheel_LCD',
+      'SteeringWheel_Revs_Display',
+    ],
+  },
+  {
     id: 'tcam',
     label: 'T-Cam',
     meshNames: ['TCam'],
@@ -95,9 +133,19 @@ export const CAR_PARTS = [
     ],
   },
   {
+    id: 'frontWheelWinglets',
+    label: 'Wheel Winglets',
+    meshNames: ['FrontWheelWinglet_L', 'FrontWheelWinglet_R'],
+  },
+  {
     id: 'rearWing',
     label: 'Rear Wing',
     meshNames: ['Car_Livery_BW-M', 'Car_Livery_BW-L', 'RearWing_Chrome_Pin'],
+  },
+  {
+    id: 'rearLight',
+    label: 'Rear Light',
+    meshNames: ['Rear_Light'],
   },
   {
     id: 'exhaust',
@@ -105,6 +153,7 @@ export const CAR_PARTS = [
     meshNames: ['Exhaust_Tailpipe'],
   },
   { id: 'mirrors', label: 'Mirrors', meshNames: ['Car_Livery_LREARVIEW', 'Car_Livery_RREARVIEW'] },
+  { id: 'mirrorGlass', label: 'Mirror Glass', meshNames: ['Mirror_Glass_L', 'Mirror_Glass_R'] },
   {
     id: 'brackets',
     label: 'Wishbones',
@@ -187,6 +236,8 @@ export interface CarPaintPreset {
 const DEFAULT_COLOR = '#0a1128'
 const CARBON = '#1a1a1a'
 const TITANIUM = '#8a8a8a'
+const GLASS = '#101820'
+const REAR_LIGHT = '#c92c2c'
 export const DEFAULT_PART_MATERIAL_SETTINGS: PartMaterialSettings = {
   roughness: 0.35,
   metalness: 0.4,
@@ -198,11 +249,18 @@ function definePresetColors(
 ): Partial<Record<CarPartId, string>> {
   return {
     engineCover: colors.engineCover ?? colors.body ?? DEFAULT_COLOR,
+    airHorn: colors.airHorn ?? colors.engineCover ?? colors.body ?? DEFAULT_COLOR,
     sidepods: colors.sidepods ?? colors.body ?? DEFAULT_COLOR,
     cockpit: colors.cockpit ?? colors.body ?? DEFAULT_COLOR,
+    cockpitGlass: colors.cockpitGlass ?? GLASS,
+    cockpitInterior: colors.cockpitInterior ?? CARBON,
+    steeringWheel: colors.steeringWheel ?? CARBON,
     tcam: colors.tcam ?? colors.halo ?? TITANIUM,
     cameras: colors.cameras ?? CARBON,
+    frontWheelWinglets: colors.frontWheelWinglets ?? colors.frontWing ?? CARBON,
+    rearLight: colors.rearLight ?? REAR_LIGHT,
     exhaust: colors.exhaust ?? CARBON,
+    mirrorGlass: colors.mirrorGlass ?? GLASS,
     brackets: colors.brackets ?? CARBON,
     brakeHardware: colors.brakeHardware ?? colors.brackets ?? CARBON,
     wheelPanels: colors.wheelPanels ?? colors.wheelCovers ?? CARBON,
@@ -491,17 +549,24 @@ interface CarPaintState {
 const defaultPartColors: Record<CarPartId, string> = {
   body: DEFAULT_COLOR,
   engineCover: DEFAULT_COLOR,
+  airHorn: DEFAULT_COLOR,
   sidepods: DEFAULT_COLOR,
   secondary: DEFAULT_COLOR,
   nose: DEFAULT_COLOR,
   cockpit: DEFAULT_COLOR,
+  cockpitGlass: GLASS,
+  cockpitInterior: CARBON,
+  steeringWheel: CARBON,
   tcam: TITANIUM,
   cameras: CARBON,
   halo: TITANIUM,
   frontWing: DEFAULT_COLOR,
+  frontWheelWinglets: CARBON,
   rearWing: DEFAULT_COLOR,
+  rearLight: REAR_LIGHT,
   exhaust: CARBON,
   mirrors: CARBON,
+  mirrorGlass: GLASS,
   brackets: CARBON,
   brakeHardware: CARBON,
   wheelPanels: CARBON,

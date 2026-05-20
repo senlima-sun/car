@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { X } from 'lucide-react'
+import { Info, X } from 'lucide-react'
 
 export function HoverBadge({ children }: { children: ReactNode }) {
   return (
@@ -16,7 +16,7 @@ export function ShowroomHud({ children }: { children: ReactNode }) {
 
 export function ShowroomToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className='pointer-events-auto absolute left-4 top-4 flex items-center gap-1 rounded-full border border-white/10 bg-black/72 p-1 shadow-[0_16px_42px_rgba(0,0,0,0.38)] backdrop-blur-xl'>
+    <div className='pointer-events-auto absolute left-4 top-4 z-[140] flex items-center gap-1 rounded-full border border-white/10 bg-black/72 p-1 shadow-[0_16px_42px_rgba(0,0,0,0.38)] backdrop-blur-xl'>
       {children}
     </div>
   )
@@ -50,6 +50,46 @@ export function ToolButton({
     >
       <Icon size={16} strokeWidth={1.8} />
     </button>
+  )
+}
+
+export function CreditsButton() {
+  return (
+    <div className='group relative inline-flex'>
+      <button
+        aria-label='Credits'
+        title='Credits'
+        className='inline-flex h-9 w-9 items-center justify-center rounded-full text-white/66 transition hover:bg-white/[0.08] hover:text-white focus-visible:bg-white/[0.12] focus-visible:text-white focus-visible:outline-none'
+      >
+        <Info size={16} strokeWidth={1.8} />
+      </button>
+      <div className='pointer-events-none absolute left-0 top-[calc(100%+10px)] z-[150] hidden w-[420px] max-w-[calc(100vw-2rem)] rounded-2xl border border-white/10 bg-[rgba(14,16,22,0.96)] p-3 text-left shadow-[0_16px_40px_rgba(0,0,0,0.42)] backdrop-blur-xl group-focus-within:block group-hover:block'>
+        <div className='mb-1 font-mono text-[9px] uppercase tracking-[0.22em] text-red-200/70'>
+          Credits
+        </div>
+        <p className='font-mono text-[10px] leading-5 text-white/72'>
+          &quot;
+          <a
+            className='pointer-events-auto text-white underline decoration-white/30 underline-offset-4 hover:text-red-100'
+            href='https://skfb.ly/oRoKx'
+            target='_blank'
+            rel='noreferrer'
+          >
+            F1 2026 Audi FOM
+          </a>
+          &quot; (https://skfb.ly/oRoKx) by kevin (ケビン) is licensed under{' '}
+          <a
+            className='pointer-events-auto text-white underline decoration-white/30 underline-offset-4 hover:text-red-100'
+            href='http://creativecommons.org/licenses/by/4.0/'
+            target='_blank'
+            rel='noreferrer'
+          >
+            Creative Commons Attribution
+          </a>{' '}
+          (http://creativecommons.org/licenses/by/4.0/) .
+        </p>
+      </div>
+    </div>
   )
 }
 
