@@ -437,7 +437,20 @@ export const useTrackStore = create<TrackState>((set, get) => ({
         const activeTrack = library.tracks.find(t => t.id === library.activeTrackId)
         if (activeTrack) {
           useCustomizationStore.getState().setPlacedObjects(activeTrack.objects)
-          if (activeTrack.heightmap && activeTrack.heightmap.length > 0) {
+          const presetId = activeTrack.presetId
+          const needsSidecarRefetch =
+            (activeTrack.sidecarApplied === true ||
+              activeTrack.heightmapSource === 'sidecar') &&
+            (!activeTrack.heightmap || activeTrack.heightmap.length === 0) &&
+            !!presetId
+          if (needsSidecarRefetch && presetId) {
+            void getTerrainHeightmapForPreset(presetId)
+              .catch(() => null)
+              .then(sidecar => {
+                if (sidecar) useTerrainStore.getState().loadHeightmap(sidecar.heightmap)
+                else useTerrainStore.getState().resetHeightmap()
+              })
+          } else if (activeTrack.heightmap && activeTrack.heightmap.length > 0) {
             useTerrainStore.getState().loadHeightmap(activeTrack.heightmap)
           } else {
             useTerrainStore.getState().resetHeightmap()

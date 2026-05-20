@@ -85,8 +85,8 @@ export function __setSidecarLoadersForTest(
   sidecarLoaders = loaders
 }
 
-const INT16_MIN = -32768
-const INT16_MAX = 32767
+const SAFE_MAX_M = 80
+const SAFE_MIN_M = -40
 
 function decodeInt16Cm(base64: string, presetId: string): number[] {
   const binary = atob(base64)
@@ -94,15 +94,21 @@ function decodeInt16Cm(base64: string, presetId: string): number[] {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
   const ints = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2)
   const out = new Array<number>(ints.length)
-  let clampedCount = 0
+  let clipped = 0
   for (let i = 0; i < ints.length; i++) {
-    const raw = ints[i]!
-    if (raw === INT16_MIN || raw === INT16_MAX) clampedCount++
-    out[i] = raw / 100
+    let v = ints[i]! / 100
+    if (v > SAFE_MAX_M) {
+      v = SAFE_MAX_M
+      clipped++
+    } else if (v < SAFE_MIN_M) {
+      v = SAFE_MIN_M
+      clipped++
+    }
+    out[i] = v
   }
-  if (import.meta.env?.DEV && clampedCount > 0) {
+  if (import.meta.env?.DEV && clipped > 0) {
     console.warn(
-      `[terrain] sidecar ${presetId} has ${clampedCount} clamped cells (±327.67m saturation); producer should re-tune verticalOriginMeters`,
+      `[terrain] sidecar ${presetId}: clipped ${clipped} cells to [${SAFE_MIN_M}, ${SAFE_MAX_M}]m for stable physics`,
     )
   }
   return out
