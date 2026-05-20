@@ -3,6 +3,7 @@ import { Environment, OrbitControls, PerspectiveCamera } from '@react-three/drei
 import { useFrame, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { MOUSE } from 'three'
 import * as THREE from 'three'
 import CarBody from '../Car/parts/CarBody'
 import { WHEEL_RADIUS } from '@/constants/dimensions'
@@ -29,6 +30,11 @@ const CAR_OFFSET: [number, number, number] = [-3, 0.2, -0.45]
 const ORBIT_TARGET: [number, number, number] = [-3, 1.6, -0.45]
 const CAMERA_POSITION: [number, number, number] = [7, 1, 4.5]
 const CAMERA_FOV = 45
+const MOUSE_BUTTONS = {
+  LEFT: MOUSE.ROTATE,
+  MIDDLE: MOUSE.DOLLY,
+  RIGHT: MOUSE.PAN,
+}
 
 function findPaintPart(object: THREE.Object3D | null, boundary: THREE.Object3D | null) {
   let current = object
@@ -167,7 +173,9 @@ export default function PreviewScene() {
         maxDistance={20}
         maxPolarAngle={Math.PI / 2 + 0.05}
         enableRotate
-        enablePan={false}
+        enablePan
+        screenSpacePanning={false}
+        mouseButtons={MOUSE_BUTTONS}
       />
 
       <Environment preset='studio' environmentIntensity={0.8} />

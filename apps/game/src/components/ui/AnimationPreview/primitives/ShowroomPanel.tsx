@@ -1,66 +1,100 @@
 import type { ReactNode } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { X } from 'lucide-react'
 
 export function HoverBadge({ children }: { children: ReactNode }) {
   return (
-    <div className='pointer-events-none absolute left-6 top-6 z-[100] rounded-lg border border-red-300/30 bg-black/70 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.24em] text-red-100 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl'>
+    <div className='pointer-events-none absolute left-4 top-16 z-[100] rounded-lg border border-red-300/30 bg-black/70 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.24em] text-red-100 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:left-40 sm:top-5'>
       {children}
     </div>
   )
 }
 
-export function PanelShell({ children }: { children: ReactNode }) {
+export function ShowroomHud({ children }: { children: ReactNode }) {
+  return <div className='pointer-events-none absolute inset-0 z-[100]'>{children}</div>
+}
+
+export function ShowroomToolbar({ children }: { children: ReactNode }) {
   return (
-    <div className='pointer-events-auto absolute left-4 right-4 top-4 bottom-4 z-[100] flex w-auto flex-col overflow-hidden rounded-xl border border-white/10 bg-black/72 shadow-[0_24px_70px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:left-auto sm:w-[420px]'>
+    <div className='pointer-events-auto absolute left-4 top-4 flex items-center gap-1 rounded-full border border-white/10 bg-black/72 p-1 shadow-[0_16px_42px_rgba(0,0,0,0.38)] backdrop-blur-xl'>
       {children}
     </div>
   )
 }
 
-export function PanelHeader({ title, meta }: { title: string; meta: string }) {
+export function ToolButton({
+  active,
+  danger,
+  icon: Icon,
+  title,
+  onClick,
+}: {
+  active?: boolean
+  danger?: boolean
+  icon: LucideIcon
+  title: string
+  onClick: () => void
+}) {
   return (
-    <div className='relative border-b border-white/8 px-3.5 pt-3 pb-2.5'>
-      <div className='flex items-center gap-2.5'>
-        <span className='inline-block h-px w-[22px] bg-red-400/70' />
-        <span className='font-mono text-[9px] uppercase tracking-[0.36em] text-red-300/80'>
-          F1 · 2026
-        </span>
-        <span className='ml-auto flex items-center gap-1.5'>
-          <span className='h-1.5 w-1.5 rounded-full bg-red-400' />
-          <span className='font-mono text-[9px] uppercase tracking-[0.28em] text-white/30'>F2</span>
-        </span>
+    <button
+      aria-label={title}
+      title={title}
+      onClick={onClick}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
+        danger
+          ? 'text-red-200/86 hover:bg-red-500/18 hover:text-red-50'
+          : active
+            ? 'bg-white/[0.12] text-white'
+            : 'text-white/66 hover:bg-white/[0.08] hover:text-white'
+      }`}
+    >
+      <Icon size={16} strokeWidth={1.8} />
+    </button>
+  )
+}
+
+export function Popover({
+  title,
+  meta,
+  onClose,
+  children,
+}: {
+  title: string
+  meta?: string
+  onClose: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className='pointer-events-auto absolute left-4 right-4 top-16 max-h-[calc(100vh-5rem)] overflow-hidden rounded-2xl border border-white/10 bg-[rgba(14,16,22,0.94)] shadow-[0_16px_40px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:right-auto sm:max-h-[560px] sm:w-[326px]'>
+      <div className='flex items-center gap-3 border-b border-white/8 px-3 py-2'>
+        <div className='min-w-0 flex-1'>
+          <div className='truncate font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-white/82'>
+            {title}
+          </div>
+          {meta && (
+            <div className='mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.18em] text-white/38'>
+              {meta}
+            </div>
+          )}
+        </div>
+        <button
+          aria-label='Close'
+          title='Close'
+          onClick={onClose}
+          className='inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/50 transition hover:bg-white/[0.08] hover:text-white'
+        >
+          <X size={15} strokeWidth={1.8} />
+        </button>
       </div>
-      <div className='mt-1.5 flex min-w-0 items-baseline justify-between gap-3'>
-        <h2 className='font-mono text-[15px] font-semibold uppercase tracking-[0.18em] text-white'>
-          {title}
-        </h2>
-        <span className='min-w-0 truncate text-right font-mono text-[9px] uppercase tracking-[0.24em] text-white/35'>
-          {meta}
-        </span>
+      <div className='showroom-scroll max-h-[calc(100vh-8.5rem)] overflow-y-auto p-2.5 sm:max-h-[500px]'>
+        {children}
       </div>
     </div>
   )
 }
 
-export function PanelBody({ children }: { children: ReactNode }) {
-  return (
-    <div className='grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(120px,170px)_minmax(0,1fr)] gap-2 overflow-hidden p-2.5 sm:grid-cols-[128px_minmax(0,1fr)] sm:grid-rows-none'>
-      {children}
-    </div>
-  )
-}
-
-export function PartRail({ children }: { children: ReactNode }) {
-  return (
-    <div className='min-h-0 overflow-y-auto rounded-lg border border-white/8 bg-white/[0.025] p-2'>
-      <div className='mb-2 flex items-center justify-between px-1'>
-        <span className='font-mono text-[9px] uppercase tracking-[0.28em] text-red-200/70'>
-          Parts
-        </span>
-      </div>
-      <div className='space-y-1'>{children}</div>
-    </div>
-  )
+export function PartMenu({ children }: { children: ReactNode }) {
+  return <div className='grid grid-cols-2 gap-1.5'>{children}</div>
 }
 
 export function PartOption({
@@ -80,31 +114,38 @@ export function PartOption({
     <button
       title={label}
       onClick={onClick}
-      className={`flex w-full items-center gap-1 rounded-md border px-1.5 py-1.5 text-left transition ${
+      className={`flex h-10 min-w-0 items-center gap-1.5 rounded-lg border px-2 text-left transition ${
         active
           ? 'border-red-300/60 bg-red-400/15 text-red-100'
           : highlighted
             ? 'border-white/30 bg-white/[0.08] text-white'
-            : 'border-white/10 bg-white/[0.03] text-white/65 hover:border-white/25 hover:text-white'
+            : 'border-white/10 bg-white/[0.03] text-white/68 hover:border-white/25 hover:text-white'
       }`}
     >
       {color && (
         <span
-          className='h-1.5 w-1.5 shrink-0 rounded-full border border-white/25'
+          className='h-2 w-2 shrink-0 rounded-full border border-white/25'
           style={{ backgroundColor: color }}
         />
       )}
-      <span className='min-w-0 truncate font-mono text-[8px] uppercase'>{label}</span>
+      <span className='min-w-0 truncate font-mono text-[9px] uppercase'>{label}</span>
     </button>
   )
 }
 
-export function PanelScrollArea({ children }: { children: ReactNode }) {
-  return <div className='showroom-scroll min-h-0 overflow-y-auto pr-1'>{children}</div>
+export function SelectedPartBadge({ children }: { children: ReactNode }) {
+  return (
+    <div className='mb-2 flex items-center justify-between rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-2'>
+      <span className='font-mono text-[9px] uppercase tracking-[0.2em] text-white/40'>Editing</span>
+      <span className='min-w-0 truncate pl-3 text-right font-mono text-[10px] uppercase text-white/78'>
+        {children}
+      </span>
+    </div>
+  )
 }
 
-export function PanelSectionGrid({ children }: { children: ReactNode }) {
-  return <div className='grid grid-cols-1 gap-2 border-t border-white/5 pt-2'>{children}</div>
+export function GlobalSettingsGrid({ children }: { children: ReactNode }) {
+  return <div className='grid grid-cols-1 gap-1 border-t border-white/5'>{children}</div>
 }
 
 export function SwatchButton({
@@ -129,29 +170,5 @@ export function SwatchButton({
       }`}
       style={{ backgroundColor: color }}
     />
-  )
-}
-
-export function PanelFooter({ onBack }: { onBack: () => void }) {
-  return (
-    <div className='border-t border-white/8 px-4 py-3'>
-      <button
-        onClick={onBack}
-        className='group flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:border-red-300/50 hover:bg-red-500/10 focus-visible:border-red-300/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-300/40'
-      >
-        <span className='flex items-center gap-2'>
-          <ArrowLeft
-            size={13}
-            className='text-white/35 transition group-hover:-translate-x-1 group-hover:text-red-200'
-          />
-          <span className='font-mono text-[11px] uppercase tracking-[0.24em] text-white/85 group-hover:text-red-100'>
-            Back
-          </span>
-        </span>
-        <span className='rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-white/40 group-hover:border-red-300/40 group-hover:text-red-200/80'>
-          F2
-        </span>
-      </button>
-    </div>
   )
 }
