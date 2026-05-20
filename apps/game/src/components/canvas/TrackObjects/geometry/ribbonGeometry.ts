@@ -181,7 +181,7 @@ export function buildParentSideBandGeometry(
   const leftPositions: Vector3[] = []
   const rightPositions: Vector3[] = []
 
-  // Phase 2.7a: y from stamped terrain, not p.y (which is 0 for
+  // y from stamped terrain, not p.y (which is 0 for
   // preset ribbons). Same rationale as buildSideBandFromBoundary.
   const sampler = useTerrainStore.getState().getHeightAt
   for (let i = 0; i < n; i++) {
@@ -238,7 +238,7 @@ export function buildSideBandFromBoundary(
   const leftPositions: Vector3[] = []
   const rightPositions: Vector3[] = []
 
-  // Phase 2.7a: side-band y comes from the stamped baseline via the
+  // side-band y comes from the stamped baseline via the
   // terrain sampler, NOT from `p.y` (which is 0 for preset ribbons
   // emitted via pathToRibbon2D). Without this, side bands (edge lines,
   // painted areas) would render at world y=0 — buried under terrain.

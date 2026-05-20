@@ -258,7 +258,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
         return
       }
       if (wasSidecarSource) {
-        // Phase 2.2: matched-preset refresh — re-stamp from latest
+        // matched-preset refresh — re-stamp from latest
         // sidecar. deltaPolicy: 'preserve' keeps any user sculpt
         // across the re-stamp.
         const refresh = await applyStampedSidecar(presetId, existing.objects, {
@@ -286,7 +286,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
       }))
     }
 
-    // Phase 2.1: first-time preset load — stamp the ribbon into the
+    // first-time preset load — stamp the ribbon into the
     // sidecar before installing as baseline. deltaPolicy: 'reset' for
     // a brand-new track row (no carryover sculpt from previous track).
     const stampResult = await applyStampedSidecar(presetId, preset.objects, {
@@ -451,7 +451,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
             (!activeTrack.heightmap || activeTrack.heightmap.length === 0) &&
             !!presetId
           if (needsSidecarRefetch && presetId) {
-            // Phase 2.3: library finalize — re-stamp on boot if the
+            // library finalize — re-stamp on boot if the
             // saved record had a sidecar-sourced heightmap that
             // wasn't persisted (a thin save). deltaPolicy: 'preserve'
             // because the saved delta loaded earlier in this branch.

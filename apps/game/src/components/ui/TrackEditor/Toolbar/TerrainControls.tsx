@@ -11,7 +11,7 @@ async function importSidecarForActiveTrack(): Promise<void> {
     alert('Import elevation requires an active preset track (e.g. F1 circuits).')
     return
   }
-  // Phase 2.5: "Import Real Elevation" is the destructive action — user
+  // "Import Real Elevation" is the destructive action — user
   // explicitly asked for a fresh DEM, so reset delta along with it.
   const { applied } = await applyStampedSidecar(active.presetId, active.objects, {
     deltaPolicy: 'reset',

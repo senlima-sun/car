@@ -111,7 +111,7 @@ describe('physics-vs-visual ribbon y tolerance', () => {
       expect(ribbon).not.toBeNull()
       if (!ribbon) return
 
-      // Phase 2.6: stamp the ribbon into the sidecar before sampling.
+      // stamp the ribbon into the sidecar before sampling.
       // Without this, the tolerance assertion would test un-stamped y
       // values — meaningless for the architectural guarantee under test.
       const preset_track = getPresetTrack(preset.id)

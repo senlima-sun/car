@@ -80,7 +80,7 @@ export default function Checkpoint({
   }, [startPoint, endPoint, rotation, position])
 
   const finalRotation = startPoint && endPoint ? calculatedRotation : rotation
-  // Phase 2.7b: sample the stamped terrain so the visual + sensor sit
+  // sample the stamped terrain so the visual + sensor sit
   // ON the ribbon, not at world y=0. Preset checkpoints arrive with y=0
   // from editorTrackSource; without this, sensor extends [y-1, y+1.75]
   // around 0 while the car drives at stamped y∈[20, 80] → no triggers.
