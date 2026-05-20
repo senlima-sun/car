@@ -19,10 +19,12 @@ describeIfIdb('trackLibraryDB', () => {
 
   it('returns null when the store is empty', async () => {
     const { readLibrary } = await import('./trackLibraryDB')
-    expect(await readLibrary()).toBeNull()
+    const result = await readLibrary()
+    expect(result.library).toBeNull()
+    expect(result.migrationApplied).toBe(false)
   })
 
-  it('round-trips a library through write then read', async () => {
+  it('round-trips a v2 library through write then read', async () => {
     const { readLibrary, writeLibrary } = await import('./trackLibraryDB')
     const lib = makeLibrary({
       activeTrackId: 't1',
@@ -34,12 +36,18 @@ describeIfIdb('trackLibraryDB', () => {
           updatedAt: 2,
           objectCount: 0,
           objects: [],
+          schemaVersion: 2,
+          sidecarApplied: false,
+          customBaselineUsed: false,
+          deltaPresent: false,
         },
       ],
     })
     await writeLibrary(lib)
     const loaded = await readLibrary()
-    expect(loaded).toEqual(lib)
+    expect(loaded.library).toEqual(lib)
+    expect(loaded.migrationApplied).toBe(false)
+    expect(loaded.isReadOnlyMigrationShim).toBe(false)
   })
 
   it('overwrite replaces the previous record', async () => {
@@ -47,14 +55,15 @@ describeIfIdb('trackLibraryDB', () => {
     await writeLibrary(makeLibrary({ activeTrackId: 'a' }))
     await writeLibrary(makeLibrary({ activeTrackId: 'b' }))
     const loaded = await readLibrary()
-    expect(loaded?.activeTrackId).toBe('b')
+    expect(loaded.library?.activeTrackId).toBe('b')
   })
 
   it('clearLibrary removes the row', async () => {
     const { readLibrary, writeLibrary, clearLibrary } = await import('./trackLibraryDB')
     await writeLibrary(makeLibrary({ activeTrackId: 'a' }))
     await clearLibrary()
-    expect(await readLibrary()).toBeNull()
+    const result = await readLibrary()
+    expect(result.library).toBeNull()
   })
 
   it('concurrent writes resolve and the last one wins', async () => {
@@ -65,6 +74,6 @@ describeIfIdb('trackLibraryDB', () => {
       writeLibrary(makeLibrary({ activeTrackId: 'third' })),
     ])
     const loaded = await readLibrary()
-    expect(loaded?.activeTrackId).toBe('third')
+    expect(loaded.library?.activeTrackId).toBe('third')
   })
 })

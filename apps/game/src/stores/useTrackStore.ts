@@ -73,6 +73,8 @@ interface TrackState {
   isLoading: boolean
   loadedOnce: boolean
   isDirty: boolean
+  isReadOnlyMigrationShim: boolean
+  migrationError?: string
 
   createTrack: (name: string) => string
   deleteTrack: (id: string) => void
@@ -102,6 +104,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   isLoading: false,
   loadedOnce: false,
   isDirty: false,
+  isReadOnlyMigrationShim: false,
 
   createTrack: (name: string) => {
     const newTrack: SavedTrack = {
@@ -427,10 +430,17 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
     try {
       const fromIdb = await readLibrary()
-      if (fromIdb) {
-        const stripped = stripDefaultTrack(fromIdb)
+      if (fromIdb.isReadOnlyMigrationShim) {
+        set({ isReadOnlyMigrationShim: true, migrationError: fromIdb.migrationError })
+      }
+      if (fromIdb.library) {
+        const stripped = stripDefaultTrack(fromIdb.library)
         const reconciled = reconcilePresets(stripped.library)
-        finalize(reconciled.library, stripped.mutated || reconciled.mutated)
+        finalize(
+          reconciled.library,
+          (stripped.mutated || reconciled.mutated || fromIdb.migrationApplied) &&
+            !fromIdb.isReadOnlyMigrationShim,
+        )
         return
       }
 
