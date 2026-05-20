@@ -41,7 +41,7 @@ describe('useTrackStore — preset terrain bootstrap', () => {
     expect(active?.presetId).toBe(SPA_PRESET_ID)
     expect(active?.heightmapSource).toBe('sidecar')
     expect(active?.heightmap?.length).toBe(256 * 256)
-    expect(useTerrainStore.getState().heightmap.some(h => h !== 0)).toBe(true)
+    expect(useTerrainStore.getState().getComposedHeightsSnapshot().some((h: number) => h !== 0)).toBe(true)
   })
 
   it('leaves heightmap empty and source=none when no sidecar exists', async () => {
@@ -51,7 +51,7 @@ describe('useTrackStore — preset terrain bootstrap', () => {
     const active = useTrackStore.getState().getActiveTrack()
     expect(active?.heightmapSource).toBe('none')
     expect(active?.heightmap).toBeUndefined()
-    expect(useTerrainStore.getState().heightmap.every(h => h === 0)).toBe(true)
+    expect(useTerrainStore.getState().getComposedHeightsSnapshot().every((h: number) => h === 0)).toBe(true)
   })
 
   it('saveCurrentTrack flips heightmapSource sidecar → user when the track is dirty', async () => {
@@ -112,6 +112,6 @@ describe('useTrackStore — preset terrain bootstrap', () => {
     const migrated = useTrackStore.getState().getTrackById('old-track')
     expect(migrated?.heightmapSource).toBe('user')
     expect(migrated?.heightmap?.[100]).toBe(12)
-    expect(useTerrainStore.getState().heightmap[100]).toBe(12)
+    expect(useTerrainStore.getState().getComposedHeightsSnapshot()[100]).toBe(12)
   })
 })

@@ -52,8 +52,7 @@ export default function TerrainGround({ simplified, interactive }: TerrainGround
   const visualSubs = getTerrainVisualSubdivisions(tier, simplified, interactive)
   const resolution = useTerrainStore(s => s.resolution)
   const worldSize = useTerrainStore(s => s.worldSize)
-  const version = useTerrainStore(s => s.version)
-  const physicsVersion = useTerrainStore(s => s.physicsVersion)
+  const generation = useTerrainStore(s => s.terrainGeneration)
   const grassTextures = useGrassTextures()
 
   return (
@@ -65,9 +64,9 @@ export default function TerrainGround({ simplified, interactive }: TerrainGround
         subdivisions={visualSubs}
         resolution={resolution}
         worldSize={worldSize}
-        version={version}
+        version={generation}
       />
-      <TerrainPhysics resolution={resolution} worldSize={worldSize} version={physicsVersion} />
+      <TerrainPhysics resolution={resolution} worldSize={worldSize} version={generation} />
       <OuterGround grassTextures={grassTextures} />
     </>
   )
@@ -193,7 +192,7 @@ function TerrainMeshVisual({
 
   useEffect(() => {
     if (simplified || subdivisions <= 1) return
-    const heightmap = useTerrainStore.getState().heightmap
+    const heightmap = useTerrainStore.getState().getComposedHeightsSnapshot()
     const positions = geometry.attributes.position.array as Float32Array
     const vertCount = (subdivisions + 1) * (subdivisions + 1)
     const cellSize = worldSize / (resolution - 1)
@@ -279,18 +278,7 @@ function TerrainPhysics({
   version: number
 }) {
   const heights = useMemo(() => {
-    const heightmap = useTerrainStore.getState().heightmap
-    const out = Array.from(heightmap)
-    let minH = Infinity
-    let maxH = -Infinity
-    for (let i = 0; i < out.length; i++) {
-      if (out[i]! < minH) minH = out[i]!
-      if (out[i]! > maxH) maxH = out[i]!
-    }
-    console.log(
-      `[TerrainPhysics] rebuild heightfield: physicsVersion=${version} heights.length=${out.length} heightRange=[${minH.toFixed(2)}, ${maxH.toFixed(2)}]`,
-    )
-    return out
+    return useTerrainStore.getState().getHeightsArray()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolution, version])
 

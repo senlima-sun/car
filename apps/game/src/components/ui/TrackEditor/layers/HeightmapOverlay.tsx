@@ -221,10 +221,12 @@ export default function HeightmapOverlay({
 }) {
   const resolution = useTerrainStore(s => s.resolution)
   const worldSize = useTerrainStore(s => s.worldSize)
-  const version = useTerrainStore(s => selectHeightmapOverlayVersion(s.version, suspendUpdates))
+  const version = useTerrainStore(s =>
+    selectHeightmapOverlayVersion(s.terrainGeneration, suspendUpdates),
+  )
 
   const { minor, major, labels } = useMemo(() => {
-    const heightmap = useTerrainStore.getState().heightmap
+    const heightmap = useTerrainStore.getState().getComposedHeightsSnapshot()
     return buildContours(heightmap, resolution, worldSize)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolution, worldSize, version])

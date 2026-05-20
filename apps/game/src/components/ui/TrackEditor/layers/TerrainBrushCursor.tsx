@@ -19,7 +19,7 @@ export default function TerrainBrushCursor({
 }) {
   const brushType = useTerrainBrushStore(s => s.terrainBrushType)
   const radius = useTerrainBrushStore(s => s.terrainBrushRadius)
-  const version = useTerrainStore(s => s.version)
+  const version = useTerrainStore(s => s.terrainGeneration)
 
   if (!world) return null
 

@@ -50,7 +50,9 @@ export function useTerrainBrushStroke(): TerrainBrushStrokeApi {
     (worldX: number, worldZ: number, dt: number) => {
       const { terrainBrushType, terrainBrushRadius, terrainBrushStrength, terrainFlattenTarget } =
         useTerrainBrushStore.getState()
-      const { heightmap, resolution, worldSize, applyBrushStroke } = useTerrainStore.getState()
+      const state = useTerrainStore.getState()
+      const { resolution, worldSize, applyBrushStroke } = state
+      const heightmap = state.getComposedHeightsSnapshot()
       const params: BrushParams = {
         type: terrainBrushType,
         radius: terrainBrushRadius,

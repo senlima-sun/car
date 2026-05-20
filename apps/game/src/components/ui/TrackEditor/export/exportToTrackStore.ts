@@ -29,7 +29,7 @@ function writeDraftTrack(objects: PlacedObject[]): void {
   const existingIndex = library.tracks.findIndex(t => t.id === DRAFT_TRACK_ID)
 
   const terrainState = useTerrainStore.getState()
-  const hasTerrainData = terrainState.heightmap.some(h => h !== 0)
+  const hasTerrainData = terrainState.deltaPresent || terrainState.sidecarApplied || terrainState.customBaselineUsed
   const heightmap = hasTerrainData ? terrainState.getHeightsArray() : undefined
 
   const nextDraft: SavedTrack = {

@@ -317,9 +317,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     const activeTrack = state.trackLibrary.tracks.find(t => t.id === activeId)
     const previousSource = activeTrack?.heightmapSource
     const hasTerrainData =
-      terrainState.heightmap.length > 0 &&
-      previousSource !== undefined &&
-      previousSource !== 'none'
+      previousSource !== undefined && previousSource !== 'none'
     const heightmap = hasTerrainData ? terrainState.getHeightsArray() : undefined
 
     let nextSource: HeightmapSource

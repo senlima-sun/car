@@ -2,122 +2,216 @@ import { create } from 'zustand'
 
 const DEFAULT_RESOLUTION = 256
 const DEFAULT_WORLD_SIZE = 4000
-const EDGE_MARGIN = 10
+
+export type BaselineSource = 'sidecar' | 'custom'
 
 interface TerrainState {
-  heightmap: Float32Array
+  baseline: Float32Array
+  delta: Float32Array
   resolution: number
   worldSize: number
-  version: number
-  physicsVersion: number
+  terrainGeneration: number
+  sidecarApplied: boolean
+  customBaselineUsed: boolean
+  deltaPresent: boolean
 
   getHeightAt: (worldX: number, worldZ: number) => number
-  setHeightAt: (gridX: number, gridZ: number, height: number) => void
-  applyBrushStroke: (changes: Map<number, number>, opts?: { deferVersion?: boolean }) => void
-  flushVisualVersion: () => void
-  commitPhysics: () => void
-  loadHeightmap: (data: number[]) => void
+  getComposedHeightsSnapshot: () => Float32Array
   getHeightsArray: () => number[]
+
+  replaceBaseline: (data: number[] | Float32Array, opts: { source: BaselineSource }) => void
+  replaceDelta: (data: number[] | Float32Array) => void
+  resetDelta: () => void
+  resetBaseline: () => void
+  applyDeltaStroke: (
+    changes: Map<number, number>,
+    opts?: { deferGeneration?: boolean },
+  ) => void
+  commitGeneration: () => void
+
+  /** @deprecated use replaceBaseline / replaceDelta. Removed in Phase 6.2. */
+  loadHeightmap: (data: number[]) => void
+  /** @deprecated use replaceDelta + resetBaseline or resetDelta. Removed in Phase 6.2. */
   resetHeightmap: () => void
+  /** @deprecated use applyDeltaStroke. Removed in Phase 6.2. */
+  applyBrushStroke: (changes: Map<number, number>, opts?: { deferVersion?: boolean }) => void
+  /** @deprecated terrainGeneration drives both visual and physics; this is a no-op. Removed in Phase 6.2. */
+  flushVisualVersion: () => void
+  /** @deprecated terrainGeneration drives both visual and physics; this is a no-op. Removed in Phase 6.2. */
+  commitPhysics: () => void
 }
 
-function clampEdge(heightmap: Float32Array, resolution: number) {
-  for (let gz = 0; gz < resolution; gz++) {
-    for (let gx = 0; gx < resolution; gx++) {
-      const edgeDist = Math.min(gx, gz, resolution - 1 - gx, resolution - 1 - gz)
-      if (edgeDist < EDGE_MARGIN) {
-        const t = edgeDist / EDGE_MARGIN
-        const fade = t * t
-        heightmap[gz * resolution + gx] *= fade
-      }
-    }
+function copyInto(target: Float32Array, source: number[] | Float32Array): void {
+  const len = Math.min(source.length, target.length)
+  for (let i = 0; i < len; i++) target[i] = source[i]!
+  for (let i = len; i < target.length; i++) target[i] = 0
+}
+
+function deltaPresentOf(delta: Float32Array): boolean {
+  for (let i = 0; i < delta.length; i++) {
+    if (delta[i] !== 0) return true
   }
+  return false
 }
 
 export const useTerrainStore = create<TerrainState>((set, get) => ({
-  heightmap: new Float32Array(DEFAULT_RESOLUTION * DEFAULT_RESOLUTION),
-  resolution: DEFAULT_RESOLUTION,
-  worldSize: DEFAULT_WORLD_SIZE,
-  version: 0,
-  physicsVersion: 0,
+    baseline: new Float32Array(DEFAULT_RESOLUTION * DEFAULT_RESOLUTION),
+    delta: new Float32Array(DEFAULT_RESOLUTION * DEFAULT_RESOLUTION),
+    resolution: DEFAULT_RESOLUTION,
+    worldSize: DEFAULT_WORLD_SIZE,
+    terrainGeneration: 0,
+    sidecarApplied: false,
+    customBaselineUsed: false,
+    deltaPresent: false,
 
-  getHeightAt: (worldX: number, worldZ: number) => {
-    const { heightmap, resolution, worldSize } = get()
-    const halfSize = worldSize / 2
-    const cellSize = worldSize / (resolution - 1)
+    getHeightAt: (worldX, worldZ) => {
+      const { baseline, delta, resolution, worldSize } = get()
+      const halfSize = worldSize / 2
+      const cellSize = worldSize / (resolution - 1)
+      const fx = (worldX + halfSize) / cellSize
+      const fz = (worldZ + halfSize) / cellSize
+      if (fx < 0 || fx >= resolution - 1 || fz < 0 || fz >= resolution - 1) return 0
+      const gx = Math.floor(fx)
+      const gz = Math.floor(fz)
+      const tx = fx - gx
+      const tz = fz - gz
+      const idx00 = gz * resolution + gx
+      const idx10 = idx00 + 1
+      const idx01 = idx00 + resolution
+      const idx11 = idx01 + 1
+      const h00 = baseline[idx00]! + delta[idx00]!
+      const h10 = baseline[idx10]! + delta[idx10]!
+      const h01 = baseline[idx01]! + delta[idx01]!
+      const h11 = baseline[idx11]! + delta[idx11]!
+      const h0 = h00 + (h10 - h00) * tx
+      const h1 = h01 + (h11 - h01) * tx
+      return h0 + (h1 - h0) * tz
+    },
 
-    const fx = (worldX + halfSize) / cellSize
-    const fz = (worldZ + halfSize) / cellSize
+    getComposedHeightsSnapshot: () => {
+      const { baseline, delta, resolution } = get()
+      const out = new Float32Array(resolution * resolution)
+      for (let i = 0; i < out.length; i++) out[i] = baseline[i]! + delta[i]!
+      return out
+    },
 
-    if (fx < 0 || fx >= resolution - 1 || fz < 0 || fz >= resolution - 1) return 0
+    getHeightsArray: () => {
+      const snapshot = get().getComposedHeightsSnapshot()
+      return Array.from(snapshot)
+    },
 
-    const gx = Math.floor(fx)
-    const gz = Math.floor(fz)
-    const tx = fx - gx
-    const tz = fz - gz
+    replaceBaseline: (data, opts) => {
+      const { resolution } = get()
+      const baseline = new Float32Array(resolution * resolution)
+      copyInto(baseline, data)
+      set(state => ({
+        baseline,
+        sidecarApplied: opts.source === 'sidecar',
+        customBaselineUsed: opts.source === 'custom',
+        terrainGeneration: state.terrainGeneration + 1,
+      }))
+    },
 
-    const h00 = heightmap[gz * resolution + gx]
-    const h10 = heightmap[gz * resolution + gx + 1]
-    const h01 = heightmap[(gz + 1) * resolution + gx]
-    const h11 = heightmap[(gz + 1) * resolution + gx + 1]
+    replaceDelta: data => {
+      const { resolution } = get()
+      const delta = new Float32Array(resolution * resolution)
+      copyInto(delta, data)
+      set(state => ({
+        delta,
+        deltaPresent: deltaPresentOf(delta),
+        terrainGeneration: state.terrainGeneration + 1,
+      }))
+    },
 
-    const h0 = h00 + (h10 - h00) * tx
-    const h1 = h01 + (h11 - h01) * tx
-    return h0 + (h1 - h0) * tz
-  },
+    resetDelta: () => {
+      const { resolution } = get()
+      set(state => ({
+        delta: new Float32Array(resolution * resolution),
+        deltaPresent: false,
+        terrainGeneration: state.terrainGeneration + 1,
+      }))
+    },
 
-  setHeightAt: (gridX: number, gridZ: number, height: number) => {
-    const { heightmap, resolution } = get()
-    if (gridX < 0 || gridX >= resolution || gridZ < 0 || gridZ >= resolution) return
-    heightmap[gridZ * resolution + gridX] = height
-    clampEdge(heightmap, resolution)
-    set({ version: get().version + 1 })
-  },
+    resetBaseline: () => {
+      const { resolution } = get()
+      set(state => ({
+        baseline: new Float32Array(resolution * resolution),
+        sidecarApplied: false,
+        customBaselineUsed: false,
+        terrainGeneration: state.terrainGeneration + 1,
+      }))
+    },
 
-  applyBrushStroke: (changes: Map<number, number>, opts?: { deferVersion?: boolean }) => {
-    const { heightmap, resolution } = get()
-    for (const [index, height] of changes) {
-      if (index >= 0 && index < heightmap.length) {
-        heightmap[index] = height
+    applyDeltaStroke: (changes, opts) => {
+      const { baseline, delta } = get()
+      for (const [index, targetAbsolute] of changes) {
+        if (index < 0 || index >= delta.length) continue
+        delta[index] = targetAbsolute - baseline[index]!
       }
-    }
-    clampEdge(heightmap, resolution)
-    if (!opts?.deferVersion) {
-      set({ version: get().version + 1 })
-    }
-  },
+      if (!opts?.deferGeneration) {
+        set(state => ({
+          deltaPresent: deltaPresentOf(delta),
+          terrainGeneration: state.terrainGeneration + 1,
+        }))
+      }
+    },
 
-  flushVisualVersion: () => {
-    set({ version: get().version + 1 })
-  },
+    commitGeneration: () => {
+      set(state => ({
+        deltaPresent: deltaPresentOf(state.delta),
+        terrainGeneration: state.terrainGeneration + 1,
+      }))
+    },
 
-  commitPhysics: () => {
-    set({ physicsVersion: get().physicsVersion + 1 })
-  },
+    loadHeightmap: data => {
+      const { resolution } = get()
+      const delta = new Float32Array(resolution * resolution)
+      copyInto(delta, data)
+      const baseline = new Float32Array(resolution * resolution)
+      set(state => ({
+        baseline,
+        delta,
+        sidecarApplied: false,
+        customBaselineUsed: false,
+        deltaPresent: deltaPresentOf(delta),
+        terrainGeneration: state.terrainGeneration + 1,
+      }))
+    },
 
-  loadHeightmap: (data: number[]) => {
-    const { resolution } = get()
-    const heightmap = new Float32Array(resolution * resolution)
-    const len = Math.min(data.length, heightmap.length)
-    for (let i = 0; i < len; i++) {
-      heightmap[i] = data[i]
-    }
-    const v = get().version + 1
-    set({ heightmap, version: v, physicsVersion: v })
-  },
+    resetHeightmap: () => {
+      const { resolution } = get()
+      set(state => ({
+        baseline: new Float32Array(resolution * resolution),
+        delta: new Float32Array(resolution * resolution),
+        sidecarApplied: false,
+        customBaselineUsed: false,
+        deltaPresent: false,
+        terrainGeneration: state.terrainGeneration + 1,
+      }))
+    },
 
-  getHeightsArray: () => {
-    const { heightmap } = get()
-    return Array.from(heightmap)
-  },
+    applyBrushStroke: (changes, opts) => {
+      get().applyDeltaStroke(changes, { deferGeneration: opts?.deferVersion })
+    },
 
-  resetHeightmap: () => {
-    const { resolution } = get()
-    const v = get().version + 1
-    set({
-      heightmap: new Float32Array(resolution * resolution),
-      version: v,
-      physicsVersion: v,
-    })
-  },
-}))
+    flushVisualVersion: () => {
+      get().commitGeneration()
+    },
+
+    commitPhysics: () => {
+      // no-op: terrainGeneration is the single SSoT driving both visual and physics
+    },
+  }))
+
+const composedReadbackBuffer = new Float32Array(DEFAULT_RESOLUTION * DEFAULT_RESOLUTION)
+function readComposedInPlace(state: TerrainState): Float32Array {
+  for (let i = 0; i < composedReadbackBuffer.length; i++) {
+    composedReadbackBuffer[i] = state.baseline[i]! + state.delta[i]!
+  }
+  return composedReadbackBuffer
+}
+
+export const selectComposedHeightmap = (state: TerrainState): Float32Array =>
+  readComposedInPlace(state)
+
+export const selectTerrainVersion = (state: TerrainState): number => state.terrainGeneration
