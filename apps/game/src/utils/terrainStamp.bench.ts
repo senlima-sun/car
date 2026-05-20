@@ -25,8 +25,7 @@ import type { TrackRibbonPoint } from '../types/trackObjects'
 
 const RES = 256
 const WORLD = 4000
-const RIBBON_LENGTH = 7000 // ~7km closed loop (Spa is ~7km)
-const RIBBON_SEGMENTS = 450
+const RIBBON_SEGMENTS = 450 // ~Spa-class circuit, 7km closed loop
 
 function makeSyntheticDem(): Float32Array {
   const arr = new Float32Array(RES * RES)
@@ -62,7 +61,6 @@ function makeSpaSizedRibbon(): {
       isPitLane: false,
     })
   }
-  void RIBBON_LENGTH
   return {
     type: 'track_ribbon',
     ribbonPoints: points,

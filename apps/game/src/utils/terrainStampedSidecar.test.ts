@@ -1,37 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { useTerrainStore } from '../stores/useTerrainStore'
-import {
-  __setSidecarLoadersForTest,
-  type TerrainSidecar,
-} from './terrainSidecar'
+import { __setSidecarLoadersForTest } from './terrainSidecar'
+import { encodeMockSidecar } from './terrainSidecar.testUtils'
 import { applyStampedSidecar } from './terrainStampedSidecar'
 
 const RES = 256
 const WORLD = 4000
 
-function makeMockSidecar(fillValue: number): TerrainSidecar {
-  // Encode a constant-height heightmap as base64 int16-cm.
-  const ints = new Int16Array(RES * RES)
-  const cm = Math.round(fillValue * 100)
-  for (let i = 0; i < ints.length; i++) ints[i] = cm
-  const bytes = new Uint8Array(ints.buffer, ints.byteOffset, ints.byteLength)
-  let binary = ''
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!)
-  return {
-    version: 1,
-    resolution: RES,
-    worldSize: WORLD,
-    encoding: 'int16-cm',
-    verticalOriginMeters: 0,
-    centerLat: 0,
-    centerLon: 0,
-    halfExtentMeters: 1300,
-    provider: 'mock',
-    dem: 'mock',
-    datum: 'EGM2008',
-    data:
-      typeof Buffer !== 'undefined' ? Buffer.from(bytes).toString('base64') : btoa(binary),
-  }
+function makeMockSidecar(fillValue: number) {
+  const data = new Float32Array(RES * RES).fill(fillValue)
+  return encodeMockSidecar({ data, verticalOriginMeters: 0 })
 }
 
 function resetTerrainStore(): void {

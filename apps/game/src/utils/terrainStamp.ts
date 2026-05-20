@@ -1,4 +1,5 @@
 import type { TrackRibbonPoint } from '../types/trackObjects'
+import { smoothstep } from './roadGeometry'
 
 /**
  * Track-stamp pass: imprint the ribbon's locally-smoothed elevation
@@ -102,11 +103,6 @@ function bilinearSample(
   const h0 = h00 + (h10 - h00) * tx
   const h1 = h01 + (h11 - h01) * tx
   return h0 + (h1 - h0) * tz
-}
-
-function smoothstep(x: number): number {
-  const t = Math.min(1, Math.max(0, x))
-  return t * t * (3 - 2 * t)
 }
 
 function buildArcTable(

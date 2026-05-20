@@ -1,3 +1,4 @@
+import { TRACK_WIDTH } from '../constants/dimensions'
 import { useTerrainStore } from '../stores/useTerrainStore'
 import type { TrackRibbonPoint } from '../types/trackObjects'
 import { getTerrainHeightmapForPreset } from './terrainSidecar'
@@ -44,8 +45,6 @@ interface RibbonStampObject {
   width?: number
 }
 
-const DEFAULT_RIBBON_WIDTH = 12
-
 export async function applyStampedSidecar(
   presetId: string,
   objects: ReadonlyArray<RibbonStampObject>,
@@ -56,7 +55,7 @@ export async function applyStampedSidecar(
 
   const terrain = useTerrainStore.getState()
   const raw = Float32Array.from(sidecar.heightmap)
-  const ribbons = ribbonStampInputsFromObjects(objects, DEFAULT_RIBBON_WIDTH)
+  const ribbons = ribbonStampInputsFromObjects(objects, TRACK_WIDTH)
   const stamped = stampRibbonsIntoBaseline(
     raw,
     terrain.resolution,

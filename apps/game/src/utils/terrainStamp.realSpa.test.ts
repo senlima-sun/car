@@ -1,19 +1,14 @@
 /**
- * Phase 1.5b real-Spa-sidecar correctness probe.
+ * Regression gate: after stamping the real Spa sidecar, useTerrainStore
+ * .getHeightAt must agree with the stamped centerline value at the
+ * left and right ribbon edges. Targeted samples cover Eau Rouge /
+ * Raidillon (the prior known failure mode); even samples cover the
+ * full arc.
  *
- * Loads the real Spa sidecar + real f1_spa preset ribbon and verifies
- * that after stamping, useTerrainStore.getHeightAt returns the
- * expected stamped value at the ribbon centerline, left edge, and
- * right edge within a 5cm tolerance.
- *
- * This is the regression gate against the prior plan's known failure
- * mode (ribbon buried under terrain at Eau Rouge / Raidillon). Targeted
- * samples densely cover that arc range; even samples cover the rest.
- *
- * Recorded worst-case error (Phase 4.1 will use this to set TOLERANCE_M):
- *   overall:                0.1592m
- *   Eau Rouge / Raidillon:  0.1592m
- * Phase 4.1 sets TOLERANCE_M = 0.30m (0.16m + ~50% safety + round up).
+ * Worst-case observed: 0.16m (arc/grid linearity divergence on curved
+ * sections at 256² grid). Tolerance budget therefore lives between
+ * 0.16m and the prior 2.5m baseline; suspension test uses 0.30m with
+ * safety margin.
  */
 import { afterEach, describe, expect, it } from 'bun:test'
 import { useTerrainStore } from '../stores/useTerrainStore'
