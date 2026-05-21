@@ -12,7 +12,7 @@
     "test": "turbo run test",
     "test:wasm": "cd physics-engine && cargo test",
     "check:wasm-clean": "cd physics-engine && cargo check --target wasm32-unknown-unknown --no-default-features",
-    "test:scripts": "bun test scripts/lib/",
+    "test:scripts": "vitest run",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "preview": "pnpm --filter @car/game preview",

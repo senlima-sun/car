@@ -12,7 +12,7 @@
   "sideEffects": false,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/bun": "latest",
