@@ -8,6 +8,11 @@ export type Anchor = {
   inHandle: Point
   outHandle: Point
   handleType: HandleType
+  /** Elevation in metres, circuit-local frame (subtraction of
+   *  centerpoint Mapbox sample). Populated by `fetch-track-anchor-elevation`.
+   *  Absent for tracks not yet migrated — those fall back to DEM-sample-along-ribbon.
+   */
+  elevation?: number
 }
 
 export type AnchorRefSlot = {
@@ -30,6 +35,10 @@ export type Path = {
   strokeWidth: number
   fill: string
   pitLaneSegments?: number[]
+  /** Provenance for `anchors[i].elevation`. Absent ⇒ stamp uses
+   *  the SRTM sidecar sample-and-smooth fallback.
+   */
+  elevationSource?: 'mapbox-terrain-rgb' | 'srtm' | 'manual'
 }
 
 export type PitBoxArea = {

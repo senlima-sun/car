@@ -64,6 +64,12 @@ export interface TrackRibbonPoint2D {
   x: number
   z: number
   isPitLane: boolean
+  /** Elevation (metres, circuit-local frame) carried through bezier
+   *  resample from the parent anchor's `elevation`. Undefined when the
+   *  source path has no `elevationSource` set — stamp falls back to
+   *  DEM sampling in that case (see terrainStamp.ts useDemSampling).
+   */
+  elevation?: number
 }
 
 export interface TrackRibbonPoint {
@@ -72,6 +78,8 @@ export interface TrackRibbonPoint {
   y: number
   z: number
   isPitLane: boolean
+  /** Mirrors TrackRibbonPoint2D.elevation. See note there. */
+  elevation?: number
 }
 
 export type PlacementState =

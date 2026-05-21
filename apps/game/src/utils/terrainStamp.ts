@@ -281,15 +281,27 @@ function flattenRibbon(
   const { points, closed, width } = input
   if (points.length < 2 || width <= 0) return null
 
-  const targetY = computeTargetYAlongRibbon(
-    raw,
-    resolution,
-    worldSize,
-    points,
-    closed,
-    config.smoothHalfWindowMeters,
-  )
-  clampAlongTrackGradient(targetY, points, closed, config.maxAlongTrackGradient)
+  // If every ribbon point carries an authored elevation (Phase 1
+  // satellite-truth-ingest), trust it directly — no smoothing, no
+  // slope clamp. Both passes existed only to compensate for DEM
+  // aliasing that the new ingest pipeline eliminates upstream.
+  // Fall back to the old sample-and-smooth path only when elevation
+  // data is missing (legacy tracks not yet migrated).
+  let targetY: number[]
+  const allAuthored = points.every(p => p.elevation !== undefined)
+  if (allAuthored) {
+    targetY = points.map(p => p.elevation as number)
+  } else {
+    targetY = computeTargetYAlongRibbon(
+      raw,
+      resolution,
+      worldSize,
+      points,
+      closed,
+      config.smoothHalfWindowMeters,
+    )
+    clampAlongTrackGradient(targetY, points, closed, config.maxAlongTrackGradient)
+  }
 
   const segments: RibbonSegment[] = []
   let arc = 0

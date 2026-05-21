@@ -21,18 +21,20 @@ function segmentEndpoints(from: Anchor, to: Anchor): { p0: Point; c1: Point; c2:
   }
 }
 
-function sampleStraight2D(p0: Point, p3: Point): Point[] {
+function sampleStraight2D(p0: Point, p3: Point): { points: Point[]; ts: number[] } {
   const chordLen = Math.hypot(p3.x - p0.x, p3.y - p0.y)
   const steps = Math.max(1, Math.ceil(chordLen / RIBBON_MAX_STEP_M))
-  const out: Point[] = []
+  const points: Point[] = []
+  const ts: number[] = []
   for (let i = 0; i <= steps; i++) {
     const t = i / steps
-    out.push({ x: p0.x + (p3.x - p0.x) * t, y: p0.y + (p3.y - p0.y) * t })
+    points.push({ x: p0.x + (p3.x - p0.x) * t, y: p0.y + (p3.y - p0.y) * t })
+    ts.push(t)
   }
-  return out
+  return { points, ts }
 }
 
-function sampleCubic2D(p0: Point, c1: Point, c2: Point, p3: Point): Point[] {
+function sampleCubic2D(p0: Point, c1: Point, c2: Point, p3: Point): { points: Point[]; ts: number[] } {
   const ts = subdivideCubicAdaptive(p0, c1, c2, p3, {
     maxChordError: RIBBON_MAX_CHORD_ERROR_M,
     minStep: RIBBON_MIN_STEP_M,
@@ -40,11 +42,11 @@ function sampleCubic2D(p0: Point, c1: Point, c2: Point, p3: Point): Point[] {
     maxDepth: 16,
     arcLengthChordRatio: 0.05,
   })
-  const out: Point[] = []
+  const points: Point[] = []
   for (let i = 0; i < ts.length; i++) {
-    out.push(cubicPoint(p0, c1, c2, p3, ts[i]!))
+    points.push(cubicPoint(p0, c1, c2, p3, ts[i]!))
   }
-  return out
+  return { points, ts }
 }
 
 function sampleSegment2D(
@@ -55,12 +57,17 @@ function sampleSegment2D(
 ): TrackRibbonPoint2D[] {
   const { p0, c1, c2, p3 } = segmentEndpoints(from, to)
   const handlesCollapsed = eq(c1, p0) && eq(c2, p3)
-  const samples = handlesCollapsed ? sampleStraight2D(p0, p3) : sampleCubic2D(p0, c1, c2, p3)
+  const { points, ts } = handlesCollapsed
+    ? sampleStraight2D(p0, p3)
+    : sampleCubic2D(p0, c1, c2, p3)
   const startIdx = includeStart ? 0 : 1
   const out: TrackRibbonPoint2D[] = []
-  for (let i = startIdx; i < samples.length; i++) {
-    const pt = samples[i]!
-    out.push({ x: pt.x, z: pt.y, isPitLane: isPit })
+  const hasElevation = from.elevation !== undefined && to.elevation !== undefined
+  for (let i = startIdx; i < points.length; i++) {
+    const pt = points[i]!
+    const t = ts[i]!
+    const elevation = hasElevation ? from.elevation! + (to.elevation! - from.elevation!) * t : undefined
+    out.push({ x: pt.x, z: pt.y, isPitLane: isPit, elevation })
   }
   return out
 }
@@ -178,6 +185,7 @@ export function pathToRibbon2D(path: Path, allPaths: Path[] = [path]): PlacedObj
     y: 0,
     z: p.z,
     isPitLane: p.isPitLane,
+    elevation: p.elevation,
   }))
 
   return {
