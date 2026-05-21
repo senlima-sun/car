@@ -374,12 +374,10 @@ function closestSegmentInfluence(
  *   - If outside every ribbon's (fullStampHalfWidth + transition) — keep raw.
  *   - If inside [0, fullStampHalfWidth] of the closest ribbon — set to that
  *     ribbon's target y (full stamp).
- *   - In the transition zone — smoothstep blend from a ribbon-relativized
- *     raw DEM toward the ribbon target y, then clamp the result to
- *     ±(maxLateralClimbRate × distancePastFullStamp). Relativizing
- *     anchors the surrounding terrain to the road's elevation, and the
- *     climb-rate clamp guarantees real-world hillsides cannot poke up
- *     through the road.
+ *   - In the transition zone — smoothstep blend raw DEM toward the
+ *     ribbon target y, then clamp the result to
+ *     ±(maxLateralClimbRate × distancePastFullStamp) so DEM aliasing
+ *     cannot stamp a cliff next to the road.
  *
  * Time complexity: O(R² × S) worst-case where R is grid resolution
  * and S is total ribbon segments. AABB early-out reduces this to
