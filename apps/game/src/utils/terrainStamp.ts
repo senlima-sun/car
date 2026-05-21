@@ -42,12 +42,20 @@ export interface StampConfig {
    *  from poking through the road when the raw DEM has a 60m hill
    *  40m off the centerline. ~0.25 ≈ 1:4 slope (14°). */
   maxLateralClimbRate: number
+  /** Maximum along-track gradient (rise/run). SRTM 30m DEM aliasing
+   *  in mountain terrain (Spielberg, Spa) regularly invents 30-50%
+   *  gradients where the road is actually <12%. Clamps the smoothed
+   *  ribbon target y so any back-to-back jump cannot exceed this
+   *  fraction of the inter-point arc distance. F1's steepest real
+   *  grade is ~12% (Eau Rouge). */
+  maxAlongTrackGradient: number
 }
 
 export const DEFAULT_STAMP_CONFIG: StampConfig = {
   smoothHalfWindowMeters: 30,
   transitionMeters: 80,
   maxLateralClimbRate: 0.25,
+  maxAlongTrackGradient: 0.12,
 }
 
 interface RibbonSegment {
@@ -225,6 +233,44 @@ function computeTargetYAlongRibbon(
   return target
 }
 
+/**
+ * Two-pass slope clamp: walk forward then backward along the ribbon
+ * and limit step-to-step y delta to `maxGradient × arc_distance`.
+ * Spreads the clamp evenly in both directions so a tall outlier
+ * doesn't bias the long-run mean.
+ */
+function clampAlongTrackGradient(
+  targetY: number[],
+  points: TrackRibbonPoint[],
+  closed: boolean,
+  maxGradient: number,
+): void {
+  const n = targetY.length
+  if (n < 2 || maxGradient <= 0) return
+  const distTo = (i: number, j: number) =>
+    Math.hypot(points[j]!.x - points[i]!.x, points[j]!.z - points[i]!.z)
+  for (let i = 1; i < n; i++) {
+    const rise = maxGradient * distTo(i - 1, i)
+    const lo = targetY[i - 1]! - rise
+    const hi = targetY[i - 1]! + rise
+    if (targetY[i]! > hi) targetY[i] = hi
+    else if (targetY[i]! < lo) targetY[i] = lo
+  }
+  for (let i = n - 2; i >= 0; i--) {
+    const rise = maxGradient * distTo(i, i + 1)
+    const lo = targetY[i + 1]! - rise
+    const hi = targetY[i + 1]! + rise
+    if (targetY[i]! > hi) targetY[i] = hi
+    else if (targetY[i]! < lo) targetY[i] = lo
+  }
+  if (closed) {
+    const wrapDist = distTo(n - 1, 0)
+    const rise = maxGradient * wrapDist
+    if (targetY[0]! - targetY[n - 1]! > rise) targetY[0] = targetY[n - 1]! + rise
+    else if (targetY[n - 1]! - targetY[0]! > rise) targetY[0] = targetY[n - 1]! - rise
+  }
+}
+
 function flattenRibbon(
   raw: Float32Array,
   resolution: number,
@@ -243,6 +289,7 @@ function flattenRibbon(
     closed,
     config.smoothHalfWindowMeters,
   )
+  clampAlongTrackGradient(targetY, points, closed, config.maxAlongTrackGradient)
 
   const segments: RibbonSegment[] = []
   let arc = 0
