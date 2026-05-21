@@ -53,7 +53,7 @@ export interface StampConfig {
 
 export const DEFAULT_STAMP_CONFIG: StampConfig = {
   smoothHalfWindowMeters: 30,
-  transitionMeters: 80,
+  transitionMeters: 50,
   maxLateralClimbRate: 0.25,
   maxAlongTrackGradient: 0.12,
 }
