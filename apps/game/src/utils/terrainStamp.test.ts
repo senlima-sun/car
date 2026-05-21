@@ -75,9 +75,9 @@ describe('stampRibbonsIntoBaseline', () => {
     // the average DEM along centerline, which on this linear hill
     // is ~0 (centerline runs through z=0).
     expect(sampleAt(stamped, 0, 0)).toBeCloseTo(0, 1)
-    // Cell at (0, +100) is way outside ribbon + transition (half-width
-    // 6m + 8m transition = 14m), should keep raw value 2m.
-    expect(sampleAt(stamped, 0, 100)).toBeCloseTo(sampleAt(raw, 0, 100), 1)
+    // Cell far outside the stamp footprint (fullStampHalfWidth +
+    // transitionMeters ≈ 108m) — keep raw value.
+    expect(sampleAt(stamped, 0, 200)).toBeCloseTo(sampleAt(raw, 0, 200), 1)
   })
 
   it('preserves cells far from any ribbon', () => {
@@ -169,6 +169,38 @@ describe('stampRibbonsIntoBaseline', () => {
     // Center of the square (no ribbon nearby) keeps raw.
     expect(sampleAt(stamped, 0, 0)).toBeCloseTo(25, 0)
   })
+
+  it('mountain beside ribbon does not poke through near the road', () => {
+    // Regression for the "山坡直接從賽道穿模" symptom. A 60m mountain
+    // stands 40m off the ribbon centerline. After stamping, the
+    // baseline near the road must follow the configured lateral
+    // climb rate so the visual mesh and heightfield collider cannot
+    // jut through the road. Allowance grows linearly with distance
+    // from the full-stamp footprint (~28m on a 256² grid).
+    const raw = makeRaw((_x, z) => {
+      if (Math.abs(z) < 35) return 0
+      return 60
+    })
+    const ribbon = {
+      points: [
+        { x: -500, y: 0, z: 0, isPitLane: false },
+        { x: 500, y: 0, z: 0, isPitLane: false },
+      ],
+      width: 12,
+      closed: false,
+    }
+    const stamped = stampRibbonsIntoBaseline(raw, RES, WORLD, [ribbon])
+    // Beside the ribbon: enforce ≤ 1:3 effective slope (slightly
+    // looser than the configured 1:4 cap to absorb bilinear blur).
+    for (const off of [10, 20, 30, 40, 50, 60]) {
+      for (const sign of [1, -1]) {
+        const y = sampleAt(stamped, 0, off * sign)
+        const distPastFull = Math.max(0, off - 28)
+        const allowed = distPastFull * 0.34
+        expect(y).toBeLessThan(allowed + 0.5)
+      }
+    }
+  })
 })
 
 describe('ribbonStampInputsFromObjects', () => {
@@ -231,7 +263,7 @@ describe('stamp config respects user overrides', () => {
       closed: false,
     }
     const stamped = stampRibbonsIntoBaseline(raw, RES, WORLD, [ribbon], {
-      smoothHalfWindowMeters: DEFAULT_STAMP_CONFIG.smoothHalfWindowMeters,
+      ...DEFAULT_STAMP_CONFIG,
       transitionMeters: 0,
     })
     // At ribbon center: target = smoothed centerline raw=0.
