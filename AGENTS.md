@@ -122,6 +122,21 @@ Records and replays ghost laps. Uses IndexedDB persistence (`src/utils/ghostRepl
 
 Root 3D scene: Ground (grass with vertex displacement shader) → PlacedObjectsRenderer → StartGrid → Weather effects (DynamicSky, CloudLayer, DynamicLighting, rain, lightning) → TrackTemperatureOverlay → SkidMarkRenderer → Car + CameraController. Customize mode conditionally renders ObjectPlacer, GhostPreview, ElevationHandles.
 
+### Track Terrain Authority
+
+Terrain is cut/filled by the road first; asphalt, curbs, track limits, and
+suspension all read the same composed surface. `useTerrainStore` exposes three
+layers — `baseline` (DEM or sidecar), `delta` (user sculpt), and `roadbed`
+(derived cut/fill from active ribbons). `getHeightAt` and
+`getComposedHeightsSnapshot` sum all three so visual mesh, Rapier heightfield,
+and raycast suspension see the same embedded roadbed.
+
+Only `baseline + delta` are persisted; `roadbed` regenerates from current
+objects via `refreshRoadbedLayer`. The user-facing concept is **Track Limit**;
+the persisted object type remains `edge_line`. `queryTrackSurface` in
+`src/utils/trackSurfaceQuery.ts` returns height, normal, and a coarse
+asphalt/shoulder/offroad material for downstream consumers.
+
 ### Key Patterns
 
 - **1 world unit = 1 meter**. Car dimensions in `src/constants/dimensions.ts` match real 2026 F1 spec (5.5m long, 1.9m wide).
