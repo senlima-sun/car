@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "esModuleInterop": true,
-    "types": ["@types/bun", "vite/client"]
+    "types": ["vite/client"]
   },
   "include": ["src", "pkg"]
 }
