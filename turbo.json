@@ -33,7 +33,7 @@
     },
     "test": {
       "dependsOn": ["//#build:wasm"],
-      "inputs": ["src/**", "package.json", "tsconfig.json"],
+      "inputs": ["src/**", "test/**", "package.json", "tsconfig.json", "vitest.config.ts", "vitest.setup.ts"],
       "outputs": []
     },
     "//#test:wasm": {
