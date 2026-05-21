@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Roadbed Implementation Flow</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1117;
+        --panel: #151b23;
+        --panel-2: #1c2430;
+        --line: #303b4a;
+        --text: #e6edf3;
+        --muted: #9da7b3;
+        --accent: #2f81f7;
+        --green: #3fb950;
+        --yellow: #d29922;
+        --red: #f85149;
+        --road: #6e7681;
+        --soil: #8b6f47;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+
+      header {
+        margin-bottom: 32px;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(32px, 5vw, 58px);
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0 0 16px;
+        font-size: 22px;
+      }
+
+      h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .lead {
+        max-width: 820px;
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+      }
+
+      .two {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 20px;
+      }
+
+      .card strong {
+        color: #ffffff;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 2px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      section {
+        margin-top: 34px;
+      }
+
+      .pipeline {
+        display: grid;
+        gap: 14px;
+      }
+
+      .phase {
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr);
+        gap: 18px;
+        align-items: stretch;
+      }
+
+      .phase-num {
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-2);
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 18px;
+      }
+
+      .phase-body {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 18px;
+      }
+
+      .phase-body p {
+        color: var(--muted);
+      }
+
+      .phase-list {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .mini {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #0f141b;
+        padding: 10px 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .diagram {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+        align-items: center;
+      }
+
+      .node {
+        min-height: 86px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 14px;
+      }
+
+      .node b {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .arrow {
+        display: none;
+      }
+
+      .cross-section {
+        position: relative;
+        height: 220px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: linear-gradient(#101720, #111820);
+        overflow: hidden;
+      }
+
+      .terrain {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 112px;
+        background: #6f5939;
+        clip-path: polygon(0 44%, 12% 38%, 24% 55%, 31% 48%, 38% 58%, 46% 72%, 54% 72%, 62% 58%, 69% 48%, 76% 60%, 88% 36%, 100% 48%, 100% 100%, 0 100%);
+        opacity: 0.86;
+      }
+
+      .roadbed {
+        position: absolute;
+        left: 20%;
+        right: 20%;
+        bottom: 40px;
+        height: 88px;
+        background: var(--soil);
+        border-top: 4px solid #a08355;
+        clip-path: polygon(0 100%, 12% 54%, 28% 26%, 72% 26%, 88% 54%, 100% 100%);
+      }
+
+      .asphalt {
+        position: absolute;
+        left: 33%;
+        right: 33%;
+        bottom: 122px;
+        height: 12px;
+        background: var(--road);
+        border-top: 2px solid #c0c7d0;
+      }
+
+      .label {
+        position: absolute;
+        padding: 4px 8px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(13, 17, 23, 0.82);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .label.asphalt-label {
+        left: 39%;
+        bottom: 144px;
+      }
+
+      .label.roadbed-label {
+        left: 43%;
+        bottom: 82px;
+      }
+
+      .label.terrain-label {
+        left: 4%;
+        bottom: 28px;
+      }
+
+      .decision {
+        border-left: 4px solid var(--accent);
+      }
+
+      .risk {
+        border-left: 4px solid var(--yellow);
+      }
+
+      .done {
+        border-left: 4px solid var(--green);
+      }
+
+      code {
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        background: #0f141b;
+        padding: 1px 5px;
+        color: #d2a8ff;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      pre {
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #0f141b;
+        padding: 16px;
+      }
+
+      pre code {
+        border: 0;
+        padding: 0;
+        background: transparent;
+      }
+
+      @media (max-width: 860px) {
+        main {
+          padding: 32px 16px 56px;
+        }
+
+        .two,
+        .three,
+        .diagram,
+        .phase-list {
+          grid-template-columns: 1fr;
+        }
+
+        .phase {
+          grid-template-columns: 1fr;
+        }
+
+        .phase-num {
+          min-height: 52px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="tag">F1 2026 Track System</span>
+        <h1>Roadbed First Implementation Flow</h1>
+        <p class="lead">
+          目標不是讓柏油材質更像道路，而是先讓道路地基嵌入並改寫地形。terrain 必須尊重 roadbed；地基不能像貼片一樣浮在山體上。地基、視覺地形、Rapier
+          heightfield、懸吊 sample、surface 判定必須看見同一份 stamped terrain。
+        </p>
+      </header>
+
+      <section class="grid two">
+        <article class="card risk">
+          <h2>現在的問題</h2>
+          <p>
+            道路目前像一片貼在地形上的 mesh。原始山體仍留在道路下面，導致山體可能穿過路中，或讓懸吊與車身防穿透被錯誤地形高度干擾。這不是柏油不夠厚，而是地基沒有先切入 terrain。
+          </p>
+        </article>
+        <article class="card done">
+          <h2>新的原則</h2>
+          <p>
+            先從 SVG/editor path 建立 road corridor，再把 roadbed stamp 進 terrain heightmap。terrain 是被改造後的結果，柏油 mesh 只是鋪在已嵌入的地基上。
+          </p>
+          <ol style="margin: 12px 0 0; padding-left: 20px; color: var(--muted);">
+            <li>Terrain 先被 roadbed cut/fill，視覺與物理都讀同一份。</li>
+            <li>柏油僅薄鋪面，跟著已嵌入的 roadbed 走，不再蓋住山體。</li>
+            <li>Track Limit、curb 用同一份 corridor boundary。</li>
+            <li>懸吊先讀 surface query，再才 Rapier raycast / terrain fallback。</li>
+            <li>使用者看到的是 <strong>Track Limit</strong>；儲存格式仍為 <code>edge_line</code>。</li>
+          </ol>
+        </article>
+      </section>
+
+      <section>
+        <h2>資料流</h2>
+        <div class="diagram">
+          <div class="node">
+            <b>SVG / Editor Path</b>
+            <span class="muted">Bezier anchors, closed path, pit lane segments</span>
+          </div>
+          <div class="node">
+            <b>Road Corridor</b>
+            <span class="muted">centerline, width, shoulder, falloff, banking</span>
+          </div>
+          <div class="node">
+            <b>Roadbed Stamp</b>
+            <span class="muted">derived terrain cut/fill layer</span>
+          </div>
+          <div class="node">
+            <b>Stamped Terrain</b>
+            <span class="muted">visual mesh, heightfield collider, getHeightAt</span>
+          </div>
+          <div class="node">
+            <b>Asphalt + Physics</b>
+            <span class="muted">thin surface, material query, suspension height</span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>路基剖面</h2>
+        <div class="cross-section" aria-label="Roadbed cross section">
+          <div class="terrain"></div>
+          <div class="roadbed"></div>
+          <div class="asphalt"></div>
+          <div class="label asphalt-label">asphalt top</div>
+          <div class="label roadbed-label">embedded roadbed</div>
+          <div class="label terrain-label">terrain after cut/fill</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>實作階段</h2>
+        <div class="pipeline">
+          <article class="phase">
+            <div class="phase-num">1</div>
+            <div class="phase-body">
+              <h3>建立 Road Corridor</h3>
+              <p>從現有 <code>track_ribbon</code> 或 SVG/editor path 產生道路佔用區，作為所有後續系統的共同輸入。</p>
+              <div class="phase-list">
+                <div class="mini">centerline samples</div>
+                <div class="mini">road width</div>
+                <div class="mini">shoulder width</div>
+                <div class="mini">falloff width</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-num">2</div>
+            <div class="phase-body">
+              <h3>Roadbed Stamping</h3>
+              <p>對 heightmap grid cell 計算到道路中心線的距離，把道路核心切入或填起成地基高度，路肩和 falloff 平滑接回山體。</p>
+              <div class="phase-list">
+                <div class="mini">core: road height</div>
+                <div class="mini">shoulder: softened edge</div>
+                <div class="mini">falloff: smoothstep blend</div>
+                <div class="mini">outside: original terrain</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-num">3</div>
+            <div class="phase-body">
+              <h3>統一 Terrain / Physics</h3>
+              <p><code>getHeightAt()</code>、視覺地形、Rapier <code>HeightfieldCollider</code>、懸吊 body penetration sample 都改讀 stamped terrain。</p>
+              <div class="phase-list">
+                <div class="mini">TerrainGround visual</div>
+                <div class="mini">HeightfieldCollider</div>
+                <div class="mini">Suspension fallback</div>
+                <div class="mini">Debug height probes</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-num">4</div>
+            <div class="phase-body">
+              <h3>鋪 Asphalt Mesh</h3>
+              <p>柏油 mesh 放在已處理好的 roadbed 上，只負責薄鋪面、厚度側邊、UV 與材質，不再負責蓋住山體。</p>
+              <div class="phase-list">
+                <div class="mini">top surface +0.035m</div>
+                <div class="mini">thin side wall</div>
+                <div class="mini">arc-length UV</div>
+                <div class="mini">pit road material zone</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-num">5</div>
+            <div class="phase-body">
+              <h3>Surface Query</h3>
+              <p>新增座標查詢，回傳車輪所在位置的高度、法線、材質與距離中心線資訊。React 先用它同步 Rust surface enum。</p>
+              <pre><code>queryTrackSurface(x, z) =&gt; {
+  height,
+  normal,
+  material,
+  distanceFromCenter,
+  roadT
+}</code></pre>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-num">6</div>
+            <div class="phase-body">
+              <h3>Suspension Raycast 修正</h3>
+              <p>懸吊支撐高度順序改為 road/surface query、Rapier raycast、stamped terrain fallback，避免原始山體重新把車頂起來。</p>
+              <div class="phase-list">
+                <div class="mini">road surface first</div>
+                <div class="mini">Rapier hit second</div>
+                <div class="mini">terrain fallback</div>
+                <div class="mini">normal sync to WASM</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-num">7</div>
+            <div class="phase-body">
+              <h3>Curbs / Painted Areas / Road Edge</h3>
+              <p>curb、track limit、painted area 全部依附 road corridor boundary，不再各自重新猜道路邊界。</p>
+              <div class="phase-list">
+                <div class="mini">curb follows edge</div>
+                <div class="mini">painted area on asphalt</div>
+                <div class="mini">track limit shared frames</div>
+                <div class="mini">patch affects material only</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="phase">
+            <div class="phase-num">8</div>
+            <div class="phase-body">
+              <h3>驗證與品質門檻</h3>
+              <p>測試重點是高度一致、沒有尖峰、山坡穿過道路時 core 仍平順、falloff 自然接回原地形。</p>
+              <div class="phase-list">
+                <div class="mini">roadbed unit tests</div>
+                <div class="mini">height consistency tests</div>
+                <div class="mini">suspension tolerance tests</div>
+                <div class="mini">visual browser check</div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="grid two">
+        <article class="card decision">
+          <h2>第一個 Commit 範圍</h2>
+          <p>
+            新增 roadbed derived terrain layer，讓 <code>track_ribbon</code> 可以把道路 footprint stamp 進 heightmap。
+            先不改 shader、不改 Rust、不做厚柏油，只先保證路中間不會有山體突出。
+          </p>
+        </article>
+        <article class="card">
+          <h2>暫時不做</h2>
+          <p>
+            不先重寫車輛物理，不先做高級柏油材質，不先處理所有 curb 細節。這些都排在地基穩定之後。
+          </p>
+        </article>
+      </section>
+
+      <section>
+        <h2>完成判定</h2>
+        <div class="grid three">
+          <div class="card">
+            <h3>視覺</h3>
+            <p class="muted">道路核心沒有山體穿出，路肩自然接回地形。</p>
+          </div>
+          <div class="card">
+            <h3>物理</h3>
+            <p class="muted">Rapier heightfield 與 <code>getHeightAt()</code> 對同一座標回到一致高度。</p>
+          </div>
+          <div class="card">
+            <h3>車感</h3>
+            <p class="muted">車輪從山坡進入道路時不跳車，懸吊沒有被原始山體頂起。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

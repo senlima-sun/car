@@ -159,8 +159,8 @@ export const OBJECT_CONFIGS: Record<ObjectType, ObjectConfig> = {
   },
   edge_line: {
     type: 'edge_line',
-    label: 'Edge Line',
-    description: 'White edge line as a parent-anchored derived layer',
+    label: 'Track Limit',
+    description: 'White track-limit line anchored to the embedded roadbed corridor boundary',
     isLinear: false,
     defaultSize: { width: 0.2, height: 0.02, depth: 1 },
     color: '#ffffff',

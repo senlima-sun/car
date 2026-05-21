@@ -3,7 +3,7 @@ import { useLayerToggleStore } from './useLayerToggleStore'
 
 const LAYER_LABELS: Record<LayerGroup, string> = {
   surface: 'Asphalt surface',
-  edge: 'Edge lines',
+  edge: 'Track limits',
   painted: 'Painted area',
   curb: 'Curbs',
   pit: 'Pit lane',
