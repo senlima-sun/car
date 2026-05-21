@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 
 describe('preset tracks module load', () => {
   test('does not invoke useTerrainStore.getState() during import', async () => {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { segmentIntersect2D } from './segmentIntersect'
 
 function lerp(a: number, b: number, t: number): number {

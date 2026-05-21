@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { makeAnchor, makePath } from '@/components/ui/TrackEditor/geometry/path'
 import { buildRuntimePresetTrack } from './editorTrackSource'
 import { buildEditorTrackSource, presetIdFromName } from './exportEditorTrackSource'

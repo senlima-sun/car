@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { computeSunDirection, isSunAboveHorizon, getSunIntensity } from './sunDirection'
 
 describe('computeSunDirection', () => {

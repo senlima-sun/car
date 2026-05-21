@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { DEV_TOOLS_HOTKEY_MAP, handleDevToolsHotkey } from './useDevToolsHotkeys'
 import type { DevPanelId } from '../stores/useDevToolsStore'
 

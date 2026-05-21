@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import type { PlacedObject } from '@/types/trackObjects'
 import { MINIMAP_SIZE, PADDING } from './constants'
 import { computeBounds, makeTransforms } from './helpers'

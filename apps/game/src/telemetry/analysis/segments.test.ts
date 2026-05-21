@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { analyzeSegments } from './segments'
 import { TELEMETRY_SCHEMA_VERSION, type LapTrace, type TelemetryFrame } from '../schema'
 

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { deriveSessionEvents, sectorSplitKey, type SessionSnapshot } from './sessionEvents'
 
 const NOW = 1_000_000_000

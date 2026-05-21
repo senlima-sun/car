@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { SYNTHETIC_FIXTURES } from './syntheticFixtures'
 import type { TrackRibbonPoint } from '@/types/trackObjects'
 

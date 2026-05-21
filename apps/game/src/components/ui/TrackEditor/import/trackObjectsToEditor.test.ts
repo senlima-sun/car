@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { makeAnchor, makePath } from '../geometry/path'
 import { buildExportPayload } from '../export/exportToTrackStore'
 import {

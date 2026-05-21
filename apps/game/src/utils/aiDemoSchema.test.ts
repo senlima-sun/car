@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import {
   CURRENT_DEMO_SCHEMA_VERSION,
   ghostBuffersToDemo,

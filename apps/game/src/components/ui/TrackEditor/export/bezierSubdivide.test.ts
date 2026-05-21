@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { cubicSplit, subdivideCubicAdaptive, cubicPoint } from './bezierSubdivide'
 import type { Vec2 } from './bezierSubdivide'
 

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { bezierTToArcT } from './bezierToArcT'
 import type { Anchor, Path } from '@/components/ui/TrackEditor/geometry/types'
 

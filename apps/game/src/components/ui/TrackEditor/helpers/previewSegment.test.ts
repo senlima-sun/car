@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import type { Anchor, Path } from '../geometry/types'
 import { worldToScreen, type Viewport } from '../geometry/viewport'
 import { buildPreviewSegment } from './previewSegment'

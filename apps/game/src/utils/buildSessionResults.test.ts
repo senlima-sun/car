@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { createSessionConfig } from '@/types/session'
 import type { SessionEvent } from '@/types/sessionEvents'
 import { buildSessionResults } from './buildSessionResults'

@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'bun:test'
+import { describe, test, expect } from 'vitest'
 import { alignCheckpointToRoad, realignCheckpointToRibbons } from './checkpointAlignment'
 import type { PlacedObject, TrackRibbonPoint } from '../types/trackObjects'
 

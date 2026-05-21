@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'vitest'
 import { pathToRibbon2D } from './pathToRibbon'
 import { makeAnchor, makePath } from '../geometry/path'
 import { TRACK_WIDTH } from '@/constants/dimensions'

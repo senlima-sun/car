@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { resolveTerrainSupportHitY } from './useRaycastSuspension'
 import { WHEEL_POSITIONS } from '@/constants/dimensions'
 import { getPresetTrack } from '@/constants/tracks'

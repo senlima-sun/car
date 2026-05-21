@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { Vector3 } from 'three'
 import { buildRibbonLayers } from './geometry/ribbonGeometry'
 

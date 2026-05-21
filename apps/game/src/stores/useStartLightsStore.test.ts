@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, spyOn } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   useStartLightsStore,
   LIGHT_INTERVAL_MS,
@@ -15,7 +15,7 @@ describe('useStartLightsStore', () => {
 
   beforeEach(() => {
     reset()
-    spyOn(Math, 'random').mockReturnValue(0)
+    vi.spyOn(Math, 'random').mockReturnValue(0)
   })
 
   afterEach(() => {
@@ -62,7 +62,7 @@ describe('useStartLightsStore', () => {
   })
 
   test('hold elapses to go after holdDurationMs', () => {
-    spyOn(Math, 'random').mockReturnValue(0)
+    vi.spyOn(Math, 'random').mockReturnValue(0)
     const store = useStartLightsStore.getState()
     store.arm('session', 0)
     store.tick(LIGHT_INTERVAL_MS * (START_LIGHTS_COLUMNS - 1))
@@ -77,7 +77,7 @@ describe('useStartLightsStore', () => {
   })
 
   test('hold duration respects HOLD_MAX_MS upper bound', () => {
-    spyOn(Math, 'random').mockReturnValue(0.999999)
+    vi.spyOn(Math, 'random').mockReturnValue(0.999999)
     const store = useStartLightsStore.getState()
     store.arm('session', 0)
     const holdDuration = useStartLightsStore.getState().holdDurationMs
@@ -86,7 +86,7 @@ describe('useStartLightsStore', () => {
   })
 
   test('go status returns to idle after GO_FLASH_MS', () => {
-    spyOn(Math, 'random').mockReturnValue(0)
+    vi.spyOn(Math, 'random').mockReturnValue(0)
     const store = useStartLightsStore.getState()
     store.arm('manual', 0)
     store.tick(LIGHT_INTERVAL_MS * (START_LIGHTS_COLUMNS - 1))

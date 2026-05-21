@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { pathToRoads, documentToRoads } from './pathToRoads'
 import { makeAnchor, makePath } from '../geometry/path'
 import { TRACK_WIDTH } from '@/constants/dimensions'

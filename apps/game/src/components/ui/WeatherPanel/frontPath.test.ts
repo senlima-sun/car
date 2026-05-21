@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { arcLength, resampleByArcLength, pathToSources } from './frontPath'
 
 describe('arcLength', () => {

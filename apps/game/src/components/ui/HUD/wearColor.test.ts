@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { isWearCritical, wearColor } from './wearColor'
 import { TIRE_WEAR_CRITICAL, TIRE_WEAR_WARNING } from '../../../constants/tires'
 import { STATUS } from '../../../constants/colors'

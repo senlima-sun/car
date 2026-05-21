@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'bun:test'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { useAiGhostStore } from './useAiGhostStore'
 import { CURRENT_GHOST_SCHEMA_VERSION, type GhostReplayData } from '@/utils/ghostReplayDB'
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect } from 'vitest'
 import { TrackSpatialGrid, worldToCell, cellKey } from './trackSpatialGrid'
 import type { PlacedObject } from '../types/trackObjects'
 

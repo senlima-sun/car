@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect } from 'vitest'
 import { buildEditorTrackSourceFromPolyline } from '../../../apps/game/src/utils/editorTrackSourceFromPolyline'
 import { buildRuntimePresetTrack } from '../../../apps/game/src/utils/editorTrackSource'
 import type { EditorTrackSource } from '../../../apps/game/src/utils/editorTrackSource'

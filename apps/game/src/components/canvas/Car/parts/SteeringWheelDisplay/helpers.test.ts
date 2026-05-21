@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { BLUE, GREEN, GRID_H, GRID_W, GRID_X, GRID_Y, ORANGE, RED, YELLOW } from './constants'
 import { cellBounds, colW, colX, rowH, rowY, tempToC, tireTempCol, wearCol } from './helpers'
 

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { migrateSavedTrackV1ToV2, type SavedTrack } from './track'
 
 function v1Base(): SavedTrack {

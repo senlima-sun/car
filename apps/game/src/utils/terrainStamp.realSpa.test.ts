@@ -10,7 +10,7 @@
  * 0.16m and the prior 2.5m baseline; suspension test uses 0.30m with
  * safety margin.
  */
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useTerrainStore } from '../stores/useTerrainStore'
 import { getPresetTrack } from '../constants/tracks'
 import { __resetSidecarLoadersForTest } from './terrainSidecar'

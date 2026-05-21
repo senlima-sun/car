@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { resolveParentDerivedLayer } from './parentDerivedLayer'
 import type { PlacedObject, TrackRibbonPoint } from '@/types/trackObjects'
 

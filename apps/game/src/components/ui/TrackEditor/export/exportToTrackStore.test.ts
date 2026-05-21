@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from 'vitest'
 import { buildExportPayload } from './exportToTrackStore'
 import { makeAnchor, makePath } from '../geometry/path'
 import type { CheckpointMarker } from '../geometry/types'

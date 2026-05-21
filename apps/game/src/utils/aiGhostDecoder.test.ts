@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { CURRENT_GHOST_SCHEMA_VERSION } from './ghostReplayDB'
 import { type AiGhostSidecar, decodeGhostBin, encodeGhostBin } from './aiGhostDecoder'
 

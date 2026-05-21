@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'vitest'
 import {
   CAR_PARTS,
   DEFAULT_PART_MATERIAL_SETTINGS,

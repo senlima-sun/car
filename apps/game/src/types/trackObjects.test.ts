@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import type { PlacedObject } from './trackObjects'
 
 describe('PlacedObject parent-anchored schema', () => {

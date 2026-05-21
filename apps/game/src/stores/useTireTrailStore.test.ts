@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'vitest'
 import { MAX_POINTS_PER_WHEEL, useTireTrailStore, type TireTrailPoint } from './useTireTrailStore'
 
 const points: TireTrailPoint[] = [

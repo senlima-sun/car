@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { samplePace, type AiDriverProfile } from './paceModel'
 import type { RacingLine } from '@/types/racingLine'
 

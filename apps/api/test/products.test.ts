@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { getProducts } from '../src/billing/products.ts'
 import { stubEnv } from './helpers/env.ts'
 

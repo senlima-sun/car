@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useTerrainStore } from '../stores/useTerrainStore'
 import { __setSidecarLoadersForTest } from './terrainSidecar'
 import { encodeMockSidecar } from './terrainSidecar.testUtils'

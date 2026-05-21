@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 
 import { METERS_PER_DEG_LAT } from '../osm-ingest/chaining'
 import type { ElevationGrid } from './provider'

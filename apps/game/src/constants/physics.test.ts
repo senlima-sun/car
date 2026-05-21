@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'vitest'
 import { FIXED_TIME_STEP } from './physics'
 
 describe('physics constants', () => {
