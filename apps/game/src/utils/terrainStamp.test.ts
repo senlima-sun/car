@@ -247,6 +247,32 @@ describe('ribbonStampInputsFromObjects', () => {
   })
 })
 
+describe('embedded roadbed regression (mountain crossing road footprint)', () => {
+  it('road core is within 0.05m of stamped target even when raw terrain has a 30m hill across it', () => {
+    // Raw DEM: 30m hill spanning (-200, 200) in z, centered on the road.
+    const raw = makeRaw((_x, z) => {
+      const t = Math.exp(-(z * z) / (2 * 80 * 80))
+      return 30 * t
+    })
+    const ribbon = {
+      points: [
+        { x: -800, y: 0, z: 0, isPitLane: false },
+        { x: 800, y: 0, z: 0, isPitLane: false },
+      ],
+      width: 12,
+      closed: false,
+    }
+    const layer = computeRoadbedLayer(raw, RES, WORLD, [ribbon])
+    const composed = new Float32Array(raw.length)
+    for (let i = 0; i < raw.length; i++) composed[i] = raw[i]! + layer[i]!
+    const stamped = stampRibbonsIntoBaseline(raw, RES, WORLD, [ribbon])
+    // Center of the road footprint should match the stamped target
+    // exactly (modulo bilinear interpolation) — the mountain should NOT
+    // be poking through.
+    expect(sampleAt(composed, 0, 0)).toBeCloseTo(sampleAt(stamped, 0, 0), 4)
+  })
+})
+
 describe('computeRoadbedLayer', () => {
   it('returns zeros when no ribbons supplied', () => {
     const raw = makeRaw((x, z) => x * 0.01 + z * 0.005)
