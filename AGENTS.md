@@ -8,22 +8,23 @@ A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM
 
 ## Prerequisites
 
-- **Bun** - Runtime, bundler, package manager
+- **pnpm 11+** - Package manager
+- **Node 22+** - Runtime
+- **Vite 8** - Dev server + bundler
 - **Rust + wasm-pack** - For compiling `physics-engine/` to WASM
 - **cargo** - Rust package manager (comes with Rust)
 
 ## Commands
 
-- `bun run dev` - Start dev server (port 3000) with WASM hot-reload. Builds WASM first, then runs `Bun.serve` (HMR + React Fast Refresh) and the WASM file watcher concurrently.
-- `bun run build` - Build WASM + production bundle
-- `bun run build:wasm` - Compile Rust physics to WASM (debug)
-- `bun run build:wasm:release` - Optimized WASM with LTO
-- `bun run test:wasm` - Run Rust unit tests (`cargo test` in physics-engine/)
-- `bun test` - Run TypeScript tests (single file: `bun test src/utils/foo.test.ts`)
-- `bun run dev:wasm` - Watch Rust files and rebuild WASM on change (standalone)
-- `bun run preview` - Static-serve the built `dist/` output (port 4173)
-- `bun run format` - Format with Prettier
-- `bun run compress:glb` - Optimize GLTF model (WebP textures + Draco compression)
+- `pnpm dev` - Start dev server (port 7234) with WASM hot-reload. Builds WASM first, then runs Vite (HMR + React Fast Refresh) and the WASM file watcher concurrently.
+- `pnpm build` - Build WASM + production bundle
+- `pnpm -w run build:wasm` - Compile Rust physics to WASM (debug)
+- `pnpm -w run build:wasm:release` - Optimized WASM with LTO
+- `pnpm -w run test:wasm` - Run Rust unit tests (`cargo test` in physics-engine/)
+- `pnpm test` - Run TypeScript tests across the workspace (single file: `pnpm --filter @car/game exec vitest run src/utils/foo.test.ts`)
+- `pnpm preview` - Static-serve the built `dist/` output (port 7235)
+- `pnpm format` - Format with Prettier
+- `pnpm -w run compress:glb` - Optimize GLTF model (WebP textures + Draco compression)
 
 ## Architecture
 
@@ -34,7 +35,10 @@ A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM
 - **Rust/WASM** - Custom physics engine (`physics-engine/`) for all vehicle dynamics
 - **Zustand** - State management (~30 stores in `src/stores/`)
 - **Tailwind CSS v4** - UI styling
-- **Bun** - Runtime, bundler (`Bun.build`), dev server (`Bun.serve` + HMR), package manager, test runner
+- **pnpm + Turborepo** - Package manager + monorepo task orchestration
+- **Vite 8** - Dev server (HMR + React Fast Refresh) and production bundler
+- **Vitest 3** - Test runner (Vite-powered, node environment)
+- **tsx** - TypeScript runner for root-level scripts
 
 ### Physics Data Flow (Critical Path)
 
@@ -142,11 +146,11 @@ Root 3D scene: Ground (grass with vertex displacement shader) → PlacedObjectsR
 
 ### Path Aliases
 
-`@/*` → `src/*` (configured in `tsconfig.json`; Bun's bundler reads tsconfig paths natively)
+`@/*` → `src/*` (configured in `tsconfig.json`; Vite reads tsconfig paths via `resolve.tsconfigPaths`, and `vite-tsconfig-paths` honors the same alias under vitest)
 
 ### Quality Standards
 
 - **No `@ts-ignore`**: use `@ts-expect-error` with issue link
 - **No comments**: unless license headers, TODOs with context, or bug workarounds
-- **Test coverage**: 80%+ API, 90%+ logic (run `bun test` before commits)
+- **Test coverage**: 80%+ API, 90%+ logic (run `pnpm test` before commits)
 - **Pre-commit review**: `git diff --cached` before every commit

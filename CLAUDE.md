@@ -6,11 +6,76 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM. All physics calculations run in a custom Rust engine compiled to WASM; Rapier handles collision detection only; the car floats on raycast suspension (no contact colliders with ground/track).
 
+## Core Principles for Working with Claude
+
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+
+### 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
 ## Prerequisites
 
 - **pnpm 11+** - Dependency manager + workspace orchestrator (`pnpm-lock.yaml` is authoritative)
 - **Vite 8** - Dev server (HMR + React Fast Refresh) and production bundler
-- **Bun 1.2+** - Runtime (`bun test`, script execution)
 - **Turborepo 2.x** - Task orchestration + content-hashed caching (local + self-hosted remote)
 - **Rust + wasm-pack** - For compiling `physics-engine/` to WASM
 - **cargo** - Rust package manager (comes with Rust)
@@ -25,156 +90,24 @@ A browser-based F1 2026 racing simulator built with React + Three.js + Rust/WASM
 
 See `docs/monorepo.md` for `pnpm -w` vs `--filter` conventions and remote cache details.
 
-## Commands
-
-Run from repo root unless noted. Most legacy `bun run <name>` invocations now go through pnpm/turbo.
-
-- `pnpm run dev` — Start dev server (port 3000) with WASM hot-reload via `turbo run dev`.
-- `pnpm run build` — Build WASM + production bundle via `turbo run build` (cached).
-- `pnpm run build:wasm` — Compile Rust physics to WASM (debug). Goes through turbo cache.
-- `pnpm run build:wasm:release` — Optimized WASM (skips turbo; use rarely).
-- `pnpm run test` — Run TypeScript tests inside `apps/game/` via turbo.
-- `pnpm run test:wasm` — Run Rust unit tests (`cargo test`).
-- `pnpm -w run test:scripts` — Run tests in `scripts/lib/` (split out of root `bun test`; NOT a turbo task).
-- `pnpm run typecheck` — `tsc --noEmit` for `@car/game` and `@car/physics` via turbo.
-- `pnpm run preview` — Static-serve `apps/game/dist/` on port 4173.
-- `pnpm run format` — Format with Prettier.
-- `pnpm run compress:glb` — Optimize GLTF model (WebP textures + Draco compression).
-- `pnpm -w run perf:smoke` — Headless perf smoke test (root-only script).
-- `pnpm -w run check:turbo-cache` — Sanity-check turbo remote cache env vars.
-
-Filter to a specific workspace:
-
-- `pnpm --filter @car/game dev` / `build` / `test` / `typecheck`
-
-Deprecated: `pnpm run dev:wasm` — the in-dev watcher now starts automatically as part of `pnpm run dev`.
-
 ## Architecture
 
 ### Tech Stack
 
 - **React 19** + TypeScript, **Three.js** via `@react-three/fiber`
-- **@react-three/rapier** - Rapier for collision detection (NOT vehicle physics)
-- **Rust/WASM** - Custom physics engine (`physics-engine/`) for all vehicle dynamics
-- **Zustand** - State management (~30 stores in `apps/game/src/stores/`)
-- **Tailwind CSS v4** - UI styling (bundled via `bun-plugin-tailwind`)
-- **Bun** - Runtime, bundler (`Bun.build`), dev server (`Bun.serve` + HMR), package manager, test runner
-
-### Physics Data Flow (Critical Path)
-
-The game loop runs at 120Hz fixed timestep (`FIXED_TIME_STEP = 1/120`):
-
-```
-useFrame (variable dt)
-  → usePhysicsAccumulator (fixed-step accumulator, capped at 0.25s)
-    → for each accumulated step:
-        1. Read Rapier rigid body state (position, rotation, linvel, angvel)
-        2. Raycast suspension (4 rays, ground clamp, spring/damper forces)
-        3. Call WASM: physics.stepAndSync(dt, input, pos, rot, linvel, angvel, surfaceNormal)
-        4. Apply returned linear/angular velocity back to Rapier
-    → After all steps: sync stores, update telemetry, update rubber deposits
-```
-
-Key: `stepAndSync` is preferred over `stepPhysics` — it combines the physics step with wind/aero/brake state sync in a single FFI call.
-
-### WASM Bridge Layer (`apps/game/src/wasm/`)
-
-- `PhysicsBridge.ts` - Type-safe wrappers around raw WASM bindings. All values sanitized (NaN/Infinity → 0).
-- `PhysicsProvider.tsx` - React context. `usePhysics()` hook provides access. `usePhysicsOptional()` for components that may render before WASM loads.
-- `pkg/` - Generated by wasm-pack (gitignored). Don't edit.
-
-### Collision System
-
-Car does NOT contact-collide with track or ground. Vertical support is entirely from raycast suspension.
-
-```
-GROUP_CAR    (0x0001) → interacts with GROUP_OBJECT only
-GROUP_TRACK  (0x0002) → interacts with GROUP_RAY only
-GROUP_GROUND (0x0004) → interacts with GROUP_OBJECT | GROUP_RAY
-GROUP_RAY    (0x0010) → interacts with GROUP_TRACK | GROUP_GROUND
-```
-
-Defined in `apps/game/src/constants/dimensions.ts`. Car uses 4 `BallCollider` at wheel positions (for object collisions). `SUSPENSION_RAY_GROUPS` is used for the raycast queries.
-
-### Car Component Decomposition (`apps/game/src/components/canvas/Car/`)
-
-- `Car.tsx` - RigidBody setup, colliders, visual effects (spray, trails, smoke)
-- `hooks/useCarFrame.ts` - Orchestrates the frame loop, delegates to sub-hooks:
-  - `useRaycastSuspension` - 4 raycasts, spring/damper forces, ground clamp
-  - `useCarInputControl` - Aero mode, ERS preset, brake bias from keyboard
-  - `useCarPhysicsStep` - WASM `stepAndSync` call, velocity application
-  - `useCarStateSync` - Syncs physics output → Zustand stores
-  - `useCarRubberAndTrails` - Rubber deposits, skid marks, tire trails
-  - `useCarLifecycle` - Tab resume, game mode transitions, spawn protection
-
-### Rust Physics Engine (`physics-engine/src/`)
-
-- `engine.rs` - Main `PhysicsEngine` struct, holds all subsystem state
-- `lib.rs` - `#[wasm_bindgen]` exports (WASM API surface)
-- `car_physics/` - Vehicle dynamics: `aerodynamics.rs`, `tire_model.rs` (Pacejka), `weight_transfer.rs`, `steering.rs` (Ackerman), `drift.rs`, `powertrain.rs`
-- `weather.rs` - Continuous environment model (temperature, humidity, precipitation, pressure)
-- `tires.rs` - 5 compounds (soft/medium/hard/wet/intermediate), per-wheel wear, thermal model
-- `ers.rs` - Energy Recovery System (2026 F1 regs), semi-auto battery management
-- `active_aero.rs` - DRS-style active aerodynamics (Corner/Straight modes)
-- `brakes.rs` - Brake bias, engine braking levels
-- `wind.rs` - Wind system with gusts, headwind/crosswind modifiers
-- `track_temperature.rs` - Sparse grid: heat, wetness, water depth, drainage, rubber deposits
-- `engine_temp.rs` - Engine temperature, overheating, power reduction
-- `pit_lane.rs` - Speed limiter with blend factor
-- `surface.rs` - Surface types (road/grass/curb) with grip/speed/wear modifiers
-- `curb.rs` - FIA-standard curb physics (3 types: rumble, sausage, apex) with speed-dependent forces
-
-### Zustand Stores (`apps/game/src/stores/`)
-
-~30 stores, each focused on a single domain. Pattern: WASM physics output is synced to stores each frame via `useCarStateSync`. UI components subscribe to stores (never call WASM directly).
-
-Major stores: `useGameStore` (game status, camera mode), `useCarStore` (speed, gear, RPM), `useEditorStore` (track editor state), `useCustomizationStore` (placed objects), `useErsStore`, `useActiveAeroStore`, `useBrakeStore`, `useTireStore`, `useWindStore`, `useEnvironmentStore`, `useLapTimeStore`, `useGhostCarStore`, `useVisibilityStore`.
-
-### Ghost Car Replay (`apps/game/src/components/canvas/GhostCar/`)
-
-Records and replays ghost laps. Uses IndexedDB persistence (`apps/game/src/utils/ghostReplayDB.ts`), interpolation (`apps/game/src/utils/ghostInterpolation.ts`), and time-delta display (`apps/game/src/utils/ghostTimeDelta.ts`). State in `useGhostCarStore`.
-
-### Visibility System
-
-`useVisibilityStore` + `useVisibilityUpdater` hook — performance optimization that culls/LODs objects based on camera distance. Prevents unnecessary renders of off-screen or distant components.
-
-### Scene Graph (`apps/game/src/components/canvas/Scene.tsx`)
-
-Root 3D scene: Ground (grass with vertex displacement shader) → PlacedObjectsRenderer → StartGrid → Weather effects (DynamicSky, CloudLayer, DynamicLighting, rain, lightning) → TrackTemperatureOverlay → SkidMarkRenderer → Car + CameraController. Customize mode conditionally renders ObjectPlacer, GhostPreview, ElevationHandles.
-
-### Key Patterns
-
-- **1 world unit = 1 meter**. Car dimensions in `apps/game/src/constants/dimensions.ts` match real 2026 F1 spec (5.5m long, 1.9m wide).
-- **Shaders**: Custom GLSL in `apps/game/src/shaders/` — asphalt surface, grass surface with vertex displacement, curb surface, HDRI sky, tire smoke. Injected via `onBeforeCompile` or `ShaderMaterial`.
-- **Track data**: JSON files in `apps/game/src/constants/tracks/` (silverstone, suzuka, monza). Loaded by `useTrackStore`.
-- **Debug system**: `apps/game/src/debug/ActionLogger` — dev-only logging for physics actions, store changes.
-
-### Adding a Track
-
-Drop `scripts/circuits/<name>.config.json` (use `provenance: "osm"` for OSM-sourced circuits, `provenance: "manual"` for editor-drawn ones). Run `bun run track:add <name>` — it runs ingest (for OSM) or validate-source (for manual). See `docs/adding-a-track.md` for BBox selection, config fields, and validation thresholds.
-
-### Adding Physics Features
-
-1. Define Rust types/functions in `physics-engine/src/`
-2. Export via `#[wasm_bindgen]` in `lib.rs`
-3. Add typed wrapper in `apps/game/src/wasm/PhysicsBridge.ts`
-4. Re-export from `apps/game/src/wasm/index.ts`
-5. Add to `PhysicsContextValue` in `PhysicsProvider.tsx`
-6. Access in React via `usePhysics()` hook
-
-### 3D Asset Pipeline
-
-- Car model: `public/models/f1_2026.glb` (Draco-compressed GLTF)
-- Wheels: `GltfWheelAnimator.tsx` (rotation + suspension linkage animation)
-- Textures: `public/textures/`, load via `useTexture` from drei
-
-### Path Aliases
-
-`@/*` → `apps/game/src/*` (configured in `apps/game/tsconfig.json`; Bun's bundler reads tsconfig paths natively)
+- **@react-three/rapier** — Rapier for collision detection (NOT vehicle physics)
+- **Rust/WASM** — Custom physics engine (`physics-engine/`) for all vehicle dynamics
+- **Zustand** — State management (~30 stores in `apps/game/src/stores/`)
+- **TanStack Router** — File-based routing in `apps/game/src/routes/`
+- **Tailwind CSS v4** — UI styling via `@tailwindcss/vite`
+- **Vite 8** — Dev server (HMR + React Fast Refresh) and production bundler; WASM via `vite-plugin-wasm`
+- **Vitest 3** — Test runner (Vite-powered, node environment)
+- **tsx 4** — TypeScript runner for root-level scripts (invoked via pnpm)
+- **Hono + Better Auth + Drizzle + D1 + KV** — `@car/api` Cloudflare Worker (accounts, sessions, Polar billing)
 
 ### Quality Standards
 
 - **No `@ts-ignore`**: use `@ts-expect-error` with issue link
 - **No comments**: unless license headers, TODOs with context, or bug workarounds
-- **Test coverage**: 80%+ API, 90%+ logic (run `bun test` before commits)
+- **Test coverage**: 80%+ API, 90%+ logic (run `pnpm test` before commits)
 - **Pre-commit review**: `git diff --cached` before every commit

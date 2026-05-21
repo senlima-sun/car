@@ -40,9 +40,9 @@ The half-extent rule: start with the circuit's world-space bbox (printed by `tra
 Then:
 
 ```bash
-OPENTOPO_API_KEY=... ELEVATION_ALLOW_NETWORK=1 bun run track:elevation:fetch spa
+OPENTOPO_API_KEY=... ELEVATION_ALLOW_NETWORK=1 pnpm -w run track:elevation:fetch spa
 # or, without an API key (uses Open-Elevation fallback):
-ELEVATION_ALLOW_NETWORK=1 bun run track:elevation:fetch spa
+ELEVATION_ALLOW_NETWORK=1 pnpm -w run track:elevation:fetch spa
 ```
 
 Commit the resulting `apps/game/src/constants/tracks/sources/_terrain/<name>.heightmap.json`.
@@ -77,13 +77,13 @@ The sidecar is written all-zero with `provider: "none"`. Runtime treats this exa
 - `scaleMetersPerUnit`: how many real-world meters one local-Cartesian unit represents (1.0 for metric editor coords)
 - `halfExtentMeters`: same rule as the OSM `terrainBBox`
 
-Run `bun run track:elevation:fetch <name>`. The resampler applies the affine before each DEM sample so the heightmap aligns under the editor-drawn polyline.
+Run `pnpm -w run track:elevation:fetch <name>`. The resampler applies the affine before each DEM sample so the heightmap aligns under the editor-drawn polyline.
 
 ---
 
 ## Adding a Brand-New Circuit
 
-`bun run track:add <name>` will:
+`pnpm -w run track:add <name>` will:
 
 1. Run `track:ingest` (OSM) or `track:validate-source` (manual)
 2. Automatically invoke `track:elevation:fetch <name>` if the config has `terrainBBox` (OSM) or `terrainGeoref` (manual)

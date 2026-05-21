@@ -107,7 +107,7 @@ Expected config skeleton:
 }
 ```
 
-Run `bun run track:ingest spa` after creating this file. Adjust `wayNameDenyList` if non-GP ways appear in the output.
+Run `pnpm -w run track:ingest spa` after creating this file. Adjust `wayNameDenyList` if non-GP ways appear in the output.
 
 ---
 
@@ -146,7 +146,7 @@ Create `scripts/circuits/spa.config.json` following the schema in `scripts/circu
 ### Step 2 — Ingest from OSM (OSM circuits only)
 
 ```bash
-bun run track:ingest spa
+pnpm -w run track:ingest spa
 ```
 
 This fetches the Overpass QL response, chains the ways into a closed polyline, simplifies it, converts GPS to world coordinates, writes `src/constants/tracks/sources/spa.json`, and runs the structural validator inline. If the validator finds a critical issue the file is written for inspection but the process exits 1 — do NOT commit the output until all critical issues are resolved.
@@ -155,12 +155,12 @@ For `provenance: "manual"` circuits, skip this step — the source is the canoni
 
 ### Step 3 — Inspect the output
 
-Open the track JSON in the in-app editor (`bun run dev`, then load the circuit) and verify the layout visually. Check that the start-finish checkpoint is at the correct position and the two sector checkpoints divide the circuit into meaningful thirds.
+Open the track JSON in the in-app editor (`pnpm dev`, then load the circuit) and verify the layout visually. Check that the start-finish checkpoint is at the correct position and the two sector checkpoints divide the circuit into meaningful thirds.
 
 ### Step 4 — Run the source validator
 
 ```bash
-bun run track:validate-source spa
+pnpm -w run track:validate-source spa
 ```
 
 Runs all structural checks and writes a JSON report to `.cache/track-validation/spa.json`. Fix any CRITICAL issues before continuing. WARNING-level issues may be informational and are non-blocking.
@@ -172,7 +172,7 @@ Once validation passes, commit `scripts/circuits/spa.config.json` and `src/const
 ### One-command shortcut
 
 ```bash
-bun run track:add spa
+pnpm -w run track:add spa
 ```
 
 Runs ingest (for OSM) or validate-source (for manual). Exits 0 on success, 1 on any sub-step failure.
@@ -246,9 +246,9 @@ See the next section.
 
 **What it means**:
 
-- `bun run track:ingest <name>` skips the OSM fetch and exits 0 with a "skipped: manual provenance" message. It does not overwrite the source file.
-- `bun run track:validate-source <name>` still runs the full structural validator against the existing source JSON. Manual provenance does not exempt a circuit from validation.
-- `bun run track:add <name>` runs `track:validate-source` instead of `track:ingest`.
+- `pnpm -w run track:ingest <name>` skips the OSM fetch and exits 0 with a "skipped: manual provenance" message. It does not overwrite the source file.
+- `pnpm -w run track:validate-source <name>` still runs the full structural validator against the existing source JSON. Manual provenance does not exempt a circuit from validation.
+- `pnpm -w run track:add <name>` runs `track:validate-source` instead of `track:ingest`.
 
 **Current manual-provenance circuits**: Silverstone, Monza, Shanghai. Their sources are the canonical artefacts. Modifying them requires going through the in-app editor, not re-running `track:ingest`.
 

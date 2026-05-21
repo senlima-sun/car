@@ -7,5 +7,6 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
     setupFiles: ['fake-indexeddb/auto'],
+    testTimeout: 15000,
   },
 })

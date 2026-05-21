@@ -13,7 +13,8 @@ This repo is a pnpm + Turborepo workspace.
 
 - **pnpm** — dependency manager + workspace orchestrator. `pnpm-lock.yaml` is authoritative.
 - **Vite 8** — dev server (HMR + React Fast Refresh) and production bundler. Tailwind 4 via `@tailwindcss/vite`. WASM via `vite-plugin-wasm`. Routes via `@tanstack/router-plugin`.
-- **Bun** — runtime (`bun test`, script runtime). Not the bundler.
+- **Vitest 3** — test runner (Vite-powered, node environment). `pnpm test` fans out via Turborepo to each package's `vitest run`.
+- **tsx 4** — TypeScript runner for root-level scripts (invoked via `pnpm`).
 - **Turborepo** — task orchestration + content-hashed caching (local + self-hosted remote).
 - **Rust + wasm-pack** — physics engine compilation.
 
@@ -90,7 +91,7 @@ pnpm --filter @car/game compress:glb
 
 ## Test discovery
 
-`pnpm --filter @car/game test` runs `bun test` inside `apps/game/`. Tests outside the app (notably `scripts/lib/validate/validate-source.test.ts`) are covered by the separate `pnpm -w run test:scripts` invocation. This is intentionally NOT a turbo task so its cache key does not couple to app source.
+`pnpm --filter @car/game test` runs `vitest run` inside `apps/game/`. Tests outside the app (notably `scripts/lib/validate/validate-source.test.ts`) are covered by the separate `pnpm -w run test:scripts` invocation. This is intentionally NOT a turbo task so its cache key does not couple to app source.
 
 ## Deprecated commands
 
