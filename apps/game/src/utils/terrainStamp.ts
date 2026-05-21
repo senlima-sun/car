@@ -55,7 +55,7 @@ export const DEFAULT_STAMP_CONFIG: StampConfig = {
   smoothHalfWindowMeters: 30,
   transitionMeters: 50,
   maxLateralClimbRate: 0.25,
-  maxAlongTrackGradient: 0.12,
+  maxAlongTrackGradient: 0.06,
 }
 
 interface RibbonSegment {
@@ -346,7 +346,7 @@ function closestSegmentInfluence(
   cx: number,
   cz: number,
   halfWidthPlusTransition: number,
-): { dist: number; targetY: number; footX: number; footZ: number } | null {
+): { dist: number; targetY: number } | null {
   // AABB reject — segment can only influence cells within this margin.
   const minX = Math.min(seg.ax, seg.bx) - halfWidthPlusTransition
   const maxX = Math.max(seg.ax, seg.bx) + halfWidthPlusTransition
@@ -364,7 +364,7 @@ function closestSegmentInfluence(
   const dist = Math.hypot(cx - px, cz - pz)
   if (dist > halfWidthPlusTransition) return null
   const targetY = seg.targetAtStart + (seg.targetAtEnd - seg.targetAtStart) * t
-  return { dist, targetY, footX: px, footZ: pz }
+  return { dist, targetY }
 }
 
 /**
@@ -417,8 +417,6 @@ export function stampRibbonsIntoBaseline(
       // distance to (cx, cz) — that ribbon's target y wins.
       let bestDist = Infinity
       let bestTargetY = 0
-      let bestFootX = 0
-      let bestFootZ = 0
       let bestRibbon: FlatRibbon | null = null
       for (const flat of flats) {
         for (const seg of flat.segments) {
@@ -426,8 +424,6 @@ export function stampRibbonsIntoBaseline(
           if (inf && inf.dist < bestDist) {
             bestDist = inf.dist
             bestTargetY = inf.targetY
-            bestFootX = inf.footX
-            bestFootZ = inf.footZ
             bestRibbon = flat
           }
         }
@@ -439,21 +435,19 @@ export function stampRibbonsIntoBaseline(
         // guarantees bilinear correctness.
         out[gz * resolution + gx] = bestTargetY
       } else {
-        // Transition: relativize raw DEM so terrain beside the road
-        // tracks the ribbon's elevation instead of bleeding the
-        // absolute DEM (which is metres higher than the carved
-        // ribbon target y on real circuits).
+        // Transition: blend raw DEM toward the ribbon target y and
+        // then clamp the result to a road-realistic envelope around
+        // the ribbon. The clamp envelope grows linearly with distance
+        // past the full-stamp footprint, so close to the road the
+        // baseline cannot deviate more than a few metres from the
+        // ribbon (preventing visible hillside/cliff intrusions),
+        // while far cells revert toward raw DEM.
         const inTransition =
           (bestDist - bestRibbon.fullStampHalfWidth) /
           (bestRibbon.halfWidthPlusTransition - bestRibbon.fullStampHalfWidth)
         const blend = smoothstep(1 - inTransition)
         const rawCell = raw[gz * resolution + gx]!
-        const rawAtFoot = bilinearSample(raw, resolution, worldSize, bestFootX, bestFootZ)
-        const relativized = bestTargetY + (rawCell - rawAtFoot)
-        const blended = relativized + (bestTargetY - relativized) * blend
-        // Cap absolute climb relative to ribbon target y so a sharp
-        // hillside cannot poke through the road. The cap grows
-        // linearly with distance past the full-stamp footprint.
+        const blended = rawCell + (bestTargetY - rawCell) * blend
         const distPastFull = bestDist - bestRibbon.fullStampHalfWidth
         const clampMargin = config.maxLateralClimbRate * distPastFull
         out[gz * resolution + gx] = Math.max(

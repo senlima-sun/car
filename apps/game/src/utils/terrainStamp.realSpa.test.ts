@@ -169,10 +169,13 @@ describe('terrainStamp real-Spa correctness probe (Phase 1.5b)', () => {
     }
     console.log(`[Phase 1.5b] worst-case error overall: ${worstErr.toFixed(4)}m`)
     console.log(`[Phase 1.5b] worst-case error Eau Rouge / Raidillon: ${worstEauRouge.toFixed(4)}m`)
-    // Phase 1.5b acceptance: well under the prior 2.5m baseline. The
-    // measured worst-case (~0.16m on real Spa) feeds Phase 4.1's
-    // TOLERANCE_M (set to 0.30m there with 50%+ safety margin).
-    expect(worstErr).toBeLessThan(0.3)
-    expect(worstEauRouge).toBeLessThan(0.3)
+    // The 6% along-track gradient clamp (introduced to keep stamped
+    // baselines inside the suspension envelope on a 15.7m grid)
+    // smooths the steepest sections of Eau Rouge / Raidillon, so the
+    // tolerance is widened to 0.7m. The car would otherwise rebuff
+    // off mountain-sized DEM aliasing spikes. Centerline still tracks
+    // the smoothed elevation precisely.
+    expect(worstErr).toBeLessThan(0.7)
+    expect(worstEauRouge).toBeLessThan(0.7)
   })
 })
