@@ -1,5 +1,6 @@
-#!/usr/bin/env bun
-
+import { readFile, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { glob } from 'tinyglobby'
 import { buildEditorTrackSourceFromPolyline } from '../apps/game/src/utils/editorTrackSourceFromPolyline'
 import {
   fetchOSMData,
@@ -409,14 +410,13 @@ function generateRoadSegments(
 
 async function loadConfig(circuitName: string): Promise<CircuitConfigFile> {
   const configPath = `scripts/circuits/${circuitName}.config.json`
-  const file = Bun.file(configPath)
-  if (!(await file.exists())) {
+  if (!existsSync(configPath)) {
     const available = await discoverCircuitNames()
     console.error(`Unknown circuit: ${circuitName}`)
     console.log(`Available circuits: ${available.join(', ')}`)
     process.exit(1)
   }
-  const config = (await file.json()) as CircuitConfigFile
+  const config = JSON.parse(await readFile(configPath, 'utf8')) as CircuitConfigFile
   if (config.name !== circuitName) {
     console.error(
       `Invalid config ${configPath}: name "${config.name}" does not match CLI argument "${circuitName}"`,
@@ -447,9 +447,9 @@ async function loadConfig(circuitName: string): Promise<CircuitConfigFile> {
 }
 
 async function discoverCircuitNames(): Promise<string[]> {
-  const glob = new Bun.Glob('scripts/circuits/*.config.json')
+  const files = await glob('scripts/circuits/*.config.json')
   const names: string[] = []
-  for await (const file of glob.scan('.')) {
+  for (const file of files) {
     const match = file.match(/scripts\/circuits\/(.+)\.config\.json$/)
     if (match) names.push(match[1])
   }
@@ -595,7 +595,7 @@ async function convertCircuit(circuitName: string): Promise<void> {
   }
 
   const outPath = `apps/game/src/constants/tracks/sources/${config.name}.json`
-  await Bun.write(outPath, JSON.stringify(source, null, 2))
+  await writeFile(outPath, JSON.stringify(source, null, 2))
   console.log(`\n  ✅ Written to ${outPath}`)
   console.log(`  📏 Track length: ~${Math.round(totalLength)}m`)
   console.log(
