@@ -240,7 +240,7 @@ See the next section.
 
 ## Manual Provenance Circuits
 
-`provenance: "manual"` in a circuit config means the source JSON in `src/constants/tracks/sources/<name>.json` was created by a means other than the OSM ingest pipeline — typically hand-drawn in the in-app track editor and exported, or converted from CSV data by `scripts/convert-csv-track.ts`.
+`provenance: "manual"` in a circuit config means the source JSON in `src/constants/tracks/sources/<name>.json` was created by a means other than the OSM ingest pipeline — typically hand-drawn in the in-app track editor and exported.
 
 **When to use it**: when the circuit is not in OSM with `highway=raceway` tagging (e.g. Monaco, or a fictional circuit), or when a committed source already exists and re-running OSM ingest would produce a different (potentially worse) result.
 

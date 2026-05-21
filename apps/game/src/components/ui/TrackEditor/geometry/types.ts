@@ -8,9 +8,9 @@ export type Anchor = {
   inHandle: Point
   outHandle: Point
   handleType: HandleType
-  /** Elevation in metres, circuit-local frame (subtraction of
-   *  centerpoint Mapbox sample). Populated by `fetch-track-anchor-elevation`.
-   *  Absent for tracks not yet migrated — those fall back to DEM-sample-along-ribbon.
+  /** Elevation in metres, circuit-local frame (subtraction of centerpoint
+   *  Mapbox sample). Absent for tracks not yet migrated — those fall back
+   *  to DEM-sample-along-ribbon.
    */
   elevation?: number
 }
