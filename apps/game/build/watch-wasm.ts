@@ -2,11 +2,14 @@
  * Watch Rust files and rebuild WASM on changes
  */
 
-import { watch } from 'fs'
-import { spawn } from 'bun'
-import { join } from 'path'
+import { watch } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const PHYSICS_ENGINE_DIR = join(import.meta.dir, '../../../physics-engine/src')
+const HERE = dirname(fileURLToPath(import.meta.url))
+const PHYSICS_ENGINE_DIR = join(HERE, '../../../physics-engine/src')
+const PHYSICS_ENGINE_ROOT = join(HERE, '../../../physics-engine')
 const DEBOUNCE_MS = 500
 
 let buildTimeout: ReturnType<typeof setTimeout> | null = null
@@ -22,19 +25,24 @@ async function buildWasm() {
   console.log('\n[WASM Watch] Rust files changed, rebuilding WASM...')
 
   try {
-    const proc = spawn({
-      cmd: ['wasm-pack', 'build', '--target', 'web', '--out-dir', '../packages/physics/pkg'],
-      cwd: join(import.meta.dir, '../../../physics-engine'),
-      stdout: 'pipe',
-      stderr: 'pipe',
+    const proc = spawn(
+      'wasm-pack',
+      ['build', '--target', 'web', '--out-dir', '../packages/physics/pkg'],
+      { cwd: PHYSICS_ENGINE_ROOT, stdio: ['ignore', 'pipe', 'pipe'] },
+    )
+
+    let stderr = ''
+    proc.stderr?.on('data', chunk => {
+      stderr += chunk.toString()
     })
 
-    const exitCode = await proc.exited
+    const exitCode = await new Promise<number>(resolve => {
+      proc.on('exit', code => resolve(code ?? 1))
+    })
 
     if (exitCode === 0) {
       console.log('[WASM Watch] WASM build successful!')
     } else {
-      const stderr = await new Response(proc.stderr).text()
       console.error('[WASM Watch] WASM build failed:')
       console.error(stderr)
     }
@@ -52,17 +60,15 @@ function debouncedBuild() {
   buildTimeout = setTimeout(buildWasm, DEBOUNCE_MS)
 }
 
-// Watch for changes in physics-engine/src
 console.log(`[WASM Watch] Watching ${PHYSICS_ENGINE_DIR} for changes...`)
 
-watch(PHYSICS_ENGINE_DIR, { recursive: true }, filename => {
+watch(PHYSICS_ENGINE_DIR, { recursive: true }, (_event, filename) => {
   if (filename && filename.endsWith('.rs')) {
     console.log(`[WASM Watch] Detected change in ${filename}`)
     debouncedBuild()
   }
 })
 
-// Keep the process running
 process.on('SIGINT', () => {
   console.log('\n[WASM Watch] Shutting down...')
   process.exit(0)

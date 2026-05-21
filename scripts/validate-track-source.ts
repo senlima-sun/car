@@ -1,5 +1,5 @@
-#!/usr/bin/env bun
-
+import { readFile, writeFile, mkdir } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { validateTrackSource } from './lib/validate/validate-source'
 import type { CircuitConfigFile } from './circuits/_schema'
 import type { ValidationResult } from '../apps/game/src/utils/trackValidation'
@@ -25,42 +25,36 @@ function labelForSeverity(severity: ValidationResult['severity']): string {
 async function run(): Promise<void> {
   const args = process.argv.slice(2)
   if (args.length === 0) {
-    console.error('Usage: bun run track:validate-source <circuit-name>')
+    console.error('Usage: pnpm run track:validate-source <circuit-name>')
     process.exit(1)
   }
 
   const circuitName = args[0]!.toLowerCase()
 
-  const configFile = Bun.file(`scripts/circuits/${circuitName}.config.json`)
-  if (!(await configFile.exists())) {
+  const configPath = `scripts/circuits/${circuitName}.config.json`
+  if (!existsSync(configPath)) {
     console.error(`Unknown circuit: ${circuitName}`)
-    console.error(`No config found at scripts/circuits/${circuitName}.config.json`)
+    console.error(`No config found at ${configPath}`)
     process.exit(1)
   }
   let config: CircuitConfigFile
   try {
-    config = (await configFile.json()) as CircuitConfigFile
+    config = JSON.parse(await readFile(configPath, 'utf8')) as CircuitConfigFile
   } catch (err) {
-    console.error(
-      `Invalid JSON in scripts/circuits/${circuitName}.config.json: ${(err as Error).message}`,
-    )
+    console.error(`Invalid JSON in ${configPath}: ${(err as Error).message}`)
     process.exit(1)
   }
 
-  const sourceFile = Bun.file(`apps/game/src/constants/tracks/sources/${circuitName}.json`)
-  if (!(await sourceFile.exists())) {
-    console.error(
-      `No source found at apps/game/src/constants/tracks/sources/${circuitName}.json`,
-    )
+  const sourcePath = `apps/game/src/constants/tracks/sources/${circuitName}.json`
+  if (!existsSync(sourcePath)) {
+    console.error(`No source found at ${sourcePath}`)
     process.exit(1)
   }
   let source: unknown
   try {
-    source = await sourceFile.json()
+    source = JSON.parse(await readFile(sourcePath, 'utf8'))
   } catch (err) {
-    console.error(
-      `Invalid JSON in apps/game/src/constants/tracks/sources/${circuitName}.json: ${(err as Error).message}`,
-    )
+    console.error(`Invalid JSON in ${sourcePath}: ${(err as Error).message}`)
     process.exit(1)
   }
 
@@ -91,24 +85,20 @@ async function run(): Promise<void> {
   const reportDir = `.cache/track-validation`
   const reportPath = `${reportDir}/${circuitName}.json`
 
-  const mkdirResult = Bun.spawnSync(['mkdir', '-p', reportDir])
-  if (mkdirResult.exitCode !== 0) {
-    console.error(`Failed to create report directory ${reportDir}`)
-  } else {
-    await Bun.write(
-      reportPath,
-      JSON.stringify(
-        {
-          circuit: circuitName,
-          timestamp: new Date().toISOString(),
-          ...report,
-        },
-        null,
-        2,
-      ),
-    )
-    console.log(`  Report written to ${reportPath}`)
-  }
+  await mkdir(reportDir, { recursive: true })
+  await writeFile(
+    reportPath,
+    JSON.stringify(
+      {
+        circuit: circuitName,
+        timestamp: new Date().toISOString(),
+        ...report,
+      },
+      null,
+      2,
+    ),
+  )
+  console.log(`  Report written to ${reportPath}`)
 
   process.exit(report.canRace ? 0 : 1)
 }

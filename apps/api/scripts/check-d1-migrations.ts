@@ -1,24 +1,19 @@
-#!/usr/bin/env bun
-import { spawnSync } from 'bun'
+import { spawnSync } from 'node:child_process'
 
 function exitWith(message: string, code = 1): never {
   console.error(message)
   process.exit(code)
 }
 
-const result = spawnSync({
-  cmd: ['wrangler', 'd1', 'migrations', 'list', 'DB', '--remote'],
-  stdout: 'pipe',
-  stderr: 'pipe',
+const result = spawnSync('wrangler', ['d1', 'migrations', 'list', 'DB', '--remote'], {
+  encoding: 'utf8',
 })
 
-const stdout = new TextDecoder().decode(result.stdout)
-const stderr = new TextDecoder().decode(result.stderr)
-const combined = `${stdout}\n${stderr}`
+const combined = `${result.stdout ?? ''}\n${result.stderr ?? ''}`
 
-if (result.exitCode !== 0) {
+if (result.status !== 0) {
   exitWith(
-    `[d1-migrations] wrangler exited with ${result.exitCode}; cannot verify migration state — aborting deploy.\n` +
+    `[d1-migrations] wrangler exited with ${result.status}; cannot verify migration state — aborting deploy.\n` +
       combined,
   )
 }

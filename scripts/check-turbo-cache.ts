@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 /**
  * Sanity-check turbo remote cache wiring.
  *
@@ -11,7 +10,7 @@
  * build run — see docs/monorepo.md for the --summarize recipe.
  */
 
-import { spawnSync } from 'bun'
+import { spawnSync } from 'node:child_process'
 
 const REQUIRED_VARS = ['TURBO_TOKEN', 'TURBO_API', 'TURBO_TEAM'] as const
 const OPTIONAL_VARS = ['TURBO_REMOTE_CACHE_SIGNATURE_KEY'] as const
@@ -38,17 +37,16 @@ if (optionalMissing.length > 0) {
   )
 }
 
-const result = spawnSync({
-  cmd: ['pnpm', 'turbo', 'run', 'build:wasm', '--dry=json'],
-  stdout: 'pipe',
-  stderr: 'inherit',
+const result = spawnSync('pnpm', ['turbo', 'run', 'build:wasm', '--dry=json'], {
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'inherit'],
 })
 
-if (result.exitCode !== 0) {
-  exitWith(`[turbo-cache] turbo --dry=json failed with exit code ${result.exitCode}.`)
+if (result.status !== 0) {
+  exitWith(`[turbo-cache] turbo --dry=json failed with exit code ${result.status}.`)
 }
 
-const stdout = new TextDecoder().decode(result.stdout)
+const stdout = result.stdout
 let parsed: { tasks?: Array<{ taskId: string; hash: string }>; turboVersion?: string }
 try {
   parsed = JSON.parse(stdout) as typeof parsed

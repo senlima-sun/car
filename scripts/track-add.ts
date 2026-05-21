@@ -1,33 +1,31 @@
-#!/usr/bin/env bun
-
+import { readFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { spawn } from 'node:child_process'
 import type { CircuitConfigFile } from './circuits/_schema'
 
 async function resolveConfig(name: string): Promise<CircuitConfigFile> {
   const configPath = `scripts/circuits/${name}.config.json`
-  const file = Bun.file(configPath)
-  if (!(await file.exists())) {
+  if (!existsSync(configPath)) {
     process.stderr.write(`track:add: no config at ${configPath}\n`)
     process.stderr.write(
-      `Create it first, then re-run: bun run track:add ${name}\n`,
+      `Create it first, then re-run: pnpm run track:add ${name}\n`,
     )
     process.exit(1)
   }
-  return (await file.json()) as CircuitConfigFile
+  return JSON.parse(await readFile(configPath, 'utf8')) as CircuitConfigFile
 }
 
-async function runStep(args: string[]): Promise<boolean> {
-  const proc = Bun.spawn(['bun', 'run', ...args], {
-    stdout: 'inherit',
-    stderr: 'inherit',
+function runStep(args: string[]): Promise<boolean> {
+  return new Promise(resolve => {
+    const proc = spawn('pnpm', ['-w', 'run', ...args], { stdio: 'inherit' })
+    proc.on('exit', code => resolve(code === 0))
   })
-  const code = await proc.exited
-  return code === 0
 }
 
 async function main(): Promise<void> {
   const name = process.argv[2]
   if (!name) {
-    process.stderr.write('Usage: bun run track:add <circuit-name>\n')
+    process.stderr.write('Usage: pnpm run track:add <circuit-name>\n')
     process.exit(1)
   }
 

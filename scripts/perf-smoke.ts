@@ -1,9 +1,8 @@
-#!/usr/bin/env bun
 /**
  * Headless perf smoke runner.
  *
- * Without a real GPU/WASM environment under Bun we can only validate
- * the PerfScenarioRecorder contract and assert that a synthetic frame
+ * Without a real GPU/WASM environment we can only validate the
+ * PerfScenarioRecorder contract and assert that a synthetic frame
  * stream drops out the expected FPS envelope. When the browser harness
  * becomes available, extend this script to spawn Playwright and drive
  * `window.__startPerfScenario` / `__stopPerfScenario`.

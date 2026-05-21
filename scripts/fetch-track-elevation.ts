@@ -1,6 +1,4 @@
-#!/usr/bin/env bun
-
-import { promises as fs } from 'node:fs'
+import { promises as fs, existsSync } from 'node:fs'
 import path from 'node:path'
 
 import type { CircuitConfigFile } from './circuits/_schema'
@@ -59,12 +57,11 @@ const EXPECTATIONS: Record<string, CircuitElevationExpectation> = {
 
 async function resolveConfig(name: string): Promise<CircuitConfigFile> {
   const configPath = `scripts/circuits/${name}.config.json`
-  const file = Bun.file(configPath)
-  if (!(await file.exists())) {
+  if (!existsSync(configPath)) {
     process.stderr.write(`fetch-track-elevation: no config at ${configPath}\n`)
     process.exit(1)
   }
-  return (await file.json()) as CircuitConfigFile
+  return JSON.parse(await fs.readFile(configPath, 'utf8')) as CircuitConfigFile
 }
 
 type Frame =
@@ -119,14 +116,13 @@ async function assertFrameAlignment(
 ): Promise<void> {
   if (config.provenance !== 'osm') return
   const runtimeFile = `apps/game/src/constants/tracks/sources/${config.name}.json`
-  const file = Bun.file(runtimeFile)
-  if (!(await file.exists())) {
+  if (!existsSync(runtimeFile)) {
     process.stderr.write(
       `warning: runtime track ${runtimeFile} not found — skipping frame-alignment assert\n`
     )
     return
   }
-  const runtime = (await file.json()) as {
+  const runtime = JSON.parse(await fs.readFile(runtimeFile, 'utf8')) as {
     paths: Array<{ anchors: Array<{ point: { x: number; y: number } }> }>
   }
   let maxAbs = 0
@@ -261,7 +257,7 @@ async function writeSidecar(name: string, sidecar: TerrainSidecar): Promise<stri
 async function main(): Promise<void> {
   const name = process.argv[2]
   if (!name) {
-    process.stderr.write('Usage: bun run track:elevation:fetch <circuit-name>\n')
+    process.stderr.write('Usage: pnpm run track:elevation:fetch <circuit-name>\n')
     process.exit(1)
   }
   const config = await resolveConfig(name.toLowerCase())
