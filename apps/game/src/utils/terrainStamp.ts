@@ -1,5 +1,7 @@
 import type { TrackRibbonPoint } from '../types/trackObjects'
 import { smoothstep } from './roadGeometry'
+import type { RoadCorridor } from './roadCorridor'
+import { buildRoadCorridorsFromObjects } from './roadCorridor'
 
 /**
  * Track-stamp pass: imprint the ribbon's locally-smoothed elevation
@@ -471,12 +473,21 @@ export function stampRibbonsIntoBaseline(
   return out
 }
 
+export function ribbonStampInputFromCorridor(corridor: RoadCorridor): RibbonStampInput {
+  return {
+    points: corridor.centerline,
+    width: corridor.width,
+    closed: corridor.closed,
+  }
+}
+
 /**
  * Pull every track_ribbon PlacedObject out and produce stamp inputs.
  * Kept in this module so the call site is one line in useTrackStore.
  */
 export function ribbonStampInputsFromObjects(
   objects: ReadonlyArray<{
+    id?: string
     type: string
     ribbonPoints?: TrackRibbonPoint[]
     ribbonClosed?: boolean
@@ -484,14 +495,5 @@ export function ribbonStampInputsFromObjects(
   }>,
   defaultWidth: number,
 ): RibbonStampInput[] {
-  const out: RibbonStampInput[] = []
-  for (const o of objects) {
-    if (o.type !== 'track_ribbon' || !o.ribbonPoints || o.ribbonPoints.length < 2) continue
-    out.push({
-      points: o.ribbonPoints,
-      width: o.width ?? defaultWidth,
-      closed: o.ribbonClosed ?? false,
-    })
-  }
-  return out
+  return buildRoadCorridorsFromObjects(objects, defaultWidth).map(ribbonStampInputFromCorridor)
 }
