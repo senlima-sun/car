@@ -7,6 +7,7 @@ import {
   buildTrackObjectsFromEditorSource,
   type EditorTrackDocument,
 } from '@/utils/editorTrackSource'
+import { refreshRoadbedLayer } from '@/utils/roadbedLayer'
 
 const DRAFT_TRACK_ID = 'editor_draft'
 const DRAFT_TRACK_NAME = 'Editor Draft'
@@ -57,6 +58,7 @@ function writeDraftTrack(objects: PlacedObject[]): void {
   })
 
   useCustomizationStore.getState().setPlacedObjects(objects)
+  refreshRoadbedLayer(objects)
   void useTrackStore
     .getState()
     .saveLibrary()

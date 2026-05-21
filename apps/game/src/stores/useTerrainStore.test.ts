@@ -8,11 +8,43 @@ describe('useTerrainStore', () => {
       ...initial,
       baseline: new Float32Array(initial.resolution * initial.resolution),
       delta: new Float32Array(initial.resolution * initial.resolution),
+      roadbed: new Float32Array(initial.resolution * initial.resolution),
       terrainGeneration: 0,
       sidecarApplied: false,
       customBaselineUsed: false,
       deltaPresent: false,
+      roadbedPresent: false,
     })
+  })
+
+  it('replaceRoadbed adds to composed height and is independent of delta', () => {
+    const res = useTerrainStore.getState().resolution
+    const baseline = new Float32Array(res * res)
+    baseline[0] = 2
+    useTerrainStore.getState().replaceBaseline(baseline, { source: 'sidecar' })
+    useTerrainStore.getState().applyDeltaStroke(new Map<number, number>([[0, 5]]))
+
+    const roadbed = new Float32Array(res * res)
+    roadbed[0] = -1.25
+    useTerrainStore.getState().replaceRoadbed(roadbed)
+
+    const state = useTerrainStore.getState()
+    expect(state.roadbedPresent).toBe(true)
+    expect(state.getComposedHeightsSnapshot()[0]).toBeCloseTo(3.75, 5)
+    expect(state.delta[0]).toBe(3)
+  })
+
+  it('resetRoadbed clears roadbed layer without touching baseline or delta', () => {
+    const res = useTerrainStore.getState().resolution
+    const roadbed = new Float32Array(res * res)
+    roadbed[0] = 2
+    useTerrainStore.getState().replaceRoadbed(roadbed)
+    expect(useTerrainStore.getState().roadbedPresent).toBe(true)
+
+    useTerrainStore.getState().resetRoadbed()
+    const state = useTerrainStore.getState()
+    expect(state.roadbedPresent).toBe(false)
+    expect(state.roadbed[0]).toBe(0)
   })
 
   it('defers terrainGeneration bumps when delta strokes are batched', () => {

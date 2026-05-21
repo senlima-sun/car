@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_STAMP_CONFIG,
+  computeRoadbedLayer,
   ribbonStampInputsFromObjects,
   stampRibbonsIntoBaseline,
 } from './terrainStamp'
@@ -243,6 +244,46 @@ describe('ribbonStampInputsFromObjects', () => {
       12,
     )
     expect(inputs[0]!.width).toBe(12)
+  })
+})
+
+describe('computeRoadbedLayer', () => {
+  it('returns zeros when no ribbons supplied', () => {
+    const raw = makeRaw((x, z) => x * 0.01 + z * 0.005)
+    const layer = computeRoadbedLayer(raw, RES, WORLD, [])
+    expect(layer.length).toBe(raw.length)
+    for (let i = 0; i < layer.length; i++) expect(layer[i]).toBe(0)
+  })
+
+  it('cut/fill layer + raw equals stamped baseline (core stays exact)', () => {
+    const raw = makeRaw((_x, z) => (Math.abs(z) < 8 ? 0 : 30))
+    const ribbon = {
+      points: [
+        { x: -500, y: 0, z: 0, isPitLane: false },
+        { x: 500, y: 0, z: 0, isPitLane: false },
+      ],
+      width: 50,
+      closed: false,
+    }
+    const layer = computeRoadbedLayer(raw, RES, WORLD, [ribbon])
+    const stamped = stampRibbonsIntoBaseline(raw, RES, WORLD, [ribbon])
+    for (let i = 0; i < raw.length; i++) {
+      expect(layer[i]! + raw[i]!).toBeCloseTo(stamped[i]!, 4)
+    }
+  })
+
+  it('layer is zero outside the ribbon footprint + transition', () => {
+    const raw = makeRaw(() => 7)
+    const ribbon = {
+      points: [
+        { x: -500, y: 0, z: 0, isPitLane: false },
+        { x: 500, y: 0, z: 0, isPitLane: false },
+      ],
+      width: 12,
+      closed: false,
+    }
+    const layer = computeRoadbedLayer(raw, RES, WORLD, [ribbon])
+    expect(sampleAt(layer, 0, 1500)).toBeCloseTo(0, 4)
   })
 })
 

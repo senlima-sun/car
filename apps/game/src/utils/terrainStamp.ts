@@ -473,6 +473,31 @@ export function stampRibbonsIntoBaseline(
   return out
 }
 
+/**
+ * Compute the roadbed cut/fill layer as `stamped - raw`. The resulting
+ * Float32Array is what useTerrainStore.replaceRoadbed expects: when
+ * added on top of the raw baseline + user delta, the road footprint
+ * sits at the stamped target height while terrain outside the corridor
+ * is unaffected.
+ *
+ * Returns a zero-filled array when no ribbons influence the grid; this
+ * keeps the derived layer transparent for preset tracks whose baseline
+ * already has the stamp baked in.
+ */
+export function computeRoadbedLayer(
+  raw: Float32Array,
+  resolution: number,
+  worldSize: number,
+  ribbons: ReadonlyArray<RibbonStampInput>,
+  config: StampConfig = DEFAULT_STAMP_CONFIG,
+): Float32Array {
+  const out = new Float32Array(raw.length)
+  if (ribbons.length === 0) return out
+  const stamped = stampRibbonsIntoBaseline(raw, resolution, worldSize, ribbons, config)
+  for (let i = 0; i < out.length; i++) out[i] = stamped[i]! - raw[i]!
+  return out
+}
+
 export function ribbonStampInputFromCorridor(corridor: RoadCorridor): RibbonStampInput {
   return {
     points: corridor.centerline,

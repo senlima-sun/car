@@ -66,5 +66,8 @@ export async function applyStampedSidecar(
 
   terrain.replaceBaseline(stamped, { source: 'sidecar' })
   if (opts.deltaPolicy === 'reset') terrain.resetDelta()
+  // Sidecar bakes the stamp into baseline; clear the derived roadbed
+  // layer so reloads remain idempotent regardless of prior state.
+  terrain.resetRoadbed()
   return { applied: true, rawHeightmap: sidecar.heightmap }
 }

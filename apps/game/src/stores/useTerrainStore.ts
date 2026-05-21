@@ -8,12 +8,25 @@ export type BaselineSource = 'sidecar' | 'custom'
 interface TerrainState {
   baseline: Float32Array
   delta: Float32Array
+  /**
+   * Derived roadbed offset layer (Phase 3 of roadbed-embedded-terrain).
+   *
+   * Composed height is `baseline + delta + roadbed`. The layer is
+   * regenerated whenever ribbons or terrain change; it is NEVER
+   * persisted. For preset tracks the stamp is already baked into the
+   * sidecar baseline, so the layer is all zeros. For editor-authored
+   * or sidecar-less tracks, it carries the cut/fill amount so visual,
+   * heightfield, and surface queries see the same embedded roadbed
+   * without modifying the user's authored terrain delta.
+   */
+  roadbed: Float32Array
   resolution: number
   worldSize: number
   terrainGeneration: number
   sidecarApplied: boolean
   customBaselineUsed: boolean
   deltaPresent: boolean
+  roadbedPresent: boolean
 
   getHeightAt: (worldX: number, worldZ: number) => number
   getComposedHeightsSnapshot: () => Float32Array
@@ -23,6 +36,8 @@ interface TerrainState {
   replaceDelta: (data: number[] | Float32Array) => void
   resetDelta: () => void
   resetBaseline: () => void
+  replaceRoadbed: (data: number[] | Float32Array) => void
+  resetRoadbed: () => void
   applyDeltaStroke: (
     changes: Map<number, number>,
     opts?: { deferGeneration?: boolean },
@@ -57,15 +72,17 @@ function deltaPresentOf(delta: Float32Array): boolean {
 export const useTerrainStore = create<TerrainState>((set, get) => ({
     baseline: new Float32Array(DEFAULT_RESOLUTION * DEFAULT_RESOLUTION),
     delta: new Float32Array(DEFAULT_RESOLUTION * DEFAULT_RESOLUTION),
+    roadbed: new Float32Array(DEFAULT_RESOLUTION * DEFAULT_RESOLUTION),
     resolution: DEFAULT_RESOLUTION,
     worldSize: DEFAULT_WORLD_SIZE,
     terrainGeneration: 0,
     sidecarApplied: false,
     customBaselineUsed: false,
     deltaPresent: false,
+    roadbedPresent: false,
 
     getHeightAt: (worldX, worldZ) => {
-      const { baseline, delta, resolution, worldSize } = get()
+      const { baseline, delta, roadbed, resolution, worldSize } = get()
       const halfSize = worldSize / 2
       const cellSize = worldSize / (resolution - 1)
       const fx = (worldX + halfSize) / cellSize
@@ -79,19 +96,19 @@ export const useTerrainStore = create<TerrainState>((set, get) => ({
       const idx10 = idx00 + 1
       const idx01 = idx00 + resolution
       const idx11 = idx01 + 1
-      const h00 = baseline[idx00]! + delta[idx00]!
-      const h10 = baseline[idx10]! + delta[idx10]!
-      const h01 = baseline[idx01]! + delta[idx01]!
-      const h11 = baseline[idx11]! + delta[idx11]!
+      const h00 = baseline[idx00]! + delta[idx00]! + roadbed[idx00]!
+      const h10 = baseline[idx10]! + delta[idx10]! + roadbed[idx10]!
+      const h01 = baseline[idx01]! + delta[idx01]! + roadbed[idx01]!
+      const h11 = baseline[idx11]! + delta[idx11]! + roadbed[idx11]!
       const h0 = h00 + (h10 - h00) * tx
       const h1 = h01 + (h11 - h01) * tx
       return h0 + (h1 - h0) * tz
     },
 
     getComposedHeightsSnapshot: () => {
-      const { baseline, delta, resolution } = get()
+      const { baseline, delta, roadbed, resolution } = get()
       const out = new Float32Array(resolution * resolution)
-      for (let i = 0; i < out.length; i++) out[i] = baseline[i]! + delta[i]!
+      for (let i = 0; i < out.length; i++) out[i] = baseline[i]! + delta[i]! + roadbed[i]!
       return out
     },
 
@@ -138,6 +155,26 @@ export const useTerrainStore = create<TerrainState>((set, get) => ({
         baseline: new Float32Array(resolution * resolution),
         sidecarApplied: false,
         customBaselineUsed: false,
+        terrainGeneration: state.terrainGeneration + 1,
+      }))
+    },
+
+    replaceRoadbed: data => {
+      const { resolution } = get()
+      const roadbed = new Float32Array(resolution * resolution)
+      copyInto(roadbed, data)
+      set(state => ({
+        roadbed,
+        roadbedPresent: deltaPresentOf(roadbed),
+        terrainGeneration: state.terrainGeneration + 1,
+      }))
+    },
+
+    resetRoadbed: () => {
+      const { resolution } = get()
+      set(state => ({
+        roadbed: new Float32Array(resolution * resolution),
+        roadbedPresent: false,
         terrainGeneration: state.terrainGeneration + 1,
       }))
     },
@@ -206,7 +243,7 @@ export const useTerrainStore = create<TerrainState>((set, get) => ({
 const composedReadbackBuffer = new Float32Array(DEFAULT_RESOLUTION * DEFAULT_RESOLUTION)
 function readComposedInPlace(state: TerrainState): Float32Array {
   for (let i = 0; i < composedReadbackBuffer.length; i++) {
-    composedReadbackBuffer[i] = state.baseline[i]! + state.delta[i]!
+    composedReadbackBuffer[i] = state.baseline[i]! + state.delta[i]! + state.roadbed[i]!
   }
   return composedReadbackBuffer
 }
