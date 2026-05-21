@@ -1,6 +1,10 @@
-export type ProviderName = 'opentopography-cop30' | 'open-elevation' | 'none'
-export type DemName = 'GLO-30' | 'SRTM' | 'flat'
-export type DatumName = 'EGM2008' | 'flat'
+export type ProviderName =
+  | 'opentopography-cop30'
+  | 'open-elevation'
+  | 'mapbox-terrain-rgb'
+  | 'none'
+export type DemName = 'GLO-30' | 'SRTM' | 'MAPBOX' | 'flat'
+export type DatumName = 'EGM2008' | 'MAPBOX_NATIVE' | 'flat'
 
 export interface ElevationGrid {
   south: number
