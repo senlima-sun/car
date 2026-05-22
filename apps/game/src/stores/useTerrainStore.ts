@@ -85,9 +85,11 @@ export const useTerrainStore = create<TerrainState>((set, get) => ({
       const { baseline, delta, roadbed, resolution, worldSize } = get()
       const halfSize = worldSize / 2
       const cellSize = worldSize / (resolution - 1)
-      const fx = (worldX + halfSize) / cellSize
-      const fz = (worldZ + halfSize) / cellSize
-      if (fx < 0 || fx >= resolution - 1 || fz < 0 || fz >= resolution - 1) return 0
+      const fxRaw = (worldX + halfSize) / cellSize
+      const fzRaw = (worldZ + halfSize) / cellSize
+      const maxIdx = resolution - 1.0001
+      const fx = fxRaw < 0 ? 0 : fxRaw > maxIdx ? maxIdx : fxRaw
+      const fz = fzRaw < 0 ? 0 : fzRaw > maxIdx ? maxIdx : fzRaw
       const gx = Math.floor(fx)
       const gz = Math.floor(fz)
       const tx = fx - gx
