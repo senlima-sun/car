@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { PRESET_TRACK_METAS } from '@/constants/tracks'
 import { MenuItem } from '../MenuItem'
 import { styles } from '../styles'
@@ -29,13 +29,35 @@ export function ListMode({
   onDelete: () => void
 }) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
+  const [filter, setFilter] = useState('')
+
+  const normalizedFilter = filter.trim().toLowerCase()
+  const filteredPresets = useMemo(() => {
+    if (!normalizedFilter) return PRESET_TRACK_METAS
+    return PRESET_TRACK_METAS.filter(p =>
+      p.name.toLowerCase().includes(normalizedFilter),
+    )
+  }, [normalizedFilter])
+  const filteredTracks = useMemo(() => {
+    if (!normalizedFilter) return tracks
+    return tracks.filter(t => t.name.toLowerCase().includes(normalizedFilter))
+  }, [tracks, normalizedFilter])
 
   return (
     <>
-      {PRESET_TRACK_METAS.length > 0 && (
+      <input
+        type='text'
+        placeholder='Search tracks…'
+        value={filter}
+        onChange={e => setFilter(e.target.value)}
+        style={{ ...styles.input, width: 'calc(100% - 24px)', marginTop: 12 }}
+        autoFocus
+      />
+
+      {filteredPresets.length > 0 && (
         <div style={styles.menuSection}>
           <div style={styles.menuSectionTitle}>🏎️ F1 Tracks</div>
-          {PRESET_TRACK_METAS.map(preset => (
+          {filteredPresets.map(preset => (
             <MenuItem
               key={preset.id}
               icon='🏁'
@@ -52,10 +74,12 @@ export function ListMode({
 
       <div style={styles.menuSection}>
         <div style={styles.menuSectionTitle}>Tracks</div>
-        {tracks.length === 0 ? (
-          <div style={styles.noTracks}>No tracks yet</div>
+        {filteredTracks.length === 0 ? (
+          <div style={styles.noTracks}>
+            {tracks.length === 0 ? 'No tracks yet' : 'No matches'}
+          </div>
         ) : (
-          tracks.map(track => (
+          filteredTracks.map(track => (
             <MenuItem
               key={track.id}
               icon={track.id === activeTrack?.id ? '●' : '○'}

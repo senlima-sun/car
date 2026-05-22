@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Car, Settings } from 'lucide-react'
+import { ArrowLeft, Car, Eye, Settings } from 'lucide-react'
 import { motion } from 'motion/react'
 import { CAR_PARTS, PAINT_PRESETS, useCarPaintStore } from '@/stores/useCarPaintStore'
 import { useGameStore } from '@/stores/useGameStore'
@@ -28,6 +28,7 @@ export default function AnimationPreviewPanel() {
   const partColors = useCarPaintStore(s => s.partColors)
   const selectedPart = useCarPaintStore(s => s.selectedPart)
   const hoveredPart = useShowroomStore(s => s.hoveredPart)
+  const cameraView = useShowroomStore(s => s.cameraView)
   const [popupMode, setPopupMode] = useState<PopupMode>(null)
   const lastSelectedPart = useRef(selectedPart)
 
@@ -83,6 +84,16 @@ export default function AnimationPreviewPanel() {
             title='Showroom Settings'
             active={popupMode === 'settings'}
             onClick={() => setPopupMode(mode => (mode === 'settings' ? null : 'settings'))}
+          />
+          <ToolButton
+            icon={Eye}
+            title={cameraView === 'cockpit' ? 'Orbit View' : 'Driver POV'}
+            active={cameraView === 'cockpit'}
+            onClick={() =>
+              useShowroomStore
+                .getState()
+                .setCameraView(cameraView === 'cockpit' ? 'orbit' : 'cockpit')
+            }
           />
           <CreditsButton />
         </ShowroomToolbar>

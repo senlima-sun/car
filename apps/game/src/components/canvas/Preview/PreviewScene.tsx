@@ -29,10 +29,14 @@ function isTireMesh(mesh: THREE.Mesh): boolean {
 const CAR_OFFSET: [number, number, number] = [-3, 0.2, -0.45]
 const ORBIT_TARGET: [number, number, number] = [-3, 1.6, -0.45]
 const CAMERA_POSITION: [number, number, number] = [7, 1, 4.5]
+const COCKPIT_CAMERA_POSITION: [number, number, number] = [-2.85, 1.1, 0.5]
+const COCKPIT_TARGET: [number, number, number] = [-3, 1.05, 0.6]
 const CAMERA_FOV = 45
+const CAMERA_NEAR = 0.01
+const ORBIT_MIN_DISTANCE = 0.05
 const MOUSE_BUTTONS = {
   LEFT: MOUSE.ROTATE,
-  MIDDLE: MOUSE.DOLLY,
+  MIDDLE: MOUSE.ROTATE,
   RIGHT: MOUSE.PAN,
 }
 
@@ -56,6 +60,7 @@ export default function PreviewScene() {
   const isMenuMode = isMenuStatus(status)
 
   const showroom = useShowroomStore()
+  const cameraView = showroom.cameraView
 
   const carbonMaterial = useMemo(() => createCarbonFiberMaterial(), [])
   const rubberMaterial = useMemo(() => createRubberMaterial(), [])
@@ -102,6 +107,19 @@ export default function PreviewScene() {
     element.addEventListener('pointerleave', clearHoveredPart)
     return () => element.removeEventListener('pointerleave', clearHoveredPart)
   }, [clearHoveredPart, gl])
+
+  useEffect(() => {
+    const camera = cameraRef.current
+    const controls = controlsRef.current
+    if (!camera || !controls) return
+
+    const cameraPosition = cameraView === 'cockpit' ? COCKPIT_CAMERA_POSITION : CAMERA_POSITION
+    const target = cameraView === 'cockpit' ? COCKPIT_TARGET : ORBIT_TARGET
+
+    camera.position.set(...cameraPosition)
+    controls.target.set(...target)
+    controls.update()
+  }, [cameraView])
 
   const handlePartPointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
@@ -160,7 +178,7 @@ export default function PreviewScene() {
         ref={cameraRef}
         makeDefault
         fov={CAMERA_FOV}
-        near={0.1}
+        near={CAMERA_NEAR}
         far={200}
         position={CAMERA_POSITION}
       />
@@ -169,12 +187,17 @@ export default function PreviewScene() {
         target={ORBIT_TARGET}
         enableDamping
         dampingFactor={0.08}
-        minDistance={4}
+        minDistance={ORBIT_MIN_DISTANCE}
         maxDistance={20}
         maxPolarAngle={Math.PI / 2 + 0.05}
+        enableZoom
         enableRotate
         enablePan
-        screenSpacePanning={false}
+        screenSpacePanning
+        panSpeed={2.5}
+        zoomSpeed={2.5}
+        rotateSpeed={1.0}
+        zoomToCursor
         mouseButtons={MOUSE_BUTTONS}
       />
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight, MoreHorizontal } from 'lucide-react'
 import { PRESET_TRACK_METAS } from '@/constants/tracks'
 import { IconButton } from './primitives/IconButton'
@@ -23,6 +23,7 @@ export function OverflowMenu({
   onNewDraft: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [presetFilter, setPresetFilter] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,6 +41,16 @@ export function OverflowMenu({
       window.removeEventListener('keydown', onKey)
     }
   }, [open])
+
+  useEffect(() => {
+    if (!open) setPresetFilter('')
+  }, [open])
+
+  const filteredPresets = useMemo(() => {
+    const q = presetFilter.trim().toLowerCase()
+    if (!q) return PRESET_TRACK_METAS
+    return PRESET_TRACK_METAS.filter(t => t.name.toLowerCase().includes(q))
+  }, [presetFilter])
 
   return (
     <div ref={rootRef} className='relative'>
@@ -79,19 +90,30 @@ export function OverflowMenu({
             <div className='mb-1 px-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/36'>
               Load Preset
             </div>
-            <div className='flex flex-col gap-0.5'>
-              {PRESET_TRACK_METAS.map(track => (
-                <button
-                  key={track.id}
-                  className='rounded-lg px-2 py-1.5 text-left text-sm text-white/78 transition hover:bg-white/[0.08] hover:text-white'
-                  onClick={() => {
-                    onLoadPreset(track.id)
-                    setOpen(false)
-                  }}
-                >
-                  {track.name}
-                </button>
-              ))}
+            <input
+              type='text'
+              placeholder='Search…'
+              value={presetFilter}
+              onChange={e => setPresetFilter(e.target.value)}
+              className='mb-1 w-full rounded-lg border border-white/10 bg-white/[0.06] px-2 py-1.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/24'
+            />
+            <div className='flex max-h-64 flex-col gap-0.5 overflow-y-auto overscroll-contain'>
+              {filteredPresets.length === 0 ? (
+                <div className='px-2 py-2 text-xs text-white/40'>No matches</div>
+              ) : (
+                filteredPresets.map(track => (
+                  <button
+                    key={track.id}
+                    className='rounded-lg px-2 py-1.5 text-left text-sm text-white/78 transition hover:bg-white/[0.08] hover:text-white'
+                    onClick={() => {
+                      onLoadPreset(track.id)
+                      setOpen(false)
+                    }}
+                  >
+                    {track.name}
+                  </button>
+                ))
+              )}
             </div>
           </div>
           <MenuDivider />

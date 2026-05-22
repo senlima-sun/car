@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import type { CarPartId } from './useCarPaintStore'
 
+export type ShowroomCameraView = 'orbit' | 'cockpit'
+
 interface ShowroomState {
   floorColor: string
   ringColor: string
@@ -17,12 +19,16 @@ interface ShowroomState {
   hemiSkyColor: string
   hemiGroundColor: string
   hemiIntensity: number
+  cameraView: ShowroomCameraView
   hoveredPart: CarPartId | null
-  setField: <K extends keyof Omit<ShowroomState, 'setField' | 'setHoveredPart' | 'reset'>>(
+  setField: <
+    K extends keyof Omit<ShowroomState, 'setField' | 'setHoveredPart' | 'setCameraView' | 'reset'>,
+  >(
     key: K,
     value: ShowroomState[K],
   ) => void
   setHoveredPart: (part: CarPartId | null) => void
+  setCameraView: (view: ShowroomCameraView) => void
   reset: () => void
 }
 
@@ -42,6 +48,7 @@ const DEFAULTS = {
   hemiSkyColor: '#9cb8d8',
   hemiGroundColor: '#0a0a0a',
   hemiIntensity: 0.7,
+  cameraView: 'orbit' as ShowroomCameraView,
   hoveredPart: null as CarPartId | null,
 }
 
@@ -49,5 +56,6 @@ export const useShowroomStore = create<ShowroomState>(set => ({
   ...DEFAULTS,
   setField: (key, value) => set(state => ({ ...state, [key]: value })),
   setHoveredPart: hoveredPart => set({ hoveredPart }),
+  setCameraView: cameraView => set({ cameraView }),
   reset: () => set(DEFAULTS),
 }))
