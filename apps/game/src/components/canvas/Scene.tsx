@@ -23,6 +23,7 @@ import {
 } from './Customization'
 import { TerrainGround } from './Terrain'
 import { SuspensionRayGizmo } from './Debug/SuspensionRayGizmo'
+import { TerrainWireframeOverlay } from './Debug/TerrainWireframeOverlay'
 import { useTerrainDebugStore } from '@/stores/useTerrainDebugStore'
 import StartGrid from './TrackObjects/StartGrid'
 import SurfaceParticles from './TrackObjects/SurfaceParticles'
@@ -60,7 +61,12 @@ export default function Scene() {
         simplified={isCustomizeMode && !terrainEditMode}
         interactive={isCustomizeMode && terrainEditMode}
       />
-      {debugEnabled && <SuspensionRayGizmo />}
+      {debugEnabled && (
+        <>
+          <TerrainWireframeOverlay />
+          <SuspensionRayGizmo />
+        </>
+      )}
       <PlacedObjectsRenderer />
       <StartGrid />
 
