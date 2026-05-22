@@ -13,6 +13,14 @@ import { usePhysicsDebugStore, type WheelDebug } from '../../../../stores/usePhy
 import { useDevToolsStore } from '../../../../stores/useDevToolsStore'
 import { useSuspensionStore } from '../../../../stores/useSuspensionStore'
 import { useTerrainStore } from '../../../../stores/useTerrainStore'
+import {
+  RAY_DATA_LENGTH,
+  RAY_HIT_MISS_SENTINEL,
+  useTerrainDebugStore,
+} from '../../../../stores/useTerrainDebugStore'
+
+const OOB_MARGIN_METERS = 10
+const debugRayBuffer = new Float32Array(RAY_DATA_LENGTH)
 
 const SPRING_STIFFNESS = 7.0
 const DAMPING_RATIO = 1.4
@@ -270,6 +278,9 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
     const forwardSpeed = linvel.x * r02 + linvel.z * r22
     const bodySampleCount = fillBodySamplePoints(forwardSpeed)
 
+    const terrainDebugState = useTerrainDebugStore.getState()
+    const debugEnabled = terrainDebugState.enabled
+
     const wheels = wheelsRef.current
     const wheelForces = wheelForcesRef.current
     const wheelWorldPos = wheelWorldPosRef.current
@@ -320,6 +331,18 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
         terrainHeight,
         rapierHitY,
       )
+
+      if (debugEnabled) {
+        const base = i * 7
+        debugRayBuffer[base] = rayX
+        debugRayBuffer[base + 1] = rayY
+        debugRayBuffer[base + 2] = rayZ
+        debugRayBuffer[base + 3] = downX
+        debugRayBuffer[base + 4] = downY
+        debugRayBuffer[base + 5] = downZ
+        debugRayBuffer[base + 6] =
+          resolvedHitY !== null ? (resolvedHitY - rayY) / downY : RAY_HIT_MISS_SENTINEL
+      }
 
       const wheel = wheels[i]
       if (resolvedHitY !== null) {
@@ -376,6 +399,16 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
         wheel.isGrounded = false
         wheel.deflection = 0
       }
+    }
+
+    if (debugEnabled) {
+      terrainDebugState.publishRays(debugRayBuffer)
+      const { worldSize } = useTerrainStore.getState()
+      const half = worldSize / 2
+      const oob =
+        Math.abs(pos.x) > half - OOB_MARGIN_METERS ||
+        Math.abs(pos.z) > half - OOB_MARGIN_METERS
+      terrainDebugState.setOOBActive(oob)
     }
 
     let maxBodyPenetration = 0
