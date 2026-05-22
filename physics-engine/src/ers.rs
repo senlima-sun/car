@@ -27,21 +27,24 @@ const DEPLOY_FULL_SPEED_MS: f32 = 12.0; // ~43 km/h — fully engaged by the end
 const DEPLOY_MIN_THROTTLE: f32 = 0.3; // gate partial throttle; full throttle always deploys
 const DEPLOY_FULL_THROTTLE: f32 = 0.7;
 // Target deployment budget per lap (MJ). The scheduler tapers deploy
-// toward zero as this target approaches, so under-sizing it makes
-// mid-lap "you ran out of battery and can't accelerate" symptoms. 5 MJ
-// keeps the bias toward 8.5 MJ regulation cap without leaving the car
-// stranded after a high-deploy opening sector.
+// toward zero as this target approaches. Set at 5 MJ (taper limit 6.25
+// MJ) so the soft taper bites earlier than the 8.5 MJ hard cap, making
+// the battery last meaningfully longer through a lap. Players who want
+// full regulation budget can use Attack/Overtake (which bypass the
+// scheduler taper).
 const LAP_DEPLOY_TARGET_MJ: f32 = 5.0;
 
 // 2026 Power levels (350kW MGU-K, up from 120kW). Derive from the
 // shared MGU-K cap so deploy and harvest can't drift apart.
 const MAX_DEPLOY_POWER_KW: f32 = MGUK_PEAK_POWER_W / 1000.0;
 const MAX_HARVEST_POWER_KW: f32 = MGUK_PEAK_POWER_W / 1000.0;
-// MGU-K coast drag: real-world ~80–100 kW from rotor + driveshaft
-// resistance when not motoring. FIA 2026 PU regs / Pat Symonds public
-// commentary place the figure near 100 kW; the prior 200 kW was a
-// placeholder roughly 2× reality.
-const MAX_COAST_POWER_KW: f32 = 100.0;
+// MGU-K coast drag in real F1 is ~80–100 kW from rotor + driveshaft
+// resistance. We deliberately overshoot to 160 kW for game feel: the
+// 100 kW spec made off-throttle recovery feel inert next to 350 kW
+// braking regen, and players cannot fully sense the difference between
+// "lift-and-coast" vs "full brake" the way real telemetry would show.
+// Keeps coast meaningfully useful as a battery-management tool.
+const MAX_COAST_POWER_KW: f32 = 160.0;
 
 // FIA 2026 PU regs: MGU-K deploy power tapers linearly from full at
 // 290 km/h (80.5 m/s) to zero at 345 km/h (95.8 m/s). The taper is a
@@ -90,9 +93,13 @@ const OPTIMAL_HARVEST_SPEED: f32 = 65.0; // ~234 km/h for max brake harvest
 // Semi-Auto Mode Constants
 // ============================================================================
 
-// Critical battery protection
-const CRITICAL_BATTERY_THRESHOLD: f32 = 0.10; // 10% critical
-const CRITICAL_DEPLOY_MULT: f32 = 0.35; // 35% deploy when critical
+// Critical battery protection. Threshold lowered to 7% so the
+// "limp-home" deploy multiplier only kicks in when the battery is
+// genuinely about to empty, not at 10% where a recovery is still
+// realistic. Multiplier raised to 50% so the player still feels
+// drive even in critical state.
+const CRITICAL_BATTERY_THRESHOLD: f32 = 0.07; // 7% critical
+const CRITICAL_DEPLOY_MULT: f32 = 0.50; // 50% deploy when critical
 
 // Speed efficiency curve for deploy (efficiency peaks at 40-70 m/s)
 const DEPLOY_EFFICIENCY_MIN_SPEED: f32 = 10.0; // ~36 km/h
@@ -223,25 +230,29 @@ impl ErsPhysicsState {
             return (CRITICAL_DEPLOY_MULT * preset_deploy_scale, 1.0, 1.0);
         }
 
-        // Below minimum target: prioritize charging
+        // Below minimum target: prioritize charging but keep deploy
+        // responsive — the previous 25-60% range made the car feel
+        // stranded mid-lap whenever the controller dipped below target.
         if battery < target_min {
             let urgency = 1.0 - (battery / target_min);
-            let deploy = (0.25 + (1.0 - urgency) * 0.35) * preset_deploy_scale; // 25-60% * scale
-            let harvest = 0.8 + urgency * 0.2; // 80-100% harvest
+            let deploy = (0.50 + (1.0 - urgency) * 0.25) * preset_deploy_scale; // 50-75% * scale
+            let harvest = 0.85 + urgency * 0.15; // 85-100% harvest
             return (deploy.min(1.0), harvest, harvest);
         }
 
-        // In target range: balanced operation
+        // In target range: balanced operation. Previously deploy was
+        // 40-60% which felt unnecessarily restrictive given the lap
+        // budget already enforces the regulation cap.
         if battery <= target_max {
             let position = (battery - target_min) / (target_max - target_min);
-            let deploy = (0.40 + position * 0.20) * preset_deploy_scale; // 40-60% * scale
-            let harvest = 1.0 - position * 0.10; // 100-90% harvest (increased)
+            let deploy = (0.65 + position * 0.20) * preset_deploy_scale; // 65-85% * scale
+            let harvest = 1.0 - position * 0.10; // 100-90% harvest
             return (deploy.min(1.0), harvest, harvest);
         }
 
         // Above maximum target: push deploy harder, maintain good harvest
         let excess = (battery - target_max) / (1.0 - target_max);
-        let deploy = (0.65 + excess * 0.25) * preset_deploy_scale; // 65-90% * scale
+        let deploy = (0.85 + excess * 0.15) * preset_deploy_scale; // 85-100% * scale
         let harvest = 0.85 - excess * 0.15; // 85-70% harvest (maintain recovery)
         (deploy.min(1.0), harvest, harvest * 0.95)
     }
@@ -853,18 +864,20 @@ mod tests {
     }
 
     #[test]
-    fn coast_power_capped_at_100kw() {
-        // FIA 2026 calibration: Balanced coast at OPTIMAL_HARVEST_SPEED
-        // (80 m/s) → BALANCED_COAST_MULT × MAX_COAST_POWER_KW = 1.00 ×
-        // 100 = 100 kW. Sign is negative on `power_flow` (harvesting).
+    fn coast_power_capped_at_max() {
+        // Game-tuned calibration: Balanced coast at speed ≥
+        // OPTIMAL_HARVEST_SPEED → BALANCED_COAST_MULT × MAX_COAST_POWER_KW
+        // = 1.00 × 160 = 160 kW. Above real FIA spec (~100 kW) so
+        // lift-and-coast is a meaningful charging tool. Sign is
+        // negative on `power_flow` (harvesting).
         let mut state = ErsPhysicsState::new();
         state.set_mode(ErsMode::Balanced);
         state.set_battery_charge(0.5);
         state.update(1.0 / 120.0, false, false, 80.0, 0.0);
         let pf = state.get_state().power_flow;
         assert!(
-            pf < -95.0 && pf > -101.0,
-            "expected coast power ≈ -100 kW, got {}",
+            pf < -155.0 && pf > -161.0,
+            "expected coast power ≈ -160 kW, got {}",
             pf,
         );
     }
@@ -945,13 +958,13 @@ mod tests {
     #[test]
     fn test_deploy_schedule_attack_ignores_budget() {
         let early = compute_deployment_schedule(40.0, 1.0, ErsMode::Attack, 0.0, false);
-        let late = compute_deployment_schedule(40.0, 1.0, ErsMode::Attack, 5.0, false);
+        let late = compute_deployment_schedule(40.0, 1.0, ErsMode::Attack, 7.0, false);
         assert!((early - late).abs() < 0.01);
     }
 
     #[test]
     fn test_deploy_schedule_overtake_override_full_power() {
-        let v = compute_deployment_schedule(40.0, 0.0, ErsMode::Balanced, 5.0, true);
+        let v = compute_deployment_schedule(40.0, 0.0, ErsMode::Balanced, 7.0, true);
         assert_eq!(v, 1.0);
     }
 
@@ -975,6 +988,10 @@ mod tests {
 
     #[test]
     fn test_semi_auto_low_battery_full_throttle_still_drains() {
+        // 2026 tune: SemiAuto Aggressive at 10% battery still deploys
+        // ~70% deploy_mult * 1.4 preset scale, so battery drains fast
+        // under sustained full throttle. Check inside the first second
+        // (before it can reach the 7% critical floor and empty out).
         let mut state = ErsPhysicsState::new();
         state.set_mode(ErsMode::SemiAuto);
         state.set_semi_auto_preset(SemiAutoPreset::Aggressive);
@@ -982,7 +999,7 @@ mod tests {
 
         let initial_charge = state.current.battery_charge;
 
-        for _ in 0..120 {
+        for _ in 0..30 {
             state.update(1.0 / 60.0, true, false, 70.0, 1.0);
         }
 
