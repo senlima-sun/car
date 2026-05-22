@@ -22,6 +22,8 @@ import {
   WallHandles,
 } from './Customization'
 import { TerrainGround } from './Terrain'
+import { SuspensionRayGizmo } from './Debug/SuspensionRayGizmo'
+import { useTerrainDebugStore } from '@/stores/useTerrainDebugStore'
 import StartGrid from './TrackObjects/StartGrid'
 import SurfaceParticles from './TrackObjects/SurfaceParticles'
 import {
@@ -42,6 +44,7 @@ export default function Scene() {
   const isPreviewMode = isPreviewStatus(status)
   const terrainEditMode = useEditorStore(s => s.editorMode === 'terrain')
   const activeTrackId = useTrackStore(s => s.trackLibrary.activeTrackId)
+  const debugEnabled = useTerrainDebugStore(s => s.enabled)
 
   if (isMenuMode || isPreviewMode) return <PreviewScene />
 
@@ -57,6 +60,7 @@ export default function Scene() {
         simplified={isCustomizeMode && !terrainEditMode}
         interactive={isCustomizeMode && terrainEditMode}
       />
+      {debugEnabled && <SuspensionRayGizmo />}
       <PlacedObjectsRenderer />
       <StartGrid />
 
