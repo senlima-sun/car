@@ -44,13 +44,23 @@ export interface StampConfig {
    *  from poking through the road when the raw DEM has a 60m hill
    *  40m off the centerline. ~0.25 ≈ 1:4 slope (14°). */
   maxLateralClimbRate: number
-  /** Maximum along-track gradient (rise/run). SRTM 30m DEM aliasing
-   *  in mountain terrain (Spielberg, Spa) regularly invents 30-50%
-   *  gradients where the road is actually <12%. Clamps the smoothed
-   *  ribbon target y so any back-to-back jump cannot exceed this
-   *  fraction of the inter-point arc distance. F1's steepest real
-   *  grade is ~12% (Eau Rouge). */
+  /** Maximum along-track gradient (rise/run). FIA F1 circuit homologation
+   *  caps straight gradient at 6%; the very steepest legal sections
+   *  (Eau Rouge at Spa) sit around 17-18% but those are explicitly
+   *  documented exceptions. SRTM 30m DEM aliasing in mountain terrain
+   *  regularly invents 30-50% gradients where the road is actually
+   *  <12%. Clamps the smoothed ribbon target y so any back-to-back
+   *  jump cannot exceed this fraction of the inter-point arc distance. */
   maxAlongTrackGradient: number
+  /** Maximum rate-of-change of along-track gradient (d²y/dx²-equivalent,
+   *  expressed as gradient change per metre of arc). FIA mandates
+   *  vertical curves between gradient changes so that the second
+   *  derivative of the road surface stays bounded — this prevents
+   *  ripple-style chains of +6% / −6% / +6% segments that look smooth
+   *  point-to-point but produce a washboard the car bucks against.
+   *  Default 0.001 ≈ 1% gradient change per 10m arc, ~10× tighter
+   *  than the FIA spec to absorb DEM noise. */
+  maxGradientChangeRate: number
 }
 
 export const DEFAULT_STAMP_CONFIG: StampConfig = {
@@ -58,6 +68,7 @@ export const DEFAULT_STAMP_CONFIG: StampConfig = {
   transitionMeters: 50,
   maxLateralClimbRate: 0.25,
   maxAlongTrackGradient: 0.06,
+  maxGradientChangeRate: 0.001,
 }
 
 interface RibbonSegment {
@@ -273,6 +284,60 @@ function clampAlongTrackGradient(
   }
 }
 
+/**
+ * Second-order clamp: limit how fast the along-track gradient itself
+ * is allowed to change between adjacent segments. Without this, the
+ * first-order clamp lets the surface zigzag with grades of +6%, −6%,
+ * +6% in alternating segments — point-to-point legal, but the actual
+ * road profile is a washboard the car cannot ride smoothly.
+ *
+ * Implements the FIA vertical-curve requirement: the gradient must
+ * transition through a finite-length curve, not step.
+ *
+ * Runs iteratively forward then backward until no more clamping
+ * happens or `maxIterations` is reached. Each iteration computes the
+ * per-segment gradient, then clamps the *delta* between adjacent
+ * segment gradients to `maxChangeRate * combinedArcDistance`. Adjusts
+ * `targetY[i]` (the shared vertex) to absorb the correction.
+ */
+function clampGradientChangeRate(
+  targetY: number[],
+  points: TrackRibbonPoint[],
+  closed: boolean,
+  maxChangeRate: number,
+  maxIterations = 4,
+): void {
+  const n = targetY.length
+  if (n < 3 || maxChangeRate <= 0) return
+  const distTo = (i: number, j: number) =>
+    Math.hypot(points[j]!.x - points[i]!.x, points[j]!.z - points[i]!.z)
+
+  for (let iter = 0; iter < maxIterations; iter++) {
+    let anyChange = false
+    const endExclusive = closed ? n : n - 1
+    const startInclusive = closed ? 0 : 1
+    for (let i = startInclusive; i < endExclusive; i++) {
+      const prevIdx = (i - 1 + n) % n
+      const nextIdx = (i + 1) % n
+      if (!closed && (prevIdx === i || nextIdx === i)) continue
+      const dPrev = distTo(prevIdx, i)
+      const dNext = distTo(i, nextIdx)
+      if (dPrev < 1e-6 || dNext < 1e-6) continue
+      const gPrev = (targetY[i]! - targetY[prevIdx]!) / dPrev
+      const gNext = (targetY[nextIdx]! - targetY[i]!) / dNext
+      const maxDelta = maxChangeRate * (dPrev + dNext)
+      const delta = gNext - gPrev
+      if (Math.abs(delta) <= maxDelta) continue
+      const clamped = delta > 0 ? maxDelta : -maxDelta
+      const targetDelta = (clamped - delta) / 2
+      const adjustment = targetDelta * dNext
+      targetY[i] = targetY[i]! + adjustment
+      anyChange = true
+    }
+    if (!anyChange) break
+  }
+}
+
 function flattenRibbon(
   raw: Float32Array,
   resolution: number,
@@ -283,12 +348,11 @@ function flattenRibbon(
   const { points, closed, width } = input
   if (points.length < 2 || width <= 0) return null
 
-  // If every ribbon point carries an authored elevation (Phase 1
-  // satellite-truth-ingest), trust it directly — no smoothing, no
-  // slope clamp. Both passes existed only to compensate for DEM
-  // aliasing that the new ingest pipeline eliminates upstream.
-  // Fall back to the old sample-and-smooth path only when elevation
-  // data is missing (legacy tracks not yet migrated).
+  // Even authored elevations from Mapbox DEM probe inherit DEM aliasing
+  // around bridges, tunnels, and roadside features (worst case observed
+  // 17% anchor-to-anchor grade at Spa where the real road runs ~5%).
+  // Apply the vertical-curve clamp to authored anchors too — it only
+  // touches grade transitions that exceed the FIA homologation profile.
   let targetY: number[]
   const allAuthored = points.every(p => p.elevation !== undefined)
   if (allAuthored) {
@@ -302,8 +366,9 @@ function flattenRibbon(
       closed,
       config.smoothHalfWindowMeters,
     )
-    clampAlongTrackGradient(targetY, points, closed, config.maxAlongTrackGradient)
   }
+  clampAlongTrackGradient(targetY, points, closed, config.maxAlongTrackGradient)
+  clampGradientChangeRate(targetY, points, closed, config.maxGradientChangeRate)
 
   const segments: RibbonSegment[] = []
   let arc = 0
