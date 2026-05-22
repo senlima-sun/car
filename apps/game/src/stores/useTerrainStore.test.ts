@@ -121,4 +121,65 @@ describe('useTerrainStore', () => {
     const snapshot = useTerrainStore.getState().getComposedHeightsSnapshot()
     expect(snapshot[0]).toBe(12)
   })
+
+  describe('getHeightAt boundary', () => {
+    function fillTiltedPlane(slopePerMeter: number): void {
+      const { resolution, worldSize } = useTerrainStore.getState()
+      const baseline = new Float32Array(resolution * resolution)
+      const cellSize = worldSize / (resolution - 1)
+      const half = worldSize / 2
+      for (let gz = 0; gz < resolution; gz++) {
+        for (let gx = 0; gx < resolution; gx++) {
+          const wx = -half + gx * cellSize
+          baseline[gz * resolution + gx] = wx * slopePerMeter
+        }
+      }
+      useTerrainStore.getState().replaceBaseline(baseline, { source: 'custom' })
+    }
+
+    it('returns interpolated value at the world origin', () => {
+      fillTiltedPlane(0.1)
+      expect(useTerrainStore.getState().getHeightAt(0, 0)).toBeCloseTo(0, 5)
+    })
+
+    it('returns the edge value when sampling exactly on each edge', () => {
+      fillTiltedPlane(0.1)
+      const { worldSize } = useTerrainStore.getState()
+      const half = worldSize / 2
+      const get = useTerrainStore.getState().getHeightAt
+      expect(get(half, 0)).toBeCloseTo(half * 0.1, 1)
+      expect(get(-half, 0)).toBeCloseTo(-half * 0.1, 1)
+      expect(get(0, half)).toBeCloseTo(0, 1)
+      expect(get(0, -half)).toBeCloseTo(0, 1)
+    })
+
+    it('clamps to the nearest edge value when sampling 100m past the boundary', () => {
+      fillTiltedPlane(0.1)
+      const { worldSize } = useTerrainStore.getState()
+      const half = worldSize / 2
+      const get = useTerrainStore.getState().getHeightAt
+      const edgeHigh = get(half, 0)
+      const edgeLow = get(-half, 0)
+      expect(get(half + 100, 0)).toBeCloseTo(edgeHigh, 1)
+      expect(get(-half - 100, 0)).toBeCloseTo(edgeLow, 1)
+    })
+
+    it('still returns a finite value 100km past the boundary', () => {
+      fillTiltedPlane(0.1)
+      const get = useTerrainStore.getState().getHeightAt
+      const y = get(1e5, 1e5)
+      expect(Number.isFinite(y)).toBe(true)
+      expect(Number.isNaN(y)).toBe(false)
+    })
+
+    it('does not collapse to 0 outside the grid when the heightmap has positive baseline', () => {
+      const { resolution } = useTerrainStore.getState()
+      const baseline = new Float32Array(resolution * resolution)
+      for (let i = 0; i < baseline.length; i++) baseline[i] = 30
+      useTerrainStore.getState().replaceBaseline(baseline, { source: 'custom' })
+      const get = useTerrainStore.getState().getHeightAt
+      expect(get(1e4, 1e4)).toBeCloseTo(30, 5)
+      expect(get(-1e4, -1e4)).toBeCloseTo(30, 5)
+    })
+  })
 })
