@@ -419,33 +419,63 @@ export function stampRibbonsIntoBaseline(
 
   const half = worldSize / 2
   const cell = worldSize / (resolution - 1)
+  const SUPER_SAMPLE_SIDE = 4
+  const SUPER_SAMPLE_OFFSETS = (() => {
+    const offsets = new Array<number>(SUPER_SAMPLE_SIDE)
+    const step = cell / SUPER_SAMPLE_SIDE
+    const start = -cell / 2 + step / 2
+    for (let k = 0; k < SUPER_SAMPLE_SIDE; k++) offsets[k] = start + k * step
+    return offsets
+  })()
+
+  function closestAt(cx: number, cz: number) {
+    let bestDist = Infinity
+    let bestTargetY = 0
+    let bestRibbon: FlatRibbon | null = null
+    for (const flat of flats) {
+      for (const seg of flat.segments) {
+        const inf = closestSegmentInfluence(seg, cx, cz, flat.halfWidthPlusTransition)
+        if (inf && inf.dist < bestDist) {
+          bestDist = inf.dist
+          bestTargetY = inf.targetY
+          bestRibbon = flat
+        }
+      }
+    }
+    return { dist: bestDist, targetY: bestTargetY, ribbon: bestRibbon }
+  }
 
   for (let gz = 0; gz < resolution; gz++) {
     const cz = -half + gz * cell
     for (let gx = 0; gx < resolution; gx++) {
       const cx = -half + gx * cell
 
-      // Find the ribbon (any segment) with the smallest perpendicular
-      // distance to (cx, cz) — that ribbon's target y wins.
-      let bestDist = Infinity
-      let bestTargetY = 0
-      let bestRibbon: FlatRibbon | null = null
-      for (const flat of flats) {
-        for (const seg of flat.segments) {
-          const inf = closestSegmentInfluence(seg, cx, cz, flat.halfWidthPlusTransition)
-          if (inf && inf.dist < bestDist) {
-            bestDist = inf.dist
-            bestTargetY = inf.targetY
-            bestRibbon = flat
-          }
-        }
-      }
+      const center = closestAt(cx, cz)
+      const bestRibbon = center.ribbon
+      const bestDist = center.dist
+      const bestTargetY = center.targetY
       if (!bestRibbon) continue
 
       if (bestDist <= bestRibbon.fullStampHalfWidth) {
-        // Full stamp — within the SQRT2-expanded footprint that
-        // guarantees bilinear correctness.
-        out[gz * resolution + gx] = bestTargetY
+        // Super-sample inside the road footprint to soften per-cell
+        // target-y jumps where adjacent cells snap to different ribbon
+        // segments. Without this the bilinear interpolation that the
+        // runtime samples for car physics produces visible micro-bumps
+        // at every cell boundary on curved road sections.
+        let ySum = 0
+        let yCount = 0
+        for (let sz = 0; sz < SUPER_SAMPLE_SIDE; sz++) {
+          const cz2 = cz + SUPER_SAMPLE_OFFSETS[sz]!
+          for (let sx = 0; sx < SUPER_SAMPLE_SIDE; sx++) {
+            const cx2 = cx + SUPER_SAMPLE_OFFSETS[sx]!
+            const sub = closestAt(cx2, cz2)
+            if (sub.ribbon && sub.dist <= sub.ribbon.fullStampHalfWidth) {
+              ySum += sub.targetY
+              yCount++
+            }
+          }
+        }
+        out[gz * resolution + gx] = yCount > 0 ? ySum / yCount : bestTargetY
       } else {
         // Transition: blend raw DEM toward the ribbon target y and
         // then clamp the result to a road-realistic envelope around
