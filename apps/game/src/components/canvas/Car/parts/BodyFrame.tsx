@@ -6,6 +6,7 @@ import { SuspensionLinkageGroup } from './SuspensionLinkage'
 import type { SuspensionOutput } from '../hooks/useRaycastSuspension'
 import { useCarPaintMaterial } from '../hooks/useCarPaintMaterial'
 import { useTireStore } from '@/stores/useTireStore'
+import { WHEEL_RADIUS } from '@/constants/dimensions'
 import { TIRE_COMPOUND } from '@/constants/colors'
 import { useCarPaintStore, getPartIdForMesh } from '@/stores/useCarPaintStore'
 import { isPreviewStatus, useGameStore } from '@/stores/useGameStore'
@@ -235,7 +236,7 @@ export function BodyFrame({
 
   return (
     <group>
-      <group ref={bodyRef} position={[0, -0.37, 0]}>
+      <group ref={bodyRef} position={[0, -WHEEL_RADIUS, 0]}>
         <primitive object={bodyScene} />
       </group>
       <group visible={false}>

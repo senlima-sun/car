@@ -4,6 +4,7 @@ import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTerrainStore } from '../../../stores/useTerrainStore'
 import RoadSurfaceMaterial from './RoadSurfaceMaterial'
 import { buildRibbonLayers } from './geometry/ribbonGeometry'
+import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
 import type { TrackRibbonPoint } from '../../../types/trackObjects'
 
 interface TrackRibbonProps {
@@ -51,6 +52,10 @@ export default function TrackRibbon({ points, closed, width, isGhost = false }: 
               onIntersectionExit={exitPit}
             />
           )}
+          <TrimeshCollider
+            args={[ribbon.collisionVertices, ribbon.collisionIndices]}
+            collisionGroups={TRACK_COLLISION_GROUPS}
+          />
         </RigidBody>
       )}
       <mesh geometry={ribbon.mainGeometry} receiveShadow>
