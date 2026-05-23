@@ -21,6 +21,7 @@ const TOOLS: ToolEntry[] = [
   { id: 'car-status', label: 'Car Status', icon: Gauge },
   { id: 'minimap', label: 'Minimap', icon: Locate },
   { id: 'physics-debug', label: 'Physics', hotkey: 'F9', icon: Zap },
+  { id: 'wheel-visual', label: 'Wheel Visual', hotkey: 'F10', icon: Gauge },
   { id: 'weather', label: 'Weather', hotkey: 'F7', icon: Cloud },
   { id: 'track-switcher', label: 'Track', hotkey: 'F8', icon: Map },
 ]

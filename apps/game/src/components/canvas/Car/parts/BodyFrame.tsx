@@ -49,7 +49,7 @@ export interface SteeringWheelRefs {
   assembly: THREE.Object3D | null
 }
 
-const FW_FLAP_NAMES = { middle: 'Car_Livery_FW-M', top: 'Car_Livery_FW-T' } as const
+const FW_FLAP_NAMES = { middle: 'FrontWing_Flap_2', top: 'FrontWing_Flap_3' } as const
 const BW_FLAP_NAMES = { middle: 'Car_Livery_BW-M', last: 'Car_Livery_BW-L' } as const
 const STEERING_WHEEL_ASSEMBLY_NAME = 'SteeringWheelAssembly'
 

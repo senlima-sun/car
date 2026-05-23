@@ -6,6 +6,7 @@ export type DevPanelId =
   | 'steering-debug'
   | 'weather'
   | 'track-switcher'
+  | 'wheel-visual'
   | 'minimap'
   | 'car-status'
 
@@ -30,6 +31,7 @@ const DEFAULT_POSITIONS: Record<DevPanelId, Position> = {
   'steering-debug': { x: 360, y: 80 },
   weather: { x: 320, y: 80 },
   'track-switcher': { x: 24, y: 380 },
+  'wheel-visual': { x: 680, y: 80 },
   minimap: { x: 24, y: 80 },
   'car-status': { x: 24, y: 0 },
 }
@@ -39,6 +41,7 @@ const DEFAULT_OPEN: Record<DevPanelId, boolean> = {
   'steering-debug': false,
   weather: false,
   'track-switcher': false,
+  'wheel-visual': false,
   minimap: true,
   'car-status': true,
 }
@@ -59,6 +62,11 @@ function defaultPanels(): Record<DevPanelId, DevPanelState> {
     'track-switcher': {
       isOpen: DEFAULT_OPEN['track-switcher'],
       position: DEFAULT_POSITIONS['track-switcher'],
+      focusOrder: 0,
+    },
+    'wheel-visual': {
+      isOpen: DEFAULT_OPEN['wheel-visual'],
+      position: DEFAULT_POSITIONS['wheel-visual'],
       focusOrder: 0,
     },
     minimap: { isOpen: DEFAULT_OPEN.minimap, position: DEFAULT_POSITIONS.minimap, focusOrder: 0 },
@@ -126,6 +134,7 @@ export const DEV_PANEL_IDS: DevPanelId[] = [
   'steering-debug',
   'weather',
   'track-switcher',
+  'wheel-visual',
   'minimap',
   'car-status',
 ]

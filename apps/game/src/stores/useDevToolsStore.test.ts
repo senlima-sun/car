@@ -11,6 +11,7 @@ describe('useDevToolsStore', () => {
     expect(panels['physics-debug'].isOpen).toBe(false)
     expect(panels.weather.isOpen).toBe(false)
     expect(panels['track-switcher'].isOpen).toBe(false)
+    expect(panels['wheel-visual'].isOpen).toBe(false)
     expect(panels['physics-debug'].focusOrder).toBe(0)
   })
 

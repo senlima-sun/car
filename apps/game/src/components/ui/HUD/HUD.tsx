@@ -16,6 +16,7 @@ import TimingTower from './TimingTower'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
 import SteeringDebugOverlay from '../SteeringDebugOverlay'
 import WeatherPanel from '../WeatherPanel/WeatherPanel'
+import WheelVisualEditor from '../WheelVisualEditor'
 import { SettingsDialog } from '../SettingsDialog'
 import {
   isCustomizeStatus,
@@ -210,6 +211,7 @@ export default function HUD() {
               <SteeringDebugOverlay />
               <WeatherPanel />
               <TrackSwitcher />
+              <WheelVisualEditor />
             </>
           )}
           {isRunningSession && <TelemetryOverlay />}
