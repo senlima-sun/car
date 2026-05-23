@@ -22,9 +22,9 @@
   ],
   "reverseDirection": false,
   "startFinishFraction": 0,
-  "expectedTrackLengthMeters": 4408,
+  "expectedTrackLengthMeters": 4259,
   "expectedTurns": 14,
-  "expectedStartHeadingDegrees": -53.6,
+  "expectedStartHeadingDegrees": -22.5,
   "terrainBBox": {
     "halfExtentMeters": 1100
   }

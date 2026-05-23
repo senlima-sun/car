@@ -2,7 +2,7 @@
 
 ## Target
 
-Use Circuit Zandvoort as the first curb alignment pilot. The current preset source is `apps/game/src/constants/tracks/sources/zandvoort.json`; it has one centerline path, checkpoints, and no `curbs` array.
+Use Circuit Zandvoort as the first curb alignment pilot. The current preset source is `apps/game/src/constants/tracks/sources/zandvoort.json`; it has one centerline path, checkpoints, and a first-pass `curbs` array derived from PDOK 2025 aerial imagery.
 
 ## Primary Sources
 
@@ -77,10 +77,10 @@ Prioritize visually distinctive curb zones:
 7. Kumhobocht
 8. Arie Luyendykbocht
 
-## Current Validation Note
+## Validation Note
 
-`pnpm -w run track:validate-source zandvoort` currently fails before curb work:
+The Zandvoort validation reference has been aligned before curb application:
 
-- Track length is 4242 m vs config expected 4408 m.
-- FIA 2025 reference is 4259 m, so the config expected length should be corrected before using length as a quality gate.
-- Start heading check also fails: source heading is `-22.5°`, config expected heading is `-53.6°`.
+- FIA 2025 reference length: 4259 m.
+- Current source length: 4242 m.
+- Start heading reference: `-22.5°`, matching the current source checkpoint heading.

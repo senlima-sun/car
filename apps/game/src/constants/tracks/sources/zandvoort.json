@@ -2693,5 +2693,119 @@
       "t": 0.3572700968456008
     }
   ],
-  "raceDirection": "backward"
+  "raceDirection": "backward",
+  "curbs": [
+    {
+      "id": "curb_zandvoort_t1_inner",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 22,
+      "pathEnd": 26,
+      "edge": "left",
+      "variant": "apex"
+    },
+    {
+      "id": "curb_zandvoort_t1_exit",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 26,
+      "pathEnd": 29.3,
+      "edge": "right",
+      "variant": "exit"
+    },
+    {
+      "id": "curb_zandvoort_t2_entry",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 36,
+      "pathEnd": 39.2,
+      "edge": "right",
+      "variant": "flat"
+    },
+    {
+      "id": "curb_zandvoort_t2_apex",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 40,
+      "pathEnd": 44.6,
+      "edge": "right",
+      "variant": "apex"
+    },
+    {
+      "id": "curb_zandvoort_t3_entry",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 84.8,
+      "pathEnd": 88.8,
+      "edge": "left",
+      "variant": "flat"
+    },
+    {
+      "id": "curb_zandvoort_t3_apex",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 94.7,
+      "pathEnd": 101.2,
+      "edge": "left",
+      "variant": "apex"
+    },
+    {
+      "id": "curb_zandvoort_t4_exit",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 101.2,
+      "pathEnd": 107.5,
+      "edge": "left",
+      "variant": "exit"
+    },
+    {
+      "id": "curb_zandvoort_t8_apex",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 6.2,
+      "pathEnd": 10.6,
+      "edge": "left",
+      "variant": "apex"
+    },
+    {
+      "id": "curb_zandvoort_t11_entry",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 120,
+      "pathEnd": 126.4,
+      "edge": "left",
+      "variant": "apex"
+    },
+    {
+      "id": "curb_zandvoort_t12_exit",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 126.2,
+      "pathEnd": 132.6,
+      "edge": "right",
+      "variant": "exit"
+    },
+    {
+      "id": "curb_zandvoort_t13_apex",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 133,
+      "pathEnd": 142.5,
+      "edge": "right",
+      "variant": "apex"
+    },
+    {
+      "id": "curb_zandvoort_t13_exit",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 142.2,
+      "pathEnd": 149.5,
+      "edge": "left",
+      "variant": "exit"
+    },
+    {
+      "id": "curb_zandvoort_t14_apex",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 150,
+      "pathEnd": 158,
+      "edge": "right",
+      "variant": "apex"
+    },
+    {
+      "id": "curb_zandvoort_t14_exit",
+      "pathId": "p_mph6rddf_20z",
+      "pathStart": 158,
+      "pathEnd": 162.6,
+      "edge": "right",
+      "variant": "exit"
+    }
+  ]
 }
