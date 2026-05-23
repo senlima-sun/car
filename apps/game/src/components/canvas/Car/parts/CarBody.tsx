@@ -75,7 +75,7 @@ export default function CarBody({ suspensionRef }: CarBodyProps) {
         onSteeringWheelRefs={handleSteeringWheelRefs}
       />
       <Cockpit steerAngle={0} showDisplay={cameraMode === 'first-person'} />
-      <GltfWheelAnimator wheelRefs={wheelRefs} />
+      <GltfWheelAnimator wheelRefs={wheelRefs} suspensionRef={suspensionRef} />
       <ModelSteeringWheelAnimator steeringWheelRefs={steeringWheelRefs} />
       <FrontWingAnimator flapRefs={fwRefs} />
       <RearWingAnimator flapRefs={rwRefs} />

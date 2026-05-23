@@ -31,6 +31,8 @@ const MAX_COMPRESSION_VEL = 8.0
 const STATIC_COMPRESSION = 1 / SPRING_STIFFNESS
 const REST_LENGTH = WHEEL_RADIUS + STATIC_COMPRESSION
 const MAX_TRAVEL = 0.2
+const MAX_VISUAL_REBOUND = 0.05
+const MAX_VISUAL_BUMP = 0.08
 const RAY_ORIGIN_LIFT = 0.6
 const SUSPENSION_ENVELOPE = RAY_ORIGIN_LIFT + REST_LENGTH + MAX_TRAVEL
 const SEEK_RAY_LENGTH = 50
@@ -108,14 +110,27 @@ export function resolveTerrainSupportHitY(
   const terrainDistance = (terrainHeight - rayY) / downY
   const terrainWithinRay = terrainDistance >= 0 && terrainDistance <= seekRayLength
   const terrainWithinEnvelope = terrainWithinRay && terrainDistance <= suspensionEnvelope
+  const rapierDistance = rapierHitY !== null ? (rapierHitY - rayY) / downY : Infinity
+  const rapierWithinRay = rapierDistance >= 0 && rapierDistance <= seekRayLength
+  const rapierWithinEnvelope = rapierWithinRay && rapierDistance <= suspensionEnvelope
 
-  if (terrainWithinEnvelope) return terrainHeight
-  if (rapierHitY !== null) {
-    const rapierDistance = (rapierHitY - rayY) / downY
-    if (rapierDistance >= 0 && rapierDistance <= suspensionEnvelope) return rapierHitY
+  if (terrainWithinEnvelope || rapierWithinEnvelope) {
+    if (terrainWithinEnvelope && (!rapierWithinEnvelope || terrainDistance <= rapierDistance)) {
+      return terrainHeight
+    }
+    return rapierHitY
   }
-  if (terrainWithinRay) return terrainHeight
-  return rapierHitY
+  if (terrainWithinRay || rapierWithinRay) {
+    if (terrainWithinRay && (!rapierWithinRay || terrainDistance <= rapierDistance)) {
+      return terrainHeight
+    }
+    return rapierHitY
+  }
+  return null
+}
+
+export function resolveSuspensionVisualDeflection(compression: number): number {
+  return Math.max(-MAX_VISUAL_REBOUND, Math.min(compression - STATIC_COMPRESSION, MAX_VISUAL_BUMP))
 }
 
 export function resolveAirborneVerticalCorrection({
@@ -382,14 +397,14 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
           wheel.hitY = hitY
           wheel.compression = compression
           wheel.isGrounded = true
-          wheel.deflection = compression
+          wheel.deflection = resolveSuspensionVisualDeflection(compression)
         } else {
           prevCompressionRef.current[i] = 0
           wheelForces[i] = 0
           wheel.hitY = hitY
           wheel.compression = 0
           wheel.isGrounded = false
-          wheel.deflection = 0
+          wheel.deflection = resolveSuspensionVisualDeflection(0)
         }
       } else {
         prevCompressionRef.current[i] = 0
@@ -397,7 +412,7 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
         wheel.hitY = worldY - SUSPENSION_ENVELOPE
         wheel.compression = 0
         wheel.isGrounded = false
-        wheel.deflection = 0
+        wheel.deflection = resolveSuspensionVisualDeflection(0)
       }
     }
 
@@ -406,8 +421,7 @@ export function useRaycastSuspension(chassisRef: MutableRefObject<RapierRigidBod
       const { worldSize } = useTerrainStore.getState()
       const half = worldSize / 2
       const oob =
-        Math.abs(pos.x) > half - OOB_MARGIN_METERS ||
-        Math.abs(pos.z) > half - OOB_MARGIN_METERS
+        Math.abs(pos.x) > half - OOB_MARGIN_METERS || Math.abs(pos.z) > half - OOB_MARGIN_METERS
       terrainDebugState.setOOBActive(oob)
     }
 

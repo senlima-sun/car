@@ -1,11 +1,13 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, type MutableRefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useCarStore } from '@/stores/useCarStore'
 import { useWheelVisualTuningStore, type WheelVisualKey } from '@/stores/useWheelVisualTuningStore'
 import type { GltfWheelRefs } from './BodyFrame'
+import type { SuspensionOutput } from '../hooks/useRaycastSuspension'
 
 const STEER_LERP_SPEED = 8
+const DEFLECTION_LERP_SPEED = 16
 
 const _steerQ = new THREE.Quaternion()
 const _spinQ = new THREE.Quaternion()
@@ -26,10 +28,12 @@ const SPINNING_WHEEL_PART_PREFIXES = [
 
 interface GltfWheelAnimatorProps {
   wheelRefs: GltfWheelRefs
+  suspensionRef?: MutableRefObject<SuspensionOutput | null>
 }
 
-export function GltfWheelAnimator({ wheelRefs }: GltfWheelAnimatorProps) {
+export function GltfWheelAnimator({ wheelRefs, suspensionRef }: GltfWheelAnimatorProps) {
   const smoothSteer = useRef(0)
+  const smoothDeflections = useRef([0, 0, 0, 0])
   const baseQuaternions = useRef<Map<string, THREE.Quaternion>>(new Map())
   const basePositions = useRef<Map<WheelVisualKey, THREE.Vector3>>(new Map())
   const spinningChildren = useRef<Map<string, THREE.Object3D[]>>(new Map())
@@ -66,18 +70,28 @@ export function GltfWheelAnimator({ wheelRefs }: GltfWheelAnimatorProps) {
   useFrame((_, delta) => {
     const { steerAngle, wheelRotations } = useCarStore.getState()
     const tuning = useWheelVisualTuningStore.getState()
+    const suspension = suspensionRef?.current
+    const deflectionAlpha = Math.min(1, DEFLECTION_LERP_SPEED * delta)
 
     smoothSteer.current = THREE.MathUtils.lerp(
       smoothSteer.current,
       steerAngle,
       STEER_LERP_SPEED * delta,
     )
+    for (let i = 0; i < 4; i++) {
+      smoothDeflections.current[i] = THREE.MathUtils.lerp(
+        smoothDeflections.current[i],
+        suspension?.wheels[i]?.deflection ?? 0,
+        deflectionAlpha,
+      )
+    }
 
     const base = baseQuaternions.current
 
     const applyWheel = (
       ref: THREE.Object3D | null,
       key: WheelVisualKey,
+      wheelIndex: number,
       spin: number,
       steer: number | null,
     ) => {
@@ -95,6 +109,7 @@ export function GltfWheelAnimator({ wheelRefs }: GltfWheelAnimatorProps) {
       }
       if (position) {
         _offset.set(wheelTuning.offset.x, wheelTuning.offset.y, wheelTuning.offset.z)
+        _offset.y += smoothDeflections.current[wheelIndex]
         ref.position.copy(position).add(_offset)
       }
 
@@ -118,10 +133,10 @@ export function GltfWheelAnimator({ wheelRefs }: GltfWheelAnimatorProps) {
       }
     }
 
-    applyWheel(wheelRefs.fl, 'fl', wheelRotations[0], smoothSteer.current)
-    applyWheel(wheelRefs.fr, 'fr', wheelRotations[1], smoothSteer.current)
-    applyWheel(wheelRefs.rl, 'rl', wheelRotations[2], null)
-    applyWheel(wheelRefs.rr, 'rr', wheelRotations[3], null)
+    applyWheel(wheelRefs.fl, 'fl', 0, wheelRotations[0], smoothSteer.current)
+    applyWheel(wheelRefs.fr, 'fr', 1, wheelRotations[1], smoothSteer.current)
+    applyWheel(wheelRefs.rl, 'rl', 2, wheelRotations[2], null)
+    applyWheel(wheelRefs.rr, 'rr', 3, wheelRotations[3], null)
   })
 
   return null

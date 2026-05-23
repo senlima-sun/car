@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   getTerrainLookaheadDistance,
   resolveAirborneVerticalCorrection,
+  resolveSuspensionVisualDeflection,
   resolveTerrainSupportHitY,
 } from './useRaycastSuspension'
 
@@ -17,8 +18,12 @@ describe('getTerrainLookaheadDistance', () => {
 })
 
 describe('resolveTerrainSupportHitY', () => {
-  it('terrain wins when within the suspension envelope (even if rapier is also inside)', () => {
-    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 1.2, 1.4)).toBe(1.2)
+  it('uses the closest support hit when terrain and rapier are both in the suspension envelope', () => {
+    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 1.2, 1.4)).toBe(1.4)
+  })
+
+  it('uses a raised rapier curb instead of lower terrain', () => {
+    expect(resolveTerrainSupportHitY(1.2, -1, 50, 1.0, 0, 0.08)).toBe(0.08)
   })
 
   it('terrain wins when rapier misses and terrain is inside the envelope', () => {
@@ -30,7 +35,7 @@ describe('resolveTerrainSupportHitY', () => {
   })
 
   it('terrain wins when within ray length even if not within envelope and rapier is also outside', () => {
-    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 0.2, 0.8)).toBe(0.2)
+    expect(resolveTerrainSupportHitY(2, -1, 50, 0.8, 0.2, 0.8)).toBe(0.8)
   })
 
   it('rapier wins when inside envelope and terrain is outside the envelope', () => {
@@ -43,6 +48,20 @@ describe('resolveTerrainSupportHitY', () => {
 
   it('handles a stale ribbon mesh at y=0 by preferring the high terrain inside envelope', () => {
     expect(resolveTerrainSupportHitY(50.8, -1, 60, 1.0, 50, 0)).toBe(50)
+  })
+})
+
+describe('resolveSuspensionVisualDeflection', () => {
+  it('normal static compression has no visual offset', () => {
+    expect(resolveSuspensionVisualDeflection(1 / 7)).toBeCloseTo(0, 5)
+  })
+
+  it('moves upward from extra compression', () => {
+    expect(resolveSuspensionVisualDeflection(1 / 7 + 0.03)).toBeCloseTo(0.03, 5)
+  })
+
+  it('limits rebound droop', () => {
+    expect(resolveSuspensionVisualDeflection(0)).toBeCloseTo(-0.05, 5)
   })
 })
 
