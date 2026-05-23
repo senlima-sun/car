@@ -13,6 +13,15 @@ interface PlacedObjectsRendererProps {
   enablePhysics?: boolean
 }
 
+export function isAlwaysVisibleTrackObject(type: PlacedObject['type']): boolean {
+  return (
+    type === 'track_ribbon' ||
+    type === 'painted_area' ||
+    type === 'edge_line' ||
+    type === 'curb'
+  )
+}
+
 export default function PlacedObjectsRenderer({
   enablePhysics = true,
 }: PlacedObjectsRendererProps) {
@@ -41,20 +50,17 @@ export default function PlacedObjectsRenderer({
   }, [placedObjects])
 
   const visibleObjects = useMemo(() => {
-    const isAlwaysVisible = (t: PlacedObject['type']) =>
-      t === 'track_ribbon' || t === 'painted_area' || t === 'edge_line'
-
-    const baseObjects = placedObjects.filter(obj => isAlwaysVisible(obj.type))
+    const baseObjects = placedObjects.filter(obj => isAlwaysVisibleTrackObject(obj.type))
     const result: PlacedObject[] = [...baseObjects]
 
     if (visibleObjectIds.size === 0 && placedObjects.length > 0) {
-      result.push(...placedObjects.filter(obj => !isAlwaysVisible(obj.type)))
+      result.push(...placedObjects.filter(obj => !isAlwaysVisibleTrackObject(obj.type)))
       return result
     }
 
     for (const id of visibleObjectIds) {
       const obj = objectMap.get(id)
-      if (obj && !isAlwaysVisible(obj.type)) result.push(obj)
+      if (obj && !isAlwaysVisibleTrackObject(obj.type)) result.push(obj)
     }
     return result
   }, [visibleObjectIds, objectMap, placedObjects])
