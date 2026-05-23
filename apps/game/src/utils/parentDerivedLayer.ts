@@ -86,6 +86,12 @@ interface RawDerivedPoint extends TrackRibbonPoint {
   srcIdx: number
 }
 
+interface ArcSample {
+  point: TrackRibbonPoint
+  tangent: { x: number; z: number }
+  srcIdx: number
+}
+
 function splitOnSpikes(
   raw: RawDerivedPoint[],
   parentTangents: Array<{ x: number; z: number }>,
@@ -140,6 +146,62 @@ function stripIdx(p: RawDerivedPoint): TrackRibbonPoint {
   return { x: p.x, y: p.y, z: p.z, isPitLane: p.isPitLane }
 }
 
+function interpolateAtArc(
+  points: TrackRibbonPoint[],
+  closed: boolean,
+  arcs: number[],
+  targetArc: number,
+): ArcSample {
+  const maxArc = arcs[arcs.length - 1]!
+  const arc = Math.max(0, Math.min(targetArc, maxArc))
+  const lastPointIndex = points.length - 1
+
+  if (arc <= 0) {
+    const a = points[0]!
+    const b = points[1] ?? a
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const len = Math.hypot(dx, dz) || 1
+    return { point: a, tangent: { x: dx / len, z: dz / len }, srcIdx: 0 }
+  }
+
+  if (arc >= maxArc) {
+    const a = closed ? points[lastPointIndex]! : points[lastPointIndex - 1]!
+    const b = closed ? points[0]! : points[lastPointIndex]!
+    const dx = b.x - a.x
+    const dz = b.z - a.z
+    const len = Math.hypot(dx, dz) || 1
+    return {
+      point: closed ? points[0]! : points[lastPointIndex]!,
+      tangent: { x: dx / len, z: dz / len },
+      srcIdx: closed ? 0 : lastPointIndex,
+    }
+  }
+
+  let hi = 1
+  while (hi < arcs.length && arcs[hi]! < arc) hi++
+  const lo = hi - 1
+  const a = points[lo]!
+  const b = points[hi % points.length]!
+  const span = arcs[hi]! - arcs[lo]!
+  const t = span > 1e-9 ? (arc - arcs[lo]!) / span : 0
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const dz = b.z - a.z
+  const len = Math.hypot(dx, dz) || 1
+
+  return {
+    point: {
+      x: a.x + dx * t,
+      y: a.y + dy * t,
+      z: a.z + dz * t,
+      isPitLane: a.isPitLane,
+    },
+    tangent: { x: dx / len, z: dz / len },
+    srcIdx: lo,
+  }
+}
+
 export function resolveParentDerivedLayer(
   placed: PlacedObject,
   ctx: ResolveContext,
@@ -184,19 +246,31 @@ export function resolveParentDerivedLayer(
   const fullSpan = (placed.tRange ?? [0, 1])[0] === 0 && (placed.tRange ?? [0, 1])[1] === 1
   const loopAllowed = fullSpan && dense.closed
 
-  const rawPoints: RawDerivedPoint[] = []
+  const samples: ArcSample[] = []
+  if (!loopAllowed) samples.push(interpolateAtArc(dense.points, dense.closed, arcs, startArc))
   for (let i = 0; i < dense.points.length; i++) {
     const arc = arcs[i]!
-    if (arc < startArc - 1e-6 || arc > endArc + 1e-6) continue
-    const src = dense.points[i]!
-    const tan = tangents[i]!
+    if (arc <= startArc + 1e-6 || arc >= endArc - 1e-6) continue
+    samples.push({ point: dense.points[i]!, tangent: tangents[i]!, srcIdx: i })
+  }
+  if (!loopAllowed) samples.push(interpolateAtArc(dense.points, dense.closed, arcs, endArc))
+
+  const rawPoints: RawDerivedPoint[] = []
+  for (const sample of samples) {
+    const src = sample.point
+    const tan = sample.tangent
     const nx = -tan.z * sign
     const nz = tan.x * sign
     const wx = src.x + nx * centerOffset
     const wz = src.z + nz * centerOffset
     const sampler = opts.terrainHeightAt ?? useTerrainStore.getState().getHeightAt
-    const wy = sampler(wx, wz)
-    rawPoints.push({ x: wx, y: wy, z: wz, isPitLane: src.isPitLane, srcIdx: i })
+    rawPoints.push({
+      x: wx,
+      y: sampler(wx, wz),
+      z: wz,
+      isPitLane: src.isPitLane,
+      srcIdx: sample.srcIdx,
+    })
   }
 
   const segments = splitOnSpikes(rawPoints, tangents, dense.points, centerOffset, loopAllowed)

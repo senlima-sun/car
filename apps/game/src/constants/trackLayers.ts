@@ -4,7 +4,7 @@ export const TRACK_LAYER_Y_OFFSETS: Record<TrackLayerName, number> = {
   GROUND: 0,
   ASPHALT: 0.05,
   PAINTED_AREA: 0.05,
-  CURB: 0.05,
+  CURB: 0.058,
   EDGE_LINE: 0.052,
 }
 

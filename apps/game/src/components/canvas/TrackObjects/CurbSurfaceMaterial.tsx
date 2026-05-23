@@ -13,6 +13,7 @@ import {
 import { STRIPE_WIDTH, TOOTH_SPACING } from '../../../constants/curb'
 import { useEnvironmentStore } from '../../../stores/useEnvironmentStore'
 import { GHOST_OPACITY } from '../../../constants/trackObjects'
+import { TRACK_LAYER_POLYGON_OFFSETS } from '../../../constants/trackLayers'
 import type { CurbType } from '../../../types/trackObjects'
 
 const weatherState = { rainIntensity: 0, temperature: 25 }
@@ -98,6 +99,9 @@ export default function CurbSurfaceMaterial({
       roughness={0.75}
       metalness={0.0}
       side={THREE.DoubleSide}
+      polygonOffset
+      polygonOffsetFactor={TRACK_LAYER_POLYGON_OFFSETS.CURB.factor}
+      polygonOffsetUnits={TRACK_LAYER_POLYGON_OFFSETS.CURB.units}
       onBeforeCompile={onBeforeCompile}
       ref={(mat: THREE.MeshStandardMaterial | null) => {
         if (mat) {

@@ -38,6 +38,21 @@ interface TrackObjectWrapperProps {
 
 const EMPTY_OBJECTS: readonly PlacedObject[] = []
 
+export function shouldRenderRibbonCurbSegment(
+  object: PlacedObject,
+  parentRibbon?: PlacedObject,
+): boolean {
+  const hasUsableParentRibbon =
+    object.parentRibbonId !== undefined &&
+    parentRibbon?.type === 'track_ribbon' &&
+    (parentRibbon.ribbonPoints?.length ?? 0) >= 2
+
+  return Boolean(
+    (object.curbCenterline && object.curbCenterline.length >= 2) ||
+      hasUsableParentRibbon,
+  )
+}
+
 function TrackObjectWrapper({
   object,
   parentRoad,
@@ -163,7 +178,7 @@ function TrackObjectWrapper({
       }
       break
     case 'curb':
-      if (object.curbCenterline && object.curbCenterline.length >= 2) {
+      if (shouldRenderRibbonCurbSegment(object, parentRibbon)) {
         component = (
           <RibbonCurbSegment
             curb={object}

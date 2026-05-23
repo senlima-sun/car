@@ -9,6 +9,7 @@ import {
   getSawtoothHeight,
 } from '../../../constants/curb'
 import { TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
+import { TRACK_LAYER_Y_OFFSETS } from '../../../constants/trackLayers'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { useTerrainStore } from '../../../stores/useTerrainStore'
@@ -48,11 +49,21 @@ interface BuildResult {
   sensor: { center: [number, number, number]; halfDepth: number } | null
 }
 
+interface CurbCenter {
+  points: TrackRibbonPoint[]
+  closed: boolean
+}
+
 function resolveCurbCenter(
   curb: PlacedObject,
   parentRibbon?: PlacedObject,
-): TrackRibbonPoint[] | null {
-  if (curb.parentRibbonId) {
+): CurbCenter | null {
+  const hasUsableParentRibbon =
+    curb.parentRibbonId !== undefined &&
+    parentRibbon?.type === 'track_ribbon' &&
+    (parentRibbon.ribbonPoints?.length ?? 0) >= 2
+
+  if (hasUsableParentRibbon) {
     const segments = resolveParentDerivedLayer(
       curb,
       { parent: parentRibbon },
@@ -65,20 +76,24 @@ function resolveCurbCenter(
     for (const s of segments) {
       if (s.points.length > longest.points.length) longest = s
     }
-    return longest.points
+    return longest.points.length >= 2 ? { points: longest.points, closed: longest.closed } : null
   }
-  return curb.curbCenterline ?? null
+  return curb.curbCenterline && curb.curbCenterline.length >= 2
+    ? { points: curb.curbCenterline, closed: false }
+    : null
 }
 
 function buildRibbonCurb(curb: PlacedObject, parentRibbon?: PlacedObject): BuildResult | null {
-  const center = resolveCurbCenter(curb, parentRibbon)
-  if (!center || center.length < 2) return null
+  const resolved = resolveCurbCenter(curb, parentRibbon)
+  if (!resolved) return null
+  const center = resolved.points
+  const closed = resolved.closed
   const terrainHeightAt = useTerrainStore.getState().getHeightAt
   const curbType: CurbType = curb.curbType ?? 'apex'
   const sign = curb.edgeSide === 'right' ? -1 : 1
   const isExit = curbType === 'exit'
 
-  const tangents = computeRibbonTangents(center, false)
+  const tangents = computeRibbonTangents(center, closed)
 
   let arcLength = 0
   const arcAt: number[] = [0]
@@ -87,6 +102,11 @@ function buildRibbonCurb(curb: PlacedObject, parentRibbon?: PlacedObject): Build
     const dz = center[i]!.z - center[i - 1]!.z
     arcLength += Math.hypot(dx, dz)
     arcAt.push(arcLength)
+  }
+  if (closed) {
+    const first = center[0]!
+    const last = center[center.length - 1]!
+    arcLength += Math.hypot(first.x - last.x, first.z - last.z)
   }
   if (arcLength < 0.05) return null
 
@@ -110,17 +130,20 @@ function buildRibbonCurb(curb: PlacedObject, parentRibbon?: PlacedObject): Build
       const widthOffset = (normalizedWidth - 0.5) * CURB_WIDTH
       const x = c.x + perpX * widthOffset
       const z = c.z + perpZ * widthOffset
-      positions.push(x, terrainHeightAt(x, z) + height, z)
+      positions.push(x, terrainHeightAt(x, z) + TRACK_LAYER_Y_OFFSETS.CURB + height, z)
       uvs.push(normalizedWidth, arcPos)
     }
   }
 
-  for (let i = 0; i < center.length - 1; i++) {
+  const rowCount = center.length
+  const segmentCount = closed ? rowCount : rowCount - 1
+  for (let i = 0; i < segmentCount; i++) {
+    const nextRow = (i + 1) % rowCount
     for (let p = 0; p < PROFILE_SUBDIVISIONS; p++) {
       const a = i * vertsPerRow + p
       const b = i * vertsPerRow + p + 1
-      const c = (i + 1) * vertsPerRow + p
-      const d = (i + 1) * vertsPerRow + p + 1
+      const c = nextRow * vertsPerRow + p
+      const d = nextRow * vertsPerRow + p + 1
       indices.push(a, c, b)
       indices.push(b, c, d)
     }
@@ -141,7 +164,11 @@ function buildRibbonCurb(curb: PlacedObject, parentRibbon?: PlacedObject): Build
     collisionVertices: new Float32Array(positions),
     collisionIndices: new Uint32Array(indices),
     sensor: {
-      center: [midC.x, terrainHeightAt(midC.x, midC.z) + peakHeight / 2, midC.z],
+      center: [
+        midC.x,
+        terrainHeightAt(midC.x, midC.z) + TRACK_LAYER_Y_OFFSETS.CURB + peakHeight / 2,
+        midC.z,
+      ],
       halfDepth: arcLength / 2,
     },
   }

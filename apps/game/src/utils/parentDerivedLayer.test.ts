@@ -96,6 +96,18 @@ describe('resolveParentDerivedLayer', () => {
     expect(seg.closed).toBe(false)
   })
 
+  test('partial tRange includes interpolated endpoints', () => {
+    const parent = makeRibbon(STRAIGHT, false, 12)
+    const placed = makeDerived({ tRange: [0.15, 0.85] })
+    const seg = firstSeg(resolveParentDerivedLayer(placed, { parent }, { resampleSpacing: 5 }))
+
+    expect(seg.points[0]!.x).toBeCloseTo(1.5, 5)
+    expect(seg.points[seg.points.length - 1]!.x).toBeCloseTo(8.5, 5)
+    for (const p of seg.points) {
+      expect(p.z).toBeCloseTo(7.5, 5)
+    }
+  })
+
   test('full-range closed parent yields closed derived layer', () => {
     const parent = makeRibbon(CLOSED_SQUARE, true, 12)
     const placed = makeDerived({ tRange: [0, 1] })
