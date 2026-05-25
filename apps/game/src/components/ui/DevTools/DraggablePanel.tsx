@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { useDevToolsStore, type DevPanelId } from '../../../stores/useDevToolsStore'
 import { clampPositionToViewport, type Size } from '../../../utils/dragController'
 import { useDraggable } from '../../../hooks/useDraggable'
+import { Surface } from '../primitives'
 
 interface DraggablePanelProps {
   id: DevPanelId
@@ -70,8 +71,9 @@ export default function DraggablePanel({
       }}
       onPointerDown={() => bringToFront(id)}
     >
-      <div
-        className='flex flex-col border border-white/12 bg-black/85 backdrop-blur-md shadow-[0_18px_50px_rgba(0,0,0,0.55)]'
+      <Surface
+        variant='cardStrong'
+        className='flex flex-col'
         style={{ minWidth: 200 }}
       >
         <div
@@ -97,7 +99,7 @@ export default function DraggablePanel({
           </button>
         </div>
         <div className='dev-panel-content'>{children}</div>
-      </div>
+      </Surface>
     </div>
   )
 }

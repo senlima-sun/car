@@ -1,6 +1,7 @@
 import { PRESET_TRACK_METAS } from '@/constants/tracks'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
+import { Surface } from '@/components/ui/primitives'
 
 function formatLapTime(value: number | null): string {
   if (value === null) return '--:--.---'
@@ -23,7 +24,7 @@ export default function ResultsScreen() {
 
   return (
     <div className='absolute inset-0 z-40 flex items-center justify-center bg-black/60 px-6 py-8 pointer-events-auto'>
-      <div className='w-full max-w-3xl rounded-[28px] border border-white/12 bg-[linear-gradient(180deg,rgba(11,13,18,0.96),rgba(11,13,18,0.9))] p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)] md:p-8'>
+      <Surface variant='cardStrong' className='w-full max-w-3xl p-6 text-white md:p-8'>
         <div className='space-y-3'>
           <div className='text-[11px] font-semibold uppercase tracking-[0.28em] text-white/45'>
             Session Results
@@ -104,7 +105,7 @@ export default function ResultsScreen() {
             Main Menu
           </button>
         </div>
-      </div>
+      </Surface>
     </div>
   )
 }

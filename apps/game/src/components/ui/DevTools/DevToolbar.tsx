@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Cloud, Flag, Gauge, Locate, Map, Menu, Zap } from 'lucide-react'
 import { useDevToolsStore, type DevPanelId } from '../../../stores/useDevToolsStore'
 import { runDevAction, type DevActionId } from '../../../hooks/useDevToolsHotkeys'
+import { Surface } from '../primitives'
 
 interface ToolEntry {
   id: DevPanelId
@@ -80,7 +81,10 @@ export default function DevToolbar() {
       </button>
 
       {expanded && (
-        <div className='absolute top-9 left-0 flex flex-col gap-0.5 border border-white/12 bg-black/85 p-1 backdrop-blur-md shadow-[0_18px_50px_rgba(0,0,0,0.55)]'>
+        <Surface
+          variant='cardStrong'
+          className='absolute top-9 left-0 flex flex-col gap-0.5 p-1'
+        >
           {TOOLS.map(({ id, label, hotkey, icon: Icon }) => {
             const isOpen = panels[id].isOpen
             return (
@@ -123,7 +127,7 @@ export default function DevToolbar() {
               </button>
             ))}
           </div>
-        </div>
+        </Surface>
       )}
     </div>
   )

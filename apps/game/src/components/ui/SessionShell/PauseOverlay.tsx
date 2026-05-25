@@ -1,5 +1,6 @@
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
+import { Surface } from '@/components/ui/primitives'
 
 export default function PauseOverlay() {
   const phase = useSessionStore(s => s.phase)
@@ -12,7 +13,7 @@ export default function PauseOverlay() {
 
   return (
     <div className='absolute inset-0 z-40 flex items-center justify-center bg-black/55 px-6 py-8 pointer-events-auto'>
-      <div className='w-full max-w-xl rounded-[28px] border border-white/12 bg-[linear-gradient(180deg,rgba(10,12,16,0.96),rgba(10,12,16,0.9))] p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)]'>
+      <Surface variant='cardStrong' className='w-full max-w-xl p-6 text-white'>
         <div className='mb-6 space-y-2'>
           <div className='text-[11px] font-semibold uppercase tracking-[0.28em] text-white/45'>
             Session Paused
@@ -48,7 +49,7 @@ export default function PauseOverlay() {
             Quit To Menu
           </button>
         </div>
-      </div>
+      </Surface>
     </div>
   )
 }

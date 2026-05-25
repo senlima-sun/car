@@ -1,6 +1,7 @@
 import { PRESET_TRACK_METAS } from '@/constants/tracks'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
+import { Surface } from '@/components/ui/primitives'
 import { useTrackStore } from '@/stores/useTrackStore'
 import { createSessionConfig, type SessionKind } from '@/types/session'
 
@@ -38,7 +39,7 @@ export default function SessionSetup() {
 
   return (
     <div className='absolute inset-0 z-30 flex items-center justify-center bg-black/50 px-6 py-8 pointer-events-auto'>
-      <div className='w-full max-w-4xl rounded-[28px] border border-white/12 bg-[linear-gradient(180deg,rgba(12,14,18,0.96),rgba(12,14,18,0.88))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-8'>
+      <Surface variant='cardStrong' className='w-full max-w-4xl p-6 md:p-8'>
         <div className='flex flex-col gap-6 md:flex-row md:items-start md:justify-between'>
           <div className='space-y-3'>
             <div className='inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70'>
@@ -199,7 +200,7 @@ export default function SessionSetup() {
             Start Session
           </button>
         </div>
-      </div>
+      </Surface>
     </div>
   )
 }
