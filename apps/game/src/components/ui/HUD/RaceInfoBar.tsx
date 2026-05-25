@@ -1,7 +1,8 @@
 import { useSessionStore } from '@/stores/useSessionStore'
 import { useLapTimeStore } from '@/stores/useLapTimeStore'
 import { useEnvironmentStore } from '@/stores/useEnvironmentStore'
-import { HUD_ACCENT, HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
+import { AccentBar, LabelTag, Surface } from '@/components/ui/primitives'
+import { HUD_ACCENT } from './hudChrome'
 
 function formatLapTime(ms: number | null): string {
   if (ms === null) return '—:——.———'
@@ -24,7 +25,8 @@ export default function RaceInfoBar() {
 
   return (
     <div className='absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none select-none z-30'>
-      <HudPanel accent='#ffcc00' contentClassName='flex items-stretch'>
+      <Surface variant='card' className='relative flex items-stretch'>
+        <AccentBar color='#ffcc00' />
         <Segment label='Session' accent='#ffcc00'>
           <span className='rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-sans text-[11px] font-bold tracking-[0.24em] text-white'>
             {sessionLabel}
@@ -57,7 +59,7 @@ export default function RaceInfoBar() {
             <span className='text-white/45 text-[11px] ml-0.5'>°C</span>
           </span>
         </Segment>
-      </HudPanel>
+      </Surface>
     </div>
   )
 }
@@ -73,14 +75,12 @@ function Segment({
 }) {
   return (
     <div className='flex min-w-[90px] flex-col items-start justify-center gap-0.5 px-4 py-2'>
-      <span className={HUD_LABEL_CLASS} style={{ color: accent ?? 'rgba(255,255,255,0.42)' }}>
-        {label}
-      </span>
+      <LabelTag style={{ color: accent ?? undefined }}>{label}</LabelTag>
       {children}
     </div>
   )
 }
 
 function Divider() {
-  return <div className={HUD_DIVIDER_CLASS} />
+  return <div className='w-px self-stretch bg-white/10' />
 }

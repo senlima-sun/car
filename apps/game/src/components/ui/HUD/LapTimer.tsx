@@ -5,7 +5,8 @@ import { useGhostCarStore } from '../../../stores/useGhostCarStore'
 import { useGhostPreferenceStore } from '../../../stores/useGhostPreferenceStore'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { usePitStore } from '../../../stores/usePitStore'
-import { HUD_ACCENT, HUD_DIVIDER_CLASS, HUD_LABEL_CLASS, HUD_STATUS, HudPanel } from './hudChrome'
+import { AccentBar, LabelTag, Surface } from '../primitives'
+import { HUD_ACCENT, HUD_STATUS } from './hudChrome'
 
 const TIMER_UPDATE_INTERVAL = 50
 
@@ -78,7 +79,8 @@ export default function LapTimer() {
 
   return (
     <div className='absolute top-[76px] right-5 z-20 pointer-events-none select-none'>
-      <HudPanel accent={HUD_ACCENT.speed} contentClassName='px-4 py-2'>
+      <Surface variant='card' className='relative px-4 py-2'>
+        <AccentBar color={HUD_ACCENT.speed} />
         <div className='flex items-center gap-5'>
           <Column label='Current' accent={HUD_ACCENT.speed}>
             {hasStarted ? (
@@ -155,11 +157,10 @@ export default function LapTimer() {
               return (
                 <div
                   key={sectorNum}
-                  className='relative overflow-hidden border border-white/8 px-2 py-1'
+                  className='relative overflow-hidden rounded-md border border-white/10 px-2 py-1'
                   style={{
                     background: isEmpty ? 'rgba(255,255,255,0.03)' : tone.tint,
                     borderLeft: `2px solid ${tone.bar}`,
-                    clipPath: 'polygon(4px 0, 100% 0, 100% 100%, 0 100%, 0 4px)',
                   }}
                 >
                   <div className='flex items-center justify-between'>
@@ -181,7 +182,7 @@ export default function LapTimer() {
             })}
           </div>
         )}
-      </HudPanel>
+      </Surface>
     </div>
   )
 }
@@ -197,14 +198,12 @@ function Column({
 }) {
   return (
     <div className='flex flex-col items-start gap-1'>
-      <span className={HUD_LABEL_CLASS} style={{ color: accent ?? 'rgba(255,255,255,0.42)' }}>
-        {label}
-      </span>
+      <LabelTag style={{ color: accent ?? undefined }}>{label}</LabelTag>
       {children}
     </div>
   )
 }
 
 function Divider() {
-  return <div className={`h-7 ${HUD_DIVIDER_CLASS}`} />
+  return <div className='h-7 w-px bg-white/10' />
 }
