@@ -6,15 +6,25 @@ import { BRAKE_BIAS, ENGINE_BRAKING } from '../../../constants/colors'
 import { engineTempToCelsius, tireTempToCelsius } from '../../../wasm/PhysicsBridge'
 import type { EngineBrakingLevel } from '../../../wasm/PhysicsBridge'
 import { celsiusToColor } from '../../../utils/temperatureColors'
-import {
-  HUD_LABEL_CLASS,
-  HUD_NUMERIC_CLASS,
-  HUD_STATUS,
-  HudCell,
-  HudPanel,
-  isWearCritical,
-  wearColor,
-} from './hudChrome'
+import { AccentBar, LabelTag, Surface } from '../primitives'
+import { HUD_NUMERIC_CLASS, HUD_STATUS, isWearCritical, wearColor } from './hudChrome'
+
+function Cell({
+  label,
+  align = 'start',
+  children,
+}: {
+  label: string
+  align?: 'start' | 'end'
+  children: React.ReactNode
+}) {
+  return (
+    <div className={`flex flex-col gap-1 ${align === 'end' ? 'items-end' : 'items-start'}`}>
+      <LabelTag>{label}</LabelTag>
+      {children}
+    </div>
+  )
+}
 
 function gripColor(g: number): string {
   if (g >= 80) return HUD_STATUS.success
@@ -183,13 +193,12 @@ export default function CarStatusPanel() {
   const eb = engineBrakeMeta(engineBraking)
 
   return (
-    <HudPanel
-      accent={config.color}
-      className='min-w-[260px]'
-      contentClassName='pb-2'
-      edge='left'
+    <Surface
+      variant='card'
+      className='relative min-w-[260px] overflow-hidden pb-2'
       style={{ animation: isCritical ? 'hud-critical 1.1s ease-in-out infinite' : undefined }}
     >
+      <AccentBar color={config.color} />
       <div className='flex items-center justify-between border-b border-white/10 px-3 py-1.5'>
         <div className='flex items-center gap-2'>
           <div
@@ -202,14 +211,14 @@ export default function CarStatusPanel() {
             {config.displayName}
           </span>
         </div>
-        <HudCell label='Grip' align='end'>
+        <Cell label='Grip' align='end'>
           <span
             className={`${HUD_NUMERIC_CLASS} text-[12px]`}
             style={{ color: gripColor(gripPercent) }}
           >
             {gripPercent}%
           </span>
-        </HudCell>
+        </Cell>
       </div>
 
       <div className='relative px-3 py-3'>
@@ -266,7 +275,7 @@ export default function CarStatusPanel() {
 
       <div className='border-t border-white/10 px-3 py-2'>
         <div className='mb-1 flex items-baseline justify-between'>
-          <span className={HUD_LABEL_CLASS}>Avg Life</span>
+          <LabelTag>Avg Life</LabelTag>
           <span
             className={`${HUD_NUMERIC_CLASS} text-[11px]`}
             style={{ color: wearColor(averageWear) }}
@@ -315,7 +324,7 @@ export default function CarStatusPanel() {
 
       <div className='border-t border-white/10 px-3 py-2'>
         <div className='mb-1 flex items-baseline justify-between'>
-          <span className={HUD_LABEL_CLASS}>Engine</span>
+          <LabelTag>Engine</LabelTag>
           {engineSeized ? (
             <span
               className={`${HUD_NUMERIC_CLASS} text-[9px] font-bold`}
@@ -362,19 +371,19 @@ export default function CarStatusPanel() {
       </div>
 
       <div className='flex items-center justify-between border-t border-white/10 px-3 py-2'>
-        <HudCell label='Brake'>
+        <Cell label='Brake'>
           <div className={`${HUD_NUMERIC_CLASS} flex items-baseline gap-1 text-[12px]`}>
             <span style={{ color: biasTone }}>{Math.round(frontBias)}</span>
             <span className='text-white/35'>:</span>
             <span style={{ color: biasTone }}>{Math.round(rearBias)}</span>
           </div>
-        </HudCell>
-        <HudCell label='EB' align='end'>
+        </Cell>
+        <Cell label='EB' align='end'>
           <span className={`${HUD_NUMERIC_CLASS} text-[12px]`} style={{ color: eb.color }}>
             EB·{eb.abbrev}
           </span>
-        </HudCell>
+        </Cell>
       </div>
-    </HudPanel>
+    </Surface>
   )
 }

@@ -6,6 +6,7 @@ import {
   setTireCompound as setTireCompoundWasm,
   setErsBatteryCharge,
 } from '../../../wasm/PhysicsBridge'
+import { AccentBar, Surface } from '../primitives'
 
 const compoundToWasm: Record<TireCompound, TireCompoundWasm> = {
   soft: TireCompoundWasm.Soft,
@@ -137,7 +138,11 @@ export default function DebugPanel() {
         : '#3b82f6'
 
   return (
-    <div className='bg-black/85 rounded-[10px] px-3.5 py-2.5 flex flex-col gap-2 text-[11px] min-w-[180px] border border-[#ffa500]/30'>
+    <Surface
+      variant='cardStrong'
+      className='relative px-3.5 py-2.5 flex flex-col gap-2 text-[11px] min-w-[180px]'
+    >
+      <AccentBar color='#ffa500' />
       <div className='flex justify-between items-center'>
         <span className={TITLE}>Debug Tools</span>
         {debugMode && <span className={BADGE}>PAUSED</span>}
@@ -327,6 +332,6 @@ export default function DebugPanel() {
           Empty
         </button>
       </div>
-    </div>
+    </Surface>
   )
 }
