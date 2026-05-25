@@ -111,3 +111,4 @@ See `docs/monorepo.md` for `pnpm -w` vs `--filter` conventions and remote cache 
 - **No comments**: unless license headers, TODOs with context, or bug workarounds
 - **Test coverage**: 80%+ API, 90%+ logic (run `pnpm test` before commits)
 - **Pre-commit review**: `git diff --cached` before every commit
+- **UI chrome**: import from `apps/game/src/components/ui/primitives` (`<Surface>`, `<AccentBar>`, `<LabelTag>`, `<IconButton>`, `<Divider>`). Do NOT introduce new `bg-black/X`, `rounded-[Npx]`, or `clipPath` inline panel styles — see `primitives/README.md`.
