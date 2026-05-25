@@ -27,8 +27,9 @@ import {
 import { useTrackEditorStore } from '../state/useTrackEditorStore'
 import { TOOLS } from './constants/tools'
 import { CURB_VARIANTS } from './constants/curbVariants'
-import { pillClass } from './constants/pillClass'
-import { IconButton } from './primitives/IconButton'
+import { IconButton, surfacePill } from '@/components/ui/primitives'
+
+const pillClass = `pointer-events-auto inline-flex items-center gap-1 p-1 ${surfacePill}`
 import { OverflowMenu } from './OverflowMenu'
 import { TerrainControls } from './TerrainControls'
 

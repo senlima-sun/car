@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight, MoreHorizontal } from 'lucide-react'
 import { PRESET_TRACK_METAS } from '@/constants/tracks'
-import { IconButton } from './primitives/IconButton'
+import { IconButton } from '@/components/ui/primitives'
 import { MenuRow } from './primitives/MenuRow'
 import { MenuButton } from './primitives/MenuButton'
 import { MenuDivider } from './primitives/MenuDivider'
