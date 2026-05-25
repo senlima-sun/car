@@ -1,38 +1,25 @@
-import { styles } from './styles'
-
 export function MenuItem({
   icon,
   name,
   meta,
   isActive,
-  isHovered,
   onClick,
-  onMouseEnter,
-  onMouseLeave,
 }: {
   icon: string
   name: string
   meta?: string
   isActive?: boolean
-  isHovered: boolean
   onClick: () => void
-  onMouseEnter: () => void
-  onMouseLeave: () => void
 }) {
   return (
     <div
-      style={{
-        ...styles.menuItem,
-        ...(isActive ? styles.menuItemActive : {}),
-        ...(isHovered && !isActive ? styles.menuItemHover : {}),
-      }}
+      data-active={isActive ?? false}
       onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      className='flex items-center gap-2 px-3 py-2.5 text-[13px] text-white cursor-pointer transition-colors hover:bg-white/[0.08] data-[active=true]:bg-sky-500/22'
     >
-      <span style={styles.menuItemIcon}>{icon}</span>
-      <span style={styles.menuItemName}>{name}</span>
-      {meta && <span style={styles.menuItemMeta}>{meta}</span>}
+      <span className='w-[18px] text-center opacity-70'>{icon}</span>
+      <span className='flex-1 truncate'>{name}</span>
+      {meta && <span className='text-[11px] text-white/45'>{meta}</span>}
     </div>
   )
 }

@@ -1,5 +1,5 @@
+import { LabelTag } from '@/components/ui/primitives'
 import { ConfirmButtons } from '../ConfirmButtons'
-import { styles } from '../styles'
 
 export function DeleteMode({
   trackName,
@@ -11,9 +11,9 @@ export function DeleteMode({
   onCancel: () => void
 }) {
   return (
-    <div style={styles.modeContainer}>
-      <div style={styles.menuSectionTitle}>Delete Track</div>
-      <div style={styles.deleteConfirmText}>
+    <div className='py-3'>
+      <LabelTag className='block px-3 py-2'>Delete Track</LabelTag>
+      <div className='px-3 py-2 text-white/85 text-[13px]'>
         Are you sure you want to delete &quot;{trackName}&quot;?
       </div>
       <ConfirmButtons

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PRESET_TRACK_METAS } from '@/constants/tracks'
+import { LabelTag } from '@/components/ui/primitives'
 import { MenuItem } from '../MenuItem'
-import { styles } from '../styles'
 
 type Track = {
   id: string
@@ -28,15 +28,12 @@ export function ListMode({
   onDuplicate: () => void
   onDelete: () => void
 }) {
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [filter, setFilter] = useState('')
 
   const normalizedFilter = filter.trim().toLowerCase()
   const filteredPresets = useMemo(() => {
     if (!normalizedFilter) return PRESET_TRACK_METAS
-    return PRESET_TRACK_METAS.filter(p =>
-      p.name.toLowerCase().includes(normalizedFilter),
-    )
+    return PRESET_TRACK_METAS.filter(p => p.name.toLowerCase().includes(normalizedFilter))
   }, [normalizedFilter])
   const filteredTracks = useMemo(() => {
     if (!normalizedFilter) return tracks
@@ -50,32 +47,29 @@ export function ListMode({
         placeholder='Search tracks…'
         value={filter}
         onChange={e => setFilter(e.target.value)}
-        style={{ ...styles.input, width: 'calc(100% - 24px)', marginTop: 12 }}
+        className='block mx-3 mt-3 mb-2 w-[calc(100%-24px)] px-3 py-2 rounded-md bg-white/[0.08] border border-white/15 text-white text-[13px] outline-none focus:border-white/30'
         autoFocus
       />
 
       {filteredPresets.length > 0 && (
-        <div style={styles.menuSection}>
-          <div style={styles.menuSectionTitle}>🏎️ F1 Tracks</div>
+        <div className='border-b border-white/8'>
+          <LabelTag className='block px-3 py-2'>🏎️ F1 Tracks</LabelTag>
           {filteredPresets.map(preset => (
             <MenuItem
               key={preset.id}
               icon='🏁'
               name={preset.name}
               meta={`${(preset.trackLength / 1000).toFixed(1)}km`}
-              isHovered={hoveredItem === preset.id}
               onClick={() => onLoadPreset(preset.id)}
-              onMouseEnter={() => setHoveredItem(preset.id)}
-              onMouseLeave={() => setHoveredItem(null)}
             />
           ))}
         </div>
       )}
 
-      <div style={styles.menuSection}>
-        <div style={styles.menuSectionTitle}>Tracks</div>
+      <div className='border-b border-white/8'>
+        <LabelTag className='block px-3 py-2'>Tracks</LabelTag>
         {filteredTracks.length === 0 ? (
-          <div style={styles.noTracks}>
+          <div className='px-3 py-5 text-center text-white/45 text-[13px]'>
             {tracks.length === 0 ? 'No tracks yet' : 'No matches'}
           </div>
         ) : (
@@ -86,51 +80,19 @@ export function ListMode({
               name={track.name}
               meta={`${track.objectCount} obj`}
               isActive={track.id === activeTrack?.id}
-              isHovered={hoveredItem === track.id}
               onClick={() => onSelectTrack(track.id)}
-              onMouseEnter={() => setHoveredItem(track.id)}
-              onMouseLeave={() => setHoveredItem(null)}
             />
           ))
         )}
       </div>
 
-      <div>
-        <ActionButton
-          icon='+'
-          label='New Track'
-          isHovered={hoveredItem === 'new'}
-          onClick={onNewTrack}
-          onMouseEnter={() => setHoveredItem('new')}
-          onMouseLeave={() => setHoveredItem(null)}
-        />
+      <div className='py-1'>
+        <ActionButton icon='+' label='New Track' onClick={onNewTrack} />
         {activeTrack && (
           <>
-            <ActionButton
-              icon='✎'
-              label='Rename'
-              isHovered={hoveredItem === 'rename'}
-              onClick={onRename}
-              onMouseEnter={() => setHoveredItem('rename')}
-              onMouseLeave={() => setHoveredItem(null)}
-            />
-            <ActionButton
-              icon='⧉'
-              label='Duplicate'
-              isHovered={hoveredItem === 'duplicate'}
-              onClick={onDuplicate}
-              onMouseEnter={() => setHoveredItem('duplicate')}
-              onMouseLeave={() => setHoveredItem(null)}
-            />
-            <ActionButton
-              icon='✕'
-              label='Delete'
-              danger
-              isHovered={hoveredItem === 'delete'}
-              onClick={onDelete}
-              onMouseEnter={() => setHoveredItem('delete')}
-              onMouseLeave={() => setHoveredItem(null)}
-            />
+            <ActionButton icon='✎' label='Rename' onClick={onRename} />
+            <ActionButton icon='⧉' label='Duplicate' onClick={onDuplicate} />
+            <ActionButton icon='✕' label='Delete' danger onClick={onDelete} />
           </>
         )}
       </div>
@@ -142,31 +104,21 @@ function ActionButton({
   icon,
   label,
   danger,
-  isHovered,
   onClick,
-  onMouseEnter,
-  onMouseLeave,
 }: {
   icon: string
   label: string
   danger?: boolean
-  isHovered: boolean
   onClick: () => void
-  onMouseEnter: () => void
-  onMouseLeave: () => void
 }) {
+  const text = danger ? 'text-red-300 hover:text-red-200' : 'text-white hover:text-white'
   return (
     <button
-      style={{
-        ...styles.actionButton,
-        ...(danger ? styles.actionButtonDanger : {}),
-        ...(isHovered ? styles.menuItemHover : {}),
-      }}
+      type='button'
       onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-[13px] cursor-pointer transition-colors hover:bg-white/[0.08] ${text}`}
     >
-      <span style={styles.menuItemIcon}>{icon}</span>
+      <span className='w-[18px] text-center opacity-70'>{icon}</span>
       {label}
     </button>
   )

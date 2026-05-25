@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { LabelTag } from '@/components/ui/primitives'
 import { ConfirmButtons } from '../ConfirmButtons'
-import { styles } from '../styles'
 
 export function InputMode({
   title,
@@ -29,16 +29,16 @@ export function InputMode({
   }
 
   return (
-    <div style={styles.modeContainer}>
-      <div style={styles.menuSectionTitle}>{title}</div>
+    <div className='py-3'>
+      <LabelTag className='block px-3 py-2'>{title}</LabelTag>
       <input
         ref={inputRef}
-        style={{ ...styles.input, width: 'calc(100% - 24px)' }}
         type='text'
         placeholder='Track name...'
         value={value}
         onChange={e => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
+        className='block mx-3 mb-2 w-[calc(100%-24px)] px-3 py-2 rounded-md bg-white/[0.08] border border-white/15 text-white text-[13px] outline-none focus:border-white/30'
       />
       <ConfirmButtons onCancel={onCancel} onConfirm={onConfirm} confirmLabel={confirmLabel} />
     </div>
