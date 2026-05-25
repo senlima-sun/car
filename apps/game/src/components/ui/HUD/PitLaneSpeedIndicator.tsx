@@ -1,6 +1,7 @@
 import { usePitStore, PIT_LANE_SPEED_LIMIT_KMH } from '../../../stores/usePitStore'
 import { useLapTimeStore } from '../../../stores/useLapTimeStore'
 import { useCarStore } from '../../../stores/useCarStore'
+import { AccentBar, Surface } from '../primitives'
 
 export default function PitLaneSpeedIndicator() {
   const isInPitLane = usePitStore(s => s.isInPitLane)
@@ -16,14 +17,14 @@ export default function PitLaneSpeedIndicator() {
 
   return (
     <div className='fixed top-[140px] left-1/2 z-[101] -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none'>
-      <div
-        className='relative flex items-center gap-3 border bg-gradient-to-b from-black/85 to-black/70 px-4 py-2 backdrop-blur-md shadow-[0_12px_30px_rgba(0,0,0,0.5)]'
+      <Surface
+        variant='card'
+        className='relative flex items-center gap-3 px-4 py-2'
         style={{
-          borderColor: accent,
-          clipPath: 'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
           animation: isPitLaneSpeeding ? 'hud-critical 0.5s ease-in-out infinite' : undefined,
         }}
       >
+        <AccentBar color={accent} />
         <div
           className='flex h-8 w-8 items-center justify-center rounded-full border-[2.5px] font-mono text-[11px] font-bold tabular-nums'
           style={{
@@ -46,18 +47,21 @@ export default function PitLaneSpeedIndicator() {
             <span className='ml-0.5 text-[10px] text-white/45'>km/h</span>
           </span>
         </div>
-      </div>
+      </Surface>
 
       {isRecording && penalty > 0 && (
-        <div
-          className='border border-red-500/70 bg-red-900/70 px-3 py-1 font-mono text-[12px] font-bold tabular-nums text-white backdrop-blur-md'
+        <Surface
+          variant='card'
+          className='relative px-3 py-1 font-mono text-[12px] font-bold tabular-nums text-white'
           style={{
-            clipPath: 'polygon(6px 0, 100% 0, 100% 100%, 0 100%, 0 6px)',
+            borderColor: 'rgba(239,68,68,0.7)',
+            background: 'rgba(90,15,15,0.7)',
             animation: 'hud-fade-in 250ms ease-out',
           }}
         >
-          +{penalty}s PENALTY
-        </div>
+          <AccentBar color='#ef4444' />
+          <span className='pl-1'>+{penalty}s PENALTY</span>
+        </Surface>
       )}
     </div>
   )

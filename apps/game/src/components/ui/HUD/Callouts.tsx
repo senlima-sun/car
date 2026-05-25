@@ -3,7 +3,7 @@ import { useTrackLimitsStore } from '@/stores/useTrackLimitsStore'
 import { usePitStore } from '@/stores/usePitStore'
 import { useSessionStore } from '@/stores/useSessionStore'
 import { STATUS } from '@/constants/colors'
-import { HudPanel } from './hudChrome'
+import { AccentBar, Surface } from '@/components/ui/primitives'
 
 type CalloutKind = 'track-limits' | 'pit-speed' | 'pit-exit' | 'invalid-lap' | 'jump-start'
 
@@ -24,8 +24,6 @@ interface Tone {
 const CALLOUT_TTL_MS = 2500
 const CALLOUT_COOLDOWN_MS = 1000
 const MAX_CALLOUTS = 4
-const CALLOUT_CLIP =
-  'polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px)'
 
 const DANGER_TONE: Tone = {
   border: 'rgba(239,68,68,0.5)',
@@ -129,16 +127,15 @@ export default function Callouts() {
       {callouts.map(c => {
         const tone = KIND_TONE[c.kind]
         return (
-          <HudPanel
+          <Surface
             key={c.id}
-            edge='left'
-            accent={tone.bar}
-            clipPath={CALLOUT_CLIP}
-            style={{ borderColor: tone.border, background: tone.bg, animation: 'hud-fade-in 180ms ease-out' }}
-            contentClassName='flex items-center justify-between gap-2 pl-3 pr-3 py-1.5'
+            variant='card'
+            className='relative flex items-center justify-between gap-2 pl-3 pr-3 py-1.5'
+            style={{ borderColor: tone.border, animation: 'hud-fade-in 180ms ease-out' }}
           >
+            <AccentBar color={tone.bar} />
             <span
-              className='text-[9px] font-bold uppercase tracking-[0.32em]'
+              className='text-[9px] font-bold uppercase tracking-[0.32em] pl-1'
               style={{ color: tone.bar }}
             >
               {KIND_LABEL[c.kind]}
@@ -149,7 +146,7 @@ export default function Callouts() {
             >
               {c.message}
             </span>
-          </HudPanel>
+          </Surface>
         )
       })}
     </div>
