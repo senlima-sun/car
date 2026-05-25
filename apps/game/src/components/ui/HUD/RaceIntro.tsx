@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSessionStore } from '@/stores/useSessionStore'
 import { useEnvironmentStore } from '@/stores/useEnvironmentStore'
+import { Surface } from '@/components/ui/primitives'
 
 const FADE_MS = 3000
 
@@ -25,12 +26,7 @@ export default function RaceIntro() {
 
   return (
     <div className='absolute top-[14%] left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none animate-[hud-fade-out_3s_ease-out_forwards]'>
-      <div
-        className='relative overflow-hidden border border-white/10 bg-linear-to-b from-black/80 to-black/60 px-10 py-5 backdrop-blur-md shadow-[0_24px_80px_rgba(0,0,0,0.6)]'
-        style={{
-          clipPath: 'polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%, 0 14px)',
-        }}
-      >
+      <Surface variant='cardStrong' className='relative overflow-hidden px-10 py-5'>
         <div className='absolute inset-x-6 top-0 h-0.5 bg-linear-to-r from-transparent via-[#ffcc00] to-transparent' />
         <div className='text-center text-[10px] font-bold uppercase tracking-[0.42em] text-[#ffcc00]'>
           {config.kind.replace(/-/g, ' ')}
@@ -54,7 +50,7 @@ export default function RaceIntro() {
             <span className='font-mono text-white tabular-nums'>{temperature.toFixed(0)}°C</span>
           </span>
         </div>
-      </div>
+      </Surface>
     </div>
   )
 }

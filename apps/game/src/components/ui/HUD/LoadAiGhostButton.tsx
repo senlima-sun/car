@@ -5,6 +5,8 @@ import { useGameStore, type CameraMode } from '@/stores/useGameStore'
 import { useTrackStore } from '@/stores/useTrackStore'
 import { type AiGhostSidecar, decodeGhostBin } from '@/utils/aiGhostDecoder'
 import { CURRENT_GHOST_SCHEMA_VERSION } from '@/utils/ghostReplayDB'
+import { assetUrl } from '@/utils/assetUrl'
+import { Surface } from '@/components/ui/primitives'
 
 const CAMERA_MODE_LABEL: Record<CameraMode, string> = {
   'third-person': 'Chase',
@@ -41,7 +43,7 @@ export function LoadAiGhostButton() {
     }
     setState('loading')
     try {
-      const metaRes = await fetch(`/ai-replays/${slug}.ghost.json`)
+      const metaRes = await fetch(assetUrl(`/ai-replays/${slug}.ghost.json`))
       if (!metaRes.ok) {
         console.warn('[ai-ghost] no metadata for', slug)
         setState('missing')
@@ -63,7 +65,7 @@ export function LoadAiGhostButton() {
         setState('error')
         return
       }
-      const binRes = await fetch(`/ai-replays/${slug}.ghost.bin`)
+      const binRes = await fetch(assetUrl(`/ai-replays/${slug}.ghost.bin`))
       if (!binRes.ok) {
         console.warn('[ai-ghost] no binary for', slug)
         setState('missing')
@@ -107,7 +109,10 @@ export function LoadAiGhostButton() {
   })()
 
   return (
-    <div className="pointer-events-auto fixed left-4 top-4 z-50 flex flex-col gap-2 rounded-md bg-black/70 p-3 text-xs text-white shadow-lg">
+    <Surface
+      variant='card'
+      className='pointer-events-auto fixed left-4 top-4 z-50 flex flex-col gap-2 p-3 text-xs text-white'
+    >
       <button
         type="button"
         onClick={handleLoad}
@@ -153,6 +158,6 @@ export function LoadAiGhostButton() {
       >
         Camera: {CAMERA_MODE_LABEL[cameraMode]}
       </button>
-    </div>
+    </Surface>
   )
 }

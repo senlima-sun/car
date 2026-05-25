@@ -1,7 +1,7 @@
 import { useFPSStore, FPS_HISTORY_SIZE } from '@/stores/useFPSStore'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
-import { HUD_CLIP_LEFT, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
+import { AccentBar, LabelTag, Surface } from '@/components/ui/primitives'
 
 const GRAPH_W = 120
 const GRAPH_H = 28
@@ -55,18 +55,14 @@ export default function FPSCounter() {
         isTestingMode ? 'left-[110px]' : 'left-4'
       }`}
     >
-      <HudPanel
-        accent={color}
-        clipPath={HUD_CLIP_LEFT}
-        contentClassName='flex items-center gap-2.5 px-2.5 py-1'
-        edge='left'
-      >
+      <Surface variant='card' className='relative flex items-center gap-2.5 px-2.5 py-1'>
+        <AccentBar color={color} />
         <span
-          className='h-1.5 w-1.5 rounded-full'
+          className='h-1.5 w-1.5 rounded-full ml-1'
           style={{ background: color, boxShadow: `0 0 6px ${color}` }}
         />
         <span className='font-mono text-[11px] font-semibold tabular-nums text-white'>{fps}</span>
-        <span className={HUD_LABEL_CLASS}>fps</span>
+        <LabelTag>fps</LabelTag>
 
         <svg
           width={GRAPH_W}
@@ -118,7 +114,7 @@ export default function FPSCounter() {
             {minFps === Infinity ? 0 : minFps}
           </span>
         </div>
-      </HudPanel>
+      </Surface>
     </div>
   )
 }

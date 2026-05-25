@@ -8,6 +8,8 @@ import WrongWayIndicator from './WrongWayIndicator'
 import PitLaneSpeedIndicator from './PitLaneSpeedIndicator'
 import LapTimer from './LapTimer'
 import CoastIndicator from './CoastIndicator'
+import { BrakeStatusIndicator } from './BrakeStatusIndicator'
+import { TrackLimitSnapshots } from './TrackLimitSnapshots'
 import RaceIntro from './RaceIntro'
 import DeltaDisplay from './DeltaDisplay'
 import RaceInfoBar from './RaceInfoBar'
@@ -18,6 +20,7 @@ import SteeringDebugOverlay from '../SteeringDebugOverlay'
 import WeatherPanel from '../WeatherPanel/WeatherPanel'
 import WheelVisualEditor from '../WheelVisualEditor'
 import { SettingsDialog } from '../SettingsDialog'
+import { AccentBar, Surface } from '../primitives'
 import {
   isCustomizeStatus,
   isMenuStatus,
@@ -105,24 +108,15 @@ export default function HUD() {
           className='absolute top-1/2 left-1/2 pointer-events-none z-[999]'
           style={{ animation: 'hud-fade-in-out 2s ease forwards' }}
         >
-          <div
-            className='border px-8 py-3 backdrop-blur-md shadow-[0_18px_60px_rgba(0,0,0,0.5)]'
-            style={{
-              borderColor: isTestingMode ? 'rgba(239,68,68,0.6)' : 'rgba(34,197,94,0.6)',
-              background: isTestingMode
-                ? 'linear-gradient(to bottom, rgba(60,10,10,0.82), rgba(10,10,10,0.9))'
-                : 'linear-gradient(to bottom, rgba(10,50,20,0.82), rgba(10,10,10,0.9))',
-              clipPath:
-                'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px)',
-            }}
-          >
+          <Surface variant='cardStrong' className='relative px-8 py-3'>
+            <AccentBar color={isTestingMode ? '#ef4444' : '#22c55e'} />
             <span
-              className='font-sans text-[14px] font-bold uppercase tracking-[0.32em]'
+              className='font-sans text-[14px] font-bold uppercase tracking-[0.32em] pl-1'
               style={{ color: isTestingMode ? '#ffb4b4' : '#9ef0a9' }}
             >
               {modeNotification}
             </span>
-          </div>
+          </Surface>
         </div>
       )}
 
@@ -168,6 +162,12 @@ export default function HUD() {
                   <CarStatusPanel />
                 </div>
               )}
+              <div className='absolute top-5 right-5'>
+                <BrakeStatusIndicator />
+              </div>
+              <div className='absolute bottom-5 right-5'>
+                <TrackLimitSnapshots />
+              </div>
             </>
           )}
 
@@ -182,17 +182,12 @@ export default function HUD() {
               className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none'
               style={{ animation: 'hud-pulse 1.4s ease-in-out infinite' }}
             >
-              <div
-                className='border border-[#ffcc00]/60 bg-black/75 px-6 py-2.5 backdrop-blur-md shadow-[0_14px_40px_rgba(0,0,0,0.5)]'
-                style={{
-                  clipPath:
-                    'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)',
-                }}
-              >
-                <span className='font-sans text-[12px] font-bold uppercase tracking-[0.32em] text-[#ffcc00]'>
+              <Surface variant='cardStrong' className='relative px-6 py-2.5'>
+                <AccentBar color='#ffcc00' />
+                <span className='font-sans text-[12px] font-bold uppercase tracking-[0.32em] text-[#ffcc00] pl-1'>
                   {isMobile ? 'Tap P — Tire Service' : 'Press P — Tire Service'}
                 </span>
-              </div>
+              </Surface>
             </div>
           )}
 

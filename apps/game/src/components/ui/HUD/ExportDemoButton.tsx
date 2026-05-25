@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGhostCarStore } from '@/stores/useGhostCarStore'
 import { useTrackStore } from '@/stores/useTrackStore'
 import { ghostBuffersToDemo } from '@/utils/aiDemoSchema'
+import { Surface } from '@/components/ui/primitives'
 
 type ExportState = 'idle' | 'exported' | 'error'
 
@@ -61,23 +62,26 @@ export function ExportDemoButton() {
   })()
 
   return (
-    <div className="pointer-events-auto fixed left-4 top-28 z-50 flex flex-col gap-2 rounded-md bg-black/70 p-3 text-xs text-white shadow-lg">
+    <Surface
+      variant='card'
+      className='pointer-events-auto fixed left-4 top-28 z-50 flex flex-col gap-2 p-3 text-xs text-white'
+    >
       <button
-        type="button"
+        type='button'
         onClick={handleExport}
         disabled={disabled}
         title={tooltip}
-        className="rounded bg-emerald-600 px-3 py-1.5 font-medium hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className='rounded-full bg-emerald-600 px-3 py-1.5 font-medium hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50'
       >
         {label}
       </button>
-      <p className="max-w-[18rem] text-[10px] leading-snug text-neutral-300">
+      <p className='max-w-[18rem] text-[10px] leading-snug text-neutral-300'>
         Move the downloaded file to{' '}
-        <code className="rounded bg-neutral-800 px-1">
+        <code className='rounded bg-neutral-800 px-1'>
           apps/game/public/demos/{slug ?? '<trackId>'}.demo.json
         </code>{' '}
         before training.
       </p>
-    </div>
+    </Surface>
   )
 }

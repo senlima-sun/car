@@ -10,6 +10,7 @@ import {
   windSpeedDescription,
   WIND_DIRECTIONS,
 } from '@/stores/useWindStore'
+import { Surface } from '@/components/ui/primitives'
 import { CompassPicker } from './CompassPicker'
 import { SliderRow } from './SliderRow'
 import { Toggle } from './Toggle'
@@ -72,7 +73,11 @@ export default function WeatherControlModal() {
 
   return (
     <div style={styles.backdrop} onClick={handleClose}>
-      <div style={styles.modal} onClick={e => e.stopPropagation()}>
+      <Surface
+        variant='cardStrong'
+        className='px-8 py-6 min-w-[360px] max-w-[90vw]'
+        onClick={e => e.stopPropagation()}
+      >
         <div style={styles.title as React.CSSProperties}>Environment Control</div>
 
         <SliderRow
@@ -129,7 +134,7 @@ export default function WeatherControlModal() {
         </button>
 
         <div style={styles.hint as React.CSSProperties}>Press M or ESC to close</div>
-      </div>
+      </Surface>
     </div>
   )
 }
