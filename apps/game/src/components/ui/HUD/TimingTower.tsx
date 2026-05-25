@@ -1,6 +1,6 @@
 import { useGridStore } from '@/stores/useGridStore'
 import { LIVERY } from '@/constants/f1Livery'
-import { HUD_CLIP_LEFT, HUD_LABEL_CLASS, HudPanel } from './hudChrome'
+import { AccentBar, LabelTag, Surface } from '@/components/ui/primitives'
 
 const TEAM_PALETTE = [
   LIVERY.ACCENT_RED,
@@ -50,17 +50,10 @@ export default function TimingTower() {
 
   return (
     <div className='absolute left-4 top-[76px] z-20 pointer-events-none select-none'>
-      <HudPanel
-        accent='#ffcc00'
-        clipPath={HUD_CLIP_LEFT}
-        className='w-[238px]'
-        contentClassName='py-1.5'
-        edge='left'
-      >
+      <Surface variant='card' className='relative w-[238px] overflow-hidden py-1.5'>
+        <AccentBar color='#ffcc00' />
         <div className='flex items-center justify-between border-b border-white/10 px-3 pb-1.5'>
-          <span className={HUD_LABEL_CLASS} style={{ color: '#ffcc00' }}>
-            Classification
-          </span>
+          <LabelTag style={{ color: '#ffcc00' }}>Classification</LabelTag>
           <span className='font-mono text-[10px] tabular-nums text-white/45'>
             {classification.length}
           </span>
@@ -84,12 +77,8 @@ export default function TimingTower() {
               >
                 {highlight && <div className='absolute left-0 top-0 h-full w-[2px] bg-[#ffcc00]' />}
                 <span
-                  className='flex h-5 w-5 shrink-0 items-center justify-center font-mono text-[11px] font-bold tabular-nums text-white'
-                  style={{
-                    background: color,
-                    color: '#0a0a0a',
-                    clipPath: 'polygon(2px 0, 100% 0, calc(100% - 2px) 100%, 0 100%)',
-                  }}
+                  className='flex h-5 w-5 shrink-0 items-center justify-center rounded-sm font-mono text-[11px] font-bold tabular-nums'
+                  style={{ background: color, color: '#0a0a0a' }}
                 >
                   {pos}
                 </span>
@@ -109,7 +98,7 @@ export default function TimingTower() {
             )
           })}
         </div>
-      </HudPanel>
+      </Surface>
     </div>
   )
 }
