@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react'
+import { LabelTag } from '../primitives'
 
 interface Props {
   title: string
@@ -7,8 +8,8 @@ interface Props {
 
 export function SectionShell({ title, children }: Props) {
   return (
-    <div className='mb-[15px]'>
-      <div className='text-[#888] text-[11px] uppercase mb-2'>{title}</div>
+    <div className='mb-4'>
+      <LabelTag className='block mb-2'>{title}</LabelTag>
       {children}
     </div>
   )

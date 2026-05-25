@@ -4,6 +4,7 @@ import { useEditorStore } from '../../../stores/useEditorStore'
 import { useCheckpointDragStore } from '../../../stores/useCheckpointDragStore'
 import { useTrackStore } from '../../../stores/useTrackStore'
 import { isLinearObject } from '../../../types/trackObjects'
+import { LabelTag, Surface } from '../primitives'
 import TrackValidationPanel from './TrackValidationPanel'
 import ObjectSection from './sections/ObjectSection'
 import CheckpointTypeSection from './sections/CheckpointTypeSection'
@@ -62,8 +63,14 @@ export default function CustomizationPanel() {
   const showTrackModeToggle = !!selectedObjectType && isLinearObject(selectedObjectType)
 
   return (
-    <div className='absolute left-5 top-20 bg-black/80 p-[15px] rounded-[10px] pointer-events-auto max-w-[220px]'>
-      <div className='text-white text-sm font-bold mb-3 border-b border-[#333] pb-2'>Track Editor</div>
+    <Surface
+      variant='card'
+      className='absolute left-5 top-20 p-4 pointer-events-auto w-[260px]'
+    >
+      <div className='flex items-center justify-between border-b border-white/8 pb-2 mb-3'>
+        <span className='text-white text-sm font-bold'>Track Editor</span>
+        <LabelTag>Editor</LabelTag>
+      </div>
       <ObjectSection />
       {selectedObjectType === 'checkpoint' && <CheckpointTypeSection />}
       {selectedObjectType === 'curb' && <CurbTypeSection />}
@@ -77,6 +84,6 @@ export default function CustomizationPanel() {
       <TrackActionsSection />
       <ControlsHelp />
       <StatsFooter />
-    </div>
+    </Surface>
   )
 }
