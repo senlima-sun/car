@@ -1,13 +1,11 @@
 import { useCarStore } from '../../../stores/useCarStore'
 import { useActiveAeroStore } from '../../../stores/useActiveAeroStore'
 import { useErsStore } from '../../../stores/useErsStore'
+import { AccentBar, Divider, LabelTag, Surface } from '../primitives'
 import {
   HUD_ACCENT,
   HUD_DISPLAY_DIGIT_CLASS,
-  HUD_LABEL_CLASS,
   HUD_NUMERIC_CLASS,
-  HudPanel,
-  HudVerticalDivider,
   RPM_LIGHT_COUNT,
   litLights as litLightsForRpm,
   rpmDigitAnimation,
@@ -66,7 +64,7 @@ function Stack({
     align === 'start' ? 'items-start' : align === 'end' ? 'items-end' : 'items-center'
   return (
     <div className={`flex flex-col gap-0.5 ${alignClass}`}>
-      <span className={HUD_LABEL_CLASS}>{label}</span>
+      <LabelTag>{label}</LabelTag>
       {children}
     </div>
   )
@@ -117,8 +115,9 @@ export default function RacePanel() {
         ))}
       </div>
 
-      <HudPanel accent={HUD_ACCENT.speed} contentClassName='flex items-stretch'>
-        <div className='flex items-center gap-3 px-3 py-1.5'>
+      <Surface variant='card' className='relative flex items-stretch'>
+        <AccentBar color={HUD_ACCENT.speed} />
+        <div className='flex items-center gap-3 px-3 py-1.5 pl-4'>
           <Stack label='Aero'>
             <span className={`${HUD_NUMERIC_CLASS} text-[13px]`} style={{ color: aero.color }}>
               {aero.label}
@@ -126,7 +125,7 @@ export default function RacePanel() {
           </Stack>
         </div>
 
-        <HudVerticalDivider size='lg' />
+        <Divider orientation='vertical' className='self-stretch' />
 
         <div className='flex items-center gap-3 px-3 py-1.5'>
           <Stack label='Gear'>
@@ -158,9 +157,7 @@ export default function RacePanel() {
               >
                 {displaySpeed.toString().padStart(3, ' ')}
               </span>
-              <span className='text-[9px] font-semibold uppercase tracking-[0.24em] text-white/45'>
-                km/h
-              </span>
+              <LabelTag>km/h</LabelTag>
             </div>
           </Stack>
 
@@ -183,14 +180,12 @@ export default function RacePanel() {
               >
                 {displayRpm.toString().padStart(5, ' ')}
               </span>
-              <span className='text-[9px] font-semibold uppercase tracking-[0.24em] text-white/45'>
-                rpm
-              </span>
+              <LabelTag>rpm</LabelTag>
             </div>
           </Stack>
         </div>
 
-        <HudVerticalDivider size='lg' />
+        <Divider orientation='vertical' className='self-stretch' />
 
         <div className='flex items-center gap-2 px-3 py-1.5'>
           <Stack label='ERS'>
@@ -229,7 +224,7 @@ export default function RacePanel() {
             </div>
           </Stack>
         </div>
-      </HudPanel>
+      </Surface>
     </div>
   )
 }
