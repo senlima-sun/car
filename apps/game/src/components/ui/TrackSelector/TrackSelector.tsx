@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTrackStore } from '@/stores/useTrackStore'
+import { Surface, surfacePill } from '@/components/ui/primitives'
 import { DeleteMode } from './modes/DeleteMode'
 import { InputMode } from './modes/InputMode'
 import { ListMode } from './modes/ListMode'
-import { styles } from './styles'
 
 type MenuMode = 'list' | 'new' | 'rename' | 'delete'
 
 export default function TrackSelector() {
   const [isOpen, setIsOpen] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
   const [menuMode, setMenuMode] = useState<MenuMode>('list')
   const [inputValue, setInputValue] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
@@ -103,25 +102,28 @@ export default function TrackSelector() {
   }
 
   return (
-    <div style={styles.container} ref={menuRef}>
+    <div className='relative z-[1000]' ref={menuRef}>
       <button
-        style={{
-          ...styles.dropdownButton,
-          ...(isHovered || isOpen ? styles.dropdownButtonHover : {}),
-        }}
+        type='button'
         onClick={handleToggle}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className={`${surfacePill} flex items-center gap-2 px-4 py-2 min-w-[180px] text-sm font-medium text-white hover:bg-[rgba(20,22,28,0.92)] transition pointer-events-auto`}
       >
-        <span style={styles.trackName}>
+        <span className='flex-1 text-left truncate'>
           {activeTrack ? activeTrack.name : 'No Track Selected'}
           {isDirty && ' *'}
         </span>
-        <span style={{ ...styles.arrow, ...(isOpen ? styles.arrowOpen : {}) }}>▼</span>
+        <span
+          className={`text-[10px] opacity-70 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        >
+          ▼
+        </span>
       </button>
 
       {isOpen && (
-        <div style={styles.menu}>
+        <Surface
+          variant='cardStrong'
+          className='absolute top-[calc(100%+4px)] left-0 min-w-[250px] max-h-[calc(100vh-120px)] overflow-y-auto overscroll-contain pointer-events-auto'
+        >
           {menuMode === 'list' && (
             <ListMode
               tracks={tracks}
@@ -173,7 +175,7 @@ export default function TrackSelector() {
               onCancel={handleCancel}
             />
           )}
-        </div>
+        </Surface>
       )}
     </div>
   )
