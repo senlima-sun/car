@@ -1,14 +1,18 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { STATUS } from '../../../constants/colors'
 
+/** @deprecated Phase 2 — migrate consumers to <Surface> + <AccentBar>. */
 export const HUD_CLIP_STANDARD =
   'polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px)'
+/** @deprecated Phase 2 — migrate consumers to <Surface> + <AccentBar>. */
 export const HUD_CLIP_LEFT = 'polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px)'
+/** @deprecated Phase 2 — migrate consumers to <Surface> + <AccentBar>. */
 export const HUD_CLIP_RIGHT = 'polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)'
 export const HUD_DIVIDER_CLASS =
   'w-px self-stretch bg-gradient-to-b from-transparent via-white/14 to-transparent'
 export const HUD_LABEL_CLASS = 'text-[8px] font-semibold uppercase tracking-[0.32em] text-white/45'
 export const HUD_MICRO_LABEL_CLASS = HUD_LABEL_CLASS
+/** @deprecated Phase 2 — migrate consumers to <Surface variant='card'>. */
 export const HUD_PANEL_CLASS =
   'relative overflow-hidden border border-white/10 backdrop-blur-md shadow-[0_18px_55px_rgba(0,0,0,0.52)]'
 
@@ -49,6 +53,7 @@ function joinClasses(...parts: Array<string | undefined>) {
   return parts.filter(Boolean).join(' ')
 }
 
+/** @deprecated Phase 2 — replace with <Surface variant='card'> + <AccentBar>. */
 export function HudPanel({
   children,
   accent = '#ffcc00',
@@ -116,6 +121,7 @@ type HudCellProps = {
   className?: string
 }
 
+/** @deprecated Phase 2 — replace with raw flex column + <LabelTag>. */
 export function HudCell({ label, align = 'start', children, className }: HudCellProps) {
   return (
     <div className={joinClasses('flex flex-col gap-1', HUD_CELL_ALIGN_CLASS[align], className)}>
@@ -135,6 +141,7 @@ type HudVerticalDividerProps = {
   size?: 'sm' | 'md' | 'lg'
 }
 
+/** @deprecated Phase 2 — replace with <Divider orientation='vertical'>. */
 export function HudVerticalDivider({ size = 'lg' }: HudVerticalDividerProps) {
   return <div className={joinClasses(HUD_DIVIDER_HEIGHT_CLASS[size], HUD_DIVIDER_CLASS)} />
 }
