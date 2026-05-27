@@ -9,40 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TrackPreviewRouteImport } from './routes/track-preview'
-import { Route as TrackEditorRouteImport } from './routes/track-editor'
 import { Route as TestModeRouteImport } from './routes/test-mode'
-import { Route as ShowroomRouteImport } from './routes/showroom'
-import { Route as AccountRouteImport } from './routes/account'
+import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TrackPreviewIndexRouteImport } from './routes/track-preview.index'
-import { Route as TrackPreviewPresetIdRouteImport } from './routes/track-preview.$presetId'
-import { Route as TrackEditorTrackIdRouteImport } from './routes/track-editor.$trackId'
-import { Route as RaceTrackIdRouteImport } from './routes/race.$trackId'
+import { Route as AuthedTrackPreviewRouteImport } from './routes/_authed/track-preview'
+import { Route as AuthedTrackEditorRouteImport } from './routes/_authed/track-editor'
+import { Route as AuthedShowroomRouteImport } from './routes/_authed/showroom'
+import { Route as AuthedAccountRouteImport } from './routes/_authed/account'
+import { Route as AuthedTrackPreviewIndexRouteImport } from './routes/_authed/track-preview.index'
+import { Route as AuthedTrackPreviewPresetIdRouteImport } from './routes/_authed/track-preview.$presetId'
+import { Route as AuthedTrackEditorTrackIdRouteImport } from './routes/_authed/track-editor.$trackId'
+import { Route as AuthedRaceTrackIdRouteImport } from './routes/_authed/race.$trackId'
 
-const TrackPreviewRoute = TrackPreviewRouteImport.update({
-  id: '/track-preview',
-  path: '/track-preview',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TrackEditorRoute = TrackEditorRouteImport.update({
-  id: '/track-editor',
-  path: '/track-editor',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TestModeRoute = TestModeRouteImport.update({
   id: '/test-mode',
   path: '/test-mode',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShowroomRoute = ShowroomRouteImport.update({
-  id: '/showroom',
-  path: '/showroom',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountRoute = AccountRouteImport.update({
-  id: '/account',
-  path: '/account',
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -50,70 +35,93 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TrackPreviewIndexRoute = TrackPreviewIndexRouteImport.update({
+const AuthedTrackPreviewRoute = AuthedTrackPreviewRouteImport.update({
+  id: '/track-preview',
+  path: '/track-preview',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTrackEditorRoute = AuthedTrackEditorRouteImport.update({
+  id: '/track-editor',
+  path: '/track-editor',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedShowroomRoute = AuthedShowroomRouteImport.update({
+  id: '/showroom',
+  path: '/showroom',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAccountRoute = AuthedAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedTrackPreviewIndexRoute = AuthedTrackPreviewIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => TrackPreviewRoute,
+  getParentRoute: () => AuthedTrackPreviewRoute,
 } as any)
-const TrackPreviewPresetIdRoute = TrackPreviewPresetIdRouteImport.update({
-  id: '/$presetId',
-  path: '/$presetId',
-  getParentRoute: () => TrackPreviewRoute,
-} as any)
-const TrackEditorTrackIdRoute = TrackEditorTrackIdRouteImport.update({
-  id: '/$trackId',
-  path: '/$trackId',
-  getParentRoute: () => TrackEditorRoute,
-} as any)
-const RaceTrackIdRoute = RaceTrackIdRouteImport.update({
+const AuthedTrackPreviewPresetIdRoute =
+  AuthedTrackPreviewPresetIdRouteImport.update({
+    id: '/$presetId',
+    path: '/$presetId',
+    getParentRoute: () => AuthedTrackPreviewRoute,
+  } as any)
+const AuthedTrackEditorTrackIdRoute =
+  AuthedTrackEditorTrackIdRouteImport.update({
+    id: '/$trackId',
+    path: '/$trackId',
+    getParentRoute: () => AuthedTrackEditorRoute,
+  } as any)
+const AuthedRaceTrackIdRoute = AuthedRaceTrackIdRouteImport.update({
   id: '/race/$trackId',
   path: '/race/$trackId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthedRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
-  '/showroom': typeof ShowroomRoute
   '/test-mode': typeof TestModeRoute
-  '/track-editor': typeof TrackEditorRouteWithChildren
-  '/track-preview': typeof TrackPreviewRouteWithChildren
-  '/race/$trackId': typeof RaceTrackIdRoute
-  '/track-editor/$trackId': typeof TrackEditorTrackIdRoute
-  '/track-preview/$presetId': typeof TrackPreviewPresetIdRoute
-  '/track-preview/': typeof TrackPreviewIndexRoute
+  '/account': typeof AuthedAccountRoute
+  '/showroom': typeof AuthedShowroomRoute
+  '/track-editor': typeof AuthedTrackEditorRouteWithChildren
+  '/track-preview': typeof AuthedTrackPreviewRouteWithChildren
+  '/race/$trackId': typeof AuthedRaceTrackIdRoute
+  '/track-editor/$trackId': typeof AuthedTrackEditorTrackIdRoute
+  '/track-preview/$presetId': typeof AuthedTrackPreviewPresetIdRoute
+  '/track-preview/': typeof AuthedTrackPreviewIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
-  '/showroom': typeof ShowroomRoute
   '/test-mode': typeof TestModeRoute
-  '/track-editor': typeof TrackEditorRouteWithChildren
-  '/race/$trackId': typeof RaceTrackIdRoute
-  '/track-editor/$trackId': typeof TrackEditorTrackIdRoute
-  '/track-preview/$presetId': typeof TrackPreviewPresetIdRoute
-  '/track-preview': typeof TrackPreviewIndexRoute
+  '/account': typeof AuthedAccountRoute
+  '/showroom': typeof AuthedShowroomRoute
+  '/track-editor': typeof AuthedTrackEditorRouteWithChildren
+  '/race/$trackId': typeof AuthedRaceTrackIdRoute
+  '/track-editor/$trackId': typeof AuthedTrackEditorTrackIdRoute
+  '/track-preview/$presetId': typeof AuthedTrackPreviewPresetIdRoute
+  '/track-preview': typeof AuthedTrackPreviewIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
-  '/showroom': typeof ShowroomRoute
+  '/_authed': typeof AuthedRouteWithChildren
   '/test-mode': typeof TestModeRoute
-  '/track-editor': typeof TrackEditorRouteWithChildren
-  '/track-preview': typeof TrackPreviewRouteWithChildren
-  '/race/$trackId': typeof RaceTrackIdRoute
-  '/track-editor/$trackId': typeof TrackEditorTrackIdRoute
-  '/track-preview/$presetId': typeof TrackPreviewPresetIdRoute
-  '/track-preview/': typeof TrackPreviewIndexRoute
+  '/_authed/account': typeof AuthedAccountRoute
+  '/_authed/showroom': typeof AuthedShowroomRoute
+  '/_authed/track-editor': typeof AuthedTrackEditorRouteWithChildren
+  '/_authed/track-preview': typeof AuthedTrackPreviewRouteWithChildren
+  '/_authed/race/$trackId': typeof AuthedRaceTrackIdRoute
+  '/_authed/track-editor/$trackId': typeof AuthedTrackEditorTrackIdRoute
+  '/_authed/track-preview/$presetId': typeof AuthedTrackPreviewPresetIdRoute
+  '/_authed/track-preview/': typeof AuthedTrackPreviewIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/test-mode'
     | '/account'
     | '/showroom'
-    | '/test-mode'
     | '/track-editor'
     | '/track-preview'
     | '/race/$trackId'
@@ -123,9 +131,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/test-mode'
     | '/account'
     | '/showroom'
-    | '/test-mode'
     | '/track-editor'
     | '/race/$trackId'
     | '/track-editor/$trackId'
@@ -134,43 +142,26 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/account'
-    | '/showroom'
+    | '/_authed'
     | '/test-mode'
-    | '/track-editor'
-    | '/track-preview'
-    | '/race/$trackId'
-    | '/track-editor/$trackId'
-    | '/track-preview/$presetId'
-    | '/track-preview/'
+    | '/_authed/account'
+    | '/_authed/showroom'
+    | '/_authed/track-editor'
+    | '/_authed/track-preview'
+    | '/_authed/race/$trackId'
+    | '/_authed/track-editor/$trackId'
+    | '/_authed/track-preview/$presetId'
+    | '/_authed/track-preview/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AccountRoute: typeof AccountRoute
-  ShowroomRoute: typeof ShowroomRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
   TestModeRoute: typeof TestModeRoute
-  TrackEditorRoute: typeof TrackEditorRouteWithChildren
-  TrackPreviewRoute: typeof TrackPreviewRouteWithChildren
-  RaceTrackIdRoute: typeof RaceTrackIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/track-preview': {
-      id: '/track-preview'
-      path: '/track-preview'
-      fullPath: '/track-preview'
-      preLoaderRoute: typeof TrackPreviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/track-editor': {
-      id: '/track-editor'
-      path: '/track-editor'
-      fullPath: '/track-editor'
-      preLoaderRoute: typeof TrackEditorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/test-mode': {
       id: '/test-mode'
       path: '/test-mode'
@@ -178,18 +169,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TestModeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/showroom': {
-      id: '/showroom'
-      path: '/showroom'
-      fullPath: '/showroom'
-      preLoaderRoute: typeof ShowroomRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account': {
-      id: '/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AccountRouteImport
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -199,71 +183,112 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/track-preview/': {
-      id: '/track-preview/'
+    '/_authed/track-preview': {
+      id: '/_authed/track-preview'
+      path: '/track-preview'
+      fullPath: '/track-preview'
+      preLoaderRoute: typeof AuthedTrackPreviewRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/track-editor': {
+      id: '/_authed/track-editor'
+      path: '/track-editor'
+      fullPath: '/track-editor'
+      preLoaderRoute: typeof AuthedTrackEditorRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/showroom': {
+      id: '/_authed/showroom'
+      path: '/showroom'
+      fullPath: '/showroom'
+      preLoaderRoute: typeof AuthedShowroomRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/account': {
+      id: '/_authed/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AuthedAccountRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/track-preview/': {
+      id: '/_authed/track-preview/'
       path: '/'
       fullPath: '/track-preview/'
-      preLoaderRoute: typeof TrackPreviewIndexRouteImport
-      parentRoute: typeof TrackPreviewRoute
+      preLoaderRoute: typeof AuthedTrackPreviewIndexRouteImport
+      parentRoute: typeof AuthedTrackPreviewRoute
     }
-    '/track-preview/$presetId': {
-      id: '/track-preview/$presetId'
+    '/_authed/track-preview/$presetId': {
+      id: '/_authed/track-preview/$presetId'
       path: '/$presetId'
       fullPath: '/track-preview/$presetId'
-      preLoaderRoute: typeof TrackPreviewPresetIdRouteImport
-      parentRoute: typeof TrackPreviewRoute
+      preLoaderRoute: typeof AuthedTrackPreviewPresetIdRouteImport
+      parentRoute: typeof AuthedTrackPreviewRoute
     }
-    '/track-editor/$trackId': {
-      id: '/track-editor/$trackId'
+    '/_authed/track-editor/$trackId': {
+      id: '/_authed/track-editor/$trackId'
       path: '/$trackId'
       fullPath: '/track-editor/$trackId'
-      preLoaderRoute: typeof TrackEditorTrackIdRouteImport
-      parentRoute: typeof TrackEditorRoute
+      preLoaderRoute: typeof AuthedTrackEditorTrackIdRouteImport
+      parentRoute: typeof AuthedTrackEditorRoute
     }
-    '/race/$trackId': {
-      id: '/race/$trackId'
+    '/_authed/race/$trackId': {
+      id: '/_authed/race/$trackId'
       path: '/race/$trackId'
       fullPath: '/race/$trackId'
-      preLoaderRoute: typeof RaceTrackIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthedRaceTrackIdRouteImport
+      parentRoute: typeof AuthedRoute
     }
   }
 }
 
-interface TrackEditorRouteChildren {
-  TrackEditorTrackIdRoute: typeof TrackEditorTrackIdRoute
+interface AuthedTrackEditorRouteChildren {
+  AuthedTrackEditorTrackIdRoute: typeof AuthedTrackEditorTrackIdRoute
 }
 
-const TrackEditorRouteChildren: TrackEditorRouteChildren = {
-  TrackEditorTrackIdRoute: TrackEditorTrackIdRoute,
+const AuthedTrackEditorRouteChildren: AuthedTrackEditorRouteChildren = {
+  AuthedTrackEditorTrackIdRoute: AuthedTrackEditorTrackIdRoute,
 }
 
-const TrackEditorRouteWithChildren = TrackEditorRoute._addFileChildren(
-  TrackEditorRouteChildren,
-)
+const AuthedTrackEditorRouteWithChildren =
+  AuthedTrackEditorRoute._addFileChildren(AuthedTrackEditorRouteChildren)
 
-interface TrackPreviewRouteChildren {
-  TrackPreviewPresetIdRoute: typeof TrackPreviewPresetIdRoute
-  TrackPreviewIndexRoute: typeof TrackPreviewIndexRoute
+interface AuthedTrackPreviewRouteChildren {
+  AuthedTrackPreviewPresetIdRoute: typeof AuthedTrackPreviewPresetIdRoute
+  AuthedTrackPreviewIndexRoute: typeof AuthedTrackPreviewIndexRoute
 }
 
-const TrackPreviewRouteChildren: TrackPreviewRouteChildren = {
-  TrackPreviewPresetIdRoute: TrackPreviewPresetIdRoute,
-  TrackPreviewIndexRoute: TrackPreviewIndexRoute,
+const AuthedTrackPreviewRouteChildren: AuthedTrackPreviewRouteChildren = {
+  AuthedTrackPreviewPresetIdRoute: AuthedTrackPreviewPresetIdRoute,
+  AuthedTrackPreviewIndexRoute: AuthedTrackPreviewIndexRoute,
 }
 
-const TrackPreviewRouteWithChildren = TrackPreviewRoute._addFileChildren(
-  TrackPreviewRouteChildren,
-)
+const AuthedTrackPreviewRouteWithChildren =
+  AuthedTrackPreviewRoute._addFileChildren(AuthedTrackPreviewRouteChildren)
+
+interface AuthedRouteChildren {
+  AuthedAccountRoute: typeof AuthedAccountRoute
+  AuthedShowroomRoute: typeof AuthedShowroomRoute
+  AuthedTrackEditorRoute: typeof AuthedTrackEditorRouteWithChildren
+  AuthedTrackPreviewRoute: typeof AuthedTrackPreviewRouteWithChildren
+  AuthedRaceTrackIdRoute: typeof AuthedRaceTrackIdRoute
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedAccountRoute: AuthedAccountRoute,
+  AuthedShowroomRoute: AuthedShowroomRoute,
+  AuthedTrackEditorRoute: AuthedTrackEditorRouteWithChildren,
+  AuthedTrackPreviewRoute: AuthedTrackPreviewRouteWithChildren,
+  AuthedRaceTrackIdRoute: AuthedRaceTrackIdRoute,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AccountRoute: AccountRoute,
-  ShowroomRoute: ShowroomRoute,
+  AuthedRoute: AuthedRouteWithChildren,
   TestModeRoute: TestModeRoute,
-  TrackEditorRoute: TrackEditorRouteWithChildren,
-  TrackPreviewRoute: TrackPreviewRouteWithChildren,
-  RaceTrackIdRoute: RaceTrackIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

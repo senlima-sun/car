@@ -164,7 +164,7 @@ function AccountRoute() {
   )
 }
 
-export const Route = createFileRoute('/account')({
+export const Route = createFileRoute('/_authed/account')({
   component: AccountRoute,
   loader: () => fetchMe(),
 })
