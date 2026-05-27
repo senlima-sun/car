@@ -1,7 +1,16 @@
+import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import type { CustomerStateSubscription } from '@polar-sh/sdk/models/components/customerstatesubscription.js'
 import { type LogicalTier, tierFromProductId } from '../billing/products.ts'
+import type { Db } from '../db/client.ts'
+import { user } from '../db/schema/index.ts'
 import type { HonoEnv } from '../types.ts'
+
+type UserRole = 'user' | 'admin'
+
+function auditLog(event: string, fields: Record<string, unknown>) {
+  console.log(JSON.stringify({ event, timestamp: new Date().toISOString(), ...fields }))
+}
 
 interface SubscriptionShape {
   tier: LogicalTier | null
@@ -62,6 +71,19 @@ export async function resolveSubscription(c: {
   }
 }
 
+async function resolveRole(c: { var: { db: Db } }, userId: string) {
+  const row = await c.var.db
+    .select({ role: user.role })
+    .from(user)
+    .where(eq(user.id, userId))
+    .get()
+  if (!row || !row.role) {
+    auditLog('entitlement.role.fallback', { userId })
+    return 'user' satisfies UserRole
+  }
+  return row.role
+}
+
 export const meRoute = new Hono<HonoEnv>().get('/api/me', async c => {
   const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers })
   if (!session) return c.json({ error: 'unauthenticated' }, 401)
@@ -71,6 +93,8 @@ export const meRoute = new Hono<HonoEnv>().get('/api/me', async c => {
     return EMPTY_SUBSCRIPTION
   })
 
+  const role = await resolveRole(c, session.user.id)
+
   return c.json({
     user: {
       id: session.user.id,
@@ -78,5 +102,6 @@ export const meRoute = new Hono<HonoEnv>().get('/api/me', async c => {
       name: session.user.name,
     },
     subscription,
+    role,
   })
 })
