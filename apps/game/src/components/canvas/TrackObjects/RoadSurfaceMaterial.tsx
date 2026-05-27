@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react'
 import * as THREE from 'three'
 import { useTexture } from '@react-three/drei'
+import { assetUrl } from '@/utils/assetUrl'
 import {
   ASPHALT_FRAGMENT_INJECT,
   ASPHALT_VERTEX_INJECT,
@@ -66,11 +67,11 @@ export default function RoadSurfaceMaterial({
     asphaltNormalMap,
     asphaltRoughnessMap,
   ] = useTexture([
-    '/textures/asphalt_base_color.png',
-    '/textures/asphalt_worn_color.png',
-    '/textures/asphalt_pit_color.png',
-    '/textures/asphalt_base_normal.png',
-    '/textures/asphalt_base_roughness.png',
+    assetUrl('/textures/asphalt_base_color.webp'),
+    assetUrl('/textures/asphalt_worn_color.webp'),
+    assetUrl('/textures/asphalt_pit_color.webp'),
+    assetUrl('/textures/asphalt_base_normal.webp'),
+    assetUrl('/textures/asphalt_base_roughness.webp'),
   ]) as THREE.Texture[]
 
   const uniformsRef = useRef(createAsphaltUniforms())

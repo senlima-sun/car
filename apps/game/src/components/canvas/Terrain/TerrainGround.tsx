@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { RigidBody, CuboidCollider, HeightfieldCollider } from '@react-three/rapier'
 import { useTexture } from '@react-three/drei'
 import { GROUND_COLLISION_GROUPS } from '@/constants/dimensions'
+import { assetUrl } from '@/utils/assetUrl'
 import {
   GRASS_VERTEX_PREAMBLE,
   GRASS_VERTEX_DISPLACEMENT,
@@ -109,11 +110,11 @@ function applyGrassShader(
 
 function useGrassTextures(): GrassTextureSet {
   const textures = useTexture([
-    '/textures/grass_base_color.png',
-    '/textures/grass_dry_color.png',
-    '/textures/grass_worn_color.png',
-    '/textures/grass_base_normal.png',
-    '/textures/grass_base_roughness.png',
+    assetUrl('/textures/grass_base_color.webp'),
+    assetUrl('/textures/grass_dry_color.webp'),
+    assetUrl('/textures/grass_worn_color.webp'),
+    assetUrl('/textures/grass_base_normal.webp'),
+    assetUrl('/textures/grass_base_roughness.webp'),
   ]) as THREE.Texture[]
 
   return useMemo(() => {

@@ -1,7 +1,7 @@
 import { MutableRefObject, useMemo, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { useGLTF, useTexture } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { SuspensionLinkageGroup } from './SuspensionLinkage'
 import type { SuspensionOutput } from '../hooks/useRaycastSuspension'
 import { useCarPaintMaterial } from '../hooks/useCarPaintMaterial'
@@ -10,9 +10,12 @@ import { WHEEL_RADIUS } from '@/constants/dimensions'
 import { TIRE_COMPOUND } from '@/constants/colors'
 import { useCarPaintStore, getPartIdForMesh } from '@/stores/useCarPaintStore'
 import { isPreviewStatus, useGameStore } from '@/stores/useGameStore'
+import { getSwDisplay, applySwDisplayAnisotropy } from '@/stores/useSwDisplayStore'
+import { assetUrl } from '@/utils/assetUrl'
+import { useSteeringWheelDisplay } from './SteeringWheelDisplay'
 
-const MODEL_PATH = '/models/f1_2026_audi_normalized.glb'
-const LIVERY_BASE_COLOR_PATH = '/textures/Livery_baseColor.png'
+const MODEL_PATH = assetUrl('/models/f1_2026_audi_normalized.glb')
+const LIVERY_BASE_COLOR_PATH = assetUrl('/textures/Livery_baseColor.png')
 
 const WHEEL_NAMES = [
   'WheelAssembly_FL',
@@ -53,6 +56,8 @@ export interface SteeringWheelRefs {
 const FW_FLAP_NAMES = { middle: 'FrontWing_Flap_2', top: 'FrontWing_Flap_3' } as const
 const BW_FLAP_NAMES = { middle: 'Car_Livery_BW-M', last: 'Car_Livery_BW-L' } as const
 const STEERING_WHEEL_ASSEMBLY_NAME = 'SteeringWheelAssembly'
+const STEERING_WHEEL_LCD_NAME = 'SteeringWheel_LCD'
+const STEERING_WHEEL_LCD_UV_SCALE = 1 / 0.0625152662396431
 
 interface BodyFrameProps {
   isRaining: boolean
@@ -78,6 +83,12 @@ export function BodyFrame({
   const currentCompound = useTireStore(s => s.currentCompound)
   const liveryTexture = useTexture(LIVERY_BASE_COLOR_PATH)
   const { applyCarPaint, updateUniforms } = useCarPaintMaterial()
+  const gl = useThree(s => s.gl)
+  useSteeringWheelDisplay()
+
+  useEffect(() => {
+    applySwDisplayAnisotropy(gl.capabilities.getMaxAnisotropy())
+  }, [gl])
 
   const bodyScene = useMemo(() => {
     const cloned = scene.clone(true)
@@ -96,6 +107,7 @@ export function BodyFrame({
       if (child instanceof THREE.Mesh) {
         child.castShadow = true
         child.receiveShadow = true
+        if (child.name === STEERING_WHEEL_LCD_NAME) return
         const mat = child.material
         const partId = getPartIdForMesh(child.name)
         if (wheelMeshSet.has(child.name) && mat instanceof THREE.MeshStandardMaterial) {
@@ -112,6 +124,19 @@ export function BodyFrame({
         }
       }
     })
+
+    const lcdMesh = cloned.getObjectByName(STEERING_WHEEL_LCD_NAME)
+    if (lcdMesh instanceof THREE.Mesh) {
+      const { texture } = getSwDisplay()
+      texture.wrapS = THREE.RepeatWrapping
+      texture.wrapT = THREE.RepeatWrapping
+      texture.repeat.set(STEERING_WHEEL_LCD_UV_SCALE, 1)
+      lcdMesh.material = new THREE.MeshBasicMaterial({
+        map: texture,
+        toneMapped: false,
+      })
+    }
+
     console.log(`[BodyFrame] Applied car paint shader to ${replaced} meshes`)
     return cloned
   }, [scene, liveryTexture, applyCarPaint])

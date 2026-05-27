@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Environment, useEnvironment } from '@react-three/drei'
 import { usePerformanceStore } from '@/stores/usePerformanceStore'
+import { assetUrl } from '@/utils/assetUrl'
 
-const HDRI_PATH = '/textures/hdri/'
-const IBL_FILE = 'ibl_clear_2K.exr'
+const HDRI_PATH = assetUrl('/textures/hdri/')
+const IBL_FILE = 'ibl_clear_1K.hdr'
 
 useEnvironment.preload({ files: IBL_FILE, path: HDRI_PATH })
 
