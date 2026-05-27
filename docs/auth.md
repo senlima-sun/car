@@ -39,7 +39,8 @@ cp apps/api/.dev.vars.example apps/api/.dev.vars
 | `FRONTEND_ORIGINS`     | Hand-picked               | Comma-separated CORS allowlist (e.g. `https://example.com,https://staging.example.com`).                                                                                       |
 | `POLAR_ACCESS_TOKEN`   | Polar org settings        | Organization Access Token.                                                                                                                                                     |
 | `POLAR_WEBHOOK_SECRET` | Polar webhook settings    | HMAC secret. Plugin verifies signatures with constant-time compare.                                                                                                            |
-| `POLAR_PRODUCT_ID_PRO` | Polar product page        | Product id for the personal `pro` tier.                                                                                                                                        |
+| `POLAR_PRODUCT_ID_PRO_MONTHLY` | Polar product page | Product id for the monthly Pro SKU (`pro-monthly`).                                                                                                                            |
+| `POLAR_PRODUCT_ID_PRO_ANNUAL`  | Polar product page | Product id for the annual Pro SKU (`pro-annual`).                                                                                                                              |
 | `BILLING_SUCCESS_URL`  | Hand-picked               | Polar redirects here after checkout success.                                                                                                                                   |
 
 Production: `pnpm --filter @car/api exec wrangler secret put <NAME>`.
