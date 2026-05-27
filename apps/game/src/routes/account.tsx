@@ -128,7 +128,7 @@ function AccountRoute() {
               <button
                 type='button'
                 onClick={() =>
-                  runBilling(() => postBilling('/api/billing/checkout', { tier: 'pro' }))
+                  runBilling(() => postBilling('/api/billing/checkout', { slug: 'pro-monthly' }))
                 }
                 disabled={submitting}
                 className='rounded-sm border border-red-300/40 bg-red-500/15 px-3 py-2 font-mono text-xs uppercase tracking-[0.3em] text-red-100 hover:border-red-300/80 disabled:opacity-50'

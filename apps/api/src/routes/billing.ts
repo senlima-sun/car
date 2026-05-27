@@ -1,22 +1,18 @@
 import { Hono } from 'hono'
-import { TIERS, type TierSlug } from '../billing/products.ts'
+import { type BillingSlug, isBillingSlug } from '../billing/products.ts'
 import type { HonoEnv } from '../types.ts'
 
 interface CheckoutBody {
-  tier: TierSlug
+  slug: BillingSlug
 }
 
-function isTier(value: unknown): value is TierSlug {
-  return typeof value === 'string' && (TIERS as readonly string[]).includes(value)
-}
-
-// Reject any body other than {tier}: clients must NOT smuggle
+// Reject any body other than {slug}: clients must NOT smuggle
 // successUrl/customerId/etc. — those are server-controlled.
 function isCheckoutBody(value: unknown): value is CheckoutBody {
   if (!value || typeof value !== 'object') return false
   const keys = Object.keys(value)
-  if (keys.length !== 1 || keys[0] !== 'tier') return false
-  return isTier((value as { tier: unknown }).tier)
+  if (keys.length !== 1 || keys[0] !== 'slug') return false
+  return isBillingSlug((value as { slug: unknown }).slug)
 }
 
 export const billingRoute = new Hono<HonoEnv>()
@@ -37,7 +33,7 @@ export const billingRoute = new Hono<HonoEnv>()
       new Request(url, {
         method: 'POST',
         headers: c.req.raw.headers,
-        body: JSON.stringify({ slug: body.tier, successUrl: c.env.BILLING_SUCCESS_URL }),
+        body: JSON.stringify({ slug: body.slug, successUrl: c.env.BILLING_SUCCESS_URL }),
       }),
     )
     const data = (await checkoutRes.json()) as { url?: string }

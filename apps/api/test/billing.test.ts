@@ -30,25 +30,56 @@ describe('billing alias routes', () => {
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tier: 'pro' }),
+        body: JSON.stringify({ slug: 'pro-monthly' }),
       },
       env,
     )
     expect(res.status).toBe(401)
   })
 
-  test('POST /api/billing/checkout rejects unknown tier (400)', async () => {
+  test('POST /api/billing/checkout rejects unknown slug (400)', async () => {
     const { app, env, cookie } = await makeAuthedApp()
     const res = await app.request(
       '/api/billing/checkout',
       {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
-        body: JSON.stringify({ tier: 'enterprise' }),
+        body: JSON.stringify({ slug: 'enterprise' }),
       },
       env,
     )
     expect(res.status).toBe(400)
+  })
+
+  test('POST /api/billing/checkout rejects the legacy tier body (400)', async () => {
+    const { app, env, cookie } = await makeAuthedApp()
+    const res = await app.request(
+      '/api/billing/checkout',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ tier: 'pro' }),
+      },
+      env,
+    )
+    expect(res.status).toBe(400)
+  })
+
+  test('POST /api/billing/checkout accepts each registered slug (passes validation)', async () => {
+    const { app, env, cookie } = await makeAuthedApp()
+    for (const slug of ['pro-monthly', 'pro-annual'] as const) {
+      const res = await app.request(
+        '/api/billing/checkout',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', cookie },
+          body: JSON.stringify({ slug }),
+        },
+        env,
+      )
+      expect(res.status).not.toBe(400)
+      expect(res.status).not.toBe(401)
+    }
   })
 
   test('POST /api/billing/checkout rejects extra body keys (400)', async () => {
@@ -58,7 +89,7 @@ describe('billing alias routes', () => {
       {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
-        body: JSON.stringify({ tier: 'pro', successUrl: 'http://evil.example/' }),
+        body: JSON.stringify({ slug: 'pro-monthly', successUrl: 'http://evil.example/' }),
       },
       env,
     )
