@@ -1,7 +1,7 @@
 import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { checkout, polar, portal, webhooks } from '@polar-sh/better-auth'
 import { Polar } from '@polar-sh/sdk'
-import { getProducts, TIERS } from '../billing/products.ts'
+import { BILLING_PRODUCTS, getProducts } from '../billing/products.ts'
 import type { Bindings } from '../types.ts'
 import { parseOrigins } from './origins.ts'
 
@@ -11,7 +11,10 @@ function auditLog(event: string, fields: Record<string, unknown>) {
 
 function buildPolarPlugin(env: Bindings) {
   const products = getProducts(env)
-  const productList = TIERS.map(tier => ({ productId: products[tier].polarProductId, slug: tier }))
+  const productList = BILLING_PRODUCTS.map(product => ({
+    productId: products[product.slug].polarProductId,
+    slug: product.slug,
+  }))
   const polarClient = new Polar({ accessToken: env.POLAR_ACCESS_TOKEN })
   return polar({
     client: polarClient,
@@ -25,6 +28,8 @@ function buildPolarPlugin(env: Bindings) {
         authenticatedUsersOnly: true,
       }),
       portal({ returnUrl: env.BILLING_SUCCESS_URL }),
+      // POLAR_WEBHOOK_SECRET=placeholder is acceptable for local dev: webhooks need a
+      // public URL, so registration is deferred until the worker deploys to Cloudflare.
       webhooks({ secret: env.POLAR_WEBHOOK_SECRET }),
     ],
   })
