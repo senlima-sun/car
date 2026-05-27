@@ -3,7 +3,16 @@ use crate::utils::{Quat, Vec3};
 use super::Polyline;
 
 pub const DEFAULT_WINDOW: usize = 20;
-pub const DEFAULT_ENTER_THRESHOLD_M: f32 = 0.0;
+/// Additional outward buffer past `half_width` before a tire's inner
+/// edge counts as off. With per-wheel tire half-width already absorbed
+/// into the comparison (`inner_edge = wheel_center − tire_half_width`),
+/// this is just a small numerical safety margin to absorb the
+/// difference between the physics polyline (straight segments between
+/// ribbonPoints) and the visual ribbon mesh (which may interpolate
+/// through bezier curves). The FIA rule is "all four tires fully past
+/// the white line"; 5 cm of slack keeps that intent without rejecting
+/// borderline-on-line frames as off-track.
+pub const DEFAULT_ENTER_THRESHOLD_M: f32 = 0.05;
 pub const DEFAULT_EXIT_THRESHOLD_M: f32 = 0.3;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -61,6 +70,10 @@ pub struct OffTrackResult {
     pub is_off_track: bool,
     pub max_lateral_distance_m: f32,
     pub arc_cursor: usize,
+    /// Per-wheel lateral distance to the centerline [FL, FR, RL, RR].
+    /// Surfaced so debug tooling (e.g. track-limit snapshot) can show
+    /// which wheels actually crossed the threshold.
+    pub wheel_lateral_distances_m: [f32; 4],
 }
 
 #[inline]
@@ -304,6 +317,8 @@ pub fn check_off_track(
     wheelbase: f32,
     track_width_front: f32,
     track_width_rear: f32,
+    tire_half_width_front: f32,
+    tire_half_width_rear: f32,
     prev_state: OffTrackState,
 ) -> OffTrackResult {
     let segments = segment_count(polyline);
@@ -312,6 +327,7 @@ pub fn check_off_track(
             is_off_track: prev_state.is_off_track,
             max_lateral_distance_m: 0.0,
             arc_cursor: prev_state.arc_cursor,
+            wheel_lateral_distances_m: [0.0; 4],
         };
     }
 
@@ -327,16 +343,37 @@ pub fn check_off_track(
         track_width_rear,
     );
 
-    let mut min_lat = f32::INFINITY;
-    let mut max_lat = 0.0_f32;
-    for w in wheels.iter() {
+    // For each wheel, compute the *inner-edge* distance: how far the
+    // inside face of the tire is from the centerline. That's
+    // `wheel_center_lateral_distance − tire_half_width`. If this is
+    // less than `half_width`, *some* part of the tire is still on the
+    // road. Off-track = all four tires' inner edges past `half_width`
+    // (the white-line position).
+    //
+    // FL/FR get the front tire's half-width; RL/RR the rear's.
+    let tire_half_widths = [
+        tire_half_width_front,
+        tire_half_width_front,
+        tire_half_width_rear,
+        tire_half_width_rear,
+    ];
+    let mut min_inner = f32::INFINITY;
+    let mut max_inner = 0.0_f32;
+    let mut wheel_lateral_distances_m = [0.0_f32; 4];
+    for (idx, w) in wheels.iter().enumerate() {
         let r =
             nearest_centerline_windowed(polyline, w[0], w[1], prev_state.arc_cursor, DEFAULT_WINDOW);
-        if r.lateral_distance < min_lat {
-            min_lat = r.lateral_distance;
+        // Surface the raw wheel-center distance for snapshot tooling.
+        wheel_lateral_distances_m[idx] = r.lateral_distance;
+        // Inner edge = nearest point of the tire to the centerline.
+        // Negative when the wheel center is inside the centerline
+        // (which makes the inner edge well inside the road).
+        let inner_edge = r.lateral_distance - tire_half_widths[idx];
+        if inner_edge < min_inner {
+            min_inner = inner_edge;
         }
-        if r.lateral_distance > max_lat {
-            max_lat = r.lateral_distance;
+        if inner_edge > max_inner {
+            max_inner = inner_edge;
         }
     }
 
@@ -345,14 +382,19 @@ pub fn check_off_track(
     let new_cursor = center.nearest_index;
 
     let is_off_track = if prev_state.is_off_track {
-        max_lat >= half_width - exit_threshold_m
+        // Exit hysteresis: stay off-track until at least one tire's
+        // inner edge is back inside `half_width − exit_threshold`.
+        max_inner >= half_width - exit_threshold_m
     } else {
-        min_lat > half_width + enter_threshold_m
+        // Enter: all four tires have their inner edge past the white
+        // line (`min_inner` is the *closest* inner edge to centerline).
+        min_inner > half_width + enter_threshold_m
     };
 
     OffTrackResult {
         is_off_track,
-        max_lateral_distance_m: max_lat,
+        max_lateral_distance_m: max_inner,
         arc_cursor: new_cursor,
+        wheel_lateral_distances_m,
     }
 }
