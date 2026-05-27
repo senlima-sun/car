@@ -8,7 +8,6 @@ import { Surface } from '../primitives'
 interface DraggablePanelProps {
   id: DevPanelId
   title: string
-  hotkey?: string
   children: ReactNode
   defaultSize?: Size
 }
@@ -16,7 +15,6 @@ interface DraggablePanelProps {
 export default function DraggablePanel({
   id,
   title,
-  hotkey,
   children,
   defaultSize,
 }: DraggablePanelProps) {
@@ -80,14 +78,9 @@ export default function DraggablePanel({
           {...handleProps}
           className='flex items-center justify-between gap-2 border-b border-white/10 bg-white/[0.04] px-3 py-1.5 cursor-grab active:cursor-grabbing'
         >
-          <div className='flex items-baseline gap-2'>
-            <span className='font-sans text-[10px] font-bold uppercase tracking-[0.32em] text-white/85'>
-              {title}
-            </span>
-            {hotkey && (
-              <span className='font-mono text-[9px] text-white/35'>{hotkey}</span>
-            )}
-          </div>
+          <span className='font-sans text-[10px] font-bold uppercase tracking-[0.32em] text-white/85'>
+            {title}
+          </span>
           <button
             type='button'
             onClick={() => closePanel(id)}

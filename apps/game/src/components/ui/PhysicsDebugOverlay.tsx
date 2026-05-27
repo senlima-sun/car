@@ -13,7 +13,7 @@ export default function PhysicsDebugOverlay() {
   const netAccel = totalForceY / 600 - 9.81
 
   return (
-    <DraggablePanel id='physics-debug' title='Physics Debug' hotkey='F9'>
+    <DraggablePanel id='physics-debug' title='Physics Debug'>
       <div style={styles.body}>
         <div style={styles.section}>
           <Row label='pos.y' value={posY.toFixed(3)} />

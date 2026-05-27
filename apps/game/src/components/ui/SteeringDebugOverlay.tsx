@@ -19,7 +19,7 @@ export default function SteeringDebugOverlay() {
   const pacejkaPeakDeg = 8
 
   return (
-    <DraggablePanel id='steering-debug' title='Steering Debug' hotkey='F6'>
+    <DraggablePanel id='steering-debug' title='Steering Debug'>
       <div style={styles.body}>
         <div style={styles.section}>
           <div style={styles.subheader}>INPUT → ANGLE</div>

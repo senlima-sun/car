@@ -59,7 +59,7 @@ export default function TrackSwitcher() {
   })()
 
   return (
-    <DraggablePanel id='track-switcher' title='Track' hotkey='F8'>
+    <DraggablePanel id='track-switcher' title='Track'>
       <div className='flex flex-col gap-1 px-3 py-2 text-xs text-white'>
         <div ref={rootRef} className='relative'>
           <button

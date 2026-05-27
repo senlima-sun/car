@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Car, Eye, Settings, Wrench } from 'lucide-react'
+import { ArrowLeft, Car, Eye, Settings } from 'lucide-react'
 import { motion } from 'motion/react'
 import { CAR_PARTS, PAINT_PRESETS, useCarPaintStore } from '@/stores/useCarPaintStore'
-import { useDevToolsStore } from '@/stores/useDevToolsStore'
 import { useGameStore } from '@/stores/useGameStore'
 import { useShowroomStore } from '@/stores/useShowroomStore'
 import {
@@ -22,7 +21,6 @@ import { CarPaintSection } from './sections/CarPaintSection'
 import { SceneSection } from './sections/SceneSection'
 import { SteeringSection } from './sections/SteeringSection'
 import { WheelsSection } from './sections/WheelsSection'
-import WheelVisualEditor from '../WheelVisualEditor'
 
 type PopupMode = 'parts' | 'partEditor' | 'settings' | null
 
@@ -31,7 +29,6 @@ export default function AnimationPreviewPanel() {
   const selectedPart = useCarPaintStore(s => s.selectedPart)
   const hoveredPart = useShowroomStore(s => s.hoveredPart)
   const cameraView = useShowroomStore(s => s.cameraView)
-  const wheelVisualOpen = useDevToolsStore(s => s.panels['wheel-visual'].isOpen)
   const [popupMode, setPopupMode] = useState<PopupMode>(null)
   const lastSelectedPart = useRef(selectedPart)
 
@@ -98,17 +95,9 @@ export default function AnimationPreviewPanel() {
                 .setCameraView(cameraView === 'cockpit' ? 'orbit' : 'cockpit')
             }
           />
-          <ToolButton
-            icon={Wrench}
-            title='Wheel Visual'
-            active={wheelVisualOpen}
-            onClick={() => useDevToolsStore.getState().togglePanel('wheel-visual')}
-          />
           <CreditsButton />
         </ShowroomToolbar>
       </motion.div>
-
-      <WheelVisualEditor />
 
       {popupMode === 'parts' && (
         <Popover

@@ -18,7 +18,6 @@ import TimingTower from './TimingTower'
 import PhysicsDebugOverlay from '../PhysicsDebugOverlay'
 import SteeringDebugOverlay from '../SteeringDebugOverlay'
 import WeatherPanel from '../WeatherPanel/WeatherPanel'
-import WheelVisualEditor from '../WheelVisualEditor'
 import { SettingsDialog } from '../SettingsDialog'
 import { AccentBar, Surface } from '../primitives'
 import {
@@ -55,7 +54,6 @@ import FPSCounter from './FPSCounter'
 import SteeringWheelIndicator from './SteeringWheelIndicator'
 import DevToolbar from '../DevTools/DevToolbar'
 import DevToolsSessionLifecycle from '../DevTools/DevToolsSessionLifecycle'
-import { useDevToolsHotkeys } from '@/hooks/useDevToolsHotkeys'
 
 export default function HUD() {
   const isMobile = useMobileDetection()
@@ -73,8 +71,6 @@ export default function HUD() {
 
   const [modeNotification, setModeNotification] = useState<string | null>(null)
   const prevTestingMode = useRef(isTestingMode)
-
-  useDevToolsHotkeys(isSessionShell && isRunningSession && isTestingMode)
 
   const isMinimapOpen = useDevToolsStore(s => s.panels.minimap.isOpen)
   const isCarStatusOpen = useDevToolsStore(s => s.panels['car-status'].isOpen)
@@ -206,7 +202,6 @@ export default function HUD() {
               <SteeringDebugOverlay />
               <WeatherPanel />
               <TrackSwitcher />
-              <WheelVisualEditor />
             </>
           )}
           {isRunningSession && <TelemetryOverlay />}
