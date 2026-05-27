@@ -4,7 +4,8 @@ export interface Bindings extends Env {
   FRONTEND_ORIGINS: string
   POLAR_ACCESS_TOKEN: string
   POLAR_WEBHOOK_SECRET: string
-  POLAR_PRODUCT_ID_PRO: string
+  POLAR_PRODUCT_ID_PRO_MONTHLY: string
+  POLAR_PRODUCT_ID_PRO_ANNUAL: string
   BILLING_SUCCESS_URL: string
 }
 
