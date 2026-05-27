@@ -5,9 +5,16 @@ packages:
 # pnpm requires explicit consent before running install lifecycle scripts.
 # Add a new package here only after reviewing its postinstall behavior.
 allowBuilds:
+  better-sqlite3: true # needed: dev-only test harness; postinstall compiles native binding
   bun: true # needed: bun's postinstall fetches platform-specific binary
   core-js: false # not needed: pure JS polyfill, postinstall is a banner
   esbuild: true # needed: postinstall fetches platform-specific binary (Wrangler bundler)
   protobufjs: false # not needed: postinstall is a deprecation notice
   sharp: false # not needed: optional image optimization; lazy-loaded if present
   workerd: true # needed: Wrangler's runtime; postinstall fetches platform-specific binary
+
+onlyBuiltDependencies:
+  - better-sqlite3
+  - bun
+  - esbuild
+  - workerd
