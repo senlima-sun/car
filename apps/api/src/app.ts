@@ -8,6 +8,7 @@ import { corsMiddleware } from './middleware/cors.ts'
 import { errorSanitizer } from './middleware/error-sanitizer.ts'
 import { billingRoute } from './routes/billing.ts'
 import { meRoute } from './routes/me.ts'
+import { raceRoute } from './routes/race.ts'
 import type { HonoEnv } from './types.ts'
 
 declare module 'hono' {
@@ -41,6 +42,7 @@ export function createApp({ authOverrides, dbOverride }: CreateAppOptions = {}) 
   app.on(['GET', 'POST'], '/api/auth/*', c => c.var.auth.handler(c.req.raw))
   app.route('/', meRoute)
   app.route('/', billingRoute)
+  app.route('/', raceRoute)
 
   return app
 }
