@@ -50,6 +50,10 @@ Forward-only. Generate migrations exclusively via `pnpm --filter @car/api db:gen
 
 A `predeploy` script (`apps/api/scripts/check-d1-migrations.ts`) refuses to deploy the worker if any migration is pending on remote D1; run `pnpm --filter @car/api db:migrate:prod` first.
 
+## Tier system
+
+The `user` table carries a `role` column (`'user' | 'admin'`, default `'user'`), and a `daily_track_grant` table (composite PK `(userId, dateUTC)`, FK to `user.id` ON DELETE CASCADE, indexed on `userId` and `dateUTC`) records the per-UTC-day random track granted to free-tier users. Worker code reads both via the shared Drizzle client factory in `apps/api/src/db/client.ts`.
+
 ## Cookie cache vs secondary storage
 
 Better Auth issue [#4203](https://github.com/better-auth/better-auth/issues/4203) reports stale-session reads when `cookieCache` and `secondaryStorage` are both enabled. We use `secondaryStorage` (KV) only; `cookieCache` is explicitly disabled.
