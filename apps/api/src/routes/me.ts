@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
 import type { CustomerStateSubscription } from '@polar-sh/sdk/models/components/customerstatesubscription.js'
-import { TIERS, type TierSlug, getProducts } from '../billing/products.ts'
+import { type LogicalTier, tierFromProductId } from '../billing/products.ts'
 import type { HonoEnv } from '../types.ts'
 
 interface SubscriptionShape {
-  tier: TierSlug | null
+  tier: LogicalTier | null
   status: 'active' | 'canceled' | null
   currentPeriodEnd: string | null
 }
@@ -24,18 +24,13 @@ function logFailure(error: unknown) {
   )
 }
 
-function mapTierFromProduct(env: HonoEnv['Bindings'], productId: string): TierSlug | null {
-  const products = getProducts(env)
-  return TIERS.find(slug => products[slug].polarProductId === productId) ?? null
-}
-
 function mapStatus(raw: string): SubscriptionShape['status'] {
   if (raw === 'active') return 'active'
   if (raw === 'canceled') return 'canceled'
   return null
 }
 
-async function resolveSubscription(c: {
+export async function resolveSubscription(c: {
   env: HonoEnv['Bindings']
   var: { auth: { handler: (req: Request) => Promise<Response> } }
   req: { raw: Request }
@@ -52,7 +47,7 @@ async function resolveSubscription(c: {
   const active = state?.activeSubscriptions?.[0]
   if (!active) return EMPTY_SUBSCRIPTION
 
-  const tier = mapTierFromProduct(c.env, active.productId)
+  const tier = tierFromProductId(c.env, active.productId)
   if (!tier) return EMPTY_SUBSCRIPTION
 
   const currentPeriodEnd =
