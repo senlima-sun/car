@@ -2,53 +2,83 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { usePerformanceStore } from '../../../../stores/usePerformanceStore'
+import { useEnvironmentStore } from '../../../../stores/useEnvironmentStore'
 
-interface Particle {
-  pos: THREE.Vector3
-  vel: THREE.Vector3
-  lifetime: number
-  maxLifetime: number
+const SPLASH_COUNT = 450
+const AREA_SIZE = 70
+const MAX_LIFE = 0.5
+const MAX_RADIUS = 0.7
+
+interface Splash {
+  x: number
+  z: number
+  age: number
+  life: number
 }
+
+const ringVertexShader = `
+attribute float aAge;
+attribute float aLife;
+varying float vAlpha;
+varying vec2 vUv;
+
+void main() {
+  vUv = uv;
+  float t = clamp(aAge / max(aLife, 0.0001), 0.0, 1.0);
+  float scale = mix(0.15, 1.0, t);
+  vec3 pos = position * scale;
+  vAlpha = (1.0 - t) * step(0.0, aLife - aAge);
+  gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(pos, 1.0);
+}
+`
+
+const ringFragmentShader = `
+varying float vAlpha;
+varying vec2 vUv;
+
+void main() {
+  vec2 c = vUv - 0.5;
+  float r = length(c) * 2.0;
+  float ring = smoothstep(0.45, 0.78, r) * (1.0 - smoothstep(0.85, 1.05, r));
+  float inner = (1.0 - smoothstep(0.0, 0.35, r)) * 0.4;
+  float alpha = (ring * 1.3 + inner) * vAlpha;
+  if (alpha < 0.01) discard;
+  gl_FragColor = vec4(0.9, 0.95, 1.0, alpha);
+}
+`
 
 export function InstancedRainSplash() {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const dummyRef = useRef(new THREE.Object3D())
   const { camera } = useThree()
 
-  const splashCount = 300
-  const areaSize = 120
+  const splashesRef = useRef<Splash[]>(
+    Array.from({ length: SPLASH_COUNT }, () => ({ x: 0, z: 0, age: 0, life: 0 })),
+  )
 
-  const { particles, geometry, material } = useMemo(() => {
-    const particles: Particle[] = Array.from({ length: splashCount }, () => ({
-      pos: new THREE.Vector3(0, -10, 0),
-      vel: new THREE.Vector3(0, 0, 0),
-      lifetime: 0,
-      maxLifetime: 0.15 + Math.random() * 0.2,
-    }))
+  const { geometry, material, ageAttr, lifeAttr } = useMemo(() => {
+    const geom = new THREE.PlaneGeometry(MAX_RADIUS * 2, MAX_RADIUS * 2)
+    geom.rotateX(-Math.PI / 2)
 
-    const geometry = new THREE.SphereGeometry(0.125, 8, 8)
-    const material = new THREE.MeshBasicMaterial({
-      color: '#aaccee',
+    const ages = new Float32Array(SPLASH_COUNT)
+    const lifes = new Float32Array(SPLASH_COUNT)
+    const ageAttr = new THREE.InstancedBufferAttribute(ages, 1)
+    const lifeAttr = new THREE.InstancedBufferAttribute(lifes, 1)
+    ageAttr.setUsage(THREE.DynamicDrawUsage)
+    lifeAttr.setUsage(THREE.DynamicDrawUsage)
+    geom.setAttribute('aAge', ageAttr)
+    geom.setAttribute('aLife', lifeAttr)
+
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: ringVertexShader,
+      fragmentShader: ringFragmentShader,
       transparent: true,
-      opacity: 0.7,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     })
 
-    return { particles, geometry, material }
+    return { geometry: geom, material: mat, ageAttr, lifeAttr }
   }, [])
-
-  useEffect(() => {
-    if (!meshRef.current) return
-
-    const dummy = dummyRef.current
-    for (let i = 0; i < splashCount; i++) {
-      dummy.position.copy(particles[i].pos)
-      dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
-    }
-    meshRef.current.instanceMatrix.needsUpdate = true
-  }, [particles])
 
   useEffect(() => {
     return () => {
@@ -60,49 +90,51 @@ export function InstancedRainSplash() {
   useFrame((_, delta) => {
     if (!meshRef.current) return
 
+    const splashes = splashesRef.current
     const dummy = dummyRef.current
+    const intensity = useEnvironmentStore.getState().rainIntensity
     const mult = usePerformanceStore.getState().particleMultiplier
-    const spawnRate = 100 * mult
-    let toSpawn = Math.floor(spawnRate * delta)
+    const spawnRate = 380 * mult * intensity
+    let toSpawn = Math.floor(spawnRate * delta + Math.random())
 
-    for (let i = 0; i < splashCount; i++) {
-      const particle = particles[i]
-      particle.lifetime -= delta
+    const ages = ageAttr.array as Float32Array
+    const lifes = lifeAttr.array as Float32Array
 
-      if (particle.lifetime <= 0) {
+    for (let i = 0; i < SPLASH_COUNT; i++) {
+      const s = splashes[i]
+      s.age += delta
+
+      if (s.age >= s.life) {
         if (toSpawn > 0) {
           toSpawn--
-
-          particle.pos.set(
-            camera.position.x + (Math.random() - 0.5) * areaSize,
-            0.05,
-            camera.position.z + (Math.random() - 0.5) * areaSize,
-          )
-
-          const angle = Math.random() * Math.PI * 2
-          const speed = 1.5 + Math.random() * 2
-          particle.vel.set(Math.cos(angle) * speed * 0.5, speed, Math.sin(angle) * speed * 0.5)
-
-          particle.lifetime = particle.maxLifetime
+          s.x = camera.position.x + (Math.random() - 0.5) * AREA_SIZE
+          s.z = camera.position.z + (Math.random() - 0.5) * AREA_SIZE
+          s.age = 0
+          s.life = MAX_LIFE * (0.7 + Math.random() * 0.4)
+          dummy.position.set(s.x, 0.02, s.z)
+          dummy.rotation.set(0, 0, 0)
+          dummy.scale.setScalar(1)
+          dummy.updateMatrix()
+          meshRef.current.setMatrixAt(i, dummy.matrix)
         } else {
-          particle.pos.y = -10
-        }
-      } else {
-        particle.pos.addScaledVector(particle.vel, delta)
-        particle.vel.y -= 12 * delta
-
-        if (particle.pos.y < 0) {
-          particle.lifetime = 0
+          s.life = 0
         }
       }
 
-      dummy.position.copy(particle.pos)
-      dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
+      ages[i] = s.age
+      lifes[i] = s.life
     }
 
+    ageAttr.needsUpdate = true
+    lifeAttr.needsUpdate = true
     meshRef.current.instanceMatrix.needsUpdate = true
   })
 
-  return <instancedMesh ref={meshRef} args={[geometry, material, splashCount]} />
+  return (
+    <instancedMesh
+      ref={meshRef}
+      args={[geometry, material, SPLASH_COUNT]}
+      frustumCulled={false}
+    />
+  )
 }

@@ -7,7 +7,7 @@ import CameraController from './Camera/CameraController'
 import RacingLine from './Track/RacingLine'
 import WindVisualization from './Weather/WindVisualization'
 import WeatherEffects from './Weather/WeatherEffects'
-import WindshieldRain from './Weather/WindshieldRain'
+import LensRainOverlay from './Weather/LensRainOverlay'
 import LightningEffect from './Weather/LightningEffect'
 import DynamicLighting from './Weather/DynamicLighting'
 import SkyDome from './Weather/SkyDome'
@@ -83,7 +83,7 @@ export default function Scene() {
           <RacingLine />
           <WindVisualization />
           <WeatherEffects />
-          <WindshieldRain />
+          <LensRainOverlay />
           <LightningEffect />
           <WeatherMirror />
           <WeatherSourcesProvider />

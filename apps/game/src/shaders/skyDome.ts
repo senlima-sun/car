@@ -17,6 +17,7 @@ uniform float uRayleighStrength;
 uniform float uMieStrength;
 uniform float uExposure;
 uniform vec3 uGroundColor;
+uniform float uOvercast;
 
 varying vec3 vWorldDirection;
 
@@ -92,12 +93,22 @@ void main() {
   vec3 sunDuskColor = vec3(2.4, 1.3, 0.55);
   vec3 sunColor = mix(sunDuskColor, sunDayColor, smoothstep(0.0, 0.3, sunDir.y));
 
-  sky += sunDisc * sunColor * uSunIntensity * dayMask;
-  sky += sunHalo * sunColor * 0.6 * uSunIntensity * dayMask;
-  sky += sunGlow * sunColor * 0.8 * uSunIntensity * dayMask;
+  float sunSuppress = 1.0 - uOvercast;
+  sky += sunDisc * sunColor * uSunIntensity * dayMask * sunSuppress;
+  sky += sunHalo * sunColor * 0.6 * uSunIntensity * dayMask * sunSuppress;
+  sky += sunGlow * sunColor * 0.8 * uSunIntensity * dayMask * sunSuppress;
+
+  vec3 overcastZenith = vec3(0.20, 0.23, 0.27);
+  vec3 overcastHorizon = vec3(0.34, 0.38, 0.42);
+  vec3 overcastSky = mix(overcastHorizon, overcastZenith, smoothstep(0.0, 0.55, viewDir.y));
+  float brightDir = pow(max(cosTheta, 0.0), 3.0) * 0.12;
+  overcastSky += brightDir * dayMask;
+
+  sky = mix(sky, overcastSky, uOvercast);
 
   float belowHorizon = smoothstep(-0.05, 0.0, viewDir.y);
-  vec3 finalColor = mix(uGroundColor, sky, belowHorizon);
+  vec3 overcastGround = mix(uGroundColor, vec3(0.16, 0.18, 0.20), uOvercast);
+  vec3 finalColor = mix(overcastGround, sky, belowHorizon);
 
   vec3 mapped = ACESFilmic(finalColor * uExposure);
   gl_FragColor = vec4(mapped, 1.0);

@@ -17,6 +17,7 @@ export default function SkyDome() {
       uMieStrength: { value: 1.0 },
       uExposure: { value: 1.0 },
       uGroundColor: { value: new THREE.Color(0.18, 0.2, 0.22) },
+      uOvercast: { value: 0.0 },
     }),
     [],
   )
@@ -39,10 +40,13 @@ export default function SkyDome() {
     const targetRayleigh = 1.0 - rainIntensity * 0.4
     const targetMie = 1.0 + rainIntensity * 0.5
 
+    const targetOvercast = Math.min(1, rainIntensity * 1.15)
+
     const lerpFactor = Math.min(1, delta * 1.5)
     u.uTurbidity.value += (targetTurbidity - u.uTurbidity.value) * lerpFactor
     u.uRayleighStrength.value += (targetRayleigh - u.uRayleighStrength.value) * lerpFactor
     u.uMieStrength.value += (targetMie - u.uMieStrength.value) * lerpFactor
+    u.uOvercast.value += (targetOvercast - u.uOvercast.value) * lerpFactor
   })
 
   return (

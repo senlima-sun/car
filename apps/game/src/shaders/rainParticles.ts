@@ -2,55 +2,63 @@ export const rainVertexShader = `
 uniform float uTime;
 uniform vec3 uCameraPosition;
 uniform float uAreaSize;
+uniform float uStreakLength;
+uniform float uStreakWidth;
 
-attribute float velocity;
 attribute vec3 basePosition;
+attribute float velocity;
 attribute float phase;
 
+varying vec2 vQuadUv;
 varying float vIntensity;
 
 void main() {
-  vec3 pos = basePosition;
-
   float localTime = uTime + phase;
 
-  float fallDistance = velocity * localTime;
-  pos.y -= fallDistance;
-
-  float windX = 0.2 * velocity * localTime;
-  float windZ = 0.1 * velocity * localTime;
-  pos.x += windX;
-  pos.z += windZ;
+  vec3 worldPos = basePosition;
+  worldPos.y -= velocity * localTime;
+  worldPos.x += 0.18 * velocity * localTime;
+  worldPos.z += 0.09 * velocity * localTime;
 
   float cycleHeight = 90.0;
-  pos.y = mod(pos.y + 2.0, cycleHeight) - 2.0;
+  worldPos.y = mod(worldPos.y + 2.0, cycleHeight) - 2.0;
+  worldPos.x = uCameraPosition.x + mod(worldPos.x - uCameraPosition.x + uAreaSize * 0.5, uAreaSize) - uAreaSize * 0.5;
+  worldPos.z = uCameraPosition.z + mod(worldPos.z - uCameraPosition.z + uAreaSize * 0.5, uAreaSize) - uAreaSize * 0.5;
 
-  pos.x = uCameraPosition.x + mod(pos.x - uCameraPosition.x + uAreaSize * 0.5, uAreaSize) - uAreaSize * 0.5;
-  pos.z = uCameraPosition.z + mod(pos.z - uCameraPosition.z + uAreaSize * 0.5, uAreaSize) - uAreaSize * 0.5;
+  vec3 fallDir = normalize(vec3(0.18, -1.0, 0.09));
 
-  vIntensity = smoothstep(-2.0, 20.0, pos.y) * smoothstep(90.0, 60.0, pos.y);
+  vec4 centerView = viewMatrix * vec4(worldPos, 1.0);
+  vec3 fallDirView = normalize((viewMatrix * vec4(fallDir, 0.0)).xyz);
+  vec3 sideView = normalize(cross(fallDirView, vec3(0.0, 0.0, 1.0)));
 
-  vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-  gl_Position = projectionMatrix * mvPosition;
+  float speedScale = clamp(velocity / 40.0, 0.6, 1.4);
+  vec2 corner = position.xy;
+  vec3 offset = sideView * (corner.x * uStreakWidth) + fallDirView * (corner.y * uStreakLength * speedScale);
 
-  float distanceFactor = smoothstep(100.0, 20.0, length(mvPosition.xyz));
-  gl_PointSize = 2.0 * distanceFactor;
+  vec4 viewPos = centerView + vec4(offset, 0.0);
+  gl_Position = projectionMatrix * viewPos;
+
+  vQuadUv = corner;
+  float heightFade = smoothstep(-2.0, 15.0, worldPos.y) * smoothstep(90.0, 55.0, worldPos.y);
+  float distanceFade = smoothstep(110.0, 20.0, length(centerView.xyz));
+  vIntensity = heightFade * distanceFade;
 }
 `
 
 export const rainFragmentShader = `
 uniform float uOpacity;
+uniform vec3 uColor;
 
+varying vec2 vQuadUv;
 varying float vIntensity;
 
 void main() {
-  vec2 center = gl_PointCoord - vec2(0.5);
-  float dist = length(center);
+  float sideMask = 1.0 - smoothstep(0.4, 0.5, abs(vQuadUv.x));
+  float endMask = smoothstep(0.5, 0.0, abs(vQuadUv.y));
+  float core = sideMask * endMask;
+  if (core < 0.01) discard;
 
-  if (dist > 0.5) discard;
-
-  float alpha = (1.0 - dist * 2.0) * vIntensity * uOpacity;
-
-  gl_FragColor = vec4(0.67, 0.8, 1.0, alpha);
+  float alpha = core * vIntensity * uOpacity;
+  gl_FragColor = vec4(uColor, alpha);
 }
 `
