@@ -13,7 +13,12 @@ import {
   getProfileForType,
   getSawtoothHeight,
 } from '../../../constants/curb'
-import { ROAD_HALF_WIDTH, TRACK_WIDTH, TRACK_COLLISION_GROUPS } from '../../../constants/dimensions'
+import {
+  ROAD_HALF_WIDTH,
+  TRACK_WIDTH,
+  TRACK_COLLISION_GROUPS,
+  WHEEL_RADIUS,
+} from '../../../constants/dimensions'
 import { useCurbStore } from '../../../stores/useCurbStore'
 import { useSurfaceStore } from '../../../stores/useSurfaceStore'
 import { PlacedObject } from '../../../stores/useCustomizationStore'
@@ -217,8 +222,22 @@ export default function CurvedCurbSegment({
     const midPos = curve.getPoint(midT)
     const midTangent = curve.getTangent(midT)
     const midPerp = new Vector3(-midTangent.z, 0, midTangent.x).normalize()
-    const sensorOffset = (parentHalfWidth + CURB_WIDTH / 2) * edgeSign
+    // Sensor offset is shifted *outward* from the curb centerline by one
+    // wheel radius so the BallCollider's center (not its edge) must cross
+    // the road edge before triggering. Without this, a wheel passing close
+    // to the road edge has its ball-collider rim clip the sensor and fire
+    // a phantom enterCurb — physics applies vibration/grip changes while
+    // the wheel is still visibly on tarmac. Bumping by WHEEL_RADIUS makes
+    // the trigger threshold match "wheel center is over curb territory",
+    // which lines up with what the driver sees.
+    //
+    // Sensor is also lifted to wheel-center elevation so the box only
+    // registers when the wheel itself overlaps the curb's vertical column,
+    // not when a stray ball edge dips into a 5cm strip near the ground.
+    const sensorOffset = (parentHalfWidth + CURB_WIDTH / 2 + WHEEL_RADIUS) * edgeSign
     const sensorElevation = getElevationAtT(parentRoad, midT)
+    const sensorCenterY = sensorElevation + WHEEL_RADIUS
+    const sensorHalfHeight = WHEEL_RADIUS * 0.5
 
     return {
       geometry,
@@ -227,10 +246,11 @@ export default function CurvedCurbSegment({
       sensorData: {
         position: [
           midPos.x + midPerp.x * sensorOffset,
-          peakHeight / 2 + sensorElevation,
+          sensorCenterY,
           midPos.z + midPerp.z * sensorOffset,
         ] as [number, number, number],
         length: curveLength,
+        halfHeight: sensorHalfHeight,
       },
     }
   }, [curb, parentRoad, curbType, peakHeight])
@@ -271,7 +291,7 @@ export default function CurvedCurbSegment({
       {result.sensorData && (
         <CuboidCollider
           position={result.sensorData.position}
-          args={[CURB_WIDTH / 2, peakHeight / 2, result.sensorData.length / 2]}
+          args={[CURB_WIDTH / 2, result.sensorData.halfHeight, result.sensorData.length / 2]}
           sensor
           onIntersectionEnter={handleEnter}
           onIntersectionExit={handleExit}
