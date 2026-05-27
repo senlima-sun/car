@@ -6,6 +6,8 @@ use car_physics_engine::track_geometry::{
 const WHEELBASE: f32 = 3.40;
 const TRACK_WIDTH_FRONT: f32 = 1.9;
 const TRACK_WIDTH_REAR: f32 = 1.8;
+const TIRE_HALF_WIDTH_FRONT: f32 = 0.1905;
+const TIRE_HALF_WIDTH_REAR: f32 = 0.200;
 const HALF_WIDTH: f32 = 6.0;
 
 #[test]
@@ -84,6 +86,8 @@ fn check_off_track_centered_car_is_on_track() {
         WHEELBASE,
         TRACK_WIDTH_FRONT,
         TRACK_WIDTH_REAR,
+        TIRE_HALF_WIDTH_FRONT,
+        TIRE_HALF_WIDTH_REAR,
         state,
     );
     assert!(!result.is_off_track, "centered car should be on-track");
@@ -107,6 +111,8 @@ fn check_off_track_wheels_outside_triggers_violation() {
         WHEELBASE,
         TRACK_WIDTH_FRONT,
         TRACK_WIDTH_REAR,
+        TIRE_HALF_WIDTH_FRONT,
+        TIRE_HALF_WIDTH_REAR,
         state,
     );
     assert!(result.is_off_track, "car 20m off centerline should be off-track");

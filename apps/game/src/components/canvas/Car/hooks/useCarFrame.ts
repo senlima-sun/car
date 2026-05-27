@@ -17,6 +17,15 @@ import { useSteeringDebugStore } from '../../../../stores/useSteeringDebugStore'
 import { useStartLightsStore } from '../../../../stores/useStartLightsStore'
 import { useSurfaceStore } from '../../../../stores/useSurfaceStore'
 import { useTrackLimitsStore } from '../../../../stores/useTrackLimitsStore'
+import { useCustomizationStore } from '../../../../stores/useCustomizationStore'
+import {
+  WHEEL_POSITIONS,
+  WHEEL_WIDTH_FRONT,
+  WHEEL_WIDTH_REAR,
+} from '../../../../constants/dimensions'
+import { captureTrackLimitSnapshot } from '../../../../utils/trackLimitSnapshot'
+import { useTrackLimitSnapshotStore } from '../../../../stores/useTrackLimitSnapshotStore'
+import { useDevToolsStore } from '../../../../stores/useDevToolsStore'
 import { IS_DEV } from '../../../../utils/isDev'
 import { type CarState } from './types'
 
@@ -79,6 +88,7 @@ export function useCarFrame({
 
   const steerDebugCounterRef = useRef(0)
   const maxSteerObservedRef = useRef(0)
+  const prevOffTrackRef = useRef(false)
 
   useFrame((state, delta) => {
     if (!chassisRef.current) return
@@ -189,6 +199,57 @@ export function useCarFrame({
       )
       useTrackLimitsStore.getState().setOffTrack(offTrackResult.isOffTrack)
 
+      // Edge-trigger debug snapshot on the false→true transition. Renders a
+      // top-down PNG with car/wheel positions + centerline overlay so the
+      // user can confirm whether off-track really fired correctly. Gated by
+      // the dev panel `track-limit-snapshots` — opening it from the Dev menu
+      // starts capture; closing it stops capture (existing thumbnails stay
+      // until cleared).
+      const snapshotsEnabled =
+        useDevToolsStore.getState().panels['track-limit-snapshots'].isOpen
+      if (
+        snapshotsEnabled &&
+        offTrackResult.isOffTrack &&
+        !prevOffTrackRef.current
+      ) {
+        const placed = useCustomizationStore.getState().placedObjects
+        const ribbon = placed.find(
+          o => o.type === 'track_ribbon' && o.ribbonPoints && o.ribbonPoints.length >= 2,
+        )
+        const racing = ribbon?.ribbonPoints?.filter(p => !p.isPitLane) ?? []
+        if (racing.length >= 2) {
+          const dataUrl = captureTrackLimitSnapshot({
+            carX: pos.x,
+            carZ: pos.z,
+            qx: rot.x,
+            qy: rot.y,
+            qz: rot.z,
+            qw: rot.w,
+            wheelOffsetsLocal: [
+              WHEEL_POSITIONS.FL,
+              WHEEL_POSITIONS.FR,
+              WHEEL_POSITIONS.RL,
+              WHEEL_POSITIONS.RR,
+            ],
+            centerline: racing,
+            halfWidth: offTrackResult.halfWidthM,
+            offTrackEnterThreshold: offTrackResult.enterThresholdM,
+            wheelLateralDistances: offTrackResult.wheelLateralDistances,
+            tireHalfWidths: [
+              WHEEL_WIDTH_FRONT / 2,
+              WHEEL_WIDTH_FRONT / 2,
+              WHEEL_WIDTH_REAR / 2,
+              WHEEL_WIDTH_REAR / 2,
+            ],
+            isOffTrack: offTrackResult.isOffTrack,
+          })
+          if (dataUrl) {
+            useTrackLimitSnapshotStore.getState().pushSnapshot(dataUrl)
+          }
+        }
+      }
+      prevOffTrackRef.current = offTrackResult.isOffTrack
+
       if (OFF_TRACK_COMPARE_ENABLED) {
         const surfaceSaysGrass = useSurfaceStore.getState().currentSurface === 'grass'
         if (surfaceSaysGrass !== offTrackResult.isOffTrack) {
@@ -204,7 +265,16 @@ export function useCarFrame({
 
     telemetryRecorder.record(output, syncResult, pos, accumulator.fixedTimeStep)
 
-    telemetry.update(output, pos, rot, keys.steer, dt, input.throttle ?? 0, input.brake_analog ?? 0)
+    telemetry.update(
+      output,
+      pos,
+      rot,
+      keys.steer,
+      dt,
+      input.throttle ?? 0,
+      input.brake_analog ?? 0,
+      syncResult.brake_state.abs_enabled,
+    )
 
     rubberTrails.update(
       output,

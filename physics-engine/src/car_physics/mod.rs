@@ -53,6 +53,13 @@ pub struct CarPhysicsState {
     target_angular_velocity: f32,
     long_g_filtered: f32,
     lat_g_filtered: f32,
+    /// Park-brake latch. Once the chassis snaps to rest under brake hold,
+    /// this stays true until either (a) the brake is released, or (b) an
+    /// external force pushes the car past the unlatch speed (e.g. another
+    /// car ramming us, a slope rolling us down). Latched-on prevents the
+    /// Pacejka path's micro-residuals from chattering the body around
+    /// zero — clients see a stable v=0 the whole time the pedal is held.
+    in_park_brake: bool,
     wheel_force: WheelForceIntegrator,
     clutch: clutch::ClutchState,
     turbo: turbo::TurboState,
@@ -87,6 +94,7 @@ impl Default for CarPhysicsState {
             target_angular_velocity: 0.0,
             long_g_filtered: 0.0,
             lat_g_filtered: 0.0,
+            in_park_brake: false,
             wheel_force: WheelForceIntegrator::new(),
             clutch: clutch::ClutchState::new(),
             turbo: turbo::TurboState::new(),
@@ -148,6 +156,7 @@ impl CarPhysicsState {
         engine_power_multiplier: f32,
         front_brake_force: f32,
         rear_brake_force: f32,
+        abs_enabled: bool,
         ers_harvest_decel: f32,
         air_density: f32,
         surface_normal: [f32; 3],
@@ -161,8 +170,22 @@ impl CarPhysicsState {
         let forward_dir = rotation.forward();
         let right_dir = rotation.right();
 
-        let forward_speed = current_linvel.dot(forward_dir);
+        let raw_forward_speed = current_linvel.dot(forward_dir);
         let lateral_speed = current_linvel.dot(right_dir);
+        // Park-brake latch: when latched, force the chassis to v=0 at the
+        // top of the step regardless of what the external integrator
+        // (Rapier) handed us. Without this, Rapier-side residuals (gravity
+        // settling, contact micro-impulses, suspension cycling) feed a
+        // non-zero `current_linvel` back in each frame, breaking the
+        // latch's hysteresis and surfacing as ~1–2 km/h chatter at the UI.
+        // Unlatch only on driver intent or large external displacement
+        // (handled in the latch update block below the integrator).
+        const PARK_BRAKE_TOP_UNLATCH_MS: f32 = 2.0;
+        let forward_speed = if self.in_park_brake && raw_forward_speed.abs() < PARK_BRAKE_TOP_UNLATCH_MS {
+            0.0
+        } else {
+            raw_forward_speed
+        };
         self.speed_ms = forward_speed.abs();
         self.speed_kmh = self.speed_ms * 3.6;
         let signed_forward_speed = forward_speed;
@@ -371,14 +394,20 @@ impl CarPhysicsState {
             load_ratio.powf(1.0 - load_sensitivity * (load_ratio - 1.0).max(0.0));
 
         let safe_dt = dt.max(0.001);
-        let long_g_raw =
+        // Provisional G estimate from the previous integration step. The
+        // *exact* in-step delta (clamped_forward − forward_speed) lands
+        // later in this function; we fold it into the EMA below. Doing
+        // a provisional EMA update here keeps `weight_transfer` (which
+        // reads `long_g` / `lat_g` later this step) coherent with the
+        // last frame's acceleration profile rather than a stale value.
+        let long_g_raw_prev =
             ((forward_speed - self.prev_forward_speed) / safe_dt / 9.81).clamp(-10.0, 10.0);
-        let lat_g_raw =
+        let lat_g_raw_prev =
             ((lateral_speed - self.prev_lateral_speed) / safe_dt / 9.81).clamp(-10.0, 10.0);
 
         let ema_alpha = (dt * 30.0).min(1.0);
-        self.long_g_filtered += (long_g_raw - self.long_g_filtered) * ema_alpha;
-        self.lat_g_filtered += (lat_g_raw - self.lat_g_filtered) * ema_alpha;
+        self.long_g_filtered += (long_g_raw_prev - self.long_g_filtered) * ema_alpha;
+        self.lat_g_filtered += (lat_g_raw_prev - self.lat_g_filtered) * ema_alpha;
         let long_g = self.long_g_filtered;
         let lat_g = self.lat_g_filtered;
 
@@ -445,6 +474,7 @@ impl CarPhysicsState {
             brake_torque_modifier,
             front_brake_force,
             rear_brake_force,
+            abs_enabled,
             resolved_wheel_loads,
             downforce_grip_bonus,
             combined_grip_multiplier,
@@ -540,7 +570,39 @@ impl CarPhysicsState {
             );
         }
 
-        let new_forward_speed = forward_speed + (longitudinal_force / live_mass) * dt;
+        let mut new_forward_speed = forward_speed + (longitudinal_force / live_mass) * dt;
+
+        // Park-brake latch with hysteresis. The Pacejka brake torque can't
+        // hold v=0 against numerical residuals — tanh smooth-sign blends
+        // through ±ε and pumps tiny forces each step. Once the chassis is
+        // physically at rest under brake hold, latch to v=0 so the body
+        // can't chatter. Unlatch only if (a) the driver releases the brake,
+        // (b) reverse/throttle is engaged, or (c) some external force
+        // exceeds the unlatch threshold (e.g. slope, contact).
+        const PARK_BRAKE_LATCH_MS: f32 = 0.5; // enter latch below this
+        const PARK_BRAKE_UNLATCH_MS: f32 = 1.5; // |v| past this breaks the latch
+        let brake_held = effective_brake > 0.01 && !input.backward;
+        let throttling = effective_throttle > 0.01 || input.forward;
+        if !brake_held || throttling || input.backward {
+            self.in_park_brake = false;
+        } else if !self.in_park_brake && new_forward_speed.abs() < PARK_BRAKE_LATCH_MS {
+            self.in_park_brake = true;
+        } else if self.in_park_brake && new_forward_speed.abs() > PARK_BRAKE_UNLATCH_MS {
+            self.in_park_brake = false;
+        }
+        if self.in_park_brake {
+            new_forward_speed = 0.0;
+        }
+
+        // Idle deadband. Without throttle/brake/reverse intent, kill any
+        // remaining FP-noise residual once the car is physically at rest.
+        // Engine braking, drag, and rolling resistance from upstream do
+        // the real coast-down work; this just absorbs the last ~1 cm/s.
+        const IDLE_VELOCITY_DEADBAND_MS: f32 = 0.05;
+        let car_idle = !throttling && !brake_held && !input.backward && !input.handbrake;
+        if car_idle && new_forward_speed.abs() < IDLE_VELOCITY_DEADBAND_MS {
+            new_forward_speed = 0.0;
+        }
 
         // Yaw moment uses dry mass: rotational inertia about the vertical axis
         // is dominated by the rigid chassis; fuel-tank slosh is not modelled.
@@ -577,6 +639,24 @@ impl CarPhysicsState {
         let final_ang_vel =
             (self.target_angular_velocity + drift_rotation + crosswind_yaw_moment * dt)
                 .clamp(-max_ang_vel, max_ang_vel);
+
+        // Authoritative G from this step's in-engine integration. The
+        // cross-step delta (provisional EMA above) collapses to ~0 when
+        // the caller round-trips `out.linear_velocity` straight back —
+        // Rapier between-step integration doesn't touch x/z without a
+        // contact event, so `prev_forward_speed` (= last step's
+        // `clamped_forward`) equals the caller's `current_linvel`'s
+        // forward component. This in-step delta is the actual force-
+        // induced acceleration the chassis felt and is independent of
+        // what the integrator outside the engine does between steps.
+        let long_g_raw_in_step =
+            ((clamped_forward - forward_speed) / safe_dt / 9.81).clamp(-10.0, 10.0);
+        let lat_g_raw_in_step =
+            ((clamped_lateral - lateral_speed) / safe_dt / 9.81).clamp(-10.0, 10.0);
+        self.long_g_filtered += (long_g_raw_in_step - self.long_g_filtered) * ema_alpha;
+        self.lat_g_filtered += (lat_g_raw_in_step - self.lat_g_filtered) * ema_alpha;
+        let long_g = self.long_g_filtered;
+        let lat_g = self.lat_g_filtered;
 
         // Update previous values
         self.prev_forward_speed = clamped_forward;
@@ -635,6 +715,7 @@ impl CarPhysicsState {
                 fz: resolved_wheel_loads,
                 slip_angle: wheel_force_out.slip_angle_per_wheel,
                 slip_ratio: wheel_force_out.slip_ratio_per_wheel,
+                is_locked: wheel_force_out.is_locked,
             },
             boost_pressure_bar: sanitize(boost_pressure_bar, 1.0),
             fuel_mass_kg: sanitize(self.fuel.fuel_mass_kg(), 0.0),

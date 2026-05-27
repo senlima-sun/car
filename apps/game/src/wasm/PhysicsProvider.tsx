@@ -108,6 +108,8 @@ import {
   setEngineBrakingLevel,
   getEngineBrakingLevel,
   cycleEngineBrakingLevel,
+  setAbsEnabled,
+  isAbsEnabled,
   getBrakeState,
   // Terrain API
   initTerrain,
@@ -262,6 +264,8 @@ interface PhysicsContextValue {
   setEngineBrakingLevel: typeof setEngineBrakingLevel
   getEngineBrakingLevel: typeof getEngineBrakingLevel
   cycleEngineBrakingLevel: typeof cycleEngineBrakingLevel
+  setAbsEnabled: typeof setAbsEnabled
+  isAbsEnabled: typeof isAbsEnabled
   getBrakeState: typeof getBrakeState
   // Terrain API
   initTerrain: typeof initTerrain
@@ -411,6 +415,8 @@ export function PhysicsProvider({ children, fallback }: PhysicsProviderProps) {
       setEngineBrakingLevel,
       getEngineBrakingLevel,
       cycleEngineBrakingLevel,
+      setAbsEnabled,
+      isAbsEnabled,
       getBrakeState,
       initTerrain,
       setTerrainCell,

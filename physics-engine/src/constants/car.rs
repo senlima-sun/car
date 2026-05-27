@@ -5,6 +5,15 @@ pub const CAR_MASS: f32 = CAR_MASS_DRY;
 pub const WHEELBASE: f32 = 3.40;
 pub const TRACK_WIDTH_FRONT: f32 = 1.9;
 pub const TRACK_WIDTH_REAR: f32 = 1.8;
+
+/// Visual wheel half-widths (front 381mm, rear 400mm in client `dimensions.ts`).
+/// Pirelli's 2026 contact patches are narrower (280/375mm) but a user
+/// reading the screen sees the *visual rim + sidewall*, so the off-track
+/// trigger must match what they see — otherwise the snapshot shows a
+/// tire still on the line while the engine reports off-track.
+/// Mirrors apps/game/src/constants/dimensions.ts WHEEL_WIDTH_FRONT/REAR.
+pub const TIRE_HALF_WIDTH_FRONT: f32 = 0.1905;
+pub const TIRE_HALF_WIDTH_REAR: f32 = 0.200;
 #[deprecated(note = "use TRACK_WIDTH_FRONT or TRACK_WIDTH_REAR")]
 pub const TRACK_WIDTH: f32 = TRACK_WIDTH_FRONT;
 pub const CG_HEIGHT: f32 = 0.35;

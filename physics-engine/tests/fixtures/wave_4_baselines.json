@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "captured_at": "wave-4 thermal + ers-2026 deploy-budget reduction",
-  "notes": "Rebaselined after lowering LAP_DEPLOY_TARGET_MJ from 7.0 → 5.0 MJ (taper limit 8.75 → 6.25 MJ). The scheduler now starts tapering deploy power earlier in the lap so the battery lasts noticeably longer through sustained-throttle sections. Mode multipliers unchanged — peak boost (Attack/Overtake bypass the taper) is preserved. Calibration drift: 0-100 km/h 2.63 → 2.88 s (Balanced taper bites part-way up to 100 km/h; still inside real 2026 F1 2.6-2.8 s envelope when Attack/Overtake is used); DRS 200-300 7.48 → 7.58 s (taper begins ~50% of the way through the 100 km/h delta); stop distances and lat-g scenarios unchanged. Earlier history (1869498): SemiAuto mid-range deploy multipliers raised; coast cap 100 → 160 kW; critical floor 10% → 7%. Earlier Wave-4 history: brakes::heat_to_tires now divides by 130 °C span; Stefan-Boltzmann radiation uses 2× disc area; tire/engine cooling floor at ambient; brake-to-tire heat biased 70/30 inner/outer.",
+  "captured_at": "post-g-bug-fix (2026-realism-anchors)",
+  "notes": "Rebaselined after fixing the longitudinal_g/lateral_g cross-step EMA bug. Previously prev_forward_speed was compared against the caller-returned linvel (a round-trip in production with Rapier between steps), so delta collapsed to ~0 and the EMA filtered nothing meaningful. Replaced with the in-step delta (clamped_forward - forward_speed) which is the actual force-induced acceleration the chassis felt this step. Side-effect: lat_g at 80m/50ms dropped 8.15 -> 3.06 G — the new value matches the v^2/r kinematic floor of 3.19 G (the test geometry literally demands ≥3.19 G to sustain the circle). Other scenarios within FP noise of prior values. See tests/realism_anchors_2026.rs for the 2026 anchor suite. Earlier history: lowered LAP_DEPLOY_TARGET_MJ 7.0 → 5.0 MJ (taper limit 8.75 → 6.25 MJ); SemiAuto mid-range deploy multipliers raised; coast cap 100 → 160 kW; critical floor 10% → 7%; brakes::heat_to_tires divides by 130 °C span; Stefan-Boltzmann uses 2× disc area; tire/engine cooling floor at ambient; brake-to-tire heat biased 70/30 inner/outer.",
   "scenarios": {
     "zero_to_100_kmh_seconds": 2.8750,
-    "fifty_ms_to_zero_stop_distance_m": 40.2574,
-    "steady_state_80m_radius_peak_lat_g": 8.1465,
+    "fifty_ms_to_zero_stop_distance_m": 40.2084,
+    "steady_state_80m_radius_peak_lat_g": 3.0558,
     "drs_active_200_to_300_kmh_seconds": 7.5833,
-    "hundred_kmh_to_zero_stop_distance_m": 15.0457,
-    "wet_fifty_ms_to_zero_stop_distance_m": 77.1137,
-    "wet_steady_state_80m_radius_peak_lat_g": 8.1222,
-    "oil_steady_state_80m_radius_peak_lat_g": 7.7198
+    "hundred_kmh_to_zero_stop_distance_m": 15.0523,
+    "wet_fifty_ms_to_zero_stop_distance_m": 77.0593,
+    "wet_steady_state_80m_radius_peak_lat_g": 1.1638,
+    "oil_steady_state_80m_radius_peak_lat_g": 1.1614
   }
 }

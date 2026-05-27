@@ -32,6 +32,11 @@ pub struct WheelForceInputs {
     pub brake_torque_modifier: f32,
     pub front_brake_force: f32,
     pub rear_brake_force: f32,
+    /// ABS toggle. When true and a wheel's *previous-step* slip ratio is
+    /// past `LOCKUP_SLIP_RATIO_THRESHOLD`, this step releases brake torque
+    /// on that wheel — a 1-frame PWM release that lets ω recover before
+    /// the next brake pulse. Off matches F1-regulation (no ABS).
+    pub abs_enabled: bool,
     pub resolved_wheel_loads: [f32; 4],
     pub downforce_grip_bonus: f32,
     /// Full grip-stack multiplier (surface × material × weather × aqua ×
@@ -149,7 +154,23 @@ pub struct WheelForceOutput {
     /// split. Front entries are always 0.0. Useful for debug + future
     /// driveshaft-compliance work (component #4).
     pub driven_torque_per_wheel: [f32; 4],
+    /// Per-wheel lockup label. Set when the driver is braking and the
+    /// wheel's slip ratio is more negative than `LOCKUP_SLIP_RATIO_THRESHOLD`
+    /// while the car still has meaningful forward speed. Purely a state
+    /// label — no behavioural effect. Consumers: HUD, audio (skid sample),
+    /// flat-spot wear (future).
+    pub is_locked: [bool; 4],
 }
+
+/// Slip-ratio threshold past which a braking wheel is considered locked.
+/// −0.5 means the wheel is turning at 50% of free-rolling speed. Pacejka
+/// peak μ for the longitudinal curve sits around −0.05, so anything past
+/// −0.5 is firmly in the post-peak collapsed-Fx regime.
+pub const LOCKUP_SLIP_RATIO_THRESHOLD: f32 = -0.5;
+/// Minimum forward speed for lockup detection. Below this, slip-ratio
+/// noise (divide-by-`v_floor`) makes the label unreliable and the
+/// physical meaning ("car still rolling but wheel stopped") breaks down.
+pub const LOCKUP_MIN_FORWARD_SPEED_MS: f32 = 2.0;
 
 #[derive(Debug, Default)]
 pub struct WheelForceIntegrator {
@@ -160,6 +181,10 @@ pub struct WheelForceIntegrator {
     /// LSD allocation with τ = WHEEL_INERTIA / damping. Was named
     /// `shaft_twist` during the spring-damper draft of this component.
     shaft_torque_delivered_nm: [f32; 2],
+    /// Previous-step slip ratio per wheel. Read by the ABS gate at the
+    /// start of the next step to decide whether to release brake torque
+    /// on each wheel (1-frame PWM release at the slip threshold).
+    prev_slip_ratio: [f32; 4],
 }
 
 impl WheelForceIntegrator {
@@ -292,8 +317,18 @@ impl WheelForceIntegrator {
                 if is_driven {
                     driven_torque_per_wheel[wheel] = drive_torque;
                 }
-                let brake_torque_corner =
-                    per_axle_brake * BRAKE_AXLE_TO_CORNER_SPLIT * i.brake_torque_modifier * TIRE_RADIUS;
+                // ABS gate: if the wheel was locked last step and ABS is
+                // on, release brake torque this step. Acts as a 1-frame
+                // PWM at 120 Hz — wheel ω recovers, slip ratio rises out
+                // of the lockup band, brake re-applies next frame.
+                let abs_release = i.abs_enabled
+                    && i.forward_speed.abs() > LOCKUP_MIN_FORWARD_SPEED_MS
+                    && self.prev_slip_ratio[wheel] < LOCKUP_SLIP_RATIO_THRESHOLD;
+                let brake_torque_corner = if abs_release {
+                    0.0
+                } else {
+                    per_axle_brake * BRAKE_AXLE_TO_CORNER_SPLIT * i.brake_torque_modifier * TIRE_RADIUS
+                };
                 // Brake opposes macro vehicle motion. `signum()` has a hard
                 // discontinuity at zero (signum(0) = +1) that pumps spurious
                 // force into prev_wheel_fx on sign crossings. A `tanh`
@@ -378,6 +413,13 @@ impl WheelForceIntegrator {
             wheel_lat_force += fy;
         }
         self.prev_wheel_fx = wheel_fx_now;
+        self.prev_slip_ratio = wheel_slip_ratio_now;
+        let mut is_locked = [false; 4];
+        if i.braking_active && i.forward_speed.abs() > LOCKUP_MIN_FORWARD_SPEED_MS {
+            for wheel in 0..4 {
+                is_locked[wheel] = wheel_slip_ratio_now[wheel] < LOCKUP_SLIP_RATIO_THRESHOLD;
+            }
+        }
         WheelForceOutput {
             total_long_force: wheel_long_force,
             total_lat_force: wheel_lat_force,
@@ -386,6 +428,7 @@ impl WheelForceIntegrator {
             slip_ratio_per_wheel: wheel_slip_ratio_now,
             slip_angle_per_wheel: wheel_slip_angle_now,
             driven_torque_per_wheel,
+            is_locked,
         }
     }
 }
@@ -409,6 +452,7 @@ mod tests {
             brake_torque_modifier: 0.0,
             front_brake_force: 0.0,
             rear_brake_force: 0.0,
+            abs_enabled: false,
             resolved_wheel_loads: nominal_loads(),
             downforce_grip_bonus: 1.0,
             combined_grip_multiplier: 1.0,

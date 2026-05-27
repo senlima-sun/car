@@ -109,6 +109,13 @@ export interface PerWheelForces {
   fz: [number, number, number, number]
   slip_angle: [number, number, number, number]
   slip_ratio: [number, number, number, number]
+  /**
+   * Per-wheel lockup label. True when the driver is braking, the wheel's
+   * slip ratio is past the lockup threshold, and the car is still moving.
+   * State label only — no force/torque side effects in the engine. HUD,
+   * audio, and future flat-spot wear consume this.
+   */
+  is_locked: [boolean, boolean, boolean, boolean]
 }
 
 export interface WeatherModifiers {
@@ -343,6 +350,8 @@ export interface BrakeState {
   engine_braking: EngineBrakingLevel
   front_brake_force: number // N
   rear_brake_force: number // N
+  /** Anti-lock braking toggle. Off by default (F1 regulation forbids ABS). */
+  abs_enabled: boolean
 }
 
 export type TerrainMaterial =
@@ -1663,6 +1672,21 @@ export function cycleEngineBrakingLevel(): void {
 }
 
 /**
+ * Toggle ABS (Anti-lock Braking System). Off by default — F1 regulations
+ * forbid ABS during competition. Arcade / track-day setups can opt in.
+ */
+export function setAbsEnabled(enabled: boolean): void {
+  getPhysicsEngine().set_abs_enabled(enabled)
+}
+
+/**
+ * Whether ABS is currently enabled.
+ */
+export function isAbsEnabled(): boolean {
+  return getPhysicsEngine().is_abs_enabled()
+}
+
+/**
  * Get current brake state from physics engine
  */
 export function getBrakeState(): BrakeState {
@@ -1764,6 +1788,12 @@ export interface OffTrackGeomResult {
   isOffTrack: boolean
   maxLateralDistance: number
   hasTrackData: boolean
+  /** Per-wheel lateral distance to centerline [FL, FR, RL, RR]. */
+  wheelLateralDistances: [number, number, number, number]
+  /** Outward buffer past `halfWidthM` before a wheel counts as "off". */
+  enterThresholdM: number
+  /** Track half-width used for this check. */
+  halfWidthM: number
 }
 
 /**
@@ -1788,7 +1818,14 @@ export function checkOffTrackByGeometry(
     sanitize(qw, 1),
   ) as OffTrackGeomResult | null
   if (!raw) {
-    return { isOffTrack: false, maxLateralDistance: 0, hasTrackData: false }
+    return {
+      isOffTrack: false,
+      maxLateralDistance: 0,
+      hasTrackData: false,
+      wheelLateralDistances: [0, 0, 0, 0],
+      enterThresholdM: 0,
+      halfWidthM: 0,
+    }
   }
   return raw
 }

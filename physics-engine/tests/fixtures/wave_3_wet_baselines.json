@@ -2,9 +2,9 @@
   "schema_version": 1,
   "captured_at": "wave-3-phase-0-pre",
   "scenarios": {
-    "wet_fifty_ms_to_zero_stop_distance_m": 70.2344,
-    "wet_steady_state_80m_radius_peak_lat_g": 7.5438,
-    "oil_steady_state_80m_radius_peak_lat_g": 7.3993
+    "wet_fifty_ms_to_zero_stop_distance_m": 77.0593,
+    "wet_steady_state_80m_radius_peak_lat_g": 1.1638,
+    "oil_steady_state_80m_radius_peak_lat_g": 1.1614
   },
   "notes": "oil-patch is modelled as PaintedArea + heavy rain (grip ~0.55) — closest stand-in without introducing a new SurfaceType"
 }

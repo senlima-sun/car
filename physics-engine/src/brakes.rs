@@ -177,9 +177,18 @@ impl BrakePhysicsState {
             config: BrakeConfig {
                 front_bias: DEFAULT_FRONT_BIAS,
                 engine_braking: EngineBrakingLevel::Medium,
+                abs_enabled: false,
             },
             disc_temps: BrakeDiscTemperatures::new(),
         }
+    }
+
+    pub fn set_abs_enabled(&mut self, enabled: bool) {
+        self.config.abs_enabled = enabled;
+    }
+
+    pub fn is_abs_enabled(&self) -> bool {
+        self.config.abs_enabled
     }
 
     // ========================================================================
@@ -283,6 +292,7 @@ impl BrakePhysicsState {
             engine_braking: self.config.engine_braking,
             front_brake_force: 0.0, // Will be set during physics step
             rear_brake_force: 0.0,  // Will be set during physics step
+            abs_enabled: self.config.abs_enabled,
         }
     }
 
@@ -294,6 +304,7 @@ impl BrakePhysicsState {
             engine_braking: self.config.engine_braking,
             front_brake_force: front_force,
             rear_brake_force: rear_force,
+            abs_enabled: self.config.abs_enabled,
         }
     }
 }

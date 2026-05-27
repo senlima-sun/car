@@ -48,6 +48,17 @@ struct OffTrackJsResult {
     max_lateral_distance: f32,
     #[serde(rename = "hasTrackData")]
     has_track_data: bool,
+    /// Per-wheel lateral distance [FL, FR, RL, RR]. Used by debug tooling
+    /// (track-limit snapshot) to render exact wheel positions vs centerline.
+    #[serde(rename = "wheelLateralDistances", default)]
+    wheel_lateral_distances: [f32; 4],
+    /// Engine's off-track enter threshold (m past half_width) used this call.
+    /// Surfaced so the snapshot can draw the actual trigger ring.
+    #[serde(rename = "enterThresholdM", default)]
+    enter_threshold_m: f32,
+    /// Track half-width used this call. Surfaced for snapshot rendering.
+    #[serde(rename = "halfWidthM", default)]
+    half_width_m: f32,
 }
 
 // Mirrors apps/game/src/constants/dimensions.ts TRACK_WIDTH = 12 (and ROAD_HALF_WIDTH).
@@ -107,7 +118,10 @@ impl PhysicsEngine {
         qz: f32,
         qw: f32,
     ) -> JsValue {
-        use crate::constants::car::{TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR, WHEELBASE};
+        use crate::constants::car::{
+            TIRE_HALF_WIDTH_FRONT, TIRE_HALF_WIDTH_REAR, TRACK_WIDTH_FRONT, TRACK_WIDTH_REAR,
+            WHEELBASE,
+        };
 
         let polyline = match self.track_centerline.as_ref() {
             Some(p) => p,
@@ -116,6 +130,9 @@ impl PhysicsEngine {
                     is_off_track: false,
                     max_lateral_distance: 0.0,
                     has_track_data: false,
+                    wheel_lateral_distances: [0.0; 4],
+                    enter_threshold_m: track_geometry::DEFAULT_ENTER_THRESHOLD_M,
+                    half_width_m: TRACK_HALF_WIDTH_M,
                 })
                 .unwrap_or(JsValue::NULL);
             }
@@ -135,6 +152,8 @@ impl PhysicsEngine {
             WHEELBASE,
             TRACK_WIDTH_FRONT,
             TRACK_WIDTH_REAR,
+            TIRE_HALF_WIDTH_FRONT,
+            TIRE_HALF_WIDTH_REAR,
             self.off_track_state,
         );
 
@@ -147,6 +166,9 @@ impl PhysicsEngine {
             is_off_track: result.is_off_track,
             max_lateral_distance: result.max_lateral_distance_m,
             has_track_data: true,
+            wheel_lateral_distances: result.wheel_lateral_distances_m,
+            enter_threshold_m: track_geometry::DEFAULT_ENTER_THRESHOLD_M,
+            half_width_m: TRACK_HALF_WIDTH_M,
         })
         .unwrap_or(JsValue::NULL)
     }
@@ -744,8 +766,21 @@ impl PhysicsEngine {
         self.inner.cycle_engine_braking_level();
     }
 
+    /// Toggle ABS. Off by default (F1 regulation); arcade/track-day modes
+    /// flip on. When on, the per-wheel slip-ratio gate auto-releases
+    /// brake torque to keep wheels from locking.
+    #[wasm_bindgen]
+    pub fn set_abs_enabled(&mut self, enabled: bool) {
+        self.inner.set_abs_enabled(enabled);
+    }
+
+    #[wasm_bindgen]
+    pub fn is_abs_enabled(&self) -> bool {
+        self.inner.is_abs_enabled()
+    }
+
     /// Get current brake state as JavaScript object
-    /// Returns: { frontBias, engineBraking, frontBrakeForce, rearBrakeForce }
+    /// Returns: { frontBias, engineBraking, frontBrakeForce, rearBrakeForce, absEnabled }
     #[wasm_bindgen]
     pub fn get_brake_state(&self) -> JsValue {
         to_value(&self.inner.get_brake_state()).unwrap_or(JsValue::NULL)

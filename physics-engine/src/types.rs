@@ -210,6 +210,12 @@ pub enum EngineBrakingLevel {
 pub struct BrakeConfig {
     pub front_bias: f32, // 0.50-0.70 (50-70% front)
     pub engine_braking: EngineBrakingLevel,
+    /// Anti-lock Braking System. Off by default — F1 regulations forbid
+    /// ABS during competition. Track-day / arcade modes flip this on to
+    /// auto-modulate brake torque per wheel when slip ratio breaches
+    /// `LOCKUP_SLIP_RATIO_THRESHOLD`.
+    #[serde(default)]
+    pub abs_enabled: bool,
 }
 
 impl Default for BrakeConfig {
@@ -221,6 +227,7 @@ impl Default for BrakeConfig {
         Self {
             front_bias: DEFAULT_FRONT_BIAS,
             engine_braking: EngineBrakingLevel::default(),
+            abs_enabled: false,
         }
     }
 }
@@ -231,6 +238,8 @@ pub struct BrakeState {
     pub engine_braking: EngineBrakingLevel,
     pub front_brake_force: f32, // Current front brake force (N)
     pub rear_brake_force: f32,  // Current rear brake force (N)
+    #[serde(default)]
+    pub abs_enabled: bool,
 }
 
 impl Default for BrakeState {
@@ -240,6 +249,7 @@ impl Default for BrakeState {
             engine_braking: EngineBrakingLevel::default(),
             front_brake_force: 0.0,
             rear_brake_force: 0.0,
+            abs_enabled: false,
         }
     }
 }
@@ -732,6 +742,12 @@ pub struct PerWheelForces {
     pub fz: [f32; 4],
     pub slip_angle: [f32; 4],
     pub slip_ratio: [f32; 4],
+    /// Per-wheel lockup state label. True when the driver is braking and
+    /// the wheel is past `LOCKUP_SLIP_RATIO_THRESHOLD`. State label only —
+    /// no force/torque side-effect. Serde-default so older fixtures keep
+    /// loading (all false → no lockup).
+    #[serde(default)]
+    pub is_locked: [bool; 4],
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]

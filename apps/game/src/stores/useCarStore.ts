@@ -15,6 +15,10 @@ interface CarState {
   fuelMassKg: number
   fuelFlowFactor: number
   drivenTorquePerWheel: [number, number, number, number]
+  /** Per-wheel lockup state [FL, FR, RL, RR] from physics-engine. */
+  wheelLocked: [boolean, boolean, boolean, boolean]
+  /** ABS toggle state, mirrored from physics-engine. */
+  absEnabled: boolean
 
   updateTelemetry: (data: Partial<Omit<CarState, 'updateTelemetry' | 'reset' | 'resetForPreview'>>) => void
   reset: () => void
@@ -36,6 +40,8 @@ const initialState = {
   fuelMassKg: 100.0,
   fuelFlowFactor: 1.0,
   drivenTorquePerWheel: [0, 0, 0, 0] as [number, number, number, number],
+  wheelLocked: [false, false, false, false] as [boolean, boolean, boolean, boolean],
+  absEnabled: false,
 }
 
 export const useCarStore = create<CarState>(set => ({

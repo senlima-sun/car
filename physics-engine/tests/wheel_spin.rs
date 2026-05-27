@@ -144,6 +144,332 @@ fn per_wheel_forces_populated_when_slip_angle_nonzero() {
     }
 }
 
+/// Reproduces front-wheel lockup under full brake from high speed.
+/// Without ABS the brake torque overwhelms the tire reaction torque and
+/// the front wheels' ω falls toward zero while the car is still moving:
+/// slip_ratio approaches -1 and Fx collapses below its peak.
+#[test]
+fn full_brake_from_60ms_locks_front_wheels() {
+    let mut engine = PhysicsEngine::new();
+    engine.set_surface(SurfaceType::Road);
+
+    let warmup = CarInput {
+        forward: true,
+        throttle: 1.0,
+        ..Default::default()
+    };
+    let mut linvel = [0.0_f32, 0.0, 60.0];
+    let mut angvel = [0.0_f32; 3];
+    for _ in 0..60 {
+        let out = engine.step(
+            FIXED_DT,
+            warmup,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+    }
+    let speed_before_brake = linvel[2];
+    assert!(speed_before_brake > 40.0, "warmup should keep high speed, got {}", speed_before_brake);
+
+    let brake = CarInput {
+        brake: true,
+        brake_analog: 1.0,
+        ..Default::default()
+    };
+    let mut peak_front_fx_abs = 0.0_f32;
+    let mut min_front_slip_ratio = 0.0_f32;
+    let mut min_front_fx_during_lockup = f32::MAX;
+    let mut locked_step: Option<usize> = None;
+    let mut saw_lockup_label_front = false;
+    let mut saw_lockup_label_rear = false;
+    for step in 0..120 {
+        let out = engine.step(
+            FIXED_DT,
+            brake,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+        let pwf = &out.per_wheel_forces;
+        let sr_fl = pwf.slip_ratio[0];
+        let sr_fr = pwf.slip_ratio[1];
+        let fx_fl = pwf.fx[0].abs();
+        let fx_fr = pwf.fx[1].abs();
+        peak_front_fx_abs = peak_front_fx_abs.max(fx_fl).max(fx_fr);
+        min_front_slip_ratio = min_front_slip_ratio.min(sr_fl).min(sr_fr);
+        if sr_fl < -0.5 && sr_fr < -0.5 && locked_step.is_none() {
+            locked_step = Some(step);
+        }
+        if locked_step.is_some() && out.forward_speed_ms > 5.0 {
+            min_front_fx_during_lockup = min_front_fx_during_lockup.min(fx_fl).min(fx_fr);
+        }
+        if pwf.is_locked[0] || pwf.is_locked[1] {
+            saw_lockup_label_front = true;
+        }
+        if pwf.is_locked[2] || pwf.is_locked[3] {
+            saw_lockup_label_rear = true;
+        }
+    }
+
+    assert!(
+        min_front_slip_ratio < -0.5,
+        "expected front-wheel lockup (slip_ratio < -0.5) under full brake, got min {}",
+        min_front_slip_ratio
+    );
+    let locked_at = locked_step.expect("front wheels never reached lockup threshold");
+    assert!(
+        locked_at < 60,
+        "front lockup should happen within 0.5s of full brake, took {} steps",
+        locked_at
+    );
+    assert!(
+        min_front_fx_during_lockup < peak_front_fx_abs * 0.85,
+        "Fx should collapse below 85% of peak once locked: peak={}, min_during_lockup={}",
+        peak_front_fx_abs,
+        min_front_fx_during_lockup
+    );
+    assert!(
+        saw_lockup_label_front,
+        "is_locked label should fire on at least one front wheel under full brake"
+    );
+    // Front-biased 58/42 brake split: rear may or may not lock depending on
+    // surface and load — this is just a sanity log via the unused variable.
+    let _ = saw_lockup_label_rear;
+}
+
+/// Same scenario as `full_brake_from_60ms_locks_front_wheels` but with
+/// ABS enabled. The slip-ratio gate must keep the front wheels above the
+/// lockup threshold throughout the brake event.
+#[test]
+fn abs_prevents_front_wheel_lockup() {
+    let mut engine = PhysicsEngine::new();
+    engine.set_surface(SurfaceType::Road);
+    engine.set_abs_enabled(true);
+    assert!(engine.is_abs_enabled());
+
+    let warmup = CarInput {
+        forward: true,
+        throttle: 1.0,
+        ..Default::default()
+    };
+    let mut linvel = [0.0_f32, 0.0, 60.0];
+    let mut angvel = [0.0_f32; 3];
+    for _ in 0..60 {
+        let out = engine.step(
+            FIXED_DT,
+            warmup,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+    }
+
+    let brake = CarInput {
+        brake: true,
+        brake_analog: 1.0,
+        ..Default::default()
+    };
+    let mut min_front_slip_ratio = 0.0_f32;
+    let mut sustained_lockup_frames = 0;
+    let mut sustained_max = 0;
+    for _ in 0..120 {
+        let out = engine.step(
+            FIXED_DT,
+            brake,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+        let pwf = &out.per_wheel_forces;
+        let sr_fl = pwf.slip_ratio[0];
+        let sr_fr = pwf.slip_ratio[1];
+        min_front_slip_ratio = min_front_slip_ratio.min(sr_fl).min(sr_fr);
+        if pwf.is_locked[0] || pwf.is_locked[1] {
+            sustained_lockup_frames += 1;
+            sustained_max = sustained_max.max(sustained_lockup_frames);
+        } else {
+            sustained_lockup_frames = 0;
+        }
+    }
+    // ABS is a 1-frame PWM release: a single transient hit on the lockup
+    // label is allowed (the gate fires the frame after detection). What
+    // must not happen is sustained lockup — more than a few consecutive
+    // frames means ABS isn't releasing.
+    assert!(
+        sustained_max <= 3,
+        "ABS should not sustain lockup; longest run was {} frames",
+        sustained_max
+    );
+    assert!(
+        min_front_slip_ratio > -0.7,
+        "ABS-enabled front wheels should not deep-lock; min slip_ratio={}",
+        min_front_slip_ratio
+    );
+}
+
+/// Coast (no throttle, no brake) from cruise should decelerate gradually
+/// through drag + engine braking. A regression caught here was an over-
+/// strong idle damping (2.0/s) that turned coast into hard-braking; this
+/// test pins the coast curve to a real F1-feel envelope.
+#[test]
+fn coast_from_cruise_decelerates_gradually() {
+    let mut engine = PhysicsEngine::new();
+    engine.set_surface(SurfaceType::Road);
+    let warmup = CarInput {
+        forward: true,
+        throttle: 1.0,
+        ..Default::default()
+    };
+    let mut linvel = [0.0_f32, 0.0, 30.0];
+    let mut angvel = [0.0_f32; 3];
+    for _ in 0..60 {
+        let out = engine.step(
+            FIXED_DT,
+            warmup,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+    }
+    let v_start = linvel[2];
+    assert!(v_start > 20.0, "warmup should reach reasonable speed, got {}", v_start);
+
+    // 1 second of pure coast.
+    let coast = CarInput::default();
+    for _ in 0..120 {
+        let out = engine.step(
+            FIXED_DT,
+            coast,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+    }
+    // After 1s of coast, an F1 should still retain most of its speed —
+    // engine brake + drag alone shouldn't shave more than ~half. A drop
+    // past 60% means an over-aggressive damping term has crept in.
+    let v_after_1s = linvel[2];
+    let kept = v_after_1s / v_start;
+    assert!(
+        kept > 0.55,
+        "coast 1s should keep ≥55% of speed, kept {:.0}% ({:.2} → {:.2} m/s)",
+        kept * 100.0,
+        v_start,
+        v_after_1s
+    );
+}
+
+/// Full-brake from cruise should converge to *exactly* zero forward
+/// velocity, not overshoot into a steady-state negative-creep band.
+/// Pre-fix the chassis settled at ~-1.0 m/s under sustained brake (the
+/// Pacejka path's smooth-sign integrator can't hold zero against numerical
+/// noise). The park-brake snap fixes this.
+#[test]
+fn full_brake_converges_to_exact_zero_and_stays() {
+    let mut engine = PhysicsEngine::new();
+    engine.set_surface(SurfaceType::Road);
+
+    let warmup = CarInput {
+        forward: true,
+        throttle: 1.0,
+        ..Default::default()
+    };
+    let mut linvel = [0.0_f32, 0.0, 30.0];
+    let mut angvel = [0.0_f32; 3];
+    for _ in 0..60 {
+        let out = engine.step(
+            FIXED_DT,
+            warmup,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+    }
+
+    let brake = CarInput {
+        brake: true,
+        brake_analog: 1.0,
+        ..Default::default()
+    };
+    for _ in 0..360 {
+        let out = engine.step(
+            FIXED_DT,
+            brake,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+    }
+    assert_eq!(
+        linvel[2], 0.0,
+        "full brake should snap velocity to exactly 0, got {}",
+        linvel[2]
+    );
+
+    // Release brake: idle (no input) should keep the car still, not drift.
+    let idle = CarInput::default();
+    for _ in 0..240 {
+        let out = engine.step(
+            FIXED_DT,
+            idle,
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            linvel,
+            angvel,
+            [0.0, 1.0, 0.0],
+            None,
+        );
+        linvel = out.linear_velocity;
+        angvel = out.angular_velocity;
+    }
+    assert!(
+        linvel[2].abs() < 0.05,
+        "idle after brake release should stay still, drifted to {}",
+        linvel[2]
+    );
+}
+
 #[test]
 fn longitudinal_force_obeys_friction_envelope_at_rest() {
     // Sanity: at rest with full throttle, the per-step longitudinal_g

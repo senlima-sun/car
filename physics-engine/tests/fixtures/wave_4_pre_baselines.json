@@ -2,14 +2,14 @@
   "schema_version": 1,
   "captured_at": "wave-4-phase-0-pre",
   "scenarios": {
-    "zero_to_100_kmh_seconds": 2.6333,
-    "fifty_ms_to_zero_stop_distance_m": 40.2574,
-    "steady_state_80m_radius_peak_lat_g": 8.1465,
-    "drs_active_200_to_300_kmh_seconds": 7.4833,
-    "hundred_kmh_to_zero_stop_distance_m": 15.0457,
-    "wet_fifty_ms_to_zero_stop_distance_m": 77.1137,
-    "wet_steady_state_80m_radius_peak_lat_g": 8.1222,
-    "oil_steady_state_80m_radius_peak_lat_g": 7.7198
+    "zero_to_100_kmh_seconds": 2.8750,
+    "fifty_ms_to_zero_stop_distance_m": 40.2084,
+    "steady_state_80m_radius_peak_lat_g": 3.0558,
+    "drs_active_200_to_300_kmh_seconds": 7.5833,
+    "hundred_kmh_to_zero_stop_distance_m": 15.0523,
+    "wet_fifty_ms_to_zero_stop_distance_m": 77.0593,
+    "wet_steady_state_80m_radius_peak_lat_g": 1.1638,
+    "oil_steady_state_80m_radius_peak_lat_g": 1.1614
   },
   "notes": "Pre-Wave-4 anchor. Should match wave_3_baselines.json within FP noise. Cumulative drift through Phases 1-6 is measured against this fixture."
 }

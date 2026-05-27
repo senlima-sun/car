@@ -15,6 +15,7 @@ describe('PerWheelForces telemetry surface', () => {
       fz: [0, 0, 0, 0],
       slip_angle: [0, 0, 0, 0],
       slip_ratio: [0, 0, 0, 0],
+      is_locked: [false, false, false, false],
     }
     expect(empty.fx.length).toBe(4)
     expect(empty.fy.length).toBe(4)
@@ -31,6 +32,7 @@ describe('PerWheelForces telemetry surface', () => {
         fz: [0, 0, 0, 0],
         slip_angle: [0, 0, 0, 0],
         slip_ratio: [0, 0, 0, 0],
+        is_locked: [false, false, false, false],
       },
     }
     expect(sample.per_wheel_forces.fx).toEqual([0, 0, 0, 0])

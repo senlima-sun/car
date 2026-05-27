@@ -514,6 +514,14 @@ impl PhysicsEngine {
         self.brakes.cycle_engine_braking_level();
     }
 
+    pub fn set_abs_enabled(&mut self, enabled: bool) {
+        self.brakes.set_abs_enabled(enabled);
+    }
+
+    pub fn is_abs_enabled(&self) -> bool {
+        self.brakes.is_abs_enabled()
+    }
+
     pub fn get_brake_state(&self) -> BrakeState {
         self.brakes.get_state()
     }
@@ -1120,6 +1128,7 @@ impl PhysicsEngine {
             engine_power_multiplier,
             front_brake_force,
             rear_brake_force,
+            self.brakes.is_abs_enabled(),
             ers_harvest_decel,
             air_density,
             surface_normal,

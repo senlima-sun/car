@@ -35,6 +35,7 @@ export function useCarTelemetryLogging() {
     dt: number,
     throttle: number,
     brakeAnalog: number,
+    absEnabled: boolean,
   ) => {
     const now = performance.now()
     const logger = IS_DEV ? getLogger() : null
@@ -85,6 +86,16 @@ export function useCarTelemetryLogging() {
     const speedChanged = Math.abs(output.speed_kmh - prevSpeedRef.current) >= 5
     const gearChanged = output.gear !== prevGearRef.current
 
+    // Lockup state lives in per_wheel_forces.is_locked. Surface it every
+    // frame (not throttled) so the HUD can react to short rises/falls.
+    const isLocked = output.per_wheel_forces?.is_locked ?? [false, false, false, false]
+    const wheelLocked: [boolean, boolean, boolean, boolean] = [
+      Boolean(isLocked[0]),
+      Boolean(isLocked[1]),
+      Boolean(isLocked[2]),
+      Boolean(isLocked[3]),
+    ]
+
     if (now - lastTelemetryTime.current > 100 || speedChanged || gearChanged) {
       updateTelemetry({
         speed: output.speed_kmh,
@@ -97,6 +108,8 @@ export function useCarTelemetryLogging() {
         lateralG: output.lateral_g ?? 0,
         longitudinalG: output.longitudinal_g ?? 0,
         skidIntensity: output.skid_intensity ?? 0,
+        wheelLocked,
+        absEnabled,
       })
       lastTelemetryTime.current = now
       prevSpeedRef.current = output.speed_kmh
@@ -108,6 +121,8 @@ export function useCarTelemetryLogging() {
         lateralG: output.lateral_g ?? 0,
         longitudinalG: output.longitudinal_g ?? 0,
         skidIntensity: output.skid_intensity ?? 0,
+        wheelLocked,
+        absEnabled,
       })
     }
 
