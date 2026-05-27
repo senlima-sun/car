@@ -4,8 +4,9 @@ import { useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { CAR_SCALE } from '@/constants/physics'
 import { WHEELBASE } from '@/constants/dimensions'
+import { assetUrl } from '@/utils/assetUrl'
 
-const MODEL_PATH = '/models/f1_2026.glb'
+const MODEL_PATH = assetUrl('/models/f1_2026.glb')
 const GHOST_COLOR = new THREE.Color(0x00ccff)
 const GHOST_OPACITY = 0.5
 const GHOST_EMISSIVE_INTENSITY = 0.4

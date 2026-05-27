@@ -5,8 +5,12 @@ import * as THREE from 'three'
 import { useSteeringWheelDisplay } from './SteeringWheelDisplay'
 import { useCarStore } from '@/stores/useCarStore'
 import { applySwDisplayAnisotropy, getSwDisplay } from '@/stores/useSwDisplayStore'
+import { useSwDisplayTuningStore } from '@/stores/useSwDisplayTuningStore'
+import { assetUrl } from '@/utils/assetUrl'
 
-const MODEL_PATH = '/models/steering-wheel.glb'
+const DEG_TO_RAD = Math.PI / 180
+
+const MODEL_PATH = assetUrl('/models/steering-wheel.glb')
 const MAX_RPM = 12500
 
 const RPM_COLORS = [
@@ -107,8 +111,14 @@ export function SteeringWheel({ getSteerAngle }: SteeringWheelProps) {
     }
 
     if (displayMesh) {
-      displayMesh.position.set(0, 0.042, -0.028)
-      displayMesh.scale.set(0.85, 1, 0.9)
+      const { rotationDeg, position, scale } = useSwDisplayTuningStore.getState()
+      displayMesh.position.set(position.x, position.y, position.z)
+      displayMesh.scale.set(scale.x, scale.y, scale.z)
+      displayMesh.rotation.set(
+        rotationDeg.x * DEG_TO_RAD,
+        rotationDeg.y * DEG_TO_RAD,
+        rotationDeg.z * DEG_TO_RAD,
+      )
     }
   })
 

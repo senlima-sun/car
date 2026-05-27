@@ -1,11 +1,12 @@
 import RadarMinimap from './RadarMinimap'
 import WeatherFrontEditor from './WeatherFrontEditor'
 import SunControl from './SunControl'
+import ClimateControls from './ClimateControls'
 import DraggablePanel from '../DevTools/DraggablePanel'
 
 export default function WeatherPanel() {
   return (
-    <DraggablePanel id='weather' title='Weather Radar' hotkey='F7'>
+    <DraggablePanel id='weather' title='Weather Radar'>
       <div style={styles.content}>
         <div style={styles.column}>
           <div style={styles.subLabel}>Live radar</div>
@@ -15,6 +16,7 @@ export default function WeatherPanel() {
           <WeatherFrontEditor />
         </div>
         <div style={styles.column}>
+          <ClimateControls />
           <SunControl />
         </div>
       </div>
