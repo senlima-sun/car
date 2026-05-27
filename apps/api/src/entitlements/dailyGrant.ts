@@ -47,6 +47,7 @@ export async function getOrCreateDailyGrant(
   db: Db,
   userId: string,
   now: Date,
+  rng: () => number = Math.random,
 ): Promise<DailyGrant> {
   const dateUTC = todayUtc(now)
 
@@ -58,7 +59,7 @@ export async function getOrCreateDailyGrant(
     .values({
       userId,
       dateUTC,
-      trackId: pickRandomTrack(Math.random),
+      trackId: pickRandomTrack(rng),
       createdAt: now,
     })
     .onConflictDoNothing({ target: [dailyTrackGrant.userId, dailyTrackGrant.dateUTC] })

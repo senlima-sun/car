@@ -18,7 +18,7 @@ export interface EntitlementInput {
   tier: LogicalTier | null
 }
 
-const ALL_PERMISSIVE: FeatureMatrix = {
+const ALL_PERMISSIVE: Readonly<FeatureMatrix> = Object.freeze({
   raceMode: 'unlimited',
   timeTrial: true,
   ghost: true,
@@ -29,9 +29,9 @@ const ALL_PERMISSIVE: FeatureMatrix = {
   telemetryExport: true,
   cloudLeaderboardRead: true,
   cloudLeaderboardWrite: true,
-}
+})
 
-const FREE: FeatureMatrix = {
+const FREE: Readonly<FeatureMatrix> = Object.freeze({
   raceMode: 'daily-only',
   timeTrial: false,
   ghost: false,
@@ -42,9 +42,9 @@ const FREE: FeatureMatrix = {
   telemetryExport: false,
   cloudLeaderboardRead: true,
   cloudLeaderboardWrite: false,
-}
+})
 
-export function getEntitlements({ role, tier }: EntitlementInput): FeatureMatrix {
+export function getEntitlements({ role, tier }: EntitlementInput): Readonly<FeatureMatrix> {
   if (role === 'admin') return ALL_PERMISSIVE
   if (tier === 'pro') return ALL_PERMISSIVE
   return FREE

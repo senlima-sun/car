@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { dailyTrackGrant, user } from '../src/db/schema/index.ts'
 import {
   PRESET_TRACK_IDS,
@@ -16,10 +16,6 @@ async function seedUser(db: Db, id: string): Promise<void> {
     .values({ id, name: id, email: `${id}@example.com`, createdAt: now, updatedAt: now })
     .run()
 }
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('pickRandomTrack', () => {
   test('is deterministic for a fixed RNG seed', () => {
@@ -47,9 +43,8 @@ describe('getOrCreateDailyGrant', () => {
   test('inserts a grant on first call', async () => {
     const { db } = memoryHarness()
     await seedUser(db, 'u1')
-    vi.spyOn(Math, 'random').mockReturnValue(0)
 
-    const grant = await getOrCreateDailyGrant(db, 'u1', new Date('2026-05-28T10:00:00.000Z'))
+    const grant = await getOrCreateDailyGrant(db, 'u1', new Date('2026-05-28T10:00:00.000Z'), () => 0)
     expect(grant).toEqual({ trackId: PRESET_TRACK_IDS[0], dateUTC: '2026-05-28' })
   })
 
@@ -58,11 +53,8 @@ describe('getOrCreateDailyGrant', () => {
     await seedUser(db, 'u1')
     const now = new Date('2026-05-28T10:00:00.000Z')
 
-    vi.spyOn(Math, 'random').mockReturnValue(0.1)
-    const first = await getOrCreateDailyGrant(db, 'u1', now)
-
-    vi.spyOn(Math, 'random').mockReturnValue(0.9)
-    const second = await getOrCreateDailyGrant(db, 'u1', now)
+    const first = await getOrCreateDailyGrant(db, 'u1', now, () => 0.1)
+    const second = await getOrCreateDailyGrant(db, 'u1', now, () => 0.9)
 
     expect(second.trackId).toBe(first.trackId)
   })
@@ -73,11 +65,8 @@ describe('getOrCreateDailyGrant', () => {
     await seedUser(db, 'u2')
     const now = new Date('2026-05-28T10:00:00.000Z')
 
-    vi.spyOn(Math, 'random').mockReturnValue(0)
-    const a = await getOrCreateDailyGrant(db, 'u1', now)
-
-    vi.spyOn(Math, 'random').mockReturnValue(0.999999)
-    const b = await getOrCreateDailyGrant(db, 'u2', now)
+    const a = await getOrCreateDailyGrant(db, 'u1', now, () => 0)
+    const b = await getOrCreateDailyGrant(db, 'u2', now, () => 0.999999)
 
     expect(a.trackId).toBe(PRESET_TRACK_IDS[0])
     expect(b.trackId).toBe(PRESET_TRACK_IDS[PRESET_TRACK_IDS.length - 1])
@@ -93,8 +82,7 @@ describe('getOrCreateDailyGrant', () => {
       .values({ userId: 'u1', dateUTC: '2026-05-28', trackId: 'f1_monaco', createdAt: now })
       .run()
 
-    vi.spyOn(Math, 'random').mockReturnValue(0)
-    const grant = await getOrCreateDailyGrant(db, 'u1', now)
+    const grant = await getOrCreateDailyGrant(db, 'u1', now, () => 0)
     expect(grant.trackId).toBe('f1_monaco')
   })
 
@@ -102,11 +90,8 @@ describe('getOrCreateDailyGrant', () => {
     const { db } = memoryHarness()
     await seedUser(db, 'u1')
 
-    vi.spyOn(Math, 'random').mockReturnValue(0)
-    const day1 = await getOrCreateDailyGrant(db, 'u1', new Date('2026-05-28T10:00:00.000Z'))
-
-    vi.spyOn(Math, 'random').mockReturnValue(0.999999)
-    const day2 = await getOrCreateDailyGrant(db, 'u1', new Date('2026-05-29T10:00:00.000Z'))
+    const day1 = await getOrCreateDailyGrant(db, 'u1', new Date('2026-05-28T10:00:00.000Z'), () => 0)
+    const day2 = await getOrCreateDailyGrant(db, 'u1', new Date('2026-05-29T10:00:00.000Z'), () => 0.999999)
 
     expect(day1.dateUTC).toBe('2026-05-28')
     expect(day2.dateUTC).toBe('2026-05-29')

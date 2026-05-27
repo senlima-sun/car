@@ -71,15 +71,15 @@ export async function resolveSubscription(c: {
   }
 }
 
-async function resolveRole(c: { var: { db: Db } }, userId: string) {
+async function resolveRole(c: { var: { db: Db } }, userId: string): Promise<UserRole> {
   const row = await c.var.db
     .select({ role: user.role })
     .from(user)
     .where(eq(user.id, userId))
     .get()
-  if (!row || !row.role) {
+  if (!row || (row.role !== 'user' && row.role !== 'admin')) {
     auditLog('entitlement.role.fallback', { userId })
-    return 'user' satisfies UserRole
+    return 'user'
   }
   return row.role
 }
@@ -88,12 +88,13 @@ export const meRoute = new Hono<HonoEnv>().get('/api/me', async c => {
   const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers })
   if (!session) return c.json({ error: 'unauthenticated' }, 401)
 
-  const subscription = await resolveSubscription(c).catch(err => {
-    logFailure(err)
-    return EMPTY_SUBSCRIPTION
-  })
-
-  const role = await resolveRole(c, session.user.id)
+  const [subscription, role] = await Promise.all([
+    resolveSubscription(c).catch(err => {
+      logFailure(err)
+      return EMPTY_SUBSCRIPTION
+    }),
+    resolveRole(c, session.user.id),
+  ])
 
   return c.json({
     user: {
