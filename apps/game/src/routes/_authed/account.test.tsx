@@ -1,3 +1,4 @@
+import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { MePayload } from '@/auth/fetchEntitlements'
@@ -33,7 +34,7 @@ vi.mock('@/auth/fetchEntitlements', () => ({
 }))
 
 const { Route } = await import('./account.tsx')
-const AccountRoute = (Route as unknown as { options: { component: () => JSX.Element } }).options
+const AccountRoute = (Route as unknown as { options: { component: () => React.ReactElement } }).options
   .component
 
 function setLoader(me: MePayload | null): void {

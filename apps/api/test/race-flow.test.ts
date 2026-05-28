@@ -90,7 +90,7 @@ async function signUpAndCookie(
   return { cookie, userId: meUser.id }
 }
 
-function postRace(
+async function postRace(
   app: App,
   env: HonoEnv['Bindings'],
   cookie: string,
