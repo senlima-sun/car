@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import { AuthProvider } from '@/auth/AuthProvider'
 import { fetchMe } from '@/auth/fetchEntitlements'
 
 export const Route = createFileRoute('/_authed')({
@@ -7,5 +8,14 @@ export const Route = createFileRoute('/_authed')({
     if (!me) throw redirect({ to: '/', search: { auth: 'signin' } })
     return { me }
   },
-  component: () => <Outlet />,
+  component: AuthedLayout,
 })
+
+function AuthedLayout() {
+  const { me } = Route.useLoaderData()
+  return (
+    <AuthProvider me={me}>
+      <Outlet />
+    </AuthProvider>
+  )
+}
