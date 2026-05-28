@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGhostCarStore } from '@/stores/useGhostCarStore'
 import { useTrackStore } from '@/stores/useTrackStore'
 import { ghostBuffersToDemo } from '@/utils/aiDemoSchema'
+import { useFeatureGate } from '@/auth/useFeatureGate'
 import { Surface } from '@/components/ui/primitives'
 
 type ExportState = 'idle' | 'exported' | 'error'
@@ -16,20 +17,22 @@ function resolveTrackSlug(): string | null {
 export function ExportDemoButton() {
   const [state, setState] = useState<ExportState>('idle')
   const lastLap = useGhostCarStore(s => s.lastCompletedLap)
+  const exportGate = useFeatureGate('telemetryExport')
 
   const slug = resolveTrackSlug()
   const completedFrames = lastLap?.buffers.frameCount ?? 0
   const completedLapTime = lastLap?.lapTime ?? null
-  const disabled = lastLap === null || slug === null
+  const disabled = lastLap === null || slug === null || !exportGate.allowed
 
   const tooltip = (() => {
+    if (!exportGate.allowed) return 'Upgrade to Pro to export telemetry'
     if (lastLap === null) return 'Drive a full lap first; export uses the most recently completed lap'
     if (slug === null) return 'No active track selected'
     return `Export ${completedFrames} frames (lap ${(completedLapTime! / 1000).toFixed(2)}s) as ${slug}.demo.json`
   })()
 
   const handleExport = () => {
-    if (disabled || slug === null || lastLap === null) {
+    if (!exportGate.allowed || disabled || slug === null || lastLap === null) {
       setState('error')
       return
     }
@@ -55,6 +58,7 @@ export function ExportDemoButton() {
   }
 
   const label = (() => {
+    if (!exportGate.allowed) return 'Export demo JSON · Pro'
     if (state === 'exported') return `Exported ${completedFrames} frames`
     if (state === 'error') return 'Export failed'
     if (lastLap === null) return 'Export demo JSON (drive a full lap)'
