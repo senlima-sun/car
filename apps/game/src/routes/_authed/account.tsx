@@ -1,8 +1,7 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useLoaderData, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { PRICING_PRODUCTS } from '@/auth/pricingProducts'
 import { useAuth } from '@/auth/AuthProvider'
-import { fetchMe } from '@/auth/fetchEntitlements'
 
 const UPGRADE_FEATURE_LABELS: Record<string, string> = {
   race: 'Race Mode',
@@ -28,7 +27,7 @@ async function postBilling(path: '/api/billing/checkout' | '/api/billing/portal'
 function AccountRoute() {
   const { session, client } = useAuth()
   const navigate = useNavigate()
-  const me = Route.useLoaderData()
+  const { me } = useLoaderData({ from: '/_authed' })
   const { upgrade } = Route.useSearch()
   const [billingError, setBillingError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -161,5 +160,4 @@ export const Route = createFileRoute('/_authed/account')({
       ? { upgrade: upgrade as typeof valid[number] }
       : {}
   },
-  loader: () => fetchMe(),
 })

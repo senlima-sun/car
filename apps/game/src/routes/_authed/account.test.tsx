@@ -13,9 +13,9 @@ const searchData: { upgrade?: string } = {}
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (config: unknown) => ({
     options: config,
-    useLoaderData: () => loaderData.me,
     useSearch: () => searchData,
   }),
+  useLoaderData: () => ({ me: loaderData.me }),
   useNavigate: () => () => {},
 }))
 
@@ -29,9 +29,6 @@ vi.mock('@/auth/AuthProvider', () => ({
   }),
 }))
 
-vi.mock('@/auth/fetchEntitlements', () => ({
-  fetchMe: async () => null,
-}))
 
 const { Route } = await import('./account.tsx')
 const AccountRoute = (Route as unknown as { options: { component: () => React.ReactElement } }).options

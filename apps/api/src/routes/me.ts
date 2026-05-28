@@ -26,7 +26,7 @@ function logFailure(error: unknown) {
 }
 
 function mapStatus(raw: string): SubscriptionShape['status'] {
-  if (raw === 'active') return 'active'
+  if (raw === 'active' || raw === 'trialing') return 'active'
   if (raw === 'canceled') return 'canceled'
   return null
 }
@@ -51,10 +51,7 @@ export async function resolveSubscription(c: {
   const tier = tierFromProductId(c.env, active.productId)
   if (!tier) return EMPTY_SUBSCRIPTION
 
-  const currentPeriodEnd =
-    active.currentPeriodEnd instanceof Date
-      ? active.currentPeriodEnd.toISOString()
-      : (active.currentPeriodEnd ?? null)
+  const currentPeriodEnd = (active.currentPeriodEnd as unknown as string | null) ?? null
 
   return {
     tier,

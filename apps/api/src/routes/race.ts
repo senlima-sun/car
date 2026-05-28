@@ -36,7 +36,7 @@ export const raceRoute = new Hono<HonoEnv>().post('/api/race/start', async c => 
   const db = c.var.db
 
   const [role, subscription] = await Promise.all([
-    resolveRole(db, userId),
+    resolveRole(db, userId).catch(() => 'user' as const),
     resolveSubscription(c).catch(() => ({ tier: null } as const)),
   ])
 

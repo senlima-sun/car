@@ -1,4 +1,3 @@
-import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, test, vi } from 'vitest'
 import type { FeatureMatrix } from './entitlements'
@@ -29,7 +28,7 @@ const proEntitlements: FeatureMatrix = {
   cloudLeaderboardWrite: true,
 }
 
-let mockContextValue: AuthContextValue | null = null
+let mockContextValue: ReturnType<typeof makeCtx> | null = null
 
 vi.mock('./AuthProvider', () => ({
   useAuthOptional: () => mockContextValue,
