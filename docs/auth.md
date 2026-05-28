@@ -55,6 +55,15 @@ A `predeploy` script (`apps/api/scripts/check-d1-migrations.ts`) refuses to depl
 
 The `user` table carries a `role` column (`'user' | 'admin'`, default `'user'`), and a `daily_track_grant` table (composite PK `(userId, dateUTC)`, FK to `user.id` ON DELETE CASCADE, indexed on `userId` and `dateUTC`) records the per-UTC-day random track granted to free-tier users. Worker code reads both via the shared Drizzle client factory in `apps/api/src/db/client.ts`.
 
+`POST /api/race/start {trackId}` is the single race-entry enforcement point; it returns `{ok: true}`, `{ok: true, grantedTrackId}`, or `{redirect: <grantedTrackId>}` and emits one of three audit-log events: `entitlement.race.granted`, `entitlement.race.redirected`, or `entitlement.role.fallback` (on missing/null role row).
+
+Admin bootstrap (no UI; wrangler SQL only):
+
+```sh
+pnpm --filter @car/api exec wrangler d1 execute car-auth --command \
+  "UPDATE user SET role = 'admin' WHERE email = 'you@example.com';"
+```
+
 ## Cookie cache vs secondary storage
 
 Better Auth issue [#4203](https://github.com/better-auth/better-auth/issues/4203) reports stale-session reads when `cookieCache` and `secondaryStorage` are both enabled. We use `secondaryStorage` (KV) only; `cookieCache` is explicitly disabled.
