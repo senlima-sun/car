@@ -3,7 +3,7 @@ import { fetchMe } from '@/auth/fetchEntitlements'
 
 export const Route = createFileRoute('/_authed')({
   loader: async () => {
-    const me = await fetchMe()
+    const me = await fetchMe().catch(() => null)
     if (!me) throw redirect({ to: '/', search: { auth: 'signin' } })
     return { me }
   },

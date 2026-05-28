@@ -1,23 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useAuth } from '@/auth/AuthProvider'
-
-interface SubscriptionPayload {
-  tier: string | null
-  status: string | null
-  currentPeriodEnd: string | null
-}
-
-interface MePayload {
-  user: { id: string; email: string; name: string }
-  subscription: SubscriptionPayload
-}
-
-async function fetchMe(): Promise<MePayload | null> {
-  const res = await fetch('/api/me', { credentials: 'include' })
-  if (!res.ok) return null
-  return (await res.json()) as MePayload
-}
+import { fetchMe } from '@/auth/fetchEntitlements'
 
 async function postBilling(path: '/api/billing/checkout' | '/api/billing/portal', body?: unknown) {
   const res = await fetch(path, {

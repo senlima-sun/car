@@ -1,13 +1,9 @@
-import { eq } from 'drizzle-orm'
 import { Hono } from 'hono'
 import { getOrCreateDailyGrant } from '../entitlements/dailyGrant.ts'
 import { getEntitlements } from '../entitlements/features.ts'
-import type { Db } from '../db/client.ts'
-import { user } from '../db/schema/index.ts'
+import { resolveRole } from '../entitlements/role.ts'
 import type { HonoEnv } from '../types.ts'
 import { resolveSubscription } from './me.ts'
-
-type UserRole = 'user' | 'admin'
 
 interface RaceStartBody {
   trackId: string
@@ -22,15 +18,6 @@ function isRaceStartBody(value: unknown): value is RaceStartBody {
   const keys = Object.keys(value)
   if (keys.length !== 1 || keys[0] !== 'trackId') return false
   return typeof (value as { trackId: unknown }).trackId === 'string'
-}
-
-async function resolveRole(db: Db, userId: string): Promise<UserRole> {
-  const row = await db.select({ role: user.role }).from(user).where(eq(user.id, userId)).get()
-  if (!row || (row.role !== 'user' && row.role !== 'admin')) {
-    auditLog('entitlement.role.fallback', { userId })
-    return 'user'
-  }
-  return row.role
 }
 
 export const raceRoute = new Hono<HonoEnv>().post('/api/race/start', async c => {
