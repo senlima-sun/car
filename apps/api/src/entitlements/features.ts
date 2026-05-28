@@ -1,7 +1,7 @@
 import type { LogicalTier } from '../billing/products.ts'
 
 export interface FeatureMatrix {
-  raceMode: 'unlimited' | 'daily-only' | 'denied'
+  raceMode: 'unlimited' | 'daily-only'
   timeTrial: boolean
   ghost: boolean
   editor: boolean

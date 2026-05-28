@@ -2,12 +2,9 @@ import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { checkout, polar, portal, webhooks } from '@polar-sh/better-auth'
 import { Polar } from '@polar-sh/sdk'
 import { BILLING_PRODUCTS, getProducts } from '../billing/products.ts'
+import { auditLog } from '../lib/auditLog.ts'
 import type { Bindings } from '../types.ts'
 import { parseOrigins } from './origins.ts'
-
-function auditLog(event: string, fields: Record<string, unknown>) {
-  console.log(JSON.stringify({ event, timestamp: new Date().toISOString(), ...fields }))
-}
 
 function buildPolarPlugin(env: Bindings) {
   const products = getProducts(env)

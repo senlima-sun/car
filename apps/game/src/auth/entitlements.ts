@@ -1,7 +1,7 @@
 // Mirror of apps/api/src/entitlements/features.ts — kept in sync via apps/api/test/entitlements-parity.test.ts
 
 export interface FeatureMatrix {
-  raceMode: 'unlimited' | 'daily-only' | 'denied'
+  raceMode: 'unlimited' | 'daily-only'
   timeTrial: boolean
   ghost: boolean
   editor: boolean

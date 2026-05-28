@@ -1,12 +1,9 @@
 import { eq } from 'drizzle-orm'
 import type { Db } from '../db/client.ts'
 import { user } from '../db/schema/index.ts'
+import { auditLog } from '../lib/auditLog.ts'
 
 export type UserRole = 'user' | 'admin'
-
-function auditLog(event: string, fields: Record<string, unknown>) {
-  console.log(JSON.stringify({ event, timestamp: new Date().toISOString(), ...fields }))
-}
 
 export async function resolveRole(db: Db, userId: string): Promise<UserRole> {
   const row = await db.select({ role: user.role }).from(user).where(eq(user.id, userId)).get()

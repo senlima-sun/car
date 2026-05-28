@@ -2,15 +2,12 @@ import { Hono } from 'hono'
 import { getOrCreateDailyGrant } from '../entitlements/dailyGrant.ts'
 import { getEntitlements } from '../entitlements/features.ts'
 import { resolveRole } from '../entitlements/role.ts'
+import { auditLog } from '../lib/auditLog.ts'
 import type { HonoEnv } from '../types.ts'
 import { resolveSubscription } from './me.ts'
 
 interface RaceStartBody {
   trackId: string
-}
-
-function auditLog(event: string, fields: Record<string, unknown>) {
-  console.log(JSON.stringify({ event, timestamp: new Date().toISOString(), ...fields }))
 }
 
 function isRaceStartBody(value: unknown): value is RaceStartBody {
@@ -43,13 +40,6 @@ export const raceRoute = new Hono<HonoEnv>().post('/api/race/start', async c => 
   const features = getEntitlements({ role, tier: subscription.tier })
 
   switch (features.raceMode) {
-    case 'denied':
-      auditLog('entitlement.race.denied', {
-        userId,
-        requestedTrackId: body.trackId,
-        reason: 'denied',
-      })
-      return c.json({ error: 'pro_required' }, 403)
     case 'unlimited':
       auditLog('entitlement.race.granted', { userId, trackId: body.trackId, mode: 'unlimited' })
       return c.json({ ok: true })
