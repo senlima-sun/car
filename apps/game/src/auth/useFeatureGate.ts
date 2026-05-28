@@ -8,7 +8,8 @@ export interface FeatureGateResult {
 
 export function useFeatureGate(feature: keyof FeatureMatrix): FeatureGateResult {
   const ctx = useAuthOptional()
-  if (!ctx || !ctx.entitlements) return { allowed: false, reason: 'auth_required' }
+  if (!ctx) return { allowed: false, reason: 'auth_required' }
+  if (!ctx.entitlements) return { allowed: true, reason: null }
   if (feature === 'raceMode') return { allowed: true, reason: null }
   const value = ctx.entitlements[feature]
   const allowed = value === true

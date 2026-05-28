@@ -24,6 +24,7 @@ export async function postRaceStart(trackId: string): Promise<RaceStartVerdict |
     body: JSON.stringify({ trackId }),
   })
   if (res.status === 401) return null
+  if (res.status === 403) return { error: 'pro_required' } as const
   if (!res.ok) throw new Error(`/api/race/start failed (${res.status})`)
   return (await res.json()) as RaceStartVerdict
 }

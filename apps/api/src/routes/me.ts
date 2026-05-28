@@ -72,7 +72,7 @@ export const meRoute = new Hono<HonoEnv>().get('/api/me', async c => {
       logFailure(err)
       return EMPTY_SUBSCRIPTION
     }),
-    resolveRole(c, session.user.id),
+    resolveRole(c.var.db, session.user.id).catch(() => 'user' as const),
   ])
 
   return c.json({
