@@ -12,7 +12,8 @@ export function stubEnv(overrides: Partial<Bindings> = {}): Bindings {
     FRONTEND_ORIGINS: 'http://localhost:7234',
     POLAR_ACCESS_TOKEN: 'test-polar-token',
     POLAR_WEBHOOK_SECRET: 'test-webhook-secret',
-    POLAR_PRODUCT_ID_PRO: 'test-product-pro',
+    POLAR_PRODUCT_ID_PRO_MONTHLY: 'test-product-pro-monthly',
+    POLAR_PRODUCT_ID_PRO_ANNUAL: 'test-product-pro-annual',
     BILLING_SUCCESS_URL: 'http://localhost:7234/account?billing=success',
     ...overrides,
   } as Bindings

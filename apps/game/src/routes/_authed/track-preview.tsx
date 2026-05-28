@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/track-preview')({
+export const Route = createFileRoute('/_authed/track-preview')({
   component: () => <Outlet />,
 })

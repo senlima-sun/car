@@ -1,10 +1,12 @@
+import { eq } from 'drizzle-orm'
 import { describe, expect, test } from 'vitest'
 import { createApp } from '../src/app.ts'
+import { user } from '../src/db/schema/index.ts'
 import { memoryHarness } from './helpers/memory-env.ts'
 
 function makeApp() {
-  const { env, authOverrides } = memoryHarness()
-  return { app: createApp({ authOverrides }), env }
+  const { env, authOverrides, db } = memoryHarness()
+  return { app: createApp({ authOverrides, dbOverride: db }), env, db }
 }
 
 function signUp(app: ReturnType<typeof createApp>, env: ReturnType<typeof memoryHarness>['env']) {
@@ -39,12 +41,48 @@ describe('auth flow', () => {
     const meRes = await app.request('/api/me', { headers: { cookie } }, env)
     expect(meRes.status).toBe(200)
     const body = (await meRes.json()) as {
-      user: { email: string; name: string }
+      user: { id: string; email: string; name: string }
       subscription: { tier: string | null; status: string | null; currentPeriodEnd: string | null }
+      role: string
     }
     expect(body.user.email).toBe('alice@example.com')
     expect(body.user.name).toBe('Alice')
     expect(body.subscription).toEqual({ tier: null, status: null, currentPeriodEnd: null })
+    expect(body.role).toBe('user')
+  })
+
+  test('/api/me returns role admin when the user row is admin', async () => {
+    const { app, env, db } = makeApp()
+    const signUpRes = await signUp(app, env)
+    const cookie = extractCookie(signUpRes)
+
+    const firstMe = await app.request('/api/me', { headers: { cookie } }, env)
+    const { user: signedUpUser } = (await firstMe.json()) as { user: { id: string } }
+
+    const now = new Date()
+    await db
+      .insert(user)
+      .values({
+        id: signedUpUser.id,
+        name: 'Alice',
+        email: 'alice@example.com',
+        role: 'admin',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({ target: user.id, set: { role: 'admin' } })
+      .run()
+
+    const meRes = await app.request('/api/me', { headers: { cookie } }, env)
+    const body = (await meRes.json()) as { role: string }
+    expect(body.role).toBe('admin')
+
+    const stored = await db
+      .select({ role: user.role })
+      .from(user)
+      .where(eq(user.id, signedUpUser.id))
+      .get()
+    expect(stored?.role).toBe('admin')
   })
 
   test('/api/me without cookie returns 401', async () => {

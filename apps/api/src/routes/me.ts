@@ -1,10 +1,11 @@
 import { Hono } from 'hono'
 import type { CustomerStateSubscription } from '@polar-sh/sdk/models/components/customerstatesubscription.js'
-import { TIERS, type TierSlug, getProducts } from '../billing/products.ts'
+import { type LogicalTier, tierFromProductId } from '../billing/products.ts'
+import { resolveRole } from '../entitlements/role.ts'
 import type { HonoEnv } from '../types.ts'
 
 interface SubscriptionShape {
-  tier: TierSlug | null
+  tier: LogicalTier | null
   status: 'active' | 'canceled' | null
   currentPeriodEnd: string | null
 }
@@ -24,18 +25,13 @@ function logFailure(error: unknown) {
   )
 }
 
-function mapTierFromProduct(env: HonoEnv['Bindings'], productId: string): TierSlug | null {
-  const products = getProducts(env)
-  return TIERS.find(slug => products[slug].polarProductId === productId) ?? null
-}
-
 function mapStatus(raw: string): SubscriptionShape['status'] {
-  if (raw === 'active') return 'active'
+  if (raw === 'active' || raw === 'trialing') return 'active'
   if (raw === 'canceled') return 'canceled'
   return null
 }
 
-async function resolveSubscription(c: {
+export async function resolveSubscription(c: {
   env: HonoEnv['Bindings']
   var: { auth: { handler: (req: Request) => Promise<Response> } }
   req: { raw: Request }
@@ -52,13 +48,10 @@ async function resolveSubscription(c: {
   const active = state?.activeSubscriptions?.[0]
   if (!active) return EMPTY_SUBSCRIPTION
 
-  const tier = mapTierFromProduct(c.env, active.productId)
+  const tier = tierFromProductId(c.env, active.productId)
   if (!tier) return EMPTY_SUBSCRIPTION
 
-  const currentPeriodEnd =
-    active.currentPeriodEnd instanceof Date
-      ? active.currentPeriodEnd.toISOString()
-      : (active.currentPeriodEnd ?? null)
+  const currentPeriodEnd = (active.currentPeriodEnd as unknown as string | null) ?? null
 
   return {
     tier,
@@ -71,10 +64,13 @@ export const meRoute = new Hono<HonoEnv>().get('/api/me', async c => {
   const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers })
   if (!session) return c.json({ error: 'unauthenticated' }, 401)
 
-  const subscription = await resolveSubscription(c).catch(err => {
-    logFailure(err)
-    return EMPTY_SUBSCRIPTION
-  })
+  const [subscription, role] = await Promise.all([
+    resolveSubscription(c).catch(err => {
+      logFailure(err)
+      return EMPTY_SUBSCRIPTION
+    }),
+    resolveRole(c.var.db, session.user.id).catch(() => 'user' as const),
+  ])
 
   return c.json({
     user: {
@@ -83,5 +79,6 @@ export const meRoute = new Hono<HonoEnv>().get('/api/me', async c => {
       name: session.user.name,
     },
     subscription,
+    role,
   })
 })

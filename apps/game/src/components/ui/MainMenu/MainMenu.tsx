@@ -1,11 +1,12 @@
 import { motion } from 'motion/react'
 import { useNavigate } from '@tanstack/react-router'
+import { useFeatureGate } from '@/auth/useFeatureGate'
 import { AuthMenuButton } from '@/components/ui/auth/AuthMenuButton'
 import { useGameStore } from '@/stores/useGameStore'
 import { useSessionStore } from '@/stores/useSessionStore'
 
 interface MenuAction {
-  id: string
+  id: 'race' | 'test' | 'editor' | 'showroom' | 'settings'
   label: string
   detail: string
   actionKey:
@@ -68,6 +69,8 @@ const itemVariants = {
 
 export default function MainMenu() {
   const navigate = useNavigate()
+  const timeTrialGate = useFeatureGate('timeTrial')
+  const editorGate = useFeatureGate('editor')
   const gameActions = {
     enterSessionShell: useGameStore(s => s.enterSessionShell),
     openTrackEditor: useGameStore(s => s.openTrackEditor),
@@ -80,7 +83,21 @@ export default function MainMenu() {
     startQuickSession: useSessionStore(s => s.startQuickSession),
   }
 
-  const handleAction = (actionKey: MenuAction['actionKey']) => {
+  const lockedItems: Partial<Record<MenuAction['id'], 'timeTrial' | 'editor'>> = {
+    test: timeTrialGate.allowed ? undefined : 'timeTrial',
+    editor: editorGate.allowed ? undefined : 'editor',
+  }
+
+  const handleAction = (item: MenuAction) => {
+    const upgrade = lockedItems[item.id]
+    if (upgrade) {
+      navigate({ to: '/account', search: { upgrade } })
+      return
+    }
+    runAction(item.actionKey)
+  }
+
+  const runAction = (actionKey: MenuAction['actionKey']) => {
     if (actionKey === 'startRaceSession') {
       sessionActions.beginSessionFlow('race')
       gameActions.enterSessionShell()
@@ -147,13 +164,16 @@ export default function MainMenu() {
         </motion.header>
 
         <motion.nav variants={containerVariants} className='flex flex-col'>
-          {MENU_ACTIONS.map(item => (
+          {MENU_ACTIONS.map(item => {
+            const locked = lockedItems[item.id] !== undefined
+            return (
             <motion.button
               key={item.id}
               variants={itemVariants}
-              onClick={() => handleAction(item.actionKey)}
+              onClick={() => handleAction(item)}
               whileHover='hover'
               whileTap={{ scale: 0.985 }}
+              aria-disabled={locked || undefined}
               className='group relative flex items-baseline justify-between overflow-hidden border-b border-white/8 py-2.5 text-left'
             >
               <motion.span
@@ -181,6 +201,11 @@ export default function MainMenu() {
                 <span className='text-[10px] uppercase tracking-[0.24em] text-white/40'>
                   {item.detail}
                 </span>
+                {locked && (
+                  <span className='rounded-sm border border-red-300/50 bg-red-500/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.24em] text-red-200'>
+                    Pro
+                  </span>
+                )}
               </span>
               <motion.span
                 aria-hidden
@@ -191,7 +216,8 @@ export default function MainMenu() {
                 →
               </motion.span>
             </motion.button>
-          ))}
+            )
+          })}
         </motion.nav>
 
         <motion.div variants={itemVariants}>

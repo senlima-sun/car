@@ -8,7 +8,7 @@ import LayerTogglePanel from '@/preview/LayerTogglePanel'
 import { SYNTHETIC_FIXTURES } from '@/preview/syntheticFixtures'
 
 function TrackPreviewSingle() {
-  const { presetId } = useParams({ from: '/track-preview/$presetId' })
+  const { presetId } = useParams({ from: '/_authed/track-preview/$presetId' })
   const track = useMemo(
     () => SYNTHETIC_FIXTURES[presetId] ?? getPresetTrack(presetId),
     [presetId],
@@ -54,6 +54,6 @@ function TrackPreviewSingle() {
   )
 }
 
-export const Route = createFileRoute('/track-preview/$presetId')({
+export const Route = createFileRoute('/_authed/track-preview/$presetId')({
   component: TrackPreviewSingle,
 })

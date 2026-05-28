@@ -39,7 +39,8 @@ cp apps/api/.dev.vars.example apps/api/.dev.vars
 | `FRONTEND_ORIGINS`     | Hand-picked               | Comma-separated CORS allowlist (e.g. `https://example.com,https://staging.example.com`).                                                                                       |
 | `POLAR_ACCESS_TOKEN`   | Polar org settings        | Organization Access Token.                                                                                                                                                     |
 | `POLAR_WEBHOOK_SECRET` | Polar webhook settings    | HMAC secret. Plugin verifies signatures with constant-time compare.                                                                                                            |
-| `POLAR_PRODUCT_ID_PRO` | Polar product page        | Product id for the personal `pro` tier.                                                                                                                                        |
+| `POLAR_PRODUCT_ID_PRO_MONTHLY` | Polar product page | Product id for the monthly Pro SKU (`pro-monthly`).                                                                                                                            |
+| `POLAR_PRODUCT_ID_PRO_ANNUAL`  | Polar product page | Product id for the annual Pro SKU (`pro-annual`).                                                                                                                              |
 | `BILLING_SUCCESS_URL`  | Hand-picked               | Polar redirects here after checkout success.                                                                                                                                   |
 
 Production: `pnpm --filter @car/api exec wrangler secret put <NAME>`.
@@ -49,6 +50,19 @@ Production: `pnpm --filter @car/api exec wrangler secret put <NAME>`.
 Forward-only. Generate migrations exclusively via `pnpm --filter @car/api db:generate` — never invoke `wrangler d1 migrations create` directly (it desyncs Drizzle's `migrations/meta/_journal.json`). For data recovery, use D1 time-travel; rollback migrations are unsupported on D1.
 
 A `predeploy` script (`apps/api/scripts/check-d1-migrations.ts`) refuses to deploy the worker if any migration is pending on remote D1; run `pnpm --filter @car/api db:migrate:prod` first.
+
+## Tier system
+
+The `user` table carries a `role` column (`'user' | 'admin'`, default `'user'`), and a `daily_track_grant` table (composite PK `(userId, dateUTC)`, FK to `user.id` ON DELETE CASCADE, indexed on `userId` and `dateUTC`) records the per-UTC-day random track granted to free-tier users. Worker code reads both via the shared Drizzle client factory in `apps/api/src/db/client.ts`.
+
+`POST /api/race/start {trackId}` is the single race-entry enforcement point; it returns `{ok: true}`, `{ok: true, grantedTrackId}`, or `{redirect: <grantedTrackId>}` and emits one of three audit-log events: `entitlement.race.granted`, `entitlement.race.redirected`, or `entitlement.role.fallback` (on missing/null role row).
+
+Admin bootstrap (no UI; wrangler SQL only):
+
+```sh
+pnpm --filter @car/api exec wrangler d1 execute car-auth --command \
+  "UPDATE user SET role = 'admin' WHERE email = 'you@example.com';"
+```
 
 ## Cookie cache vs secondary storage
 

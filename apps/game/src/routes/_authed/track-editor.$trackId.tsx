@@ -4,4 +4,4 @@ function TrackEditorTrack() {
   return null
 }
 
-export const Route = createFileRoute('/track-editor/$trackId')({ component: TrackEditorTrack })
+export const Route = createFileRoute('/_authed/track-editor/$trackId')({ component: TrackEditorTrack })

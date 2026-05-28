@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Car, Eye, Settings } from 'lucide-react'
 import { motion } from 'motion/react'
+import { useNavigate } from '@tanstack/react-router'
+import { useFeatureGate } from '@/auth/useFeatureGate'
 import { CAR_PARTS, PAINT_PRESETS, useCarPaintStore } from '@/stores/useCarPaintStore'
 import { useGameStore } from '@/stores/useGameStore'
 import { useShowroomStore } from '@/stores/useShowroomStore'
@@ -31,6 +33,8 @@ export default function AnimationPreviewPanel() {
   const cameraView = useShowroomStore(s => s.cameraView)
   const [popupMode, setPopupMode] = useState<PopupMode>(null)
   const lastSelectedPart = useRef(selectedPart)
+  const showroomFullGate = useFeatureGate('showroomFull')
+  const navigate = useNavigate()
 
   const activePresetName = PAINT_PRESETS.find(
     p => p.colors.body && p.colors.body.toLowerCase() === partColors.body.toLowerCase(),
@@ -83,7 +87,13 @@ export default function AnimationPreviewPanel() {
             icon={Settings}
             title='Showroom Settings'
             active={popupMode === 'settings'}
-            onClick={() => setPopupMode(mode => (mode === 'settings' ? null : 'settings'))}
+            onClick={() => {
+              if (!showroomFullGate.allowed) {
+                navigate({ to: '/account', search: { upgrade: 'showroomFull' } })
+                return
+              }
+              setPopupMode(mode => (mode === 'settings' ? null : 'settings'))
+            }}
           />
           <ToolButton
             icon={Eye}

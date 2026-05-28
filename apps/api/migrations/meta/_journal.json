@@ -15,6 +15,13 @@
       "when": 1778819031101,
       "tag": "0001_spooky_dreadnoughts",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1779904982665,
+      "tag": "0002_even_maestro",
+      "breakpoints": true
     }
   ]
 }
