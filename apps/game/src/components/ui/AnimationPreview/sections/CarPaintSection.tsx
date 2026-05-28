@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import {
   DEFAULT_PART_MATERIAL_SETTINGS,
   PAINT_PRESETS,
   useCarPaintStore,
 } from '@/stores/useCarPaintStore'
+import { useFeatureGate } from '@/auth/useFeatureGate'
 import { Chip } from '../primitives/Chip'
 import { Section } from '../primitives/Section'
 import { SwatchButton } from '../primitives/ShowroomPanel'
@@ -18,6 +20,8 @@ export function CarPaintSection() {
   const clearcoatStrength = useCarPaintStore(s => s.clearcoatStrength)
   const colorDepthFactor = useCarPaintStore(s => s.colorDepthFactor)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const shaderGate = useFeatureGate('showroomFull')
+  const navigate = useNavigate()
 
   const store = useCarPaintStore.getState
   const activeColor = selectedPart === 'all' ? partColors.body : partColors[selectedPart]
@@ -84,11 +88,19 @@ export function CarPaintSection() {
           disabled={!canIsolate}
           onClick={() => store().setIsolateSelected(!isolateSelected)}
         />
-        <Chip
-          label={showAdvanced ? 'Hide' : 'Shader'}
-          active={showAdvanced}
-          onClick={() => setShowAdvanced(s => !s)}
-        />
+        {shaderGate.allowed ? (
+          <Chip
+            label={showAdvanced ? 'Hide' : 'Shader'}
+            active={showAdvanced}
+            onClick={() => setShowAdvanced(s => !s)}
+          />
+        ) : (
+          <Chip
+            label='Shader · Pro'
+            active={false}
+            onClick={() => navigate({ to: '/account', search: { upgrade: 'showroomFull' } })}
+          />
+        )}
       </div>
 
       {showAdvanced && (
